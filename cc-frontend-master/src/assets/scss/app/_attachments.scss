@@ -1,0 +1,10 @@
+.file-dropzone {
+  width: 100%;
+  border: 2px dashed $primary;
+  border-radius: 0.4285rem;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  background-color: $primary-light;
+}

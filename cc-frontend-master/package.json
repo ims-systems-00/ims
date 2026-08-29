@@ -1,0 +1,100 @@
+{
+  "name": "cc-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "@formkit/auto-animate": "^0.8.2",
+    "@ims-systems-00/ims-react-hooks": "^1.0.32",
+    "@ims-systems-00/ims-ui-kit": "^0.0.34",
+    "@react-google-maps/api": "^2.19.3",
+    "@react-pdf/renderer": "^4.1.5",
+    "@tanstack/react-table": "^8.16.0",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "axios": "^1.6.8",
+    "classnames": "^2.5.1",
+    "env-cmd": "^10.1.0",
+    "html2canvas": "^1.4.1",
+    "jwt-decode": "^3.1.2",
+    "moment": "^2.30.1",
+    "react": "^18.3.1",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.2.3",
+    "react-easy-crop": "^5.5.3",
+    "react-geocode": "^1.0.0-alpha.1",
+    "react-hot-toast": "^2.4.1",
+    "react-icons": "^5.1.0",
+    "react-joyride": "^2.9.2",
+    "react-lazy-load-image-component": "^1.6.3",
+    "react-lazyload": "^3.2.1",
+    "react-loading-skeleton": "^3.4.0",
+    "react-notifications-component": "^4.0.1",
+    "react-pdf": "^9.1.0",
+    "react-perfect-scrollbar": "^1.5.8",
+    "react-pro-sidebar": "^1.1.0",
+    "react-router-dom": "^6.22.3",
+    "react-youtube": "^10.1.0",
+    "recharts": "^2.14.1",
+    "socket.io-client": "^4.7.5",
+    "use-places-autocomplete": "^4.0.1",
+    "use-react-screenshot": "^4.0.0",
+    "uuid": "^9.0.1",
+    "web-vitals": "^2.1.4",
+    "yup": "^1.4.0"
+  },
+  "scripts": {
+    "serve": "serve -s public",
+    "build": "webpack --config webpack.prod.js",
+    "start:local": "env-cmd -f ./.env.local webpack serve --config webpack.dev.js",
+    "build:local": "env-cmd -f ./.env.local webpack --config webpack.prod.js",
+    "start:dev": "env-cmd -f ./.env.development webpack serve --config webpack.dev.js",
+    "build:dev": "env-cmd -f ./.env.development webpack --config webpack.prod.js",
+    "start:carbocalc": "env-cmd -f ./.env.carbocalc webpack serve --config webpack.dev.js",
+    "build:carbocalc": "env-cmd -f ./.env.carbocalc webpack --config webpack.prod.js",
+    "start:go2ero": "env-cmd -f ./.env.go2ero webpack serve --config webpack.dev.js",
+    "build:go2ero": "env-cmd -f ./.env.go2ero webpack --config webpack.prod.js"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "@babel/core": "^7.26.0",
+    "@babel/eslint-parser": "^7.25.9",
+    "@babel/plugin-transform-runtime": "^7.25.9",
+    "@babel/preset-env": "^7.26.0",
+    "@babel/preset-react": "^7.26.3",
+    "babel-loader": "^9.2.1",
+    "css-loader": "^7.1.2",
+    "dotenv": "^16.4.5",
+    "file-loader": "^6.2.0",
+    "html-webpack-plugin": "^5.6.0",
+    "mini-css-extract-plugin": "^2.9.0",
+    "postcss-loader": "^8.1.1",
+    "sass": "^1.81.0",
+    "sass-loader": "^14.2.1",
+    "serve": "^14.2.3",
+    "style-loader": "^4.0.0",
+    "url-loader": "^4.1.1",
+    "webpack": "^5.92.1",
+    "webpack-cli": "^5.1.4",
+    "webpack-dev-server": "^5.0.4",
+    "webpack-merge": "^6.0.1"
+  }
+}

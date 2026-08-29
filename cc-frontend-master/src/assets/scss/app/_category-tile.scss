@@ -1,0 +1,43 @@
+.category-tile {
+  .md-icon-container {
+    min-height: 50px;
+    min-width: 50px;
+    max-height: 50px;
+    max-width: 50px;
+    border-radius: 30px;
+    background-color: $secondary-extra-light;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 20px;
+  }
+  .lg-icon-container {
+    min-height: 80px;
+    min-width: 80px;
+    max-height: 80px;
+    max-width: 80px;
+    border-radius: 80px;
+    background-color: $primary-light;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 34px;
+    color: $primary;
+  }
+  .category-link {
+    transition: 0.2s;
+    &:hover {
+      text-decoration: underline;
+      text-decoration-color: $type-dark;
+    }
+  }
+  .category-description {
+    p {
+      display: -webkit-box;
+      -webkit-line-clamp: 2; /* Limit to 2 lines */
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis; /* Add ellipsis at the end */
+    }
+  }
+}

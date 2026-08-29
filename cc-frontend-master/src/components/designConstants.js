@@ -1,0 +1,6 @@
+const GOOGLE_MAP_STYLES = {};
+const DESIGN_CONSTANTS = {
+  TABLE_ITEM_ACTION_COLUMN_SIZE: 50,
+};
+
+export default DESIGN_CONSTANTS;

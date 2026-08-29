@@ -1,0 +1,11 @@
+.iso-14064-full-report {
+  header {
+    position: relative;
+    background: linear-gradient(180deg, $primary-extra-light 0%, $white 46.67%);
+    .background {
+      width: 100%;
+      position: absolute;
+      top: 9%;
+    }
+  }
+}

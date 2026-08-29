@@ -1,0 +1,11 @@
+.card-single-data {
+}
+@each $color, $value in $theme-colors {
+  .card-single-data-#{$color} {
+    @if $color == "light" {
+      border-left: 3px solid transparent;
+    } @else {
+      border-left: 3px solid $value;
+    }
+  }
+}

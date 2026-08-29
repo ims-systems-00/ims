@@ -1,0 +1,15 @@
+.org-selection-container {
+  height: 135px;
+  overflow-y: scroll;
+  scrollbar-width: none;
+
+  .org-name {
+    transition: 0.3s ease;
+    cursor: pointer;
+    color: $primary;
+
+    &:hover {
+      background-color: $primary-extra-light;
+    }
+  }
+}

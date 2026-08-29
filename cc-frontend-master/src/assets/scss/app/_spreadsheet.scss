@@ -1,0 +1,139 @@
+.spreadsheet {
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  select {
+    border: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+  table {
+    width: 100%;
+    user-select: none;
+    thead {
+      tr {
+        th {
+          &:first-child {
+            padding: 5px;
+          }
+          padding: 8px;
+          border: 1px solid $border-color;
+        }
+      }
+    }
+  }
+  tbody {
+    tr {
+      td {
+        &:first-child {
+          padding: 5px;
+          &:hover {
+            .spreadsheet-plus-row-indicator {
+              display: flex;
+            }
+          }
+        }
+        border: 1px solid $border-color;
+        background-color: white;
+        cursor: pointer;
+        position: relative;
+        padding: 0;
+        &.spreadsheet-cell-selected {
+          background-color: $primary-extra-light !important;
+        }
+        .spreadsheet-duplicate-indicator {
+          width: 10px;
+          height: 10px;
+          background: $primary;
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          transform: translate(50%, 50%);
+          z-index: 1;
+          display: none;
+        }
+        .spreadsheet-error-indicator {
+          width: 20px;
+          height: 20px;
+          border-radius: 20px;
+          border: 2px solid $danger;
+          background-color: adjust-color($danger, $lightness: 35%);
+          position: absolute;
+          top: 0;
+          left: 0;
+          transform: translate(-50%, -50%);
+          z-index: 1;
+          display: none;
+          cursor: pointer;
+          color: $danger;
+        }
+        .spreadsheet-plus-row-indicator {
+          width: 20px;
+          height: 20px;
+          border-radius: 20px;
+          position: absolute;
+          border: 2px solid $primary;
+          background-color: adjust-color($primary, $lightness: 35%);
+          bottom: 0;
+          left: 0;
+          transform: translate(-50%, 50%);
+          z-index: 1;
+          transition: 0.3s;
+          cursor: pointer;
+          color: $primary;
+          display: none;
+          justify-content: center;
+          align-items: center;
+        }
+        input,
+        select {
+          text-overflow: ellipsis;
+          padding: 8px;
+          border: none;
+          background-color: transparent;
+          &:focus {
+            outline-color: $primary;
+            background-color: $primary-extra-light;
+          }
+          &:focus + .spreadsheet-duplicate-indicator {
+            display: block;
+          }
+        }
+      }
+      &.invalid-row {
+        td {
+          background-color: adjust-color($danger, $lightness: 35%);
+          border-top: 2px solid $danger;
+          border-bottom: 2px solid $danger;
+          &:first-child {
+            border-left: 2px solid $danger;
+          }
+          &:last-child {
+            border-right: 2px solid $danger;
+          }
+          .spreadsheet-error-indicator {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+          }
+        }
+      }
+      &.imported-row {
+        td {
+          background-color: adjust-color($success, $lightness: 35%);
+          border-top: 2px solid $success;
+          border-bottom: 2px solid $success;
+          &:first-child {
+            border-left: 2px solid $success;
+          }
+          &:last-child {
+            border-right: 2px solid $success;
+          }
+        }
+      }
+    }
+  }
+}

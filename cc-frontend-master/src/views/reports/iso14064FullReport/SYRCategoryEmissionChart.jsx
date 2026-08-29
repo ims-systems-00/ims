@@ -1,0 +1,20 @@
+import React from "react";
+import CategoryEmissionChart from "../shared/CategoryEmissionChart";
+import { useISO14064FullReport } from "./store";
+
+export default function SYRCategoryEmissionChart({}) {
+  let { report } = useISO14064FullReport();
+  let data = Object.values(report?.scopeBasedEmissionResults).reduce(
+    (finalList, currentScope) => {
+      return [
+        ...finalList,
+        ...currentScope.categories?.map((cat) => ({
+          x: cat.category,
+          y: cat.totalCO2eEmissions,
+        })),
+      ];
+    },
+    []
+  );
+  return <CategoryEmissionChart data={data} />;
+}

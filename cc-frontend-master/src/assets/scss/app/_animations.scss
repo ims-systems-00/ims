@@ -1,0 +1,39 @@
+@mixin save-animation($animationName, $color) {
+  @keyframes #{$animationName} {
+    0% {
+      background-color: initial;
+    }
+    50% {
+      background-color: lighten($color, 40%);
+    }
+    100% {
+      background-color: initial;
+    }
+  }
+}
+@keyframes blink {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 1000px 0; /* Adjust the width of the stripe as needed */
+  }
+}
+.blink-element {
+  background-image: linear-gradient(
+    to right,
+    rgba(255, 255, 255, 0),
+    lighten($primary, 40%)
+  );
+  background-size: 1000px auto;
+  animation: blink 2s infinite;
+}
+@include save-animation(save-success, $success);
+@include save-animation(save-fail, $danger);
+
+.table-column-save-success {
+  animation: save-success 1s ease-in-out;
+}
+.table-column-save-failed {
+  animation: save-fail 1s ease-in-out;
+}
