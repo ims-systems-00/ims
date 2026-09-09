@@ -1,0 +1,10 @@
+{
+  "name": "ims-v5",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev:backend": "pnpm --filter ims-systems-v5-backend dev",
+    "build:backend": "pnpm --filter ims-systems-v5-backend build",
+    "test:backend": "pnpm --filter ims-systems-v5-backend test"
+  }
+}

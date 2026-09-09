@@ -1,0 +1,14 @@
+{
+  "name": "ims-systems-v5-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "description": "IMS Systems V5 frontend scaffold (Next.js + TypeScript)",
+  "scripts": {
+    "dev": "echo \"Scaffold only — install Next.js after team approval (D-01, D-04)\"",
+    "build": "echo \"Scaffold only — install Next.js after team approval (D-01, D-04)\"",
+    "test": "echo \"Test runner pending approval (D-10)\""
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
