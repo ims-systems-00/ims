@@ -1,3 +1,3 @@
-# Business UI modules live here (one folder per spec slug).
-# Do not create modules until tasked.
+# Business modules live here (one folder per module specification slug).
+# Do not create modules until explicitly tasked.
 # See docs/architecture/MODULE_ARCHITECTURE.md

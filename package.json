@@ -5,6 +5,11 @@
   "scripts": {
     "dev:backend": "pnpm --filter ims-systems-v5-backend dev",
     "build:backend": "pnpm --filter ims-systems-v5-backend build",
-    "test:backend": "pnpm --filter ims-systems-v5-backend test"
+    "test:backend": "pnpm --filter ims-systems-v5-backend test",
+    "seed:demo": "pnpm --filter ims-systems-v5-backend seed:demo",
+    "dev:frontend": "pnpm --filter ims-systems-v5-frontend dev",
+    "build:frontend": "pnpm --filter ims-systems-v5-frontend build",
+    "test:frontend": "pnpm --filter ims-systems-v5-frontend test",
+    "lint:frontend": "pnpm --filter ims-systems-v5-frontend lint"
   }
 }

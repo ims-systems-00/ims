@@ -1,0 +1,67 @@
+# IMS Systems V5 — Docker Compose (local / production-like)
+#
+# Access the application at: http://localhost:7864
+# Browser → frontend (Nginx) → backend → mongodb
+#
+# Backend and MongoDB stay on the internal Compose network (not published).
+
+services:
+  mongodb:
+    image: mongo:7
+    restart: unless-stopped
+    volumes:
+      - ims_v5_mongodb_data:/data/db
+    # No host port published — internal only
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  backend:
+    build:
+      context: .
+      dockerfile: ims-systems-v5-backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      # development-stub remains the only security provider; NODE_ENV must
+      # stay development until Auth0/OpenFGA adapters exist (see env guards).
+      NODE_ENV: development
+      PORT: "3001"
+      MONGODB_URI: mongodb://mongodb:27017/ims_v5
+      LOG_LEVEL: info
+      SECURITY_PROVIDER: development-stub
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    # No host port published — reached via frontend Nginx /api/
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: ims-systems-v5-frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_SECURITY_PROVIDER: development-stub
+    restart: unless-stopped
+    ports:
+      - "7864:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  ims_v5_mongodb_data:

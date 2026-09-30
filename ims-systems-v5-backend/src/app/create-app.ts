@@ -5,6 +5,7 @@ import type { Logger } from "../infrastructure/logging/logger";
 import type { MongoConnection } from "../infrastructure/mongodb/connection";
 import { createSecurityPorts, type SecurityPorts } from "../security";
 import { correlationIdMiddleware } from "./middleware/correlation-id";
+import { corsMiddleware } from "./middleware/cors";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
 import { securityContextMiddleware } from "./middleware/security-context";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
@@ -33,13 +34,14 @@ export function createApp(options: CreateAppOptions): CreatedApp {
   const app = express();
 
   app.disable("x-powered-by");
+  app.use(corsMiddleware());
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
   app.use(correlationIdMiddleware());
   app.use(requestLoggerMiddleware(logger));
   app.use(securityContextMiddleware(security));
 
-  const v1 = createV1Router(mongo);
+  const v1 = createV1Router({ mongo, security });
   for (const router of options.additionalV1Routers ?? []) {
     v1.use(router);
   }

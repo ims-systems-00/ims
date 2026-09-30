@@ -11,14 +11,16 @@ import { DEV_STUB_IDENTITY } from "../src/security";
 import { sendSuccess } from "../src/shared/http/response";
 
 describe("HTTP platform", () => {
-  let ctx: TestContext;
+  let ctx: TestContext | undefined;
 
   beforeAll(async () => {
     ctx = await createTestApp();
   });
 
   afterAll(async () => {
-    await ctx.cleanup();
+    if (ctx) {
+      await ctx.cleanup();
+    }
   });
 
   it("composes an Express application", () => {
@@ -27,7 +29,7 @@ describe("HTTP platform", () => {
   });
 
   it("GET /api/v1/health returns 200 when MongoDB is connected", async () => {
-    const response = await request(ctx.app).get("/api/v1/health");
+    const response = await request(ctx!.app).get("/api/v1/health");
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data.status).toBe("ok");
@@ -38,8 +40,21 @@ describe("HTTP platform", () => {
     );
   });
 
+  it("answers browser CORS preflight for the Vite origin", async () => {
+    const response = await request(ctx!.app)
+      .options("/api/v1/health")
+      .set("Origin", "http://127.0.0.1:3000")
+      .set("Access-Control-Request-Method", "GET");
+
+    expect(response.status).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      "http://127.0.0.1:3000"
+    );
+    expect(response.headers["access-control-allow-methods"]).toMatch(/GET/);
+  });
+
   it("propagates inbound correlation id", async () => {
-    const response = await request(ctx.app)
+    const response = await request(ctx!.app)
       .get("/api/v1/health")
       .set("x-correlation-id", "test-correlation-123");
     expect(response.headers["x-correlation-id"]).toBe("test-correlation-123");
@@ -47,7 +62,7 @@ describe("HTTP platform", () => {
   });
 
   it("returns 404 for unknown routes", async () => {
-    const response = await request(ctx.app).get("/api/v1/does-not-exist");
+    const response = await request(ctx!.app).get("/api/v1/does-not-exist");
     expect(response.status).toBe(404);
     expect(response.body.success).toBe(false);
     expect(response.body.error.code).toBe("NOT_FOUND");
@@ -61,9 +76,9 @@ describe("HTTP platform", () => {
 
     const logger = createLogger({ level: "silent" });
     const { app } = createApp({
-      config: ctx.config,
+      config: ctx!.config,
       logger,
-      mongo: ctx.mongo,
+      mongo: ctx!.mongo,
       additionalV1Routers: [probe],
     });
 
@@ -74,14 +89,16 @@ describe("HTTP platform", () => {
 });
 
 describe("centralized error handling", () => {
-  let ctx: TestContext;
+  let ctx: TestContext | undefined;
 
   beforeAll(async () => {
     ctx = await createTestApp();
   });
 
   afterAll(async () => {
-    await ctx.cleanup();
+    if (ctx) {
+      await ctx.cleanup();
+    }
   });
 
   it("returns validation errors from parseWithSchema", () => {
@@ -104,9 +121,9 @@ describe("centralized error handling", () => {
 
     const logger = createLogger({ level: "silent" });
     const { app } = createApp({
-      config: ctx.config,
+      config: ctx!.config,
       logger,
-      mongo: ctx.mongo,
+      mongo: ctx!.mongo,
       additionalV1Routers: [probe],
     });
 
@@ -129,9 +146,9 @@ describe("centralized error handling", () => {
 
     const logger = createLogger({ level: "silent" });
     const { app } = createApp({
-      config: ctx.config,
+      config: ctx!.config,
       logger,
-      mongo: ctx.mongo,
+      mongo: ctx!.mongo,
       additionalV1Routers: [probe],
     });
 

@@ -5,6 +5,7 @@
  * UI and data layers must depend on this port, not on Auth0 SDKs directly.
  *
  * @see docs/architecture/SECURITY_ARCHITECTURE.md
+ * @see docs/decisions/0006-auth-ports-and-dev-stub.md
  */
 
 export type ClientIdentity = {
@@ -15,6 +16,5 @@ export type ClientIdentity = {
 
 export interface AuthClient {
   getIdentity(): Promise<ClientIdentity | null>;
-  /** Optional convenience for route guards once wired to Next.js. */
   isAuthenticated(): Promise<boolean>;
 }

@@ -25,7 +25,7 @@ ims-v5/
 ├── ims-systems-frontend/          # V4 frontend — reference only
 ├── cc-frontend-master/            # V4 Carbo Calc frontend — reference only
 ├── ims-systems-v5-backend/        # V5 Express + TypeScript + MongoDB
-└── ims-systems-v5-frontend/       # V5 Next.js + TypeScript
+└── ims-systems-v5-frontend/       # V5 Vite + React + TypeScript
 ```
 
 ### Hard constraints
@@ -41,7 +41,7 @@ ims-v5/
 
 | Layer | Stack |
 | ----- | ----- |
-| Frontend | Next.js, TypeScript |
+| Frontend | Vite, React, TypeScript |
 | Backend | Express, TypeScript, MongoDB |
 | Authentication (target) | Auth0 — implemented later by senior engineers |
 | Authorization (target) | OpenFGA — implemented later by senior engineers |
@@ -78,7 +78,7 @@ Do **not** load every module specification by default.
 ## 6. High-level system shape
 
 ```text
-[ Next.js V5 frontend ]
+[ Vite + React V5 frontend ]
         |
         | HTTPS / JSON API
         v

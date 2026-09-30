@@ -1,0 +1,23 @@
+# Root build context ignores (used by Compose build contexts at repo root).
+**/node_modules
+**/dist
+**/coverage
+**/tests
+.git
+.gitignore
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.docker.example
+*.log
+.DS_Store
+.vscode
+.idea
+docs
+**/*.md
+!ims-systems-v5-frontend/nginx.conf
+agent-transcripts
+.cursor
+**/vitest.config.*
+**/eslint.config.*
+**/.prettierrc*

@@ -8,7 +8,8 @@
 
 ## 1. Stack (confirmed)
 
-- Framework: Next.js
+- Build tool: Vite
+- UI library: React
 - Language: TypeScript
 
 ---
@@ -18,11 +19,15 @@
 ```text
 ims-systems-v5-frontend/
 ├── src/
-│   ├── app/                 # Next.js App Router entry (placeholders only for now)
+│   ├── main.tsx             # Vite entry
+│   ├── App.tsx              # Application shell composition
+│   ├── providers.tsx        # QueryClient and other app providers
 │   ├── modules/             # Business UI modules (empty until tasked)
 │   ├── shared/              # Shared UI, hooks, utilities, API client core
 │   └── security/            # Auth client abstraction + development stub
+├── index.html
 ├── package.json
+├── vite.config.ts
 ├── tsconfig.json
 └── README.md
 ```
@@ -42,26 +47,27 @@ ims-systems-v5-frontend/
 
 - Module-specific API calls live in that module’s `api/` (or equivalent).
 - Shared HTTP concerns (base URL, auth header/cookie attachment, error normalization) live in `shared/` and must use the **security abstraction** for credentials.
+- Public env uses Vite `VITE_*` variables (for example `VITE_API_BASE_URL`).
 
-**Pending (D-05):** Client state library (team preference noted: Zustand).  
-**Pending (D-15):** Server-state library (V4 already uses TanStack Query — confirm for V5).
+Server state: TanStack Query (D-15).  
+Client/application state: Zustand when justified (D-05) — do not use Zustand as a remote-data cache.
 
 ---
 
 ## 5. Design system / UI libraries
 
-Not confirmed for V5 in architecture docs.
+- UI primitives: shadcn/ui (D-04)
+- Icons: Lucide (D-04)
 
-**Pending (D-04):** UI component library (team preference noted: Ant Design) and icon library (team preference noted: MUI icons).
-
-Until approved, do not install a large UI kit solely for scaffolding.
+Do not install a second UI framework or invent a custom design system.
 
 ---
 
 ## 6. Routing
 
-- Use Next.js App Router conventions under `src/app/` when the app is bootstrapped beyond placeholders.
-- Module route segments should remain traceable to module slugs where practical.
+- No router is required until business routes exist.
+- When client routing is introduced, prefer React Router and keep route composition outside module internals.
+- Do not recreate Next.js App Router conventions.
 
 ---
 
@@ -76,13 +82,9 @@ Until approved, do not install a large UI kit solely for scaffolding.
 
 ---
 
-## 8. Pending decisions
+## 8. Related deferred decisions
 
 | ID | Topic |
 | -- | ----- |
-| D-04 | UI kit and icons |
-| D-05 | Zustand (or other) for client state |
 | D-07 | Carbo Calc / `cc-frontend-master` relationship to V5 frontend |
-| D-10 | Frontend test stack |
-| D-15 | TanStack Query (or other) for server state |
-| D-16 | Auth0 Next.js SDK integration approach (senior-owned) |
+| D-16 | Auth0 client integration approach (senior-owned; previously Next.js-oriented) |

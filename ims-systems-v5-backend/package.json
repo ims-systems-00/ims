@@ -10,7 +10,8 @@
     "start": "node dist/app/server.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "engines": {
     "node": ">=20"

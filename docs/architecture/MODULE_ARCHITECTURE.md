@@ -66,13 +66,14 @@ Rules:
 ```text
 ims-systems-v5-frontend/src/modules/<module-slug>/
 ├── index.ts                 # public exports
-├── pages/ or views/         # route-level UI (align with Next.js app router when implemented)
 ├── components/              # module-local UI
 ├── hooks/                   # module-local hooks
 ├── api/                     # API client functions for this module
 ├── types/
 └── __tests__/
 ```
+
+Route-level composition lives in the Vite/React app shell (and a router when introduced), not inside Next.js-style `app/` directories.
 
 Shared UI primitives belong under `src/shared/`, not duplicated per module.
 

@@ -1,21 +1,26 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { MongoMemoryServer } from "mongodb-memory-server";
+import type { MongoMemoryServer } from "mongodb-memory-server";
 import { createLogger } from "../src/infrastructure/logging/logger";
 import { createMongoConnection } from "../src/infrastructure/mongodb/connection";
+import { createMemoryMongo } from "./helpers/memory-mongo";
 
 describe("MongoDB connection lifecycle", () => {
   let memoryServer: MongoMemoryServer | undefined;
 
   afterEach(async () => {
     if (memoryServer) {
-      await memoryServer.stop();
+      try {
+        await memoryServer.stop({ doCleanup: true, force: true });
+      } catch {
+        // Ignore teardown failures from system mongod binary / sandbox kill limits.
+      }
       memoryServer = undefined;
     }
   });
 
   it("connects and disconnects cleanly", async () => {
-    memoryServer = await MongoMemoryServer.create();
-    const uri = memoryServer.getUri("ims_v5_mongo_lifecycle");
+    memoryServer = await createMemoryMongo("ims_v5_mongo_lifecycle");
+    const uri = memoryServer.getUri();
     const logger = createLogger({ level: "silent" });
     const mongo = createMongoConnection({ uri, logger });
 

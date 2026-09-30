@@ -41,6 +41,7 @@ This folder stores formalized decisions for the V5 rebuild.
 | D-21 | OpenFGA model ownership/design | Deferred | [0021-openfga-model-deferred.md](./0021-openfga-model-deferred.md) |
 | D-22 | Feature branches and pull requests | Accepted | [0022-feature-branches-and-prs.md](./0022-feature-branches-and-prs.md) |
 | D-23 | ESLint and Prettier | Accepted | [0023-eslint-prettier.md](./0023-eslint-prettier.md) |
+| D-24 | Vite + React + TypeScript frontend | Accepted | [D-24-vite-react-frontend.md](./D-24-vite-react-frontend.md) |
 
 ---
 

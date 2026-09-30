@@ -8,5 +8,7 @@ export default defineConfig({
     clearMocks: true,
     restoreMocks: true,
     pool: "threads",
+    testTimeout: 60_000,
+    hookTimeout: 120_000,
   },
 });

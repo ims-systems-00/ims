@@ -1,4 +1,3 @@
-import { MongoMemoryServer } from "mongodb-memory-server";
 import type { Express } from "express";
 import { loadConfig, type AppConfig } from "../../src/config";
 import { createLogger } from "../../src/infrastructure/logging/logger";
@@ -7,6 +6,8 @@ import {
   type MongoConnection,
 } from "../../src/infrastructure/mongodb/connection";
 import { createApp } from "../../src/app/create-app";
+import { createMemoryMongo } from "./memory-mongo";
+import type { MongoMemoryServer } from "mongodb-memory-server";
 
 export type TestContext = {
   app: Express;
@@ -19,8 +20,8 @@ export type TestContext = {
 export async function createTestApp(
   overrides: Partial<Record<keyof AppConfig, string>> = {}
 ): Promise<TestContext> {
-  const memoryServer = await MongoMemoryServer.create();
-  const uri = memoryServer.getUri("ims_v5_test");
+  const memoryServer = await createMemoryMongo("ims_v5_test");
+  const uri = memoryServer.getUri();
 
   const config = loadConfig({
     NODE_ENV: "test",
@@ -44,7 +45,11 @@ export async function createTestApp(
     memoryServer,
     cleanup: async () => {
       await mongo.disconnect();
-      await memoryServer.stop();
+      try {
+        await memoryServer.stop({ doCleanup: true, force: true });
+      } catch {
+        // System mongod + sandbox can leave a stuck process handle; ignore teardown noise.
+      }
     },
   };
 }

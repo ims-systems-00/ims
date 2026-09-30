@@ -1,0 +1,53 @@
+---
+description: V5 frontend entity list/table + Sheet CRUD interaction conventions
+globs: ims-systems-v5-frontend/src/modules/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Entity list + Sheet CRUD pattern (IMS V5 frontend)
+
+When implementing or extending a business module list/workspace in the V5 frontend, follow this shared UX — do not invent per-module interaction styles.
+
+## Required shared primitives
+
+Use these instead of ad-hoc buttons/menus:
+
+- `EntityTableRow` (`@/shared/components/entity-table-row`) — clickable row opens details
+- `RowActionsMenu` (`@/shared/components/row-actions-menu`) — Actions column dropdown
+- `AppSheet` (`@/shared/components/app-sheet`) — create / view / edit drawers
+- `ConfirmDialog` (`@/shared/components/confirm-dialog`) — delete / irreversible confirms (never `window.confirm`)
+
+## Table / list behavior
+
+1. Every entity table has an **Actions** column.
+2. Actions use **`RowActionsMenu`** (⋯ menu), not a single inline button.
+3. Default menu items for CRUD modules:
+   - **Details** → open view sheet
+   - **Delete** → open `ConfirmDialog`, then soft-delete (when the module exposes delete)
+4. Add more menu items only when the module spec requires them.
+5. **Row click** opens the **details** sheet (whole row), including keyboard Enter/Space via `EntityTableRow`.
+6. Interactive controls inside the row must not trigger row-open (`RowActionsMenu` already stops propagation).
+
+## Sheet behavior
+
+1. **Create** — right Sheet with form; sticky footer Create/Cancel.
+2. **View** — right Sheet with structured details (not raw JSON).
+3. View footer must include:
+   - **Close**
+   - **Delete** (when the module exposes delete; open `ConfirmDialog` first)
+   - **Edit**
+4. **Edit** — same Sheet switches to form mode (like create), sticky footer Save/Cancel.
+5. Prefer light URL state for deep links (`?create=1`, `?asset=<id>` / `?unit=<id>`), matching Functional Units / Assets.
+
+## Module exceptions
+
+- **Functional Units**: do **not** show Delete in the Actions menu or Sheet footer (UI only; API may still exist).
+
+## Do not
+
+- Put only a “Details” button in Actions when a menu is appropriate
+- Require a separate detail page for standard CRUD entities
+- Skip Edit/Delete on the view Sheet when those operations are exposed for the module
+- Use `window.confirm` — use `ConfirmDialog`
+- Build a new modal/drawer system — use `AppSheet`
+- Use Zustand for server list/detail state — use TanStack Query

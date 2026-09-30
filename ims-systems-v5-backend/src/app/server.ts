@@ -19,9 +19,10 @@ async function main(): Promise<void> {
 
   const { app } = createApp({ config, logger, mongo });
 
-  const server: Server = app.listen(config.PORT, () => {
+  const host = "0.0.0.0";
+  const server: Server = app.listen(config.PORT, host, () => {
     logger.info(
-      { port: config.PORT, env: config.NODE_ENV },
+      { host, port: config.PORT, env: config.NODE_ENV },
       "HTTP server listening"
     );
   });

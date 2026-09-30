@@ -1,0 +1,115 @@
+/**
+ * V5 theme identity presets.
+ * Surfaces stay stable; each [data-theme] shifts primary / accent / sidebar identity.
+ */
+
+html[data-theme="slate"],
+:root {
+  --primary: oklch(0.28 0.02 255);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.006 250);
+  --secondary-foreground: oklch(0.3 0.016 255);
+  --accent: oklch(0.95 0.008 250);
+  --accent-foreground: oklch(0.26 0.018 255);
+  --ring: oklch(0.42 0.04 255);
+  --sidebar: oklch(0.24 0.018 255);
+  --sidebar-foreground: oklch(0.92 0.008 250);
+  --sidebar-muted: oklch(0.68 0.016 255);
+  --sidebar-accent: oklch(0.3 0.022 255);
+  --sidebar-accent-foreground: oklch(0.98 0.004 250);
+  --sidebar-border: oklch(0.32 0.02 255);
+  --sidebar-primary: oklch(0.78 0.04 250);
+}
+
+html[data-theme="blue"] {
+  --primary: oklch(0.45 0.14 250);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.95 0.025 250);
+  --secondary-foreground: oklch(0.32 0.07 250);
+  --accent: oklch(0.945 0.03 250);
+  --accent-foreground: oklch(0.3 0.08 250);
+  --ring: oklch(0.5 0.12 250);
+  --sidebar: oklch(0.26 0.04 250);
+  --sidebar-foreground: oklch(0.93 0.01 250);
+  --sidebar-muted: oklch(0.7 0.03 250);
+  --sidebar-accent: oklch(0.33 0.05 250);
+  --sidebar-accent-foreground: oklch(0.98 0.01 250);
+  --sidebar-border: oklch(0.35 0.045 250);
+  --sidebar-primary: oklch(0.78 0.08 250);
+}
+
+html[data-theme="violet"] {
+  --primary: oklch(0.46 0.15 295);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.025 295);
+  --secondary-foreground: oklch(0.34 0.08 295);
+  --accent: oklch(0.945 0.03 295);
+  --accent-foreground: oklch(0.32 0.09 295);
+  --ring: oklch(0.52 0.12 295);
+  --sidebar: oklch(0.26 0.045 295);
+  --sidebar-foreground: oklch(0.93 0.015 295);
+  --sidebar-muted: oklch(0.7 0.04 295);
+  --sidebar-accent: oklch(0.33 0.055 295);
+  --sidebar-accent-foreground: oklch(0.98 0.01 295);
+  --sidebar-border: oklch(0.35 0.05 295);
+  --sidebar-primary: oklch(0.78 0.09 295);
+}
+
+html[data-theme="green"] {
+  --primary: oklch(0.44 0.1 155);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.955 0.025 155);
+  --secondary-foreground: oklch(0.3 0.06 155);
+  --accent: oklch(0.945 0.03 155);
+  --accent-foreground: oklch(0.28 0.07 155);
+  --ring: oklch(0.5 0.09 155);
+  --sidebar: oklch(0.25 0.035 155);
+  --sidebar-foreground: oklch(0.93 0.012 155);
+  --sidebar-muted: oklch(0.7 0.03 155);
+  --sidebar-accent: oklch(0.32 0.04 155);
+  --sidebar-accent-foreground: oklch(0.98 0.01 155);
+  --sidebar-border: oklch(0.34 0.038 155);
+  --sidebar-primary: oklch(0.78 0.07 155);
+}
+
+html[data-theme="orange"] {
+  --primary: oklch(0.55 0.14 55);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.025 55);
+  --secondary-foreground: oklch(0.35 0.07 55);
+  --accent: oklch(0.95 0.03 55);
+  --accent-foreground: oklch(0.32 0.08 55);
+  --ring: oklch(0.58 0.11 55);
+  --sidebar: oklch(0.27 0.04 55);
+  --sidebar-foreground: oklch(0.94 0.015 55);
+  --sidebar-muted: oklch(0.72 0.04 55);
+  --sidebar-accent: oklch(0.34 0.05 55);
+  --sidebar-accent-foreground: oklch(0.98 0.01 55);
+  --sidebar-border: oklch(0.36 0.045 55);
+  --sidebar-primary: oklch(0.8 0.08 55);
+}
+
+html[data-theme="rose"] {
+  --primary: oklch(0.5 0.14 15);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.02 15);
+  --secondary-foreground: oklch(0.35 0.07 15);
+  --accent: oklch(0.95 0.025 15);
+  --accent-foreground: oklch(0.32 0.08 15);
+  --ring: oklch(0.55 0.11 15);
+  --sidebar: oklch(0.26 0.04 15);
+  --sidebar-foreground: oklch(0.94 0.012 15);
+  --sidebar-muted: oklch(0.72 0.035 15);
+  --sidebar-accent: oklch(0.33 0.05 15);
+  --sidebar-accent-foreground: oklch(0.98 0.01 15);
+  --sidebar-border: oklch(0.35 0.045 15);
+  --sidebar-primary: oklch(0.8 0.08 15);
+}
+
+/**
+ * Custom brand theme: identity tokens are applied as inline styles on <html>
+ * by the theme runtime (`applyCustomTheme`). This selector marks the mode.
+ */
+html[data-theme="custom"] {
+  /* Tokens injected via JavaScript */
+}

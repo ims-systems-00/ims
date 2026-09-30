@@ -53,3 +53,10 @@ export class ForbiddenError extends AppError {
     this.name = "ForbiddenError";
   }
 }
+
+export class ConflictError extends AppError {
+  constructor(message = "Conflict") {
+    super({ message, statusCode: 409, code: "CONFLICT" });
+    this.name = "ConflictError";
+  }
+}
