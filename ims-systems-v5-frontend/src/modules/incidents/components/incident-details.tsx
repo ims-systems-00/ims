@@ -3,6 +3,7 @@ import { Button } from "@/shared/components/ui/button";
 import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
+import { CategoryLabel } from "@/modules/tags-and-categories";
 import {
   IncidentPriorityBadge,
   IncidentStatusBadge,
@@ -86,9 +87,6 @@ export function IncidentDetails({
   removingAttachmentId,
 }: IncidentDetailsProps) {
   const [userSheetId, setUserSheetId] = useState<string | null>(null);
-  const activity = [...incident.activity].sort(
-    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
-  );
   const isResolved = incident.resolved.status;
 
   return (
@@ -135,6 +133,7 @@ export function IncidentDetails({
             }
           />
           <Item label="Raised" value={formatDate(incident.raisedOn)} />
+          <Item label="Updated" value={formatDate(incident.updatedOn)} />
           <Item label="Privacy" value={incident.privacy} />
           <Item
             label="Notification method"
@@ -143,6 +142,15 @@ export function IncidentDetails({
           <Item
             label="Affected service"
             value={incident.affectedService?.trim() || "—"}
+          />
+          <Item
+            label="Category"
+            value={
+              <CategoryLabel
+                categoryId={incident.categoryId}
+                showPrefix={false}
+              />
+            }
           />
           {incident.source ? (
             <Item
@@ -184,59 +192,6 @@ export function IncidentDetails({
           </dl>
         </section>
       )}
-
-      <section className="space-y-2">
-        <h3 className="ims-text-section border-b border-border-subtle pb-2">
-          Lifecycle
-        </h3>
-        <dl className="ims-detail-grid">
-          <Item
-            label="Escalated"
-            value={
-              incident.escalated.status
-                ? `Yes · ${formatDateTime(incident.escalated.on)}`
-                : "No"
-            }
-          />
-          <Item
-            label="Escalated by"
-            value={
-              incident.escalated.status ? (
-                <UserLabel
-                  userId={incident.escalated.by}
-                  onOpen={(id) => setUserSheetId(id)}
-                />
-              ) : (
-                "—"
-              )
-            }
-          />
-          <Item label="Updated" value={formatDate(incident.updatedOn)} />
-        </dl>
-      </section>
-
-      {incident.complianceLinks.length > 0 ? (
-        <section className="space-y-2">
-          <h3 className="ims-text-section border-b border-border-subtle pb-2">
-            Linked controls
-          </h3>
-          <ul className="space-y-2">
-            {incident.complianceLinks.map((link) => (
-              <li
-                key={link.toolkitId}
-                className="rounded-sm border border-border-subtle px-3 py-2 text-sm"
-              >
-                <p className="font-medium">{link.toolkitId}</p>
-                <p className="ims-text-meta">
-                  {link.clauseIds.length > 0
-                    ? link.clauseIds.join(", ")
-                    : "No clauses"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       <section className="space-y-2">
         <h3 className="ims-text-section border-b border-border-subtle pb-2">
@@ -282,26 +237,6 @@ export function IncidentDetails({
               </li>
             ))}
           </ul>
-        )}
-      </section>
-
-      <section className="space-y-2">
-        <h3 className="ims-text-section border-b border-border-subtle pb-2">
-          Activity
-        </h3>
-        {activity.length === 0 ? (
-          <p className="ims-text-meta">No activity recorded yet.</p>
-        ) : (
-          <ol className="space-y-3">
-            {activity.map((entry) => (
-              <li key={entry.id} className="text-sm">
-                <p className="font-medium">{entry.message}</p>
-                <p className="ims-text-meta">
-                  {entry.type} · {formatDateTime(entry.at)}
-                </p>
-              </li>
-            ))}
-          </ol>
         )}
       </section>
 

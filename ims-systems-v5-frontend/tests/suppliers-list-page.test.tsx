@@ -337,8 +337,71 @@ describe("SuppliersListPage", () => {
     expect(
       screen.getByRole("button", { name: /^delete$/i })
     ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^details$/i })).toBeInTheDocument();
     expect(
-      screen.getByRole("heading", { name: /^kpi objectives$/i })
+      screen.getByRole("tab", { name: /^kpi\/objectives$/i })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /^incidents$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^tasks$/i })).toBeInTheDocument();
+  }, 15_000);
+
+  it("shows kpi, incidents, and tasks panels", async () => {
+    const user = userEvent.setup();
+    stubLookups();
+    const supplier = makeSupplier({
+      kpiObjectives: [
+        { id: "kpi1111111111111111111111", value: "Respond within 4 hours" },
+      ],
+    });
+    vi.spyOn(suppliersApi, "listSuppliers").mockResolvedValue({
+      items: [supplier],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(suppliersApi, "getSupplierStats").mockResolvedValue({
+      procurementValue: 25000,
+      supplierIncidents: {
+        totalIncidents: 0,
+        openIncidents: 0,
+        resolvedIncidents: 0,
+      },
+      supplierCompliance: {
+        compliant: 0,
+        inCompliant: 1,
+        percentage: 0,
+        riskLevel: "Hazardous",
+      },
+    });
+    vi.spyOn(suppliersApi, "getSupplier").mockResolvedValue(supplier);
+
+    renderSuppliersPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Acme Facilities Ltd")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Acme Facilities Ltd"));
+
+    await user.click(
+      await screen.findByRole("tab", { name: /^kpi\/objectives$/i })
+    );
+    expect(
+      await screen.findByRole("heading", { name: /^kpi objectives$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Respond within 4 hours")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /^incidents$/i }));
+    expect(
+      await screen.findByText(/no incidents linked to this supplier/i)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /^tasks$/i }));
+    expect(
+      await screen.findByText(/no tasks linked to this supplier/i)
     ).toBeInTheDocument();
   }, 15_000);
 

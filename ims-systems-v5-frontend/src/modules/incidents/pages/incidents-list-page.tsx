@@ -20,6 +20,10 @@ import { notify } from "@/shared/lib/toast";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUserQuery, useUsersQuery } from "@/modules/users/hooks/use-users";
 import {
+  ModuleViewTabs,
+  TagsManagementPanel,
+} from "@/modules/tags-and-categories";
+import {
   IncidentSheet,
   type IncidentSheetMode,
 } from "../components/incident-sheet";
@@ -84,6 +88,7 @@ export function IncidentsListPage() {
   const [priority, setPriority] = useState<IncidentPriority | "">("");
   const [businessUnitId, setBusinessUnitId] = useState("");
   const [ownerId, setOwnerId] = useState("");
+  const [view, setView] = useState<"records" | "categories">("records");
   const [editMode, setEditMode] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
     null
@@ -200,24 +205,41 @@ export function IncidentsListPage() {
         title="Incidents"
         description="Organisation incident register — raise, own, escalate, and resolve incidents."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={reportMutation.isPending}
-              onClick={() => void handleExport()}
-            >
-              <Download />
-              Export
-            </Button>
-            <Button type="button" onClick={openCreate}>
-              <Plus />
-              Raise incident
-            </Button>
-          </div>
+          view === "records" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={reportMutation.isPending}
+                onClick={() => void handleExport()}
+              >
+                <Download />
+                Export
+              </Button>
+              <Button type="button" onClick={openCreate}>
+                <Plus />
+                Raise incident
+              </Button>
+            </div>
+          ) : null
         }
       />
 
+      <ModuleViewTabs
+        recordsLabel="Incidents"
+        categoriesLabel="Categories"
+        value={view}
+        onChange={setView}
+      />
+
+      {view === "categories" ? (
+        <TagsManagementPanel
+          applicableModule="incidents"
+          title="Incident categories"
+          description="Classify incidents for reporting. Categories created here are available when raising or editing an incident."
+        />
+      ) : (
+        <>
       {statsQuery.isSuccess ? (
         <IncidentStatsCards
           stats={statsQuery.data}
@@ -458,6 +480,8 @@ export function IncidentsListPage() {
           </Button>
         </div>
       ) : null}
+        </>
+      )}
 
       <IncidentSheet
         open={sheetOpen}

@@ -67,6 +67,39 @@ export class NoOpRiskTaskAdapter implements RiskTaskPort {
   }
 }
 
+export type RiskComplianceLinkPair = {
+  toolkitId: string;
+  clauseIds: string[];
+};
+
+/**
+ * Sync risk compliance links into Compliance control evidence.
+ * Wired in /api/v1 composition; no-op in isolated risk unit tests.
+ */
+export type RiskComplianceLinkPort = {
+  syncRiskLinks(input: {
+    organizationId: string;
+    actorId: string;
+    riskId: string;
+    previousLinks: RiskComplianceLinkPair[];
+    nextLinks: RiskComplianceLinkPair[];
+  }): Promise<void>;
+  /** Remove all risk-management evidence when a risk is deleted. */
+  clearRiskLinks(input: {
+    organizationId: string;
+    riskId: string;
+  }): Promise<void>;
+};
+
+export class NoOpRiskComplianceLinkAdapter implements RiskComplianceLinkPort {
+  async syncRiskLinks(): Promise<void> {
+    return;
+  }
+  async clearRiskLinks(): Promise<void> {
+    return;
+  }
+}
+
 /**
  * Role-based list visibility (Super Admin / Auditor → all;
  * HoS / Basic → BU + unassigned; External → BU only).

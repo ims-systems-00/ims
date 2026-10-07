@@ -2,6 +2,7 @@ import { Button } from "@/shared/components/ui/button";
 import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
+import { CategoryLabel } from "@/modules/tags-and-categories";
 import { useState, type ReactNode } from "react";
 import { RiskScoreAssessment } from "./risk-score-assessment";
 import { RiskScoreBadge, RiskStatusBadge } from "./risk-badges";
@@ -62,9 +63,6 @@ function BusinessUnitLabel({ id }: { id?: string }) {
 
 export function RiskDetails({ risk }: { risk: Risk }) {
   const [ownerSheetId, setOwnerSheetId] = useState<string | null>(null);
-  const activity = [...risk.activity].sort(
-    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
-  );
 
   return (
     <div className="space-y-6">
@@ -103,6 +101,10 @@ export function RiskDetails({ risk }: { risk: Risk }) {
             }
           />
           <Item label="Asset" value={risk.assetId ?? "—"} />
+          <Item
+            label="Category"
+            value={<CategoryLabel categoryId={risk.categoryId} showPrefix={false} />}
+          />
           <Item label="Raised" value={formatDate(risk.raisedOn)} />
           <Item label="Updated" value={formatDate(risk.updatedOn)} />
           {risk.source ? (
@@ -178,29 +180,6 @@ export function RiskDetails({ risk }: { risk: Risk }) {
         </dl>
       </section>
 
-      {risk.complianceLinks.length > 0 ? (
-        <section className="space-y-2">
-          <h3 className="ims-text-section border-b border-border-subtle pb-2">
-            Linked controls
-          </h3>
-          <ul className="space-y-2">
-            {risk.complianceLinks.map((link) => (
-              <li
-                key={link.toolkitId}
-                className="rounded-sm border border-border-subtle px-3 py-2 text-sm"
-              >
-                <p className="font-medium">{link.toolkitId}</p>
-                <p className="ims-text-meta">
-                  {link.clauseIds.length > 0
-                    ? link.clauseIds.join(", ")
-                    : "No clauses"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
       {risk.attachments.length > 0 ? (
         <section className="space-y-2">
           <h3 className="ims-text-section border-b border-border-subtle pb-2">
@@ -213,26 +192,6 @@ export function RiskDetails({ risk }: { risk: Risk }) {
           </ul>
         </section>
       ) : null}
-
-      <section className="space-y-2">
-        <h3 className="ims-text-section border-b border-border-subtle pb-2">
-          Activity
-        </h3>
-        {activity.length === 0 ? (
-          <p className="ims-text-meta">No activity recorded yet.</p>
-        ) : (
-          <ol className="space-y-3">
-            {activity.map((entry) => (
-              <li key={entry.id} className="text-sm">
-                <p className="font-medium">{entry.message}</p>
-                <p className="ims-text-meta">
-                  {entry.type} · {formatDate(entry.at)}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
 
       <UserDetailsSheet
         userId={ownerSheetId}

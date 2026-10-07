@@ -1,8 +1,15 @@
 /**
- * Hex / HSL helpers for custom brand theme generation.
+ * V4-compatible org theme helpers (primary / primaryDark / light / extra-light).
  */
 
 export const HEX_COLOR_PATTERN = /^#([0-9A-Fa-f]{6})$/;
+
+export type ThemeColors = {
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  primaryExtraLight: string;
+};
 
 export type HslColor = {
   h: number;
@@ -14,6 +21,7 @@ export type HslColor = {
 export function normalizeHexColor(value: string): string | null {
   const trimmed = value.trim();
   const withHash = trimmed.startsWith("#") ? trimmed : `#${trimmed}`;
+  // Require full 6-digit hex so partial typing (e.g. "#be1") is not expanded.
   if (!HEX_COLOR_PATTERN.test(withHash)) return null;
   return withHash.toUpperCase();
 }
@@ -71,45 +79,116 @@ export function hexLuminance(hex: string): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-function hsl(h: number, s: number, l: number): string {
-  return `hsl(${round(h)} ${round(s)}% ${round(l)}%)`;
+function clampByte(n: number): number {
+  return Math.min(255, Math.max(0, Math.round(n)));
 }
 
-function round(value: number): number {
-  return Math.round(value * 10) / 10;
+function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  const normalized = normalizeHexColor(hex);
+  if (!normalized) return null;
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex({ r, g, b }: { r: number; g: number; b: number }): string {
+  return `#${[r, g, b]
+    .map((v) => clampByte(v).toString(16).padStart(2, "0"))
+    .join("")
+    .toUpperCase()}`;
+}
+
+/** Mix `hex` toward `target` by `amount` (0–1). Matches V4 orgTheme. */
+export function mixHex(hex: string, target: string, amount: number): string {
+  const from = hexToRgb(hex);
+  const to = hexToRgb(target);
+  if (!from || !to) return normalizeHexColor(hex) ?? "#000000";
+  return rgbToHex({
+    r: from.r + (to.r - from.r) * amount,
+    g: from.g + (to.g - from.g) * amount,
+    b: from.b + (to.b - from.b) * amount,
+  });
 }
 
 /**
- * Derive the identity token set used by themes.css from a brand hex.
- * Surfaces (background/foreground/border) stay on the default palette.
+ * Derive a full 4-shade palette from a single primary hex (V4 algorithm).
  */
+export function deriveThemeFromPrimary(primaryHex: string): ThemeColors | null {
+  const primary = normalizeHexColor(primaryHex);
+  if (!primary) return null;
+  return {
+    primary,
+    primaryDark: mixHex(primary, "#000000", 0.28),
+    primaryLight: mixHex(primary, "#FFFFFF", 0.72),
+    primaryExtraLight: mixHex(primary, "#FFFFFF", 0.92),
+  };
+}
+
+export function normalizeThemeColors(
+  colors: Partial<ThemeColors> | null | undefined,
+  fallback: ThemeColors
+): ThemeColors {
+  const source = colors ?? {};
+  return {
+    primary: normalizeHexColor(source.primary ?? "") ?? fallback.primary,
+    primaryDark:
+      normalizeHexColor(source.primaryDark ?? "") ?? fallback.primaryDark,
+    primaryLight:
+      normalizeHexColor(source.primaryLight ?? "") ?? fallback.primaryLight,
+    primaryExtraLight:
+      normalizeHexColor(source.primaryExtraLight ?? "") ??
+      fallback.primaryExtraLight,
+  };
+}
+
+/**
+ * Map V4 brand shades onto V5 design tokens.
+ * - primary → buttons / active chrome
+ * - primaryDark → sidebar background (V4 sidebar base)
+ * - primaryLight / primaryExtraLight → soft accents
+ */
+export function buildThemeTokensFromColors(
+  colors: ThemeColors
+): Record<string, string> {
+  const primary = colors.primary;
+  const primaryDark = colors.primaryDark;
+  const primaryLight = colors.primaryLight;
+  const primaryExtraLight = colors.primaryExtraLight;
+
+  const onPrimary = hexLuminance(primary) > 0.45 ? "#111827" : "#FAFAFA";
+  const onSidebar = hexLuminance(primaryDark) > 0.45 ? "#111827" : "#FAFAFA";
+  const mutedOnSidebar =
+    hexLuminance(primaryDark) > 0.45
+      ? mixHex(primaryDark, "#000000", 0.35)
+      : mixHex(primaryDark, "#FFFFFF", 0.55);
+
+  return {
+    "--primary": primary,
+    "--primary-foreground": onPrimary,
+    "--secondary": primaryLight,
+    "--secondary-foreground": primaryDark,
+    "--accent": primaryExtraLight,
+    "--accent-foreground": primaryDark,
+    "--ring": primary,
+    "--sidebar": primaryDark,
+    "--sidebar-foreground": onSidebar,
+    "--sidebar-muted": mutedOnSidebar,
+    "--sidebar-accent": primary,
+    "--sidebar-accent-foreground": onPrimary,
+    "--sidebar-border": mixHex(primaryDark, "#000000", 0.12),
+    "--sidebar-primary": primaryLight,
+  };
+}
+
+/** @deprecated Prefer buildThemeTokensFromColors / deriveThemeFromPrimary. */
 export function buildThemeTokensFromHex(
   hex: string
 ): Record<string, string> | null {
-  const normalized = normalizeHexColor(hex);
-  if (!normalized) return null;
-
-  const { h, s } = hexToHsl(normalized);
-  const sat = clamp(s, 22, 68);
-  const primaryL = clamp(hexToHsl(normalized).l, 28, 52);
-  const lightFg = hexLuminance(normalized) > 0.55;
-
-  return {
-    "--primary": normalized,
-    "--primary-foreground": lightFg ? "#111827" : "#FAFAFA",
-    "--secondary": hsl(h, Math.min(sat, 28), 95.5),
-    "--secondary-foreground": hsl(h, Math.min(sat + 5, 55), 28),
-    "--accent": hsl(h, Math.min(sat, 32), 94.5),
-    "--accent-foreground": hsl(h, Math.min(sat + 5, 55), 26),
-    "--ring": hsl(h, sat, clamp(primaryL + 6, 35, 58)),
-    "--sidebar": hsl(h, Math.min(sat, 38), 16),
-    "--sidebar-foreground": hsl(h, 12, 92),
-    "--sidebar-muted": hsl(h, 12, 68),
-    "--sidebar-accent": hsl(h, Math.min(sat, 34), 22),
-    "--sidebar-accent-foreground": hsl(h, 10, 98),
-    "--sidebar-border": hsl(h, Math.min(sat, 30), 24),
-    "--sidebar-primary": hsl(h, Math.min(sat + 8, 55), 78),
-  };
+  const palette = deriveThemeFromPrimary(hex);
+  if (!palette) return null;
+  return buildThemeTokensFromColors(palette);
 }
 
 export const CUSTOM_THEME_CSS_VARS = [
@@ -129,6 +208,12 @@ export const CUSTOM_THEME_CSS_VARS = [
   "--sidebar-primary",
 ] as const;
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
+export const THEME_COLOR_FIELDS = [
+  { key: "primary", label: "Primary" },
+  { key: "primaryDark", label: "Primary dark" },
+  { key: "primaryLight", label: "Primary light" },
+  { key: "primaryExtraLight", label: "Primary extra light" },
+] as const satisfies ReadonlyArray<{
+  key: keyof ThemeColors;
+  label: string;
+}>;

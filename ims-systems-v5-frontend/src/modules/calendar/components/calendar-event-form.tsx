@@ -125,7 +125,7 @@ export function CalendarEventForm({
         <FormField label="Title" htmlFor="cal-title" error={fieldErrors.title} required>
           <input
             id="cal-title"
-            className="ims-input"
+            className="ims-field"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={pending}
@@ -137,7 +137,7 @@ export function CalendarEventForm({
           <input
             id="cal-start"
             type="datetime-local"
-            className="ims-input"
+            className="ims-field"
             value={start}
             onChange={(e) => setStart(e.target.value)}
             disabled={pending}
@@ -148,7 +148,7 @@ export function CalendarEventForm({
           <input
             id="cal-end"
             type="datetime-local"
-            className="ims-input"
+            className="ims-field"
             value={end}
             onChange={(e) => setEnd(e.target.value)}
             disabled={pending}
@@ -158,7 +158,7 @@ export function CalendarEventForm({
         <FormField label="Description" htmlFor="cal-description" error={fieldErrors.description}>
           <textarea
             id="cal-description"
-            className="ims-input min-h-24"
+            className="ims-field min-h-24 py-2"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             disabled={pending}

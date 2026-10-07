@@ -80,10 +80,10 @@ describe("Stats HTTP", () => {
     }
   });
 
-  it("compliance stats report unavailable when Compliance module is missing", async () => {
+  it("compliance stats report available frameworks (empty when none provisioned)", async () => {
     const response = await request(ctx!.app).get("/api/v1/stats/compliance");
     expect(response.status).toBe(200);
-    expect(response.body.data.unavailable).toBe(true);
+    expect(response.body.data.unavailable).toBe(false);
     expect(response.body.data.frameworks).toEqual([]);
   });
 

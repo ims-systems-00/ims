@@ -52,6 +52,21 @@ export function breadcrumbsForPath(
     }
   }
 
+  // Account routes are navbar-only (not in the sidebar tree).
+  if (pathname === "/profile" || pathname.startsWith("/profile/")) {
+    return [...crumbs, { label: "My Profile", href: "/profile" }];
+  }
+  if (pathname === "/organisation" || pathname.startsWith("/organisation/")) {
+    return [...crumbs, { label: "My organisation", href: "/organisation" }];
+  }
+  if (pathname === "/onboard/flow-selection") {
+    return [
+      ...crumbs,
+      { label: "Create organisation", href: "/onboard/organisation" },
+      { label: "What next?", href: "/onboard/flow-selection" },
+    ];
+  }
+
   return crumbs;
 }
 

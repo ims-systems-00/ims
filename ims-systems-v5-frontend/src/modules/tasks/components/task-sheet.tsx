@@ -1,10 +1,14 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import { DEV_STUB_IDENTITY } from "@/security";
+import {
+  ActivityTimeline,
+  SheetPanelTabs,
+} from "@/modules/activities";
 import {
   useAcceptTaskMutation,
   useCompleteTaskMutation,
@@ -87,6 +91,11 @@ export function TaskSheet({
   const [removingAttachmentId, setRemovingAttachmentId] = useState<
     string | null
   >(null);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, taskId]);
 
   const taskQuery = useTaskQuery(
     mode === "create" ? undefined : (taskId ?? undefined)
@@ -362,13 +371,36 @@ export function TaskSheet({
         ) : null}
 
         {mode === "view" && task ? (
-          <TaskDetails
-            task={task}
-            onRemoveAttachment={
-              !completed ? (id) => void handleRemoveAttachment(id) : undefined
-            }
-            removingAttachmentId={removingAttachmentId}
-          />
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "activity", label: "Activity" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? (
+              <TaskDetails
+                task={task}
+                onRemoveAttachment={
+                  !completed
+                    ? (id) => void handleRemoveAttachment(id)
+                    : undefined
+                }
+                removingAttachmentId={removingAttachmentId}
+              />
+            ) : null}
+            {panelTab === "activity" ? (
+              <ActivityTimeline
+                moduleType="tasks"
+                moduleId={task.id}
+                readOnly={completed}
+                subjectId={subjectId}
+                title="Activity"
+              />
+            ) : null}
+          </>
         ) : null}
 
         {mode === "edit" && task ? (

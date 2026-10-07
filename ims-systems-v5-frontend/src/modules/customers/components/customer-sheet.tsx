@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import {
+  ActivityTimeline,
+  SheetPanelTabs,
+} from "@/modules/activities";
 import {
   useCreateCustomerMutation,
   useCustomerQuery,
@@ -49,6 +53,11 @@ export function CustomerSheet({
   const [pendingPayload, setPendingPayload] = useState<
     CreateCustomerInput | UpdateCustomerInput | null
   >(null);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, customerId]);
 
   const customerQuery = useCustomerQuery(
     mode === "create" ? undefined : (customerId ?? undefined)
@@ -227,7 +236,29 @@ export function CustomerSheet({
         ) : null}
 
         {mode === "view" && customer ? (
-          <CustomerDetails customer={customer} />
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "interactions", label: "Interactions" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? (
+              <CustomerDetails customer={customer} />
+            ) : null}
+            {panelTab === "interactions" ? (
+              <ActivityTimeline
+                moduleType="customers"
+                moduleId={customer.id}
+                title="Interactions with the customer"
+                addLabel="Add interaction"
+                emptyTitle="No interactions found"
+                emptyDescription="Customer interaction notes will appear here."
+              />
+            ) : null}
+          </>
         ) : null}
 
         {mode === "edit" && customer ? (

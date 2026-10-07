@@ -40,6 +40,7 @@ export const createIncidentFormSchema = z.object({
   methodOfNotification: z.string().trim().optional(),
   affectedService: z.string().trim().optional(),
   privacy: z.enum(INCIDENT_PRIVACY),
+  categoryId: optionalObjectId,
 });
 
 export type CreateIncidentFormValues = z.infer<typeof createIncidentFormSchema>;
@@ -56,6 +57,7 @@ export const updateIncidentFormSchema = z
     methodOfNotification: z.string().trim().optional(),
     affectedService: z.string().trim().optional(),
     privacy: z.enum(INCIDENT_PRIVACY),
+    categoryId: optionalObjectId,
     resolution: z.string().trim().optional(),
     resolved: z.boolean().optional(),
   })

@@ -5,7 +5,11 @@
  * Transport-agnostic — does not establish production cookie/bearer transport (D-20).
  */
 
-import type { Authenticator, SecurityIdentity } from "./authenticator";
+import type {
+  Authenticator,
+  AuthRequestView,
+  SecurityIdentity,
+} from "./authenticator";
 import type { Authorizer, AuthorizationCheck } from "./authorizer";
 
 /** Deterministic ObjectId-shaped organisation id for local/dev (D-09). */
@@ -17,8 +21,23 @@ export const DEV_STUB_IDENTITY: SecurityIdentity = {
   organizationId: DEV_STUB_ORGANIZATION_ID,
 };
 
+const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
+
+/**
+ * Development authenticator.
+ * Optional `x-org-id` header switches the stub tenant context after create-org
+ * (stand-in for future JWT / refresh-token org binding).
+ */
 export class DevelopmentAuthenticator implements Authenticator {
-  async authenticate(): Promise<SecurityIdentity | null> {
+  async authenticate(input: AuthRequestView): Promise<SecurityIdentity | null> {
+    const raw = input.headers["x-org-id"] ?? input.headers["X-Org-Id"];
+    const header = Array.isArray(raw) ? raw[0] : raw;
+    if (typeof header === "string" && OBJECT_ID_RE.test(header.trim())) {
+      return {
+        ...DEV_STUB_IDENTITY,
+        organizationId: header.trim(),
+      };
+    }
     return DEV_STUB_IDENTITY;
   }
 }

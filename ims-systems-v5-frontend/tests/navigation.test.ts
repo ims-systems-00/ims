@@ -88,6 +88,21 @@ describe("navigation utils", () => {
     expect(isNavBranchActive("/risks", organisation)).toBe(false);
   });
 
+  it("includes Documents as a top-level navigation item", () => {
+    const documents = navigationSections[0]!.items.find(
+      (item) => item.id === "documents"
+    )!;
+    expect(documents.href).toBe("/documents");
+    expect(isNavItemActive("/documents", documents.href)).toBe(true);
+    expect(
+      isNavItemActive("/documents/repositories/abc", documents.href)
+    ).toBe(true);
+    expect(breadcrumbsForPath("/documents", navigationSections)).toEqual([
+      { label: "Dashboard", href: "/" },
+      { label: "Documents", href: "/documents" },
+    ]);
+  });
+
   it("includes Tasks as a top-level navigation item", () => {
     const tasks = navigationSections[0]!.items.find(
       (item) => item.id === "tasks"
@@ -164,6 +179,21 @@ describe("navigation utils", () => {
     ]);
   });
 
+  it("includes Reviews with Schedule and KPI/Objectives", () => {
+    const reviews = navigationSections[0]!.items.find(
+      (item) => item.id === "reviews"
+    )!;
+    expect(isNavBranchActive("/kpi-objectives", reviews)).toBe(true);
+    expect(breadcrumbsForPath("/kpi-objectives", navigationSections)).toEqual([
+      { label: "Dashboard", href: "/" },
+      { label: "Reviews" },
+      { label: "KPI/Objectives", href: "/kpi-objectives" },
+    ]);
+    expect(pageTitleForPath("/kpi-objectives", navigationSections)).toBe(
+      "KPI/Objectives"
+    );
+  });
+
   it("includes Audits with Internal and External children", () => {
     const audits = navigationSections[0]!.items.find(
       (item) => item.id === "audits"
@@ -192,6 +222,31 @@ describe("navigation utils", () => {
     )!;
     expect(isNavBranchActive("/assets/software", inventory)).toBe(true);
     expect(isNavBranchActive("/functional-units", inventory)).toBe(false);
+  });
+
+  it("includes Compliance with all toolkit children", () => {
+    const compliance = navigationSections[0]!.items.find(
+      (item) => item.id === "compliance"
+    )!;
+    expect(compliance.children?.length).toBeGreaterThan(1);
+    expect(isNavBranchActive("/compliance/ISO%209001", compliance)).toBe(true);
+    expect(isNavBranchActive("/compliance/ISO%2045001", compliance)).toBe(true);
+    expect(
+      compliance.children?.some((child) => child.label === "ISO 20000 (2018)")
+    ).toBe(true);
+    expect(
+      compliance.children?.some((child) => child.label === "ISO 45001")
+    ).toBe(true);
+    expect(
+      breadcrumbsForPath("/compliance/ISO%209001", navigationSections)
+    ).toEqual([
+      { label: "Dashboard", href: "/" },
+      { label: "Compliance" },
+      { label: "ISO 9001", href: "/compliance/ISO%209001" },
+    ]);
+    expect(
+      pageTitleForPath("/compliance/ISO%209001", navigationSections)
+    ).toBe("ISO 9001");
   });
 
   it("resolves page title from the leaf crumb", () => {

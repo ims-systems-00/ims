@@ -6,6 +6,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/shared/theme";
 import { OfisListPage } from "@/modules/ofi";
 import * as ofiApi from "@/modules/ofi/api/ofi";
+import * as activitiesApi from "@/modules/activities/api/activities";
+import * as complianceApi from "@/modules/compliance/api/compliance";
 import * as usersApi from "@/modules/users/api/users";
 import * as fuApi from "@/modules/functional-units/api/functional-units";
 import * as tasksApi from "@/modules/tasks/api/tasks";
@@ -287,8 +289,99 @@ describe("OfisListPage", () => {
       screen.getByRole("button", { name: /^implement$/i })
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^nudge$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^details$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^activity$/i })).toBeInTheDocument();
     expect(
-      screen.getByText(/the first activity moves this ofi/i)
+      screen.getByRole("tab", { name: /^life cycle$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^tasks$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /^linked controls$/i })
+    ).toBeInTheDocument();
+  }, 15_000);
+
+  it("shows lifecycle timeline and linked controls panels", async () => {
+    const user = userEvent.setup();
+    stubLookups();
+    const ofi = makeOfi({
+      complianceLinks: [{ toolkitId: "ISO 9001", clauseIds: ["4.1"] }],
+    });
+    vi.spyOn(ofiApi, "listOfis").mockResolvedValue({
+      items: [ofi],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(ofiApi, "getOfiStats").mockResolvedValue({
+      total: 1,
+      pending: 1,
+      inProgress: 0,
+      implemented: 0,
+    });
+    vi.spyOn(ofiApi, "getOfi").mockResolvedValue(ofi);
+    vi.spyOn(complianceApi, "listCatalogueControls").mockResolvedValue({
+      items: [
+        {
+          id: "cccccccccccccccccccccccc",
+          name: "ISO 9001",
+          clause: "4.1",
+          title: "Understanding the organization",
+          isLocked: false,
+          parentClause: "4",
+        },
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(tasksApi, "listTasks").mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 1,
+    });
+    vi.spyOn(activitiesApi, "listActivities").mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 1,
+    });
+
+    renderOfisPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Improve backup window")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Improve backup window"));
+    await user.click(await screen.findByRole("tab", { name: /^life cycle$/i }));
+    expect(await screen.findByText("Current status")).toBeInTheDocument();
+    expect(screen.getAllByText("Raised").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not yet").length).toBeGreaterThan(0);
+
+    await user.click(
+      screen.getByRole("tab", { name: /^linked controls$/i })
+    );
+    expect(
+      (await screen.findAllByText("ISO 9001")).length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("4.1").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/understanding the organization/i)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /^tasks$/i }));
+    expect(
+      await screen.findByText(/no tasks linked to this ofi/i)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /^activity$/i }));
+    expect(
+      await screen.findByText(/the first activity moves this ofi/i)
     ).toBeInTheDocument();
   }, 15_000);
 

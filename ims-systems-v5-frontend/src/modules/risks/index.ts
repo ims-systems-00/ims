@@ -9,4 +9,4 @@ export type {
   RiskDisplayStatus,
   RiskType,
 } from "./types";
-export { RISK_TYPES, RISK_STATUS_OPTIONS } from "./types";
+export { RISK_TYPES, RISK_STATUS_OPTIONS, RISK_SOURCE_MODULE } from "./types";

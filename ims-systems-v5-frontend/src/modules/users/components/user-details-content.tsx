@@ -1,10 +1,14 @@
-import type { ReactNode } from "react";
-import { Loader2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { Loader2, Pencil } from "lucide-react";
+import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { isApiClientError } from "@/shared/lib/http/errors";
+import { DEV_STUB_IDENTITY, resolveProfileUserId } from "@/security";
 import { useUserQuery } from "../hooks/use-users";
 import type { OrgMembershipView, User } from "../types";
+import { EditProfileSheet } from "./edit-profile-sheet";
 import { UserAvatar } from "./user-avatar";
+import { UserBusinessUnitsCard } from "./user-business-units-card";
 
 function formatDate(value: string | null | undefined): string {
   if (!value) return "—";
@@ -32,33 +36,37 @@ function accessTone(
   return "neutral";
 }
 
-type DetailItemProps = {
+function DetailItem({
+  label,
+  value,
+}: {
   label: string;
   value: ReactNode;
-  className?: string;
-};
-
-function DetailItem({ label, value, className }: DetailItemProps) {
+}) {
   return (
-    <div className={className}>
+    <div>
       <dt className="ims-detail-label">{label}</dt>
       <dd className="ims-detail-value break-words">{value ?? "—"}</dd>
     </div>
   );
 }
 
-type SectionProps = {
+function ProfileCard({
+  title,
+  action,
+  children,
+}: {
   title: string;
+  action?: ReactNode;
   children: ReactNode;
-};
-
-function Section({ title, children }: SectionProps) {
+}) {
   return (
-    <section className="space-y-3">
-      <h3 className="ims-text-section border-b border-border-subtle pb-2">
-        {title}
-      </h3>
-      {children}
+    <section className="ims-panel overflow-hidden">
+      <div className="ims-panel-header">
+        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        {action}
+      </div>
+      <div className="px-4 py-4">{children}</div>
     </section>
   );
 }
@@ -67,17 +75,26 @@ type UserDetailsContentProps = {
   userId: string;
   /** When false, skip fetching (sheet closed). Default true. */
   enabled?: boolean;
+  /**
+   * Force edit affordance. When omitted, edit is available for the session
+   * profile user (My Profile / own directory row).
+   */
+  canEditProfile?: boolean;
 };
 
 /**
  * Fetches and renders classified user detail for a given user id.
- * Shared by Users directory and Functional Units member views.
+ * Shared by My Profile, Users directory, and Functional Units member views.
  */
 export function UserDetailsContent({
   userId,
   enabled = true,
+  canEditProfile,
 }: UserDetailsContentProps) {
   const query = useUserQuery(userId, enabled);
+  const sessionProfileId = resolveProfileUserId(DEV_STUB_IDENTITY);
+  const allowEdit =
+    canEditProfile ?? (Boolean(sessionProfileId) && userId === sessionProfileId);
 
   if (query.isLoading) {
     return (
@@ -97,158 +114,196 @@ export function UserDetailsContent({
   }
 
   return (
-    <UserDetailsView user={query.data.user} membership={query.data.membership} />
+    <UserDetailsView
+      user={query.data.user}
+      membership={query.data.membership}
+      canEditProfile={allowEdit}
+    />
   );
 }
 
 export function UserDetailsView({
   user,
   membership,
+  canEditProfile = false,
 }: {
   user: User;
   membership: OrgMembershipView | null;
+  canEditProfile?: boolean;
 }) {
+  const [editOpen, setEditOpen] = useState(false);
+  const groupIds = membership?.groupIds ?? [];
+
   return (
-    <div className="space-y-6">
-      <header className="flex items-start gap-3.5">
-        <UserAvatar
-          name={user.name}
-          imageUrl={user.profileImage?.url}
-          size="lg"
-        />
-        <div className="min-w-0 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[1.0625rem] font-semibold tracking-[-0.015em] text-foreground">
-              {user.name}
-            </h2>
-            <StatusBadge tone={accessTone(user.systemAccess.status)}>
-              {user.systemAccess.status}
-            </StatusBadge>
+    <div className="space-y-4">
+      <section className="ims-panel overflow-hidden">
+        <div className="flex flex-wrap items-start gap-4 px-4 py-5">
+          <UserAvatar
+            name={user.name}
+            imageUrl={user.profileImage?.url}
+            size="lg"
+            className="size-14 text-sm"
+          />
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[1.125rem] font-semibold tracking-[-0.015em] text-foreground">
+                {user.name}
+              </h2>
+              <StatusBadge tone={accessTone(user.systemAccess.status)}>
+                {user.systemAccess.status}
+              </StatusBadge>
+            </div>
+            <p className="truncate text-[0.8125rem] text-muted-foreground">
+              {user.email}
+            </p>
+            <p className="ims-text-meta font-mono">{user.reference}</p>
+            {membership?.jobTitle || membership?.role ? (
+              <p className="text-[0.8125rem] text-muted-foreground">
+                {[membership.jobTitle, membership.role]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ) : null}
           </div>
-          <p className="truncate text-[0.8125rem] text-muted-foreground">
-            {user.email}
-          </p>
-          <p className="ims-text-meta font-mono">{user.reference}</p>
+          {canEditProfile ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setEditOpen(true)}
+            >
+              <Pencil />
+              Edit profile
+            </Button>
+          ) : null}
         </div>
-      </header>
+      </section>
 
-      <Section title="Profile">
-        <dl className="ims-detail-grid">
-          <DetailItem label="First name" value={user.firstName} />
-          <DetailItem label="Last name" value={user.lastName} />
-          <DetailItem label="User type" value={user.type} />
-          <DetailItem
-            label="Email verification"
-            value={
-              <span className="inline-flex items-center gap-2">
-                <StatusBadge
-                  tone={
-                    user.emailVerified.status === "verified"
-                      ? "success"
-                      : "neutral"
-                  }
-                >
-                  {user.emailVerified.status}
-                </StatusBadge>
-                {user.emailVerified.on ? (
-                  <span className="text-xs text-muted-foreground">
-                    {formatDateOnly(user.emailVerified.on)}
-                  </span>
-                ) : null}
-              </span>
-            }
-          />
-          <DetailItem label="Phone" value={user.phone || "—"} />
-          <DetailItem
-            label="Country"
-            value={
-              user.country?.name
-                ? `${user.country.name}${user.country.code ? ` (${user.country.code})` : ""}`
-                : "—"
-            }
-          />
-        </dl>
-      </Section>
-
-      <Section title="Organisation">
-        {membership ? (
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ProfileCard title="Profile">
           <dl className="ims-detail-grid">
-            <DetailItem label="Role" value={membership.role || "—"} />
-            <DetailItem label="Job title" value={membership.jobTitle || "—"} />
+            <DetailItem label="First name" value={user.firstName} />
+            <DetailItem label="Last name" value={user.lastName} />
+            <DetailItem label="User type" value={user.type} />
             <DetailItem
-              label="Work location type"
-              value={membership.workLocationType || "—"}
-            />
-            <DetailItem
-              label="Employment country"
-              value={membership.country || "—"}
-            />
-            <DetailItem
-              label="Leave days entitled"
+              label="Email verification"
               value={
-                membership.leaveDaysEntitled != null
-                  ? String(membership.leaveDaysEntitled)
+                <span className="inline-flex flex-wrap items-center gap-2">
+                  <StatusBadge
+                    tone={
+                      user.emailVerified.status === "verified"
+                        ? "success"
+                        : "neutral"
+                    }
+                  >
+                    {user.emailVerified.status}
+                  </StatusBadge>
+                  {user.emailVerified.on ? (
+                    <span className="text-xs text-muted-foreground">
+                      {formatDateOnly(user.emailVerified.on)}
+                    </span>
+                  ) : null}
+                </span>
+              }
+            />
+            <DetailItem label="Phone" value={user.phone || "—"} />
+            <DetailItem
+              label="Country"
+              value={
+                user.country?.name
+                  ? `${user.country.name}${user.country.code ? ` (${user.country.code})` : ""}`
                   : "—"
-              }
-            />
-            <DetailItem
-              label="TOIL balance"
-              value={
-                membership.toilBalance != null
-                  ? String(membership.toilBalance)
-                  : "—"
-              }
-            />
-            <DetailItem
-              label="Business units"
-              value={
-                membership.groupIds && membership.groupIds.length > 0
-                  ? `${membership.groupIds.length} assigned`
-                  : "None assigned"
-              }
-            />
-            <DetailItem
-              label="Line managers"
-              value={
-                membership.lineManagerIds && membership.lineManagerIds.length > 0
-                  ? `${membership.lineManagerIds.length} assigned`
-                  : "None assigned"
               }
             />
           </dl>
-        ) : (
-          <p className="text-[0.8125rem] text-muted-foreground">
-            No organisation membership details available.
-          </p>
-        )}
-      </Section>
+        </ProfileCard>
 
-      <Section title="Account">
-        <dl className="ims-detail-grid">
-          <DetailItem
-            label="Access period"
-            value={user.systemAccess.period || "—"}
-          />
-          <DetailItem
-            label="Access expires"
-            value={formatDateOnly(user.systemAccess.expires)}
-          />
-          <DetailItem
-            label="Last logged in"
-            value={formatDate(user.loggedIn.on)}
-          />
-          <DetailItem label="Created" value={formatDate(user.createdAt)} />
-          <DetailItem label="Updated" value={formatDate(user.updatedAt)} />
-          <DetailItem
-            label="Access policies"
-            value={
-              user.accessPolicies.length > 0
-                ? `${user.accessPolicies.length} policy${user.accessPolicies.length === 1 ? "" : "ies"}`
-                : "None"
-            }
-          />
-        </dl>
-      </Section>
+        <ProfileCard title="Employment">
+          {membership ? (
+            <dl className="ims-detail-grid">
+              <DetailItem label="Role" value={membership.role || "—"} />
+              <DetailItem
+                label="Job title"
+                value={membership.jobTitle || "—"}
+              />
+              <DetailItem
+                label="Work location type"
+                value={membership.workLocationType || "—"}
+              />
+              <DetailItem
+                label="Employment country"
+                value={membership.country || "—"}
+              />
+              <DetailItem
+                label="Leave days entitled"
+                value={
+                  membership.leaveDaysEntitled != null
+                    ? String(membership.leaveDaysEntitled)
+                    : "—"
+                }
+              />
+              <DetailItem
+                label="TOIL balance"
+                value={
+                  membership.toilBalance != null
+                    ? String(membership.toilBalance)
+                    : "—"
+                }
+              />
+              <DetailItem
+                label="Line managers"
+                value={
+                  membership.lineManagerIds &&
+                  membership.lineManagerIds.length > 0
+                    ? `${membership.lineManagerIds.length} assigned`
+                    : "None assigned"
+                }
+              />
+            </dl>
+          ) : (
+            <p className="text-[0.8125rem] text-muted-foreground">
+              No organisation membership details available.
+            </p>
+          )}
+        </ProfileCard>
+
+        <UserBusinessUnitsCard groupIds={groupIds} />
+
+        <ProfileCard title="Account">
+          <dl className="ims-detail-grid">
+            <DetailItem
+              label="Access period"
+              value={user.systemAccess.period || "—"}
+            />
+            <DetailItem
+              label="Access expires"
+              value={formatDateOnly(user.systemAccess.expires)}
+            />
+            <DetailItem
+              label="Last logged in"
+              value={formatDate(user.loggedIn.on)}
+            />
+            <DetailItem label="Created" value={formatDate(user.createdAt)} />
+            <DetailItem label="Updated" value={formatDate(user.updatedAt)} />
+            <DetailItem
+              label="Access policies"
+              value={
+                user.accessPolicies.length > 0
+                  ? `${user.accessPolicies.length} polic${user.accessPolicies.length === 1 ? "y" : "ies"}`
+                  : "None"
+              }
+            />
+          </dl>
+        </ProfileCard>
+      </div>
+
+      {canEditProfile ? (
+        <EditProfileSheet
+          open={editOpen}
+          user={user}
+          onOpenChange={setEditOpen}
+        />
+      ) : null}
     </div>
   );
 }

@@ -3,6 +3,7 @@ import type { Server } from "node:http";
 import { loadConfig } from "../config";
 import { createLogger } from "../infrastructure/logging/logger";
 import { createMongoConnection } from "../infrastructure/mongodb/connection";
+import { createEmailSystem } from "../infrastructure/queue";
 import { createApp } from "./create-app";
 
 loadDotenv();
@@ -14,15 +15,36 @@ async function main(): Promise<void> {
     uri: config.MONGODB_URI,
     logger,
   });
+  const email = createEmailSystem({ config, logger });
 
   await mongo.connect();
 
-  const { app } = createApp({ config, logger, mongo });
+  const { app } = createApp({ config, logger, mongo, email });
+
+  if (
+    config.EMAIL_ENABLED &&
+    config.EMAIL_QUEUE_ENABLED &&
+    config.EMAIL_WORKER_IN_API
+  ) {
+    email.startWorkers();
+    logger.warn(
+      "Email workers running inside the API process (dev only). Prefer `pnpm worker:email` in production."
+    );
+  }
 
   const host = "0.0.0.0";
   const server: Server = app.listen(config.PORT, host, () => {
     logger.info(
-      { host, port: config.PORT, env: config.NODE_ENV },
+      {
+        host,
+        port: config.PORT,
+        env: config.NODE_ENV,
+        emailEnabled: config.EMAIL_ENABLED,
+        emailQueueEnabled: config.EMAIL_QUEUE_ENABLED,
+        emailProvider: config.EMAIL_PROVIDER,
+        filesEnabled: config.FILES_ENABLED,
+        filesProvider: config.FILES_PROVIDER,
+      },
       "HTTP server listening"
     );
   });
@@ -45,6 +67,11 @@ async function main(): Promise<void> {
     server.close(async (closeError) => {
       if (closeError) {
         logger.error({ err: closeError }, "Error closing HTTP server");
+      }
+      try {
+        await email.close();
+      } catch (error) {
+        logger.error({ err: error }, "Error closing email system");
       }
       try {
         await mongo.disconnect();

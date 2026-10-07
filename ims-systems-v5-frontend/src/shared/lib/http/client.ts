@@ -1,4 +1,5 @@
 import { loadPublicEnv } from "../env";
+import { getActiveOrganisationId } from "../active-organisation";
 import { ApiClientError, mapStatusToCode } from "./errors";
 import { apiErrorSchema, apiSuccessSchema } from "./types";
 import type { AuthClient } from "@/security/auth-client";
@@ -47,6 +48,11 @@ export async function apiRequest<T>(
 
   if (options.body !== undefined) {
     headers["Content-Type"] = "application/json";
+  }
+
+  const activeOrgId = getActiveOrganisationId();
+  if (activeOrgId && !headers["x-org-id"]) {
+    headers["x-org-id"] = activeOrgId;
   }
 
   if (options.authClient) {

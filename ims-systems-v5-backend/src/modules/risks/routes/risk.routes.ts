@@ -2,8 +2,10 @@ import { Router } from "express";
 import type { Authorizer } from "../../../security";
 import {
   DevAllRisksListScopeAdapter,
+  NoOpRiskComplianceLinkAdapter,
   NoOpRiskNotificationAdapter,
   NoOpRiskTaskAdapter,
+  type RiskComplianceLinkPort,
   type RiskListScopePort,
   type RiskNotificationPort,
   type RiskTaskPort,
@@ -20,6 +22,7 @@ export type RiskRouterDeps = {
   notifications?: RiskNotificationPort;
   tasks?: RiskTaskPort;
   listScope?: RiskListScopePort;
+  complianceLinks?: RiskComplianceLinkPort;
 };
 
 /**
@@ -36,6 +39,8 @@ export function createRiskModule(deps: RiskRouterDeps): {
     notifications: deps.notifications ?? new NoOpRiskNotificationAdapter(),
     tasks: deps.tasks ?? new NoOpRiskTaskAdapter(),
     listScope: deps.listScope ?? new DevAllRisksListScopeAdapter(),
+    complianceLinks:
+      deps.complianceLinks ?? new NoOpRiskComplianceLinkAdapter(),
   });
   const controller = createRiskController(service);
   const router = Router();

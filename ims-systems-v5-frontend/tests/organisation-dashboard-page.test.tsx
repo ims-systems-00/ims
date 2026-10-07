@@ -312,7 +312,7 @@ describe("Organisation Live Dashboard", () => {
       await screen.findByText(/compliance statistics unavailable/i)
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/compliance module is not available/i)
+      screen.getByText(/compliance overview could not be loaded/i)
     ).toBeInTheDocument();
   });
 

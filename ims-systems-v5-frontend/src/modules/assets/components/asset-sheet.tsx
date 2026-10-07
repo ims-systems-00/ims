@@ -298,6 +298,7 @@ function toFormValues(
         ownerId: a.ownerId,
         tag: a.tag,
         businessUnitId: a.businessUnitId,
+        categoryId: a.categoryId,
         assignedDate: a.assignedDate,
         returnDate: a.returnDate,
         destructionDate: a.destructionDate,
@@ -309,6 +310,7 @@ function toFormValues(
       return {
         name: a.name,
         businessUnitId: a.businessUnitId,
+        categoryId: a.categoryId,
         licenceCount: a.licenceCount,
         installCount: a.installCount,
         cost: a.cost,
@@ -322,6 +324,7 @@ function toFormValues(
         skill: a.skill,
         responsibility: a.responsibility,
         businessUnitId: a.businessUnitId,
+        categoryId: a.categoryId,
         cost: a.cost,
       };
     }
@@ -332,6 +335,7 @@ function toFormValues(
         location: a.location,
         address: a.address,
         businessUnitId: a.businessUnitId,
+        categoryId: a.categoryId,
         cost: a.cost,
       };
     }
@@ -345,6 +349,7 @@ function toFormValues(
         format: a.format,
         link: a.link,
         businessUnitId: a.businessUnitId,
+        categoryId: a.categoryId,
         cost: a.cost,
       };
     }

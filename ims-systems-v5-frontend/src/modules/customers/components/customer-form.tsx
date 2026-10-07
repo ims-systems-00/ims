@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { CategorySelectField } from "@/modules/tags-and-categories";
 import {
   createCustomerFormSchema,
   updateCustomerFormSchema,
@@ -124,6 +125,9 @@ export function CustomerForm({
   const [businessUnitId, setBusinessUnitId] = useState(
     initialCustomer?.businessUnitId ?? ""
   );
+  const [categoryId, setCategoryId] = useState(
+    initialCustomer?.categoryId ?? ""
+  );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
@@ -180,6 +184,7 @@ export function CustomerForm({
       reviewDate,
       notes,
       reasonForLoss,
+      categoryId,
     };
 
     if (mode === "create") {
@@ -244,6 +249,7 @@ export function CustomerForm({
         reviewDate: emptyToNull(parsed.data.reviewDate),
         notes: emptyToNull(parsed.data.notes),
         reasonForLoss: emptyToNull(parsed.data.reasonForLoss),
+        categoryId: parsed.data.categoryId,
       });
     } catch (error) {
       notify.fromError(error, "Unable to update customer");
@@ -289,6 +295,13 @@ export function CustomerForm({
             ))}
           </select>
         </FormField>
+        <CategorySelectField
+          applicableModule="customers"
+          value={categoryId || undefined}
+          disabled={pending}
+          error={fieldErrors.categoryId}
+          onChange={(next) => setCategoryId(next ?? "")}
+        />
         <FormField
           label="Organisation profile"
           required

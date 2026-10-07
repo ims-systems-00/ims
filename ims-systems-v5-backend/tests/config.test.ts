@@ -54,4 +54,36 @@ describe("loadConfig", () => {
       })
     ).toThrow(/Invalid configuration/);
   });
+
+  it("defaults File Handler to disabled + memory provider", () => {
+    const config = loadConfig(valid);
+    expect(config.FILES_ENABLED).toBe(false);
+    expect(config.FILES_PROVIDER).toBe("memory");
+  });
+
+  it("maps V4 AWS aliases into standard names", () => {
+    const config = loadConfig({
+      ...valid,
+      AWS_ID: "AKIAEXAMPLE",
+      AWS_SECRET: "secret-example",
+      AWS_TEST_BUCKET_NAME: "ims-dev-bucket",
+      AWS_BUCKET_NAME: "-ims-prod",
+      AWS_PUBLIC_BUCKET_NAME: "ims-public",
+    });
+    expect(config.AWS_ACCESS_KEY_ID).toBe("AKIAEXAMPLE");
+    expect(config.AWS_SECRET_ACCESS_KEY).toBe("secret-example");
+    expect(config.AWS_PRIVATE_BUCKET).toBe("ims-dev-bucket");
+    expect(config.AWS_BUCKET_SUFFIX).toBe("-ims-prod");
+    expect(config.AWS_PUBLIC_BUCKET).toBe("ims-public");
+  });
+
+  it("requires S3 credentials when FILES_ENABLED + FILES_PROVIDER=s3", () => {
+    expect(() =>
+      loadConfig({
+        ...valid,
+        FILES_ENABLED: "true",
+        FILES_PROVIDER: "s3",
+      })
+    ).toThrow(/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_PRIVATE_BUCKET/);
+  });
 });

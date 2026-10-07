@@ -127,14 +127,14 @@
   --card-foreground: oklch(0.22 0.014 255);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.22 0.014 255);
-  --primary: oklch(0.28 0.02 255);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.006 250);
-  --secondary-foreground: oklch(0.3 0.016 255);
+  --primary: #0040a3;
+  --primary-foreground: #fafafa;
+  --secondary: #ccd9ed;
+  --secondary-foreground: #002d72;
   --muted: oklch(0.955 0.005 250);
   --muted-foreground: oklch(0.5 0.016 255);
-  --accent: oklch(0.95 0.008 250);
-  --accent-foreground: oklch(0.26 0.018 255);
+  --accent: #f2f5fa;
+  --accent-foreground: #002d72;
   --destructive: oklch(0.52 0.19 25);
   --destructive-foreground: oklch(0.99 0 0);
   --success: oklch(0.48 0.12 155);
@@ -146,14 +146,14 @@
   --border: oklch(0.9 0.006 250);
   --border-subtle: oklch(0.935 0.004 250);
   --input: oklch(0.88 0.008 250);
-  --ring: oklch(0.42 0.04 255);
-  --sidebar: oklch(0.24 0.018 255);
-  --sidebar-foreground: oklch(0.92 0.008 250);
-  --sidebar-muted: oklch(0.68 0.016 255);
-  --sidebar-accent: oklch(0.3 0.022 255);
-  --sidebar-accent-foreground: oklch(0.98 0.004 250);
-  --sidebar-border: oklch(0.32 0.02 255);
-  --sidebar-primary: oklch(0.78 0.04 250);
+  --ring: #0040a3;
+  --sidebar: #002d72;
+  --sidebar-foreground: #fafafa;
+  --sidebar-muted: #8fa4c8;
+  --sidebar-accent: #0040a3;
+  --sidebar-accent-foreground: #fafafa;
+  --sidebar-border: #00245c;
+  --sidebar-primary: #ccd9ed;
 }
 
 @layer base {
@@ -337,33 +337,51 @@
     background-repeat: no-repeat;
   }
 
-  /* Enterprise data table */
+  /* Enterprise data table — clean, minimal, high scanability */
   .ims-table-wrap {
-    @apply overflow-x-auto rounded-md border border-border bg-surface;
+    @apply overflow-x-auto rounded-lg border border-border/80 bg-surface;
+    box-shadow: 0 1px 0 color-mix(in oklch, var(--foreground) 3%, transparent);
   }
 
   .ims-table {
-    @apply w-full min-w-[36rem] border-collapse text-left text-sm;
+    @apply w-full min-w-[36rem] border-collapse text-left text-[0.8125rem] leading-snug;
   }
 
   .ims-table thead {
-    @apply border-b border-border bg-surface-muted/80;
+    @apply border-b border-border-subtle;
+    background: color-mix(in oklch, var(--surface-muted) 55%, var(--surface));
   }
 
   .ims-table th {
-    @apply px-3.5 py-2.5 text-[0.6875rem] font-semibold uppercase tracking-[0.04em] text-muted-foreground;
+    @apply whitespace-nowrap px-4 py-2.5 text-left text-[0.6875rem] font-medium tracking-[0.02em] text-muted-foreground;
+  }
+
+  .ims-table th:first-child {
+    @apply pl-5;
+  }
+
+  .ims-table th:last-child {
+    @apply pr-5;
   }
 
   .ims-table td {
-    @apply px-3.5 py-2.5 align-middle text-foreground;
+    @apply px-4 py-3 align-middle text-foreground;
+  }
+
+  .ims-table td:first-child {
+    @apply pl-5;
+  }
+
+  .ims-table td:last-child {
+    @apply pr-5;
   }
 
   .ims-table tbody tr {
-    @apply border-b border-border-subtle transition-colors duration-100 last:border-0;
+    @apply border-b border-border-subtle/80 transition-[background-color,box-shadow] duration-150 last:border-0;
   }
 
   .ims-table tbody tr .ims-row-actions {
-    @apply opacity-70 transition-opacity duration-100;
+    @apply opacity-45 transition-opacity duration-150;
   }
 
   .ims-table tbody tr:hover .ims-row-actions,
@@ -371,16 +389,27 @@
     @apply opacity-100;
   }
 
+  @media (hover: none) {
+    .ims-table tbody tr .ims-row-actions {
+      @apply opacity-100;
+    }
+  }
+
   .ims-table tbody tr[data-interactive="true"] {
     @apply cursor-pointer;
   }
 
   .ims-table tbody tr[data-interactive="true"]:hover {
-    @apply bg-accent/50;
+    background: color-mix(in oklch, var(--accent) 45%, var(--surface));
+  }
+
+  .ims-table tbody tr[data-interactive="true"]:active {
+    background: color-mix(in oklch, var(--accent) 65%, var(--surface));
   }
 
   .ims-table tbody tr:focus-visible {
-    @apply outline-none ring-2 ring-inset ring-ring;
+    @apply outline-none;
+    box-shadow: inset 0 0 0 2px color-mix(in oklch, var(--ring) 55%, transparent);
   }
 
   .ims-toolbar {
@@ -388,7 +417,7 @@
   }
 
   .ims-pagination {
-    @apply flex items-center gap-3 text-[0.8125rem] text-muted-foreground;
+    @apply flex items-center justify-between gap-3 pt-0.5 text-[0.8125rem] text-muted-foreground;
   }
 
   .ims-detail-grid {

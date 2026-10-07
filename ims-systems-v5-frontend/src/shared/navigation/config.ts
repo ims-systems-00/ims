@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   BriefcaseBusiness,
+  Bug,
   Building2,
   Calendar,
   CalendarCheck,
@@ -8,6 +9,7 @@ import {
   Contact,
   Cpu,
   FileText,
+  FolderOpen,
   HardDrive,
   Landmark,
   LayoutDashboard,
@@ -17,9 +19,17 @@ import {
   Network,
   Package,
   ShieldAlert,
+  ShieldCheck,
+  Tags,
+  Target,
   Truck,
   Users,
 } from "lucide-react";
+import {
+  COMPLIANCE_TOOLKIT_NAMES,
+  toolkitDisplayLabel,
+  toolkitPath,
+} from "@/modules/compliance/types";
 import type { NavSection } from "./types";
 
 /**
@@ -62,6 +72,12 @@ export const navigationSections: NavSection[] = [
             href: "/business-premises",
             icon: Landmark,
             requiredPermission: "business-premises:read",
+          },
+          {
+            id: "create-organisation",
+            label: "Create organisation",
+            href: "/onboard/organisation",
+            icon: Building2,
           },
         ],
       },
@@ -154,7 +170,28 @@ export const navigationSections: NavSection[] = [
             icon: CalendarCheck,
             requiredPermission: "management-reviews:read",
           },
+          {
+            id: "kpi-objectives",
+            label: "KPI/Objectives",
+            href: "/kpi-objectives",
+            icon: Target,
+            requiredPermission: "kpi-objectives:read",
+          },
+          {
+            id: "tags-and-categories",
+            label: "Tags",
+            href: "/tags-and-categories",
+            icon: Tags,
+            requiredPermission: "tags-and-categories:read",
+          },
         ],
+      },
+      {
+        id: "documents",
+        label: "Documents",
+        href: "/documents",
+        icon: FolderOpen,
+        requiredPermission: "document-management:read",
       },
       {
         id: "ofi",
@@ -162,6 +199,18 @@ export const navigationSections: NavSection[] = [
         href: "/ofi",
         icon: Lightbulb,
         requiredPermission: "ofi:read",
+      },
+      {
+        id: "compliance",
+        label: "Compliance",
+        icon: ShieldCheck,
+        children: COMPLIANCE_TOOLKIT_NAMES.map((name) => ({
+          id: `compliance-${name}`,
+          label: toolkitDisplayLabel(name),
+          href: toolkitPath(name),
+          icon: ShieldCheck,
+          requiredPermission: "compliance:read",
+        })),
       },
       {
         id: "crm",
@@ -204,6 +253,12 @@ export const navigationSections: NavSection[] = [
         href: "/calendar",
         icon: Calendar,
         requiredPermission: "calendar:read",
+      },
+      {
+        id: "report-bug",
+        label: "Report Bug",
+        href: "/report-bug",
+        icon: Bug,
       },
     ],
   },

@@ -27,33 +27,48 @@ export interface MembershipLookupPort {
  * Demo job titles/roles are assigned for known seed user ids so the
  * Users UI is readable during local UI review.
  */
+/** Matches `pnpm seed:demo` unit memberships so profile BU cards resolve. */
+const DEMO_UNITS = {
+  operations: "200000000000000000000001",
+  it: "200000000000000000000002",
+  compliance: "200000000000000000000003",
+  externalAudit: "200000000000000000000004",
+  partners: "200000000000000000000005",
+} as const;
+
 const DEMO_MEMBERSHIP_META: Record<
   string,
-  { role: string; jobTitle: string }
+  { role: string; jobTitle: string; groupIds: string[] }
 > = {
   "100000000000000000000001": {
     role: "Super User",
     jobTitle: "Head of Operations",
+    groupIds: [DEMO_UNITS.operations, DEMO_UNITS.compliance],
   },
   "100000000000000000000002": {
     role: "Basic User",
     jobTitle: "Operations Analyst",
+    groupIds: [DEMO_UNITS.operations, DEMO_UNITS.partners],
   },
   "100000000000000000000003": {
     role: "Hos User",
     jobTitle: "Delivery Lead",
+    groupIds: [DEMO_UNITS.operations, DEMO_UNITS.externalAudit],
   },
   "100000000000000000000004": {
     role: "Auditor User",
     jobTitle: "Compliance Manager",
+    groupIds: [DEMO_UNITS.compliance],
   },
   "100000000000000000000005": {
     role: "Super User",
     jobTitle: "Engineering Lead",
+    groupIds: [DEMO_UNITS.it],
   },
   "100000000000000000000006": {
     role: "Basic User",
     jobTitle: "Software Engineer",
+    groupIds: [DEMO_UNITS.it],
   },
 };
 
@@ -91,7 +106,7 @@ function membershipFor(userId: string): OrgMembershipView {
     role: meta?.role ?? "Basic User",
     jobTitle: meta?.jobTitle ?? null,
     salary: null,
-    groupIds: [],
+    groupIds: meta?.groupIds ?? [],
     lineManagerIds: [],
   };
 }

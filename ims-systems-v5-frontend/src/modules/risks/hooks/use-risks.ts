@@ -10,11 +10,13 @@ import {
   listRisks,
   mitigateRisk,
   nudgeRisk,
+  setRiskComplianceLinks,
   updateRisk,
 } from "../api/risks";
 import type {
   CreateRiskInput,
   ListRisksParams,
+  SetComplianceLinksInput,
   UpdateRiskInput,
 } from "../types";
 
@@ -153,5 +155,17 @@ export function useAcceptRiskMutation() {
 export function useDownloadRisksReportMutation() {
   return useMutation({
     mutationFn: () => downloadRisksReport(),
+  });
+}
+
+export function useSetRiskComplianceLinksMutation(riskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: SetComplianceLinksInput) =>
+      setRiskComplianceLinks(riskId, body),
+    onSuccess: async (risk) => {
+      await invalidateRiskQueries(queryClient, riskId);
+      queryClient.setQueryData(riskKeys.detail(riskId), risk);
+    },
   });
 }

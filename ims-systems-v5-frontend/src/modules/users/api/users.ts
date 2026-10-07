@@ -2,6 +2,8 @@ import { apiRequest } from "@/shared/lib/http";
 import type {
   ListUsersParams,
   PaginatedUsers,
+  UpdateUserProfileInput,
+  User,
   UserWithMembership,
 } from "../types";
 
@@ -24,4 +26,18 @@ export function listUsers(params?: ListUsersParams): Promise<PaginatedUsers> {
  */
 export function getUser(id: string): Promise<UserWithMembership> {
   return apiRequest<UserWithMembership>(`/users/${id}`);
+}
+
+/**
+ * Self-service / authorised profile update (first/last name).
+ * PATCH /users/:id
+ */
+export function updateUserProfile(
+  id: string,
+  body: UpdateUserProfileInput
+): Promise<User> {
+  return apiRequest<User>(`/users/${id}`, {
+    method: "PATCH",
+    body,
+  });
 }

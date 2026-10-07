@@ -18,6 +18,7 @@ import type { OfiService } from "../../ofi";
 import type { RiskService } from "../../risks";
 import type { SupplierService } from "../../suppliers";
 import type { UsersService } from "../../users";
+import type { ComplianceApplicationPort } from "../../compliance";
 import type { StatsModulePorts } from "../ports";
 import {
   DevNoOrgTargetsAdapter,
@@ -36,6 +37,7 @@ export type StatsPortsFromModulesInput = {
   functionalUnits: FunctionalUnitService;
   users: UsersService;
   customers: CustomerService;
+  compliance?: ComplianceApplicationPort;
 };
 
 export function createStatsPortsFromModules(
@@ -209,7 +211,16 @@ export function createStatsPortsFromModules(
       },
     },
     invoices: new UnavailableInvoicesAdapter(),
-    compliance: new UnavailableComplianceAdapter(),
+    compliance: input.compliance
+      ? {
+          async frameworkPercentages(identity) {
+            if (!identity.organizationId) return [];
+            return input.compliance!.frameworkPercentages(
+              identity.organizationId
+            );
+          },
+        }
+      : new UnavailableComplianceAdapter(),
     organisation: new DevNoOrgTargetsAdapter(),
   };
 }

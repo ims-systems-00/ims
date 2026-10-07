@@ -78,6 +78,7 @@ const baseCustomerFields = {
   reviewDate: optionalDate,
   notes: z.string().trim().optional(),
   reasonForLoss: z.string().trim().optional(),
+  categoryId: optionalObjectId,
 };
 
 function refineCustomerRules(
@@ -147,6 +148,19 @@ export const updateCustomerFormSchema = z
       .optional()
       .transform((value) => (value && value.length > 0 ? value : null)),
     businessUnitId: z
+      .string()
+      .trim()
+      .optional()
+      .transform((value) => {
+        if (!value || value.length === 0) return null;
+        return value;
+      })
+      .refine(
+        (value) =>
+          value === null || /^[a-fA-F0-9]{24}$/.test(value),
+        "Invalid id format"
+      ),
+    categoryId: z
       .string()
       .trim()
       .optional()

@@ -185,3 +185,10 @@ export function scoreBandLabel(band: RiskScoreBand): string {
       return "High";
   }
 }
+
+/** Tasks sourced from a risk use this moduleType on `source`. */
+export const RISK_SOURCE_MODULE = "risks";
+
+export type SetComplianceLinksInput = {
+  links: ComplianceLink[];
+};

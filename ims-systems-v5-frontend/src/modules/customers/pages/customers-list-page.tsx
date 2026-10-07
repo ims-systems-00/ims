@@ -13,6 +13,11 @@ import { notify } from "@/shared/lib/toast";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUserQuery, useUsersQuery } from "@/modules/users/hooks/use-users";
 import {
+  CategoryMultiFilter,
+  ModuleViewTabs,
+  TagsManagementPanel,
+} from "@/modules/tags-and-categories";
+import {
   CustomerStageBadge,
   CustomerStatusBadge,
 } from "../components/customer-badges";
@@ -89,6 +94,8 @@ export function CustomersListPage() {
   const [status, setStatus] = useState<CustomerStatus | "">("");
   const [businessUnitId, setBusinessUnitId] = useState("");
   const [accountManagerId, setAccountManagerId] = useState("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [view, setView] = useState<"records" | "categories">("records");
   const [editMode, setEditMode] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
     null
@@ -122,11 +129,12 @@ export function CustomersListPage() {
       statuses: status ? [status] : undefined,
       businessUnitIds: businessUnitId ? [businessUnitId] : undefined,
       accountManagerIds: accountManagerId ? [accountManagerId] : undefined,
+      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
       myCustomers: preset?.myCustomers,
       sort: "createdOn" as const,
       sortDir: "desc" as const,
     }),
-    [page, search, preset, status, businessUnitId, accountManagerId]
+    [page, search, preset, status, businessUnitId, accountManagerId, categoryIds]
   );
 
   const listQuery = useCustomersQuery(queryParams);
@@ -139,7 +147,8 @@ export function CustomersListPage() {
       presetId !== "all" ||
       status ||
       businessUnitId ||
-      accountManagerId
+      accountManagerId ||
+      categoryIds.length > 0
   );
 
   function openCreate() {
@@ -169,6 +178,7 @@ export function CustomersListPage() {
     setStatus("");
     setBusinessUnitId("");
     setAccountManagerId("");
+    setCategoryIds([]);
     setPage(1);
   }
 
@@ -192,18 +202,35 @@ export function CustomersListPage() {
         title="Customers"
         description="CRM register — prospects through live customers, ownership, contracts, and linked follow-up."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button type="button" variant="outline" asChild>
-              <Link to="/customers/overview">MY CRM</Link>
-            </Button>
-            <Button type="button" onClick={openCreate}>
-              <Plus />
-              Register customer
-            </Button>
-          </div>
+          view === "records" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" asChild>
+                <Link to="/customers/overview">MY CRM</Link>
+              </Button>
+              <Button type="button" onClick={openCreate}>
+                <Plus />
+                Register customer
+              </Button>
+            </div>
+          ) : null
         }
       />
 
+      <ModuleViewTabs
+        recordsLabel="Customers"
+        categoriesLabel="Categories"
+        value={view}
+        onChange={setView}
+      />
+
+      {view === "categories" ? (
+        <TagsManagementPanel
+          applicableModule="customers"
+          title="Customer categories"
+          description="Classify CRM records for reporting and filtering. Categories created here are available when registering or editing a customer."
+        />
+      ) : (
+        <>
       <div className="flex flex-wrap gap-2">
         {STAGE_PRESETS.map((item) => (
           <Button
@@ -277,6 +304,14 @@ export function CustomersListPage() {
             </option>
           ))}
         </select>
+        <CategoryMultiFilter
+          applicableModule="customers"
+          value={categoryIds}
+          onChange={(next) => {
+            setPage(1);
+            setCategoryIds(next);
+          }}
+        />
         {hasFilters ? (
           <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
             Clear
@@ -435,6 +470,8 @@ export function CustomersListPage() {
           </Button>
         </div>
       ) : null}
+        </>
+      )}
 
       <CustomerSheet
         open={sheetOpen}

@@ -28,6 +28,11 @@ import { getCustomerModel } from "../src/modules/customers/repositories/customer
 import { DEFAULT_CUSTOMER_LOGO_SRC } from "../src/modules/customers/types";
 import { getOfiModel } from "../src/modules/ofi/repositories/ofi.model";
 import { getSupplierModel } from "../src/modules/suppliers/repositories/supplier.model";
+import { getTagAndCategoryModel } from "../src/modules/tags-and-categories/repositories/tag-and-category.model";
+import { getKpiObjectiveModel } from "../src/modules/kpi-objectives/repositories/kpi-objective.model";
+import { getActivityModel } from "../src/modules/activities/repositories/activity.model";
+import { getOrganisationModel } from "../src/modules/organisation/repositories/organisation.model";
+import { getOrganisationMembershipModel } from "../src/modules/organisation/repositories/organisation-membership.model";
 
 loadDotenv();
 
@@ -143,6 +148,39 @@ const ids = {
     logistics: "b00000000000000000000005",
     legacyIsp: "b00000000000000000000006",
   },
+  tags: {
+    riskStrategic: "c00000000000000000000001",
+    riskOperational: "c00000000000000000000002",
+    riskCyber: "c00000000000000000000003",
+    incidentPriority: "c00000000000000000000004",
+    incidentSecurity: "c00000000000000000000005",
+    hwLaptops: "c00000000000000000000006",
+    hwPeripherals: "c00000000000000000000007",
+    swSaaS: "c00000000000000000000008",
+    peopleKey: "c00000000000000000000009",
+    premiseHq: "c0000000000000000000000a",
+    infoRecords: "c0000000000000000000000b",
+    customerEnterprise: "c0000000000000000000000c",
+    customerSmb: "c0000000000000000000000d",
+    crossCutting: "c0000000000000000000000e",
+  },
+  kpis: {
+    patchSla: "d00000000000000000000001",
+    incidentMttr: "d00000000000000000000002",
+    trainingCompletion: "d00000000000000000000003",
+    supplierReview: "d00000000000000000000004",
+    auditFindings: "d00000000000000000000005",
+    customerRetention: "d00000000000000000000006",
+  },
+  activities: {
+    riskRaised: "e00000000000000000000001",
+    riskComment: "e00000000000000000000002",
+    incidentRaised: "e00000000000000000000003",
+    incidentComment: "e00000000000000000000004",
+    taskCreated: "e00000000000000000000005",
+    customerNote: "e00000000000000000000006",
+    ofiAction: "e00000000000000000000007",
+  },
 } as const;
 
 async function main(): Promise<void> {
@@ -167,6 +205,79 @@ async function main(): Promise<void> {
   const Customer = getCustomerModel();
   const Ofi = getOfiModel();
   const Supplier = getSupplierModel();
+  const TagAndCategory = getTagAndCategoryModel();
+  const KpiObjective = getKpiObjectiveModel();
+  const Activity = getActivityModel();
+  const Organisation = getOrganisationModel();
+  const OrganisationMembership = getOrganisationMembershipModel();
+
+  await Organisation.findByIdAndUpdate(
+    ORG_ID,
+    {
+      $set: {
+        reference: "ORG-DEV-001",
+        name: "Demo Organisation",
+        industry: "Information technology",
+        sizeOfOrganisation: 120,
+        officeEmail: "ops@demo.local",
+        contactNumber: "+44 20 7946 0000",
+        companyNumber: "12345678",
+        vatNumber: "GB123456789",
+        address: {
+          line1: "1 Demo Street",
+          line2: "",
+          city: "London",
+          county: "Greater London",
+          postCode: "EC2A 4BX",
+          country: "United Kingdom",
+        },
+        country: {
+          name: "United Kingdom",
+          code: "GB",
+          currency: "GBP",
+          phoneCode: 44,
+        },
+        isCustomer: true,
+        isPartner: false,
+        status: "Running",
+        licences: {
+          superUser: { allocated: 5, used: 2 },
+          users: { allocated: 25, used: 6 },
+          groups: { allocated: 10, used: 5 },
+        },
+        referralSource: null,
+        logoSrc: null,
+        createdBy: CREATED_BY,
+        createdOn: new Date("2024-01-01T00:00:00.000Z"),
+      },
+    },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
+  console.log("Upserted demo organisation");
+
+  for (const member of [
+    { userId: STUB_SUBJECT, role: "Super Admin", jobTitle: "Platform operator" },
+    {
+      userId: ids.users.ada,
+      role: "Super Admin",
+      jobTitle: "Head of Operations",
+    },
+  ] as const) {
+    await OrganisationMembership.findOneAndUpdate(
+      { organizationId: ORG_ID, userId: member.userId },
+      {
+        $set: {
+          organizationId: ORG_ID,
+          userId: member.userId,
+          role: member.role,
+          jobTitle: member.jobTitle,
+          createdOn: new Date("2024-01-01T00:00:00.000Z"),
+        },
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+  }
+  console.log("Upserted organisation memberships");
 
   const users = [
     {
@@ -2580,6 +2691,391 @@ async function main(): Promise<void> {
     );
   }
   console.log(`Suppliers: ${demoSuppliers.length} demo suppliers`);
+
+  const demoTags = [
+    {
+      id: ids.tags.riskStrategic,
+      name: "Strategic",
+      description: "Enterprise-level strategic risks affecting direction and reputation.",
+      applicableModules: ["risks"] as const,
+      createdOn: daysAgo(40),
+    },
+    {
+      id: ids.tags.riskOperational,
+      name: "Operational",
+      description: "Day-to-day delivery and process risks.",
+      applicableModules: ["risks"] as const,
+      createdOn: daysAgo(38),
+    },
+    {
+      id: ids.tags.riskCyber,
+      name: "Cyber security",
+      description: "Information security and technology threats.",
+      applicableModules: ["risks", "incidents"] as const,
+      createdOn: daysAgo(36),
+    },
+    {
+      id: ids.tags.incidentPriority,
+      name: "Service disruption",
+      description: "Incidents that interrupt customer or internal services.",
+      applicableModules: ["incidents"] as const,
+      createdOn: daysAgo(34),
+    },
+    {
+      id: ids.tags.incidentSecurity,
+      name: "Security event",
+      description: "Suspected or confirmed security-related incidents.",
+      applicableModules: ["incidents"] as const,
+      createdOn: daysAgo(32),
+    },
+    {
+      id: ids.tags.hwLaptops,
+      name: "Laptops",
+      description: "Portable endpoint hardware assigned to staff.",
+      applicableModules: ["hardwareassets"] as const,
+      createdOn: daysAgo(30),
+    },
+    {
+      id: ids.tags.hwPeripherals,
+      name: "Peripherals",
+      description: "Monitors, phones, and other accessory hardware.",
+      applicableModules: ["hardwareassets"] as const,
+      createdOn: daysAgo(28),
+    },
+    {
+      id: ids.tags.swSaaS,
+      name: "SaaS",
+      description: "Cloud / subscription software products.",
+      applicableModules: ["softwareassets"] as const,
+      createdOn: daysAgo(26),
+    },
+    {
+      id: ids.tags.peopleKey,
+      name: "Key role",
+      description: "People assets covering critical organisational roles.",
+      applicableModules: ["peopleassets"] as const,
+      createdOn: daysAgo(24),
+    },
+    {
+      id: ids.tags.premiseHq,
+      name: "HQ site",
+      description: "Primary headquarters and related premises.",
+      applicableModules: ["premiseassets"] as const,
+      createdOn: daysAgo(22),
+    },
+    {
+      id: ids.tags.infoRecords,
+      name: "Records of processing",
+      description: "Information assets tied to personal data inventories.",
+      applicableModules: ["informationassets"] as const,
+      createdOn: daysAgo(20),
+    },
+    {
+      id: ids.tags.customerEnterprise,
+      name: "Enterprise",
+      description: "Large-account CRM customers and prospects.",
+      applicableModules: ["customers"] as const,
+      createdOn: daysAgo(18),
+    },
+    {
+      id: ids.tags.customerSmb,
+      name: "SMB",
+      description: "Small and mid-market CRM accounts.",
+      applicableModules: ["customers"] as const,
+      createdOn: daysAgo(16),
+    },
+    {
+      id: ids.tags.crossCutting,
+      name: "Regulatory",
+      description:
+        "Cross-cutting label usable on risks, incidents, and customers for compliance themes.",
+      applicableModules: ["risks", "incidents", "customers"] as const,
+      createdOn: daysAgo(14),
+    },
+  ];
+
+  for (const tag of demoTags) {
+    await TagAndCategory.findByIdAndUpdate(
+      tag.id,
+      {
+        $set: {
+          organizationId: ORG_ID,
+          name: tag.name,
+          description: tag.description,
+          applicableModules: [...tag.applicableModules],
+          createdBy: STUB_SUBJECT,
+          createdOn: tag.createdOn,
+          updatedBy: null,
+          updatedOn: null,
+        },
+        $setOnInsert: { _id: tag.id },
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+  console.log(`Tags and categories: ${demoTags.length} demo labels`);
+
+  // Assign categories onto a few existing records so list filters / details can be exercised.
+  await Risk.findByIdAndUpdate(ids.risks.unpatched, {
+    $set: { categoryId: ids.tags.riskCyber },
+  });
+  await Risk.findByIdAndUpdate(ids.risks.phishing, {
+    $set: { categoryId: ids.tags.riskOperational },
+  });
+  await Risk.findByIdAndUpdate(ids.risks.vendorSla, {
+    $set: { categoryId: ids.tags.riskStrategic },
+  });
+  await Risk.findByIdAndUpdate(ids.risks.accessReview, {
+    $set: { categoryId: ids.tags.crossCutting },
+  });
+
+  await Incident.findByIdAndUpdate(ids.incidents.phishing, {
+    $set: { categoryId: ids.tags.incidentSecurity },
+  });
+  await Incident.findByIdAndUpdate(ids.incidents.accessOutage, {
+    $set: { categoryId: ids.tags.incidentPriority },
+  });
+  await Incident.findByIdAndUpdate(ids.incidents.dataExport, {
+    $set: { categoryId: ids.tags.riskCyber },
+  });
+
+  await Customer.findByIdAndUpdate(ids.customers.northwind, {
+    $set: { categoryId: ids.tags.customerEnterprise },
+  });
+  await Customer.findByIdAndUpdate(ids.customers.contoso, {
+    $set: { categoryId: ids.tags.customerEnterprise },
+  });
+  await Customer.findByIdAndUpdate(ids.customers.fabrikam, {
+    $set: { categoryId: ids.tags.customerSmb },
+  });
+  await Customer.findByIdAndUpdate(ids.customers.alpine, {
+    $set: { categoryId: ids.tags.crossCutting },
+  });
+
+  await Hardware.findByIdAndUpdate(ids.hardware.laptop, {
+    $set: { categoryId: ids.tags.hwLaptops },
+  });
+  await Hardware.findByIdAndUpdate(ids.hardware.monitor, {
+    $set: { categoryId: ids.tags.hwPeripherals },
+  });
+  await Hardware.findByIdAndUpdate(ids.hardware.phone, {
+    $set: { categoryId: ids.tags.hwPeripherals },
+  });
+  await Software.findByIdAndUpdate(ids.software.office, {
+    $set: { categoryId: ids.tags.swSaaS },
+  });
+  await Software.findByIdAndUpdate(ids.software.slack, {
+    $set: { categoryId: ids.tags.swSaaS },
+  });
+  await People.findByIdAndUpdate(ids.people.dpo, {
+    $set: { categoryId: ids.tags.peopleKey },
+  });
+  await Premise.findByIdAndUpdate(ids.premise.hq, {
+    $set: { categoryId: ids.tags.premiseHq },
+  });
+  await Information.findByIdAndUpdate(ids.information.customerDb, {
+    $set: { categoryId: ids.tags.infoRecords },
+  });
+  console.log("Category assignments applied to sample risks/incidents/customers/assets");
+
+  const demoKpis = [
+    {
+      id: ids.kpis.patchSla,
+      reference: "KPI-DEMO-001",
+      value:
+        "Apply critical security patches to production hosts within 14 days of vendor release.",
+      privacy: "Organisational" as const,
+      targetValue: 100,
+      currentValue: 72,
+      progressPercentage: 72,
+      unit: "%",
+      createdOn: daysAgo(45),
+    },
+    {
+      id: ids.kpis.incidentMttr,
+      reference: "KPI-DEMO-002",
+      value: "Mean time to resolve P1 incidents remains under 4 hours.",
+      privacy: "Business unit" as const,
+      businessUnitId: ids.units.it,
+      targetValue: 4,
+      currentValue: 5.5,
+      progressPercentage: 73,
+      unit: "hours",
+      createdOn: daysAgo(40),
+    },
+    {
+      id: ids.kpis.trainingCompletion,
+      reference: "KPI-DEMO-003",
+      value: "Complete annual phishing awareness training for all staff.",
+      privacy: "Business unit" as const,
+      businessUnitId: ids.units.operations,
+      targetValue: 100,
+      currentValue: 88,
+      progressPercentage: 88,
+      unit: "%",
+      createdOn: daysAgo(30),
+    },
+    {
+      id: ids.kpis.supplierReview,
+      reference: "KPI-DEMO-004",
+      value: "Complete annual security reviews for all Tier-1 suppliers.",
+      privacy: "Organisational" as const,
+      targetValue: 12,
+      currentValue: 7,
+      progressPercentage: 58,
+      unit: "reviews",
+      createdOn: daysAgo(25),
+    },
+    {
+      id: ids.kpis.auditFindings,
+      reference: "KPI-DEMO-005",
+      value: "Close open internal audit findings within 90 days of report.",
+      privacy: "Business unit" as const,
+      businessUnitId: ids.units.compliance,
+      targetValue: 90,
+      currentValue: 90,
+      progressPercentage: 100,
+      unit: "days",
+      createdOn: daysAgo(18),
+    },
+    {
+      id: ids.kpis.customerRetention,
+      reference: "KPI-DEMO-006",
+      value: "Maintain live customer retention above 92% for the financial year.",
+      privacy: "Organisational" as const,
+      targetValue: 92,
+      currentValue: 94,
+      progressPercentage: 100,
+      unit: "%",
+      createdOn: daysAgo(10),
+    },
+  ];
+
+  for (const kpi of demoKpis) {
+    const businessUnitId =
+      "businessUnitId" in kpi ? kpi.businessUnitId : undefined;
+    await KpiObjective.findByIdAndUpdate(
+      kpi.id,
+      {
+        $set: {
+          organizationId: ORG_ID,
+          reference: kpi.reference,
+          value: kpi.value,
+          privacy: kpi.privacy,
+          ...(businessUnitId ? { businessUnitId } : {}),
+          targetValue: kpi.targetValue,
+          currentValue: kpi.currentValue,
+          progressPercentage: kpi.progressPercentage,
+          unit: kpi.unit,
+          createdBy: STUB_SUBJECT,
+          createdOn: kpi.createdOn,
+          updatedBy: null,
+          updatedOn: null,
+        },
+        ...(businessUnitId
+          ? {}
+          : { $unset: { businessUnitId: 1, moduleType: 1, moduleId: 1 } }),
+        $setOnInsert: { _id: kpi.id },
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+  console.log(`KPI objectives: ${demoKpis.length} demo KPIs`);
+
+  const demoActivities = [
+    {
+      id: ids.activities.riskRaised,
+      moduleType: "risks" as const,
+      moduleId: ids.risks.unpatched,
+      value: "Ada Lovelace raised this risk.",
+      isAutomated: true,
+      createdBy: ids.users.ada,
+      createdOn: daysAgo(12),
+    },
+    {
+      id: ids.activities.riskComment,
+      moduleType: "risks" as const,
+      moduleId: ids.risks.unpatched,
+      value:
+        "Patch window booked for Friday. Need confirmation from platform before we mark this mitigated.",
+      isAutomated: false,
+      createdBy: STUB_SUBJECT,
+      createdOn: daysAgo(2),
+    },
+    {
+      id: ids.activities.incidentRaised,
+      moduleType: "incidents" as const,
+      moduleId: ids.incidents.phishing,
+      value: "Grace Hopper raised this incident.",
+      isAutomated: true,
+      createdBy: ids.users.grace,
+      createdOn: daysAgo(9),
+    },
+    {
+      id: ids.activities.incidentComment,
+      moduleType: "incidents" as const,
+      moduleId: ids.incidents.phishing,
+      value: "Mail filters tightened. Monitoring for further reports this week.",
+      isAutomated: false,
+      createdBy: STUB_SUBJECT,
+      createdOn: daysAgo(1),
+    },
+    {
+      id: ids.activities.taskCreated,
+      moduleType: "tasks" as const,
+      moduleId: ids.tasks.patchServers,
+      value: "dev-stub-user created this task.",
+      isAutomated: true,
+      createdBy: STUB_SUBJECT,
+      createdOn: daysAgo(5),
+    },
+    {
+      id: ids.activities.customerNote,
+      moduleType: "customers" as const,
+      moduleId: ids.customers.northwind,
+      value: "Discovery call completed. Interested in managed ISO support for Q3.",
+      isAutomated: false,
+      createdBy: STUB_SUBJECT,
+      createdOn: daysAgo(4),
+    },
+    {
+      id: ids.activities.ofiAction,
+      moduleType: "cips" as const,
+      moduleId: ids.ofis.accessLogs,
+      value: "Gathering evidence from the last access-review cycle.",
+      isAutomated: false,
+      createdBy: STUB_SUBJECT,
+      createdOn: daysAgo(3),
+    },
+  ];
+
+  for (const activity of demoActivities) {
+    await Activity.findByIdAndUpdate(
+      activity.id,
+      {
+        $set: {
+          organizationId: ORG_ID,
+          moduleType: activity.moduleType,
+          moduleId: activity.moduleId,
+          value: activity.value,
+          isAutomated: activity.isAutomated,
+          iconSrc: null,
+          extraLogs: [],
+          metaInfo: {},
+          groupId: null,
+          assignedTo: null,
+          assignedOn: null,
+          createdBy: activity.createdBy,
+          createdOn: activity.createdOn,
+          updatedBy: null,
+          updatedOn: null,
+        },
+        $setOnInsert: { _id: activity.id },
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+  console.log(`Activities: ${demoActivities.length} demo timeline entries`);
 
   console.log("Demo seed complete. Refresh the UI to see the data.");
 

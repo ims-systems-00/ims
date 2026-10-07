@@ -367,3 +367,196 @@ Creating a project creates a Document Management repository for project content.
 - Recycle bin for **documents inside a repository** vs **whole repositories** (both exist; document recycle is from repository “view recycle bin” / node actions).
 
 None further.
+
+---
+
+## 10. Additional features confirmed from V4 re-audit
+
+> Re-checked against `ims-systems-backend` and `ims-systems-frontend` Document Management code before the V5 build.  
+> **Do not remove or rewrite sections 1–9.** This section only adds capabilities that were missing, under-specified, or previously marked unclear.
+
+### Set and display review dates on documents and folders
+
+- **Capability:** Set an explicit **document review date** on a managed document (and optionally on a **folder**). Display repo review interval, folder review date, and document review date on the document page.
+- **Who uses it:** Users with Document Management **Update** (document/folder metadata forms); viewers see the dates on About / Meta information.
+- **Outcome:** Document stores `documentData.reviewDate`; folder stores `folderData.reviewDate`. New versions **inherit** the published version’s review date. UI falls back: document date → parent folder date → repository review interval–derived date.
+- **Conditions:** Distinct from repository **review interval** (Yearly / Half yearly / Quarterly). Both exist in product.
+
+### Send automated document review reminders
+
+- **Capability:** Organisation-configured advance reminder offsets plus an always-on **on-the-day** reminder for documents whose `documentData.reviewDate` matches the target calendar day.
+- **Who uses it:** Document owners (recipients); schedule runs for all organisations (backend cron, daily at midnight).
+- **Outcome:** In-app notifications such as *Document "…" is due for review today* or *… This is your N reminder*. A **document review reminder ledger** (`documentreviewreminders`) records entity, offset, review-date snapshot, recipients, and sent time so the same reminder is not sent twice.
+- **Conditions:** Organisation field `documentReviewReminderOffsets` selects advance offsets (`3_months`, `2_months`, `1_month`, `3_weeks`, `2_weeks`, `1_week`, `5_days`, `1_day`). Offset `on_day` is always included. Only non-deleted document nodes are considered.
+
+### Calculate and show signature conformance %
+
+- **Capability:** Show a **conformance** percentage on the document (purpose label + progress bar) based on how many signature invitations are **Signed**.
+- **Who uses it:** Anyone viewing the document detail when conformance ≥ 0.
+- **Outcome:** Backend recalculates `documentData.conformance` as `floor(signed / totalSignatures * 100)`. If there are no invitations, value is **-1** (hidden in UI). When invitations are first created, conformance is set toward **0**; when every invitation is Signed, a **full conformance** activity/notification event can fire.
+- **Conditions:** Driven by signature invite/sign/remove flows (including background signature queues), not by manual user entry on the information form.
+
+### Copy folder structure across organisations (Super Admin)
+
+- **Capability:** When copying folder structure into a repository, Super Admins can pick a **source organisation** (where they are also Super Admin) and one of that org’s repositories, then copy folders only.
+- **Who uses it:** Super Admin.
+- **Outcome:** Same empty folder hierarchy duplication as in-org copy; optional `sourceOrgId` on copy. Endpoint lists eligible orgs/repos: `GET …/document-repositories/cross-org-copy-sources`.
+- **Conditions:** Non–Super Admins cannot list cross-org sources (forbidden). Files are still not copied.
+
+### Move a node into another repository
+
+- **Capability:** Move a folder or document family from one repository into another repository (not only within the same repository tree).
+- **Who uses it:** Users with Document Management **Create** (same gate as in-repo move).
+- **Outcome:** `change-repository` updates the node family’s `repository` (and parent). UI can move content between libraries.
+- **Conditions:** Backend notes edge cases if a same-named folder already exists at the target level — treat as fragile; validate carefully in V5.
+
+### Reuse previous signees (“preserved reviewers”)
+
+- **Capability:** Load users/emails previously invited to sign a document node when requesting signatures again.
+- **Who uses it:** Users preparing new signature invitations on a node.
+- **Outcome:** `GET …/nodes/:nodeId/preserved-reviewers` returns prior signature invitation users for that node.
+- **Conditions:** Backed by the signatures collection for that node (naming says “reviewers”; behaviour is signature invitees).
+
+### Place signature boxes on document pages before inviting
+
+- **Capability:** Interactively place one or more **signature locations** (page number + relative X/Y) on the document preview, then attach those locations to internal and/or external signature invitations.
+- **Who uses it:** Users requesting signatures.
+- **Outcome:** Each invitation stores `data.signatureLocations[]`. Signing stamps at those coordinates on the generated signed PDF.
+- **Conditions:** At least one valid location is required; backend validates locations before enqueueing invites.
+
+### Process signature invites and resends asynchronously
+
+- **Capability:** Creating internal/external signature invitations and resending them runs through **background queues** (Bull/Redis), not only inline request handlers.
+- **Who uses it:** Transparent to end users; operators need Redis for reliable delivery.
+- **Outcome:** Queues observed: add internal signatures, add external signatures, resend internal, resend external. Permanent **node** and **repository** deletes also use dedicated delete queues that remove File Handler storage.
+- **Conditions:** Same product behaviour as synchronous invite from the user’s perspective; failure modes depend on queue workers being up.
+
+### Email the signed PDF copy to the signee
+
+- **Capability:** After a successful sign, email the signee a **signed copy** of the document.
+- **Who uses it:** Internal and external signees.
+- **Outcome:** Dedicated email template/event (`sendSignedCopyToSignee`) in addition to in-app “document signed” notifications and share/ask-for-signature emails.
+- **Conditions:** Requires email infrastructure; signed file metadata is on the signature record (`data.signedCopy`).
+
+### Push live signature invitation updates over WebSocket
+
+- **Capability:** Notify the invited internal user in real time when a new signature request is created.
+- **Who uses it:** Internal invitees with an active socket session.
+- **Outcome:** Socket event `new-document-signature-info` pushed to the user’s room.
+- **Conditions:** Depends on WebSocket being enabled; complements in-app notifications and email.
+
+### Invalidate limited-access token after external signing
+
+- **Capability:** After an external (or token-based) signature is completed, invalidate the public access token used for that signing session.
+- **Who uses it:** External signees on the public signature route.
+- **Outcome:** Middleware `invalidatePublicAccessToken` runs after successful `handleSignature` so the time-limited link cannot be reused indefinitely.
+- **Conditions:** Public route `PUT …/nodes/:nodeId/signatures/:signatureId` with signature permission middleware (no full org login).
+
+### Track signature open and sign timestamps
+
+- **Capability:** Record when a signature invitation was last opened and when it was signed; store a security token on the invitation.
+- **Who uses it:** System / audit / limited-access flows; may surface in signature request UIs.
+- **Outcome:** Fields on signature records: `securityToken`, `lastOpenedAt`, `signedAt`, plus invitation `message` and Internal/External `type`.
+- **Conditions:** Complements status Pending / Reviewed / Signed.
+
+### Run pre-flight checks before upload or process gates
+
+- **Capability:** Before certain UI actions, call repository **checks** APIs: whether a pending authorisation already exists for a file name at a location; whether the current user “owns” that document context; whether process requirements (auth/sign flags) apply.
+- **Who uses it:** Frontend upload / process flows (headers `x-doc-parentnode`, `x-doc-filename`, `x-doc-nodeid`).
+- **Outcome:** Endpoints under `…/checks/pending-node`, `…/checks/document-ownership`, `…/checks/process-requirements`.
+- **Conditions:** Ownership and process-requirements implementations have known reliability issues (see section 9 discrepancies); still part of the live API surface and must be accounted for or deliberately redesigned in V5.
+
+### Browse published documents by purpose (insight list)
+
+- **Capability:** From overview purpose cards, open a **purpose-filtered list** of published documents (Processes, SOPs, Policies, Documents, Legal, Miscellaneous).
+- **Who uses it:** Users with Document Management Read who follow overview navigation.
+- **Outcome:** Dedicated analytics/list UI (`document-overview/:purpose`) backed by document-tree listing filters.
+- **Conditions:** Route exists; nav entry may be invisible — feature is still implemented and used from overview cards.
+
+### List organisation-wide document tree nodes for pickers
+
+- **Capability:** Query **all** document tree nodes in the organisation (not only one repository) for searchable pickers in other modules.
+- **Who uses it:** Compliance, Risk, Incident, CIP, Audit, Supplier, Management Review, and similar Related Documents UIs.
+- **Outcome:** `GET /document-trees` (org-scoped list) with filters such as status Published and applicable modules / compliance tools.
+- **Conditions:** Requires Document Management Read. This is the cross-module picker data source called out in section 2.
+
+### Link IMS Project work packages to managed documents
+
+- **Capability:** Associate an IMS Project **work package** with a managed document tree node.
+- **Who uses it:** Project planners (IMS Projects module); Document Management supplies the document record.
+- **Outcome:** Persistent relationship entity (`imsprojectworkpackagedocumentrelationships`: `parentWorkPackage` + `linkedDocument`). Separate from “project creates a repository”.
+- **Conditions:** Owned primarily by IMS Projects; Document Management must not break linked document ids on delete without project rules.
+
+### Contribute document utilisation to digital maturity stats
+
+- **Capability:** Organisation **digital maturity / analytics** stats include Document Management utilisation signals derived from repositories/trees.
+- **Who uses it:** Stats / dashboard consumers (not a Documents nav screen).
+- **Outcome:** Backend stats service reads document data for maturity scoring.
+- **Conditions:** Out of Documents UI scope but a confirmed backend consumer of DM data.
+
+### Activity and notification event catalogue (confirmed emitters)
+
+Confirmed Document Management–driven activity/notification themes in V4 (for V5 parity planning):
+
+| Event theme | When it fires |
+| ----------- | ------------- |
+| Authorisation request sent | Authorisers assigned / pending approval requested |
+| Authorisation reviewed | Authoriser approves or rejects |
+| Document version added | New version uploaded |
+| Document revision added | Pending file replaced |
+| Document shared via email | Share-by-email succeeds |
+| Signature request sent | Internal/external invites created |
+| Document signed | Invitee completes signature |
+| Document full conformance | All signature invites Signed (100%) |
+
+### Background infrastructure the module depends on
+
+| Mechanism | Role |
+| --------- | ---- |
+| **File Handler** | Upload, view, download, delete binaries; share view links |
+| **Bull/Redis queues** | Signature invite/resend; hard-delete nodes and repositories |
+| **Email templates** | Ask for signature; share document; send signed copy to signee |
+| **Permission / token store** | Limited access for external signing and share links |
+| **WebSocket** | Live signature invitation push |
+| **Cron** | Daily document review reminders |
+| **Activity + Notifications** | Timeline and in-app alerts for the events above |
+
+### Data model additions not fully listed in section 6
+
+| Entity / field | Business meaning |
+| -------------- | ---------------- |
+| **Document review reminder ledger** | Idempotent record of which reminder offset was sent for which document review date |
+| **`documentData.reviewDate`** | Explicit next review date on a document |
+| **`folderData.reviewDate`** | Optional review date on a folder |
+| **`documentData.conformance`** | Signature completion % (−1 = none / hidden) |
+| **Signature `securityToken` / `lastOpenedAt` / `signedAt` / `message` / `type`** | Invite security and audit fields |
+| **Work package ↔ document relationship** | Project planning link to a managed document |
+
+### Applicable modules and compliance tools (canonical enums)
+
+**Applicable modules** on a document (picker filters): risks, cips (OFI), audits, compliance controls, management reviews, suppliers, incidents, expense reports.
+
+**Compliance tools** taggable on a document (subset used by toolkit screens): DSPT NHS, ISO 27001, ISO 27001:2022, ISO 27001:2022 Annex A, ISO 27002, ISO 9001, ISO 45001, ISO 20000, CQC, BS 9997, ISO 14001, CRM, ISO 15686-5, ESG Environmental / Governance / Social.
+
+### Frontend surface map (for V5 parity checklist)
+
+| Area | Confirmed screens / flows |
+| ---- | ------------------------- |
+| List | Overview / Repositories / Recycle Bin tabs; create/edit repository drawer |
+| Repository | Folder path, contents table, upload, create folder, copy folder structure (incl. cross-org for Super Admin), recycle contents |
+| Document | Preview, versions, information (incl. review date), authorisation, share, signatures, conformance, activity/audit |
+| Signatures | Request signatures (placement + internal/external + message); org signature requests list; resend; sign form; public limited-access sign |
+| Pickers | Searchable document list used from other modules / compliance evidence |
+| Insight | Purpose-filtered published document list from overview |
+
+### Build notes for V5 (do not lose these)
+
+1. Treat **review dates + reminder ledger + org offsets** as in-scope product behaviour (not “informational only”).
+2. Treat **conformance** as system-calculated from signatures.
+3. Plan **queues** (or an equivalent async strategy) for signature invite/resend and hard deletes early.
+4. Preserve **public signing + token invalidation** and **signed-copy email** when implementing e-sign.
+5. Expose **org-wide document list** for Compliance and Related Documents even if full DM UI ships later.
+6. Keep **cross-org folder copy** Super-Admin-only.
+7. Decide deliberately whether to **port, fix, or drop** the fragile ownership / process-requirements checks.
+
+None further (section 10).

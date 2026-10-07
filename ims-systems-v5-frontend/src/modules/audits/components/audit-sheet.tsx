@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { SheetPanelTabs } from "@/modules/activities";
 import {
   useAuditQuery,
   useCompleteAuditMutation,
@@ -19,6 +20,9 @@ import type {
 } from "../types";
 import { AuditDetails, AuditDetailsLoading } from "./audit-details";
 import { AuditForm, AuditFormActions } from "./audit-form";
+import { AuditLifecyclePanel } from "./audit-lifecycle-panel";
+import { AuditLinkedControls } from "./audit-linked-controls";
+import { AuditRelatedTasks } from "./audit-related-tasks";
 
 export type AuditSheetMode = "create" | "view" | "edit";
 
@@ -53,6 +57,11 @@ export function AuditSheet({
   const [removingAttachmentId, setRemovingAttachmentId] = useState<
     string | null
   >(null);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, auditId]);
 
   const auditQuery = useAuditQuery(
     mode === "create" ? undefined : (auditId ?? undefined)
@@ -250,13 +259,42 @@ export function AuditSheet({
         ) : null}
 
         {mode === "view" && audit ? (
-          <AuditDetails
-            audit={audit}
-            onRemoveAttachment={
-              !completed ? (id) => void handleRemoveAttachment(id) : undefined
-            }
-            removingAttachmentId={removingAttachmentId}
-          />
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "lifecycle", label: "Life Cycle" },
+                { id: "tasks", label: "Tasks" },
+                { id: "controls", label: "Linked controls" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? (
+              <AuditDetails
+                audit={audit}
+                onRemoveAttachment={
+                  !completed
+                    ? (id) => void handleRemoveAttachment(id)
+                    : undefined
+                }
+                removingAttachmentId={removingAttachmentId}
+              />
+            ) : null}
+            {panelTab === "lifecycle" ? (
+              <AuditLifecyclePanel audit={audit} />
+            ) : null}
+            {panelTab === "tasks" ? (
+              <AuditRelatedTasks
+                auditId={audit.id}
+                businessUnitId={audit.businessUnitId}
+                canLink={!completed}
+              />
+            ) : null}
+            {panelTab === "controls" ? (
+              <AuditLinkedControls audit={audit} canEdit={!completed} />
+            ) : null}
+          </>
         ) : null}
 
         {mode === "edit" && audit ? (

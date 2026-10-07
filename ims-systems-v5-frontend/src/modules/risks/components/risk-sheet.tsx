@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import {
+  ActivityTimeline,
+  SheetPanelTabs,
+} from "@/modules/activities";
 import {
   useCreateRiskMutation,
   useDeleteRiskMutation,
@@ -15,6 +19,9 @@ import {
 import type { CreateRiskInput, UpdateRiskInput } from "../types";
 import { RiskDetails, RiskDetailsLoading, RiskFormActions } from "./risk-details";
 import { RiskForm } from "./risk-form";
+import { RiskLifecyclePanel } from "./risk-lifecycle-panel";
+import { RiskLinkedControls } from "./risk-linked-controls";
+import { RiskRelatedTasks } from "./risk-related-tasks";
 
 export type RiskSheetMode = "create" | "view" | "edit";
 
@@ -40,6 +47,11 @@ export function RiskSheet({
   onActionMessage,
 }: RiskSheetProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, riskId]);
 
   const riskQuery = useRiskQuery(mode === "create" ? undefined : (riskId ?? undefined));
   const createMutation = useCreateRiskMutation();
@@ -239,7 +251,42 @@ export function RiskSheet({
           </p>
         ) : null}
 
-        {mode === "view" && risk ? <RiskDetails risk={risk} /> : null}
+        {mode === "view" && risk ? (
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "activity", label: "Activity" },
+                { id: "lifecycle", label: "Life Cycle" },
+                { id: "tasks", label: "Tasks" },
+                { id: "controls", label: "Linked controls" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? <RiskDetails risk={risk} /> : null}
+            {panelTab === "activity" ? (
+              <ActivityTimeline
+                moduleType="risks"
+                moduleId={risk.id}
+                title="Activity"
+              />
+            ) : null}
+            {panelTab === "lifecycle" ? (
+              <RiskLifecyclePanel risk={risk} />
+            ) : null}
+            {panelTab === "tasks" ? (
+              <RiskRelatedTasks
+                riskId={risk.id}
+                businessUnitId={risk.businessUnitId}
+                canLink={!mitigated}
+              />
+            ) : null}
+            {panelTab === "controls" ? (
+              <RiskLinkedControls risk={risk} canEdit={!mitigated} />
+            ) : null}
+          </>
+        ) : null}
 
         {mode === "edit" && risk ? (
           mitigated ? (

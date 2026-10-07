@@ -29,11 +29,13 @@ export {
 export {
   NoOpRiskNotificationAdapter,
   NoOpRiskTaskAdapter,
+  NoOpRiskComplianceLinkAdapter,
   DevAllRisksListScopeAdapter,
 } from "./ports";
 export type {
   RiskNotificationPort,
   RiskTaskPort,
+  RiskComplianceLinkPort,
   RiskListScopePort,
   RiskListScope,
 } from "./ports";

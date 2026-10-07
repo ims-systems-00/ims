@@ -152,32 +152,6 @@ export function AuditDetails({
       </section>
 
       <section>
-        <h3 className="mb-3 text-sm font-semibold tracking-tight">
-          Linked controls
-        </h3>
-        {audit.complianceLinks.length === 0 ? (
-          <p className="ims-text-meta">No control linked</p>
-        ) : (
-          <ul className="space-y-2">
-            {audit.complianceLinks.map((link) => (
-              <li
-                key={link.toolkitId}
-                className="rounded-md border border-border px-3 py-2 text-sm"
-              >
-                <span className="font-medium">{link.toolkitId}</span>
-                {link.clauseIds.length > 0 ? (
-                  <span className="text-muted-foreground">
-                    {" "}
-                    — {link.clauseIds.join(", ")}
-                  </span>
-                ) : null}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section>
         <h3 className="mb-3 text-sm font-semibold tracking-tight">Attachments</h3>
         {audit.attachments.length === 0 ? (
           <p className="ims-text-meta">No attachment here</p>
@@ -205,34 +179,6 @@ export function AuditDetails({
           </ul>
         )}
       </section>
-
-      {completed ? (
-        <section>
-          <h3 className="mb-3 text-sm font-semibold tracking-tight">
-            Completion
-          </h3>
-          <dl className="ims-detail-grid">
-            <Item
-              label="Completed by"
-              value={
-                <UserLabel
-                  userId={audit.completed.by}
-                  onOpen={setUserSheetId}
-                />
-              }
-            />
-            <Item
-              label="Completed on"
-              value={formatDateTime(audit.completed.on)}
-            />
-          </dl>
-          <p className="ims-text-meta mt-2">
-            Non-conformities and embedded risks are promoted to Incidents and
-            Risks with a source link to this audit. CIP promotion awaits the CIP
-            module.
-          </p>
-        </section>
-      ) : null}
 
       <ExtractReportPanel auditId={audit.id} />
 

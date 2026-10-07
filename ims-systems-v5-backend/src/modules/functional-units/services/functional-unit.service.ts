@@ -181,6 +181,18 @@ export function createFunctionalUnitService(deps: FunctionalUnitServiceDeps) {
       return requireUnit(actor.organizationId, id);
     },
 
+    /**
+     * Cross-module existence check (org-scoped). No authorizer —
+     * callers must already be inside a trusted application flow.
+     */
+    async existsForOrganization(
+      organizationId: string,
+      id: string
+    ): Promise<boolean> {
+      const unit = await repository.findById(organizationId, id);
+      return unit != null && unit.deletedAt == null;
+    },
+
     async update(
       identity: SecurityIdentity | null | undefined,
       id: string,

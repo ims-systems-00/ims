@@ -19,6 +19,11 @@ import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
+import {
+  CategoryMultiFilter,
+  ModuleViewTabs,
+  TagsManagementPanel,
+} from "@/modules/tags-and-categories";
 import { RiskSheet, type RiskSheetMode } from "../components/risk-sheet";
 import { RiskScoreBadge, RiskStatusBadge } from "../components/risk-badges";
 import { RiskStatsCards } from "../components/risk-stats-cards";
@@ -70,6 +75,8 @@ export function RisksListPage() {
   const [status, setStatus] = useState<RiskDisplayStatus | "">("");
   const [type, setType] = useState<RiskType | "">("");
   const [businessUnitId, setBusinessUnitId] = useState("");
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [view, setView] = useState<"records" | "categories">("records");
   const [editMode, setEditMode] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
     null
@@ -100,10 +107,11 @@ export function RisksListPage() {
       status: status || undefined,
       types: type ? [type] : undefined,
       businessUnitIds: businessUnitId ? [businessUnitId] : undefined,
+      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
       sort: "raisedOn" as const,
       sortDir: "desc" as const,
     }),
-    [page, search, status, type, businessUnitId]
+    [page, search, status, type, businessUnitId, categoryIds]
   );
 
   const listQuery = useRisksQuery(queryParams);
@@ -112,7 +120,9 @@ export function RisksListPage() {
   const deleteMutation = useDeleteRiskMutation();
   const reportMutation = useDownloadRisksReportMutation();
 
-  const hasFilters = Boolean(search || status || type || businessUnitId);
+  const hasFilters = Boolean(
+    search || status || type || businessUnitId || categoryIds.length > 0
+  );
 
   function openCreate() {
     setEditMode(false);
@@ -145,6 +155,7 @@ export function RisksListPage() {
     setStatus("");
     setType("");
     setBusinessUnitId("");
+    setCategoryIds([]);
     setPage(1);
   }
 
@@ -183,24 +194,41 @@ export function RisksListPage() {
         title="Risks"
         description="Organisation risk register — raise, score, own, and treat risks."
         actions={
-          <div className="flex flex-wrap gap-2">
-            <Button
-              type="button"
-              variant="outline"
-              disabled={reportMutation.isPending}
-              onClick={() => void handleExport()}
-            >
-              <Download />
-              Export
-            </Button>
-            <Button type="button" onClick={openCreate}>
-              <Plus />
-              Raise risk
-            </Button>
-          </div>
+          view === "records" ? (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                disabled={reportMutation.isPending}
+                onClick={() => void handleExport()}
+              >
+                <Download />
+                Export
+              </Button>
+              <Button type="button" onClick={openCreate}>
+                <Plus />
+                Raise risk
+              </Button>
+            </div>
+          ) : null
         }
       />
 
+      <ModuleViewTabs
+        recordsLabel="Risks"
+        categoriesLabel="Categories"
+        value={view}
+        onChange={setView}
+      />
+
+      {view === "categories" ? (
+        <TagsManagementPanel
+          applicableModule="risks"
+          title="Risk categories"
+          description="Classify risks for reporting and filtering. Categories created here are available when raising or editing a risk."
+        />
+      ) : (
+        <>
       {statsQuery.isSuccess ? (
         <RiskStatsCards
           stats={statsQuery.data}
@@ -268,6 +296,14 @@ export function RisksListPage() {
             </option>
           ))}
         </select>
+        <CategoryMultiFilter
+          applicableModule="risks"
+          value={categoryIds}
+          onChange={(next) => {
+            setPage(1);
+            setCategoryIds(next);
+          }}
+        />
         {hasFilters ? (
           <Button type="button" variant="ghost" size="sm" onClick={clearFilters}>
             Clear
@@ -417,6 +453,8 @@ export function RisksListPage() {
           </Button>
         </div>
       ) : null}
+        </>
+      )}
 
       <RiskSheet
         open={sheetOpen}

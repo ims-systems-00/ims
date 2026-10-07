@@ -38,6 +38,7 @@ export function createFunctionalUnitModule(
   deps: FunctionalUnitRouterDeps
 ): {
   service: FunctionalUnitService;
+  unitUsers: FunctionalUnitUsersPort;
   router: Router;
 } {
   const repository = createFunctionalUnitRepository();
@@ -86,7 +87,7 @@ export function createFunctionalUnitModule(
   router.post("/:id/policy", controller.attachPolicy);
   router.put("/:id/compliance-toolkits", controller.assignToolkits);
 
-  return { service, router };
+  return { service, unitUsers, router };
 }
 
 /**

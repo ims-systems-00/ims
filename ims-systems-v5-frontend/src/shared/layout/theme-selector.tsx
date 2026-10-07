@@ -12,46 +12,87 @@ import {
 } from "@/shared/components/ui/dialog";
 import { FormField } from "@/shared/components/form-field";
 import { cn } from "@/shared/lib/utils";
-import { isValidHexColor, normalizeHexColor, useTheme } from "@/shared/theme";
+import {
+  DEFAULT_THEME_COLORS,
+  THEME_COLOR_FIELDS,
+  deriveThemeFromPrimary,
+  isValidHexColor,
+  normalizeHexColor,
+  useTheme,
+  type ThemeColors,
+} from "@/shared/theme";
 
 export function ThemeSelector() {
-  const { themeId, customHex, setThemeId, setCustomHex, themes } = useTheme();
+  const {
+    themeId,
+    colors: activeColors,
+    setThemeId,
+    setCustomColors,
+    themes,
+  } = useTheme();
   const [open, setOpen] = useState(false);
-  const [hexInput, setHexInput] = useState(customHex);
+  const [draft, setDraft] = useState<ThemeColors>(activeColors);
+  const [hexDrafts, setHexDrafts] = useState<ThemeColors>(activeColors);
   const [hexError, setHexError] = useState<string | undefined>();
 
   useEffect(() => {
-    if (open) {
-      setHexInput(customHex);
-      setHexError(undefined);
-    }
-  }, [open, customHex]);
+    if (!open) return;
+    setDraft(activeColors);
+    setHexDrafts(activeColors);
+    setHexError(undefined);
+  }, [open, activeColors]);
+
+  function previewColors(next: ThemeColors) {
+    setDraft(next);
+    setHexDrafts(next);
+    setCustomColors(next);
+  }
 
   function handlePresetSelect(id: (typeof themes)[number]["id"]) {
+    setHexError(undefined);
     setThemeId(id);
+  }
+
+  function updateField(key: keyof ThemeColors, value: string) {
+    const hex = normalizeHexColor(value);
+    if (!hex) return;
+    const next = { ...draft, [key]: hex };
+    previewColors(next);
+  }
+
+  function handleHexInput(key: keyof ThemeColors, raw: string) {
+    setHexDrafts((prev) => ({ ...prev, [key]: raw }));
+    const hex = normalizeHexColor(raw);
+    if (!hex) return;
+    const next = { ...draft, [key]: hex };
+    setDraft(next);
+    setCustomColors(next);
     setHexError(undefined);
   }
 
-  function applyCustomFromInput(raw: string) {
-    const normalized = normalizeHexColor(raw);
-    if (!normalized) {
-      setHexError("Enter a valid 6-digit hex color (e.g. #2563EB)");
-      return false;
+  function handleHexBlur(key: keyof ThemeColors) {
+    if (isValidHexColor(hexDrafts[key])) {
+      updateField(key, hexDrafts[key]);
+      return;
+    }
+    setHexDrafts((prev) => ({ ...prev, [key]: draft[key] }));
+    setHexError("Enter a valid 6-digit hex color (e.g. #0040A3)");
+  }
+
+  function generateFromPrimary() {
+    const next = deriveThemeFromPrimary(draft.primary);
+    if (!next) {
+      setHexError("Primary colour is invalid");
+      return;
     }
     setHexError(undefined);
-    setHexInput(normalized);
-    return setCustomHex(normalized);
+    previewColors(next);
   }
 
-  function handleColorPickerChange(value: string) {
-    const normalized = normalizeHexColor(value);
-    if (!normalized) return;
-    setHexInput(normalized);
+  function resetDefault() {
     setHexError(undefined);
-    setCustomHex(normalized);
+    setThemeId("default-blue");
   }
-
-  const pickerValue = normalizeHexColor(hexInput) ?? customHex;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -68,19 +109,32 @@ export function ThemeSelector() {
 
       <DialogContent className="max-w-lg gap-5" showClose>
         <DialogHeader>
-          <DialogTitle>Color theme</DialogTitle>
+          <DialogTitle>Colour theme</DialogTitle>
           <DialogDescription>
-            Choose a preset template or set a custom brand color. The
-            application identity updates immediately.
+            Choose a template or set the four brand colours — the same model as
+            V4 organisation themes. Preview applies immediately.
           </DialogDescription>
         </DialogHeader>
 
+        <div
+          className="flex h-2.5 overflow-hidden rounded-full border border-border"
+          aria-hidden
+        >
+          {THEME_COLOR_FIELDS.map(({ key }) => (
+            <span
+              key={key}
+              className="flex-1"
+              style={{ backgroundColor: draft[key] }}
+            />
+          ))}
+        </div>
+
         <section className="space-y-3" aria-label="Theme presets">
           <h3 className="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-            Presets
+            Templates
           </h3>
           <ul
-            className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            className="flex flex-wrap gap-2"
             role="listbox"
             aria-label="Theme presets"
           >
@@ -92,122 +146,110 @@ export function ThemeSelector() {
                     type="button"
                     role="option"
                     aria-selected={selected}
+                    title={theme.label}
+                    aria-label={theme.label}
                     className={cn(
-                      "flex h-full w-full flex-col gap-2 rounded-md border px-3 py-2.5 text-left transition-[border-color,background-color,box-shadow]",
-                      "hover:border-ring/40 hover:bg-accent/40",
+                      "size-9 rounded-full border-2 shadow-xs transition-[transform,box-shadow,border-color]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                      "hover:scale-105",
                       selected
-                        ? "border-primary/50 bg-accent/60 ring-1 ring-primary/25"
-                        : "border-border bg-surface"
+                        ? "border-foreground ring-2 ring-ring/30"
+                        : "border-white ring-1 ring-border"
                     )}
+                    style={{ backgroundColor: theme.colors.primary }}
                     onClick={() => handlePresetSelect(theme.id)}
-                  >
-                    <span className="flex items-center justify-between gap-2">
-                      <span
-                        className="size-5 shrink-0 rounded-sm border border-border shadow-xs"
-                        style={{ backgroundColor: theme.swatch }}
-                        aria-hidden
-                      />
-                      {selected ? (
-                        <Check
-                          className="size-3.5 text-primary"
-                          aria-hidden
-                        />
-                      ) : null}
-                    </span>
-                    <span>
-                      <span className="block text-[0.8125rem] font-medium tracking-tight">
-                        {theme.label}
-                      </span>
-                      <span className="mt-0.5 block text-[0.6875rem] leading-snug text-muted-foreground">
-                        {theme.description}
-                      </span>
-                    </span>
-                  </button>
+                  />
                 </li>
               );
             })}
           </ul>
+          <p className="text-[0.75rem] text-muted-foreground">
+            {themeId === "custom"
+              ? "Custom palette"
+              : themes.find((theme) => theme.id === themeId)?.label}
+            {" · "}
+            <span className="font-mono uppercase">{draft.primary}</span>
+          </p>
         </section>
 
-        <section className="space-y-3" aria-label="Custom color">
-          <div className="flex items-center justify-between gap-2">
+        <section className="space-y-3" aria-label="Brand colours">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-[0.6875rem] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-              Custom color
+              Brand colours
             </h3>
-            {themeId === "custom" ? (
-              <span className="inline-flex items-center gap-1 text-[0.6875rem] font-medium text-primary">
-                <Check className="size-3" aria-hidden />
-                Active
-              </span>
-            ) : null}
-          </div>
-
-          <div className="rounded-md border border-border bg-surface px-3 py-3">
-            <div className="flex flex-wrap items-end gap-3">
-              <FormField label="Color" className="w-auto">
-                <input
-                  type="color"
-                  value={pickerValue.toLowerCase()}
-                  aria-label="Pick brand color"
-                  className="h-9 w-12 cursor-pointer rounded-sm border border-border bg-transparent p-0.5"
-                  onChange={(event) =>
-                    handleColorPickerChange(event.target.value)
-                  }
-                />
-              </FormField>
-
-              <FormField
-                label="Hex"
-                className="min-w-[9rem] flex-1"
-                error={hexError}
-              >
-                <input
-                  type="text"
-                  inputMode="text"
-                  spellCheck={false}
-                  autoComplete="off"
-                  placeholder="#2563EB"
-                  aria-label="Brand color hex code"
-                  className="ims-field font-mono uppercase"
-                  value={hexInput}
-                  onChange={(event) => {
-                    setHexInput(event.target.value);
-                    if (hexError) setHexError(undefined);
-                  }}
-                  onBlur={() => {
-                    if (!hexInput.trim()) {
-                      setHexInput(customHex);
-                      return;
-                    }
-                    if (isValidHexColor(hexInput)) {
-                      applyCustomFromInput(hexInput);
-                    }
-                  }}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault();
-                      applyCustomFromInput(hexInput);
-                    }
-                  }}
-                />
-              </FormField>
-
+            <div className="flex flex-wrap gap-1.5">
               <Button
                 type="button"
+                size="sm"
                 variant="outline"
-                className="mb-0.5"
-                onClick={() => applyCustomFromInput(hexInput)}
+                onClick={generateFromPrimary}
               >
-                Apply
+                Generate from primary
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={resetDefault}
+              >
+                Reset default
               </Button>
             </div>
+          </div>
 
-            <p className="mt-2.5 text-[0.75rem] leading-relaxed text-muted-foreground">
-              Uses your hex as the primary brand color and derives sidebar,
-              accent, and focus tones from it.
+          <div className="space-y-3 rounded-md border border-border bg-surface px-3 py-3">
+            {THEME_COLOR_FIELDS.map(({ key, label }) => (
+              <div key={key} className="flex items-end gap-3">
+                <FormField label={label} className="w-auto">
+                  <input
+                    type="color"
+                    value={draft[key].toLowerCase()}
+                    aria-label={`${label} colour picker`}
+                    className="h-9 w-12 cursor-pointer rounded-sm border border-border bg-transparent p-0.5"
+                    onChange={(event) => updateField(key, event.target.value)}
+                  />
+                </FormField>
+                <FormField
+                  label="Hex"
+                  className="min-w-0 flex-1"
+                  error={key === "primary" ? hexError : undefined}
+                >
+                  <input
+                    type="text"
+                    inputMode="text"
+                    spellCheck={false}
+                    autoComplete="off"
+                    maxLength={7}
+                    placeholder="#0040A3"
+                    aria-label={`${label} hex code`}
+                    className="ims-field font-mono uppercase"
+                    value={hexDrafts[key]}
+                    onChange={(event) =>
+                      handleHexInput(key, event.target.value)
+                    }
+                    onBlur={() => handleHexBlur(key)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleHexBlur(key);
+                      }
+                    }}
+                  />
+                </FormField>
+              </div>
+            ))}
+            <p className="text-[0.75rem] leading-relaxed text-muted-foreground">
+              Primary drives buttons and active menu items. Primary dark is the
+              sidebar. Light / extra-light soft surfaces match V4.
             </p>
           </div>
+
+          {themeId === "custom" ? (
+            <p className="inline-flex items-center gap-1 text-[0.6875rem] font-medium text-primary">
+              <Check className="size-3" aria-hidden />
+              Custom palette active
+            </p>
+          ) : null}
         </section>
 
         <DialogFooter>

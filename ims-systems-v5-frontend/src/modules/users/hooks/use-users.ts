@@ -1,6 +1,6 @@
-import { useQuery } from "@tanstack/react-query";
-import { getUser, listUsers } from "../api/users";
-import type { ListUsersParams } from "../types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getUser, listUsers, updateUserProfile } from "../api/users";
+import type { ListUsersParams, UpdateUserProfileInput } from "../types";
 
 export const userKeys = {
   all: ["users"] as const,
@@ -22,5 +22,33 @@ export function useUserQuery(userId: string | undefined, enabled = true) {
     queryKey: userKeys.detail(userId ?? ""),
     queryFn: () => getUser(userId!),
     enabled: Boolean(userId) && enabled,
+  });
+}
+
+export function useUpdateUserProfileMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateUserProfileInput) =>
+      updateUserProfile(userId, body),
+    onSuccess: async (user) => {
+      await queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      await queryClient.invalidateQueries({
+        queryKey: userKeys.detail(userId),
+      });
+      queryClient.setQueryData(userKeys.detail(userId), (current: unknown) => {
+        if (
+          current &&
+          typeof current === "object" &&
+          "user" in current &&
+          "membership" in current
+        ) {
+          return {
+            ...(current as { user: typeof user; membership: unknown }),
+            user,
+          };
+        }
+        return current;
+      });
+    },
   });
 }

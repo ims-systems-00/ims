@@ -8,24 +8,34 @@
     "dev": "tsx watch src/app/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/app/server.js",
+    "worker:email": "tsx src/app/email-worker.ts",
+    "worker:email:start": "node dist/app/email-worker.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "seed:demo": "tsx scripts/seed-demo-data.ts"
+    "seed:demo": "tsx scripts/seed-demo-data.ts",
+    "seed:compliance-catalogues": "tsx scripts/seed-compliance-catalogues.ts"
   },
   "engines": {
     "node": ">=20"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1146.0",
+    "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@sendgrid/mail": "^8.1.6",
+    "bullmq": "^6.3.11",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "ioredis": "^6.0.0",
     "mongoose": "^9.9.5",
+    "nodemailer": "^10.0.15",
     "pino": "^10.3.1",
     "zod": "^4.5.4"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^26.5.0",
+    "@types/nodemailer": "^8.0.2",
     "@types/supertest": "^7.2.1",
     "mongodb-memory-server": "^11.2.0",
     "supertest": "^7.2.2",

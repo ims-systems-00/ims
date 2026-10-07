@@ -12,6 +12,13 @@ import {
   FunctionalUnitsListPage,
 } from "@/modules/functional-units";
 import { ManagementReviewsListPage } from "@/modules/management-reviews";
+import { KpiObjectivesPage } from "@/modules/kpi-objectives";
+import { TagsAndCategoriesPage } from "@/modules/tags-and-categories";
+import {
+  DocumentsPage,
+  RepositoryDetailPage,
+} from "@/modules/document-management";
+import { ComplianceToolkitPage } from "@/modules/compliance";
 import { OfisListPage } from "@/modules/ofi";
 import { RisksListPage } from "@/modules/risks";
 import { IncidentsListPage } from "@/modules/incidents";
@@ -22,7 +29,13 @@ import {
 import { CalendarPage } from "@/modules/calendar";
 import { SuppliersListPage } from "@/modules/suppliers";
 import { TasksListPage } from "@/modules/tasks";
-import { UsersListPage } from "@/modules/users";
+import {
+  CreateOrganisationPage,
+  FlowSelectionPage,
+  MyOrganisationPage,
+} from "@/modules/organisation";
+import { ReportBugPage } from "@/modules/report-bug";
+import { MyProfilePage, UsersListPage } from "@/modules/users";
 
 /**
  * Application route composition (kept outside module internals).
@@ -33,6 +46,16 @@ export function App() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<OrganisationDashboardPage />} />
+        <Route path="profile" element={<MyProfilePage />} />
+        <Route path="organisation" element={<MyOrganisationPage />} />
+        <Route
+          path="onboard/organisation"
+          element={<CreateOrganisationPage />}
+        />
+        <Route
+          path="onboard/flow-selection"
+          element={<FlowSelectionPage />}
+        />
         <Route path="functional-units" element={<FunctionalUnitsListPage />} />
         <Route
           path="functional-units/:id"
@@ -56,7 +79,25 @@ export function App() {
           path="management-reviews"
           element={<ManagementReviewsListPage />}
         />
+        <Route path="kpi-objectives" element={<KpiObjectivesPage />} />
+        <Route
+          path="tags-and-categories"
+          element={<TagsAndCategoriesPage />}
+        />
+        <Route path="documents" element={<DocumentsPage />} />
+        <Route
+          path="documents/repositories/:id"
+          element={<RepositoryDetailPage />}
+        />
         <Route path="ofi" element={<OfisListPage />} />
+        <Route
+          path="compliance"
+          element={<Navigate to="/compliance/ISO%209001" replace />}
+        />
+        <Route
+          path="compliance/:toolkitName"
+          element={<ComplianceToolkitPage />}
+        />
         <Route path="customers" element={<CustomersListPage />} />
         <Route
           path="customers/overview"
@@ -64,6 +105,7 @@ export function App() {
         />
         <Route path="suppliers" element={<SuppliersListPage />} />
         <Route path="calendar" element={<CalendarPage />} />
+        <Route path="report-bug" element={<ReportBugPage />} />
         <Route
           path="assets"
           element={<Navigate to="/assets/hardware" replace />}

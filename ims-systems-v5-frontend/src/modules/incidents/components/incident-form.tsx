@@ -4,6 +4,7 @@ import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { CategorySelectField } from "@/modules/tags-and-categories";
 import {
   createIncidentFormSchema,
   updateIncidentFormSchema,
@@ -64,6 +65,9 @@ export function IncidentForm({
   const [privacy, setPrivacy] = useState<IncidentPrivacy>(
     initialIncident?.privacy ?? "Business unit"
   );
+  const [categoryId, setCategoryId] = useState(
+    initialIncident?.categoryId ?? ""
+  );
   const [resolution, setResolution] = useState(
     initialIncident?.resolution ?? ""
   );
@@ -107,6 +111,7 @@ export function IncidentForm({
         methodOfNotification: methodOfNotification || undefined,
         affectedService: affectedService || undefined,
         privacy,
+        categoryId: categoryId || undefined,
       });
       if (!parsed.success) {
         const next: FieldErrors = {};
@@ -127,6 +132,7 @@ export function IncidentForm({
           methodOfNotification: parsed.data.methodOfNotification,
           affectedService: parsed.data.affectedService,
           privacy: parsed.data.privacy,
+          categoryId: parsed.data.categoryId,
         });
       } catch (error) {
         notify.fromError(error, "Unable to raise incident");
@@ -142,6 +148,7 @@ export function IncidentForm({
       methodOfNotification: methodOfNotification || undefined,
       affectedService: affectedService || undefined,
       privacy,
+      categoryId: categoryId || undefined,
       resolution: resolution || undefined,
       resolved,
     });
@@ -164,6 +171,7 @@ export function IncidentForm({
         methodOfNotification: parsed.data.methodOfNotification ?? null,
         affectedService: parsed.data.affectedService ?? null,
         privacy: parsed.data.privacy,
+        categoryId: parsed.data.categoryId ?? null,
         resolution: parsed.data.resolution ?? null,
         resolved: parsed.data.resolved,
       });
@@ -258,6 +266,16 @@ export function IncidentForm({
             onChange={(event) => setAffectedService(event.target.value)}
           />
         </FormField>
+      </FormSection>
+
+      <FormSection title="Classification">
+        <CategorySelectField
+          applicableModule="incidents"
+          value={categoryId || undefined}
+          disabled={pending}
+          error={fieldErrors.categoryId}
+          onChange={(next) => setCategoryId(next ?? "")}
+        />
       </FormSection>
 
       <FormSection title="Ownership">

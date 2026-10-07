@@ -151,6 +151,9 @@ export const INCIDENT_STATUS_OPTIONS: IncidentDisplayStatus[] = [
   "Resolved",
 ];
 
+/** Module type used when linking tasks/evidence to an incident. */
+export const INCIDENT_SOURCE_MODULE = "incidents";
+
 export function formatResolutionTime(ms: number | null | undefined): string {
   if (ms == null || ms < 0) return "—";
   const hours = Math.floor(ms / (1000 * 60 * 60));

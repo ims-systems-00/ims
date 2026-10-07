@@ -15,6 +15,7 @@ export const NOTIFICATION_REFERENCE_TYPES = [
   "incidents",
   "audits",
   "management-reviews",
+  "kpi-objectives",
   "ofi",
   "suppliers",
   "customers",
@@ -23,6 +24,7 @@ export const NOTIFICATION_REFERENCE_TYPES = [
   "functional-units",
   "documents",
   "calendar",
+  "compliance",
 ] as const;
 export type NotificationReferenceType =
   (typeof NOTIFICATION_REFERENCE_TYPES)[number];

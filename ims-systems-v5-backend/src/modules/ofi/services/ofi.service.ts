@@ -12,10 +12,12 @@ import {
   ValidationAppError,
 } from "../../../shared";
 import type {
+  OfiComplianceLinkPort,
   OfiListScopePort,
   OfiNotificationPort,
   OfiTaskPort,
 } from "../ports";
+import { NoOpOfiComplianceLinkAdapter } from "../ports";
 import {
   newActivityEntry,
   newAttachmentId,
@@ -25,6 +27,7 @@ import {
   NUDGE_COOLDOWN_MS,
   OFI_RESOURCE,
   type AddOfiActivityInput,
+  type ComplianceLink,
   type CreateOfiInput,
   type ListOfisQuery,
   type Ofi,
@@ -93,12 +96,54 @@ export type OfiServiceDeps = {
   notifications: OfiNotificationPort;
   tasks: OfiTaskPort;
   listScope: OfiListScopePort;
+  complianceLinks?: OfiComplianceLinkPort;
 };
 
 export type OfiService = ReturnType<typeof createOfiService>;
 
+function mergeComplianceClause(
+  links: ComplianceLink[],
+  toolkitId: string,
+  clause: string
+): ComplianceLink[] {
+  const existing = links.find((link) => link.toolkitId === toolkitId);
+  if (!existing) {
+    return [...links, { toolkitId, clauseIds: [clause] }];
+  }
+  if (existing.clauseIds.includes(clause)) return links;
+  return links.map((link) =>
+    link.toolkitId === toolkitId
+      ? { ...link, clauseIds: [...link.clauseIds, clause] }
+      : link
+  );
+}
+
+function removeComplianceClause(
+  links: ComplianceLink[],
+  toolkitId: string,
+  clause: string
+): ComplianceLink[] {
+  return links
+    .map((link) =>
+      link.toolkitId === toolkitId
+        ? {
+            ...link,
+            clauseIds: link.clauseIds.filter((item) => item !== clause),
+          }
+        : link
+    )
+    .filter((link) => link.clauseIds.length > 0);
+}
+
 export function createOfiService(deps: OfiServiceDeps) {
-  const { repository, authorizer, notifications, tasks, listScope } = deps;
+  const {
+    repository,
+    authorizer,
+    notifications,
+    tasks,
+    listScope,
+    complianceLinks = new NoOpOfiComplianceLinkAdapter(),
+  } = deps;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -462,6 +507,31 @@ export function createOfiService(deps: OfiServiceDeps) {
       return updated;
     },
 
+    /**
+     * Cross-module follow-up from Activities: when a timeline entry is created
+     * against an OFI (`cips`), promote Pending → In Progress without appending
+     * a duplicate embedded activity (the Activity record is the source of truth
+     * for the shared Timeline UI).
+     */
+    async markInProgressIfPending(
+      organizationId: string,
+      ofiId: string
+    ): Promise<void> {
+      const existing = await repository.findById(organizationId, ofiId);
+      if (!existing) return;
+      if (existing.implemented.status !== "Pending") return;
+
+      await repository.update(organizationId, ofiId, {
+        implemented: {
+          status: "In Progress",
+          by: null,
+          on: null,
+        },
+        updatedBy: "activity-follow-up",
+        updatedOn: new Date(),
+      });
+    },
+
     async remove(
       identity: SecurityIdentity | null | undefined,
       id: string
@@ -484,6 +554,15 @@ export function createOfiService(deps: OfiServiceDeps) {
         organizationId: actor.organizationId,
         ofiId: existing.id,
       });
+
+      try {
+        await complianceLinks.clearOfiLinks({
+          organizationId: actor.organizationId,
+          ofiId: existing.id,
+        });
+      } catch {
+        // Evidence cleanup must not block OFI delete.
+      }
     },
 
     async removeAttachment(
@@ -538,7 +617,63 @@ export function createOfiService(deps: OfiServiceDeps) {
       if (!updated) {
         throw new NotFoundError("This OFI has been deleted or removed");
       }
+
+      try {
+        await complianceLinks.syncOfiLinks({
+          organizationId: actor.organizationId,
+          actorId: actor.identity.subjectId,
+          ofiId: updated.id,
+          previousLinks: existing.complianceLinks,
+          nextLinks: updated.complianceLinks,
+        });
+      } catch {
+        // Sync is best-effort; OFI links remain saved.
+      }
+
       return updated;
+    },
+
+    async mirrorAddComplianceClause(input: {
+      organizationId: string;
+      ofiId: string;
+      toolkitId: string;
+      clause: string;
+    }): Promise<void> {
+      const ofi = await repository.findById(input.organizationId, input.ofiId);
+      if (!ofi || ofi.deletedAt || ofi.implemented.status === "Implemented") {
+        return;
+      }
+      const next = mergeComplianceClause(
+        ofi.complianceLinks,
+        input.toolkitId,
+        input.clause
+      );
+      if (next === ofi.complianceLinks) return;
+      await repository.update(input.organizationId, input.ofiId, {
+        complianceLinks: next,
+        updatedBy: "system-compliance-mirror",
+        updatedOn: new Date(),
+      });
+    },
+
+    async mirrorRemoveComplianceClause(input: {
+      organizationId: string;
+      ofiId: string;
+      toolkitId: string;
+      clause: string;
+    }): Promise<void> {
+      const ofi = await repository.findById(input.organizationId, input.ofiId);
+      if (!ofi || ofi.deletedAt) return;
+      const next = removeComplianceClause(
+        ofi.complianceLinks,
+        input.toolkitId,
+        input.clause
+      );
+      await repository.update(input.organizationId, input.ofiId, {
+        complianceLinks: next,
+        updatedBy: "system-compliance-mirror",
+        updatedOn: new Date(),
+      });
     },
   };
 }

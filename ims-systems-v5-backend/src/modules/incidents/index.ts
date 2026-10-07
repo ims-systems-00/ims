@@ -34,12 +34,14 @@ export {
   NoOpIncidentNotificationAdapter,
   NoOpIncidentCalendarAdapter,
   NoOpIncidentTaskAdapter,
+  NoOpIncidentComplianceLinkAdapter,
   DevAllIncidentsListScopeAdapter,
 } from "./ports";
 export type {
   IncidentNotificationPort,
   IncidentCalendarPort,
   IncidentTaskPort,
+  IncidentComplianceLinkPort,
   IncidentListScopePort,
   IncidentListScope,
 } from "./ports";

@@ -1,10 +1,13 @@
 export {
   THEME_STORAGE_KEY,
+  THEME_CUSTOM_COLORS_KEY,
   THEME_CUSTOM_HEX_KEY,
   THEME_IDS,
   DEFAULT_THEME_ID,
+  DEFAULT_THEME_COLORS,
   DEFAULT_CUSTOM_HEX,
   themeOptions,
+  getThemePreset,
   isThemeId,
   isAppliedThemeId,
   resolveThemeId,
@@ -12,19 +15,33 @@ export {
   applyTheme,
   applyPresetTheme,
   applyCustomTheme,
+  applyCustomThemeColors,
   readStoredThemeId,
   readStoredCustomHex,
+  readStoredCustomColors,
   persistThemeId,
   persistCustomHex,
+  persistCustomColors,
+  presetMatchesColors,
   isValidHexColor,
   normalizeHexColor,
+  deriveThemeFromPrimary,
 } from "./presets";
-export type { ThemeId, AppliedThemeId, ThemePreset } from "./presets";
+export type {
+  ThemeId,
+  AppliedThemeId,
+  ThemePreset,
+  ThemeColors,
+} from "./presets";
 export {
   buildThemeTokensFromHex,
+  buildThemeTokensFromColors,
   hexToHsl,
   hexLuminance,
+  mixHex,
+  normalizeThemeColors,
   HEX_COLOR_PATTERN,
   CUSTOM_THEME_CSS_VARS,
+  THEME_COLOR_FIELDS,
 } from "./color-utils";
 export { ThemeProvider, useTheme } from "./theme-provider";

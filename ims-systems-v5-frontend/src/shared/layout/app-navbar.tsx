@@ -5,6 +5,7 @@ import { SearchInput } from "@/shared/components/search-input";
 import { cn } from "@/shared/lib/utils";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { ThemeSelector } from "./theme-selector";
+import { UserMenu } from "./user-menu";
 
 type AppNavbarProps = {
   breadcrumbs: BreadcrumbItem[];
@@ -83,6 +84,7 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
         >
           <Bell className="size-4" />
         </Button>
+        <UserMenu />
       </div>
     </header>
   );

@@ -6,14 +6,12 @@ import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import {
-  useAddOfiActivityMutation,
   useRemoveOfiAttachmentMutation,
   useUpdateOfiMutation,
 } from "../hooks/use-ofi";
-import { addOfiActivityFormSchema, attachmentFormSchema } from "../schemas";
+import { attachmentFormSchema } from "../schemas";
 import type { Ofi } from "../types";
 import { OfiStatusBadge } from "./ofi-badges";
-import { OfiRelatedTasks } from "./ofi-related-tasks";
 
 function Item({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -32,19 +30,6 @@ function formatDate(value: string | null | undefined): string {
     year: "numeric",
     month: "short",
     day: "numeric",
-  });
-}
-
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
   });
 }
 
@@ -86,8 +71,6 @@ type OfiDetailsProps = {
  */
 export function OfiDetails({ ofi }: OfiDetailsProps) {
   const [userSheetId, setUserSheetId] = useState<string | null>(null);
-  const [activityMessage, setActivityMessage] = useState("");
-  const [activityError, setActivityError] = useState<string | undefined>();
   const [attachName, setAttachName] = useState("");
   const [attachUrl, setAttachUrl] = useState("");
   const [attachError, setAttachError] = useState<string | undefined>();
@@ -96,36 +79,8 @@ export function OfiDetails({ ofi }: OfiDetailsProps) {
   >(null);
 
   const implemented = ofi.implemented.status === "Implemented";
-  const addActivityMutation = useAddOfiActivityMutation(ofi.id);
   const updateMutation = useUpdateOfiMutation(ofi.id);
   const removeAttachmentMutation = useRemoveOfiAttachmentMutation(ofi.id);
-
-  const activity = [...ofi.activity].sort(
-    (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
-  );
-
-  async function handleAddActivity(event: FormEvent) {
-    event.preventDefault();
-    const parsed = addOfiActivityFormSchema.safeParse({
-      message: activityMessage,
-    });
-    if (!parsed.success) {
-      setActivityError(parsed.error.issues[0]?.message ?? "Invalid message");
-      return;
-    }
-    setActivityError(undefined);
-    try {
-      await addActivityMutation.mutateAsync(parsed.data.message);
-      setActivityMessage("");
-      notify.success(
-        ofi.displayStatus === "Pending"
-          ? "Activity recorded — status moved to In Progress"
-          : "Activity recorded"
-      );
-    } catch (error) {
-      notify.fromError(error, "Unable to add activity");
-    }
-  }
 
   async function handleAddAttachment(event: FormEvent) {
     event.preventDefault();
@@ -222,52 +177,6 @@ export function OfiDetails({ ofi }: OfiDetailsProps) {
         </dl>
       </section>
 
-      {implemented ? (
-        <section className="space-y-2">
-          <h3 className="ims-text-section border-b border-border-subtle pb-2">
-            Implementation
-          </h3>
-          <dl className="ims-detail-grid">
-            <Item
-              label="Implemented by"
-              value={
-                <UserLabel
-                  userId={ofi.implemented.by}
-                  onOpen={(id) => setUserSheetId(id)}
-                />
-              }
-            />
-            <Item
-              label="Implemented on"
-              value={formatDateTime(ofi.implemented.on)}
-            />
-          </dl>
-        </section>
-      ) : null}
-
-      {ofi.complianceLinks.length > 0 ? (
-        <section className="space-y-2">
-          <h3 className="ims-text-section border-b border-border-subtle pb-2">
-            Linked controls
-          </h3>
-          <ul className="space-y-2">
-            {ofi.complianceLinks.map((link) => (
-              <li
-                key={link.toolkitId}
-                className="rounded-sm border border-border-subtle px-3 py-2 text-sm"
-              >
-                <p className="font-medium">{link.toolkitId}</p>
-                <p className="ims-text-meta">
-                  {link.clauseIds.length > 0
-                    ? link.clauseIds.join(", ")
-                    : "No clauses"}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
-
       <section className="space-y-3">
         <h3 className="ims-text-section border-b border-border-subtle pb-2">
           Attachments
@@ -345,66 +254,6 @@ export function OfiDetails({ ofi }: OfiDetailsProps) {
                 disabled={updateMutation.isPending}
               >
                 {updateMutation.isPending ? "Adding…" : "Add attachment"}
-              </Button>
-            </div>
-          </form>
-        ) : null}
-      </section>
-
-      <OfiRelatedTasks
-        ofiId={ofi.id}
-        businessUnitId={ofi.businessUnitId}
-        canLink={!implemented}
-      />
-
-      <section className="space-y-3">
-        <h3 className="ims-text-section border-b border-border-subtle pb-2">
-          Activity
-        </h3>
-        {activity.length === 0 ? (
-          <p className="ims-text-meta">No activity recorded yet.</p>
-        ) : (
-          <ol className="space-y-3">
-            {activity.map((entry) => (
-              <li key={entry.id} className="text-sm">
-                <p className="font-medium whitespace-pre-wrap">{entry.message}</p>
-                <p className="ims-text-meta">
-                  {entry.type} · {formatDateTime(entry.at)}
-                </p>
-              </li>
-            ))}
-          </ol>
-        )}
-
-        {!implemented ? (
-          <form
-            className="space-y-3 rounded-sm border border-border-subtle p-3"
-            onSubmit={(e) => void handleAddActivity(e)}
-          >
-            <FormField
-              label="Add progress note"
-              required
-              error={activityError}
-              description={
-                ofi.displayStatus === "Pending"
-                  ? "The first activity moves this OFI from Pending to In Progress."
-                  : undefined
-              }
-            >
-              <textarea
-                className="ims-field min-h-[4.5rem] py-2 leading-relaxed"
-                value={activityMessage}
-                disabled={addActivityMutation.isPending}
-                onChange={(event) => setActivityMessage(event.target.value)}
-              />
-            </FormField>
-            <div className="flex justify-end">
-              <Button
-                type="submit"
-                size="sm"
-                disabled={addActivityMutation.isPending}
-              >
-                {addActivityMutation.isPending ? "Saving…" : "Add activity"}
               </Button>
             </div>
           </form>

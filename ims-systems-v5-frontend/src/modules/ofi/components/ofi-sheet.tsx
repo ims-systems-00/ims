@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import {
+  ActivityTimeline,
+  SheetPanelTabs,
+} from "@/modules/activities";
 import {
   useCreateOfiMutation,
   useDeleteOfiMutation,
@@ -15,6 +19,9 @@ import {
 import type { CreateOfiInput, UpdateOfiInput } from "../types";
 import { OfiDetails, OfiDetailsLoading } from "./ofi-details";
 import { OfiForm, OfiFormActions } from "./ofi-form";
+import { OfiLifecyclePanel } from "./ofi-lifecycle-panel";
+import { OfiLinkedControls } from "./ofi-linked-controls";
+import { OfiRelatedTasks } from "./ofi-related-tasks";
 
 export type OfiSheetMode = "create" | "view" | "edit";
 
@@ -44,6 +51,11 @@ export function OfiSheet({
 }: OfiSheetProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [implementOpen, setImplementOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, ofiId]);
 
   const ofiQuery = useOfiQuery(mode === "create" ? undefined : (ofiId ?? undefined));
   const createMutation = useCreateOfiMutation();
@@ -243,7 +255,50 @@ export function OfiSheet({
           </p>
         ) : null}
 
-        {mode === "view" && ofi ? <OfiDetails ofi={ofi} /> : null}
+        {mode === "view" && ofi ? (
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "activity", label: "Activity" },
+                { id: "lifecycle", label: "Life Cycle" },
+                { id: "tasks", label: "Tasks" },
+                { id: "controls", label: "Linked controls" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? <OfiDetails ofi={ofi} /> : null}
+            {panelTab === "activity" ? (
+              <ActivityTimeline
+                moduleType="cips"
+                moduleId={ofi.id}
+                readOnly={implemented}
+                title="Activity"
+                addLabel="Add comment"
+                emptyTitle="No activities found"
+                emptyDescription={
+                  ofi.displayStatus === "Pending"
+                    ? "The first activity moves this OFI from Pending to In Progress."
+                    : "Comments and system events for this OFI will appear here."
+                }
+              />
+            ) : null}
+            {panelTab === "lifecycle" ? (
+              <OfiLifecyclePanel ofi={ofi} />
+            ) : null}
+            {panelTab === "tasks" ? (
+              <OfiRelatedTasks
+                ofiId={ofi.id}
+                businessUnitId={ofi.businessUnitId}
+                canLink={!implemented}
+              />
+            ) : null}
+            {panelTab === "controls" ? (
+              <OfiLinkedControls ofi={ofi} canEdit={!implemented} />
+            ) : null}
+          </>
+        ) : null}
 
         {mode === "edit" && ofi ? (
           implemented ? (

@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import {
+  ActivityTimeline,
+  SheetPanelTabs,
+} from "@/modules/activities";
 import {
   useCreateIncidentMutation,
   useDeleteIncidentMutation,
@@ -19,6 +23,9 @@ import {
   IncidentDetailsLoading,
 } from "./incident-details";
 import { IncidentForm, IncidentFormActions } from "./incident-form";
+import { IncidentLifecyclePanel } from "./incident-lifecycle-panel";
+import { IncidentLinkedControls } from "./incident-linked-controls";
+import { IncidentRelatedTasks } from "./incident-related-tasks";
 
 export type IncidentSheetMode = "create" | "view" | "edit";
 
@@ -56,6 +63,11 @@ export function IncidentSheet({
   const [removingAttachmentId, setRemovingAttachmentId] = useState<
     string | null
   >(null);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, incidentId]);
 
   const incidentQuery = useIncidentQuery(
     mode === "create" ? undefined : (incidentId ?? undefined)
@@ -277,13 +289,54 @@ export function IncidentSheet({
         ) : null}
 
         {mode === "view" && incident ? (
-          <IncidentDetails
-            incident={incident}
-            onRemoveAttachment={
-              !resolved ? (id) => void handleRemoveAttachment(id) : undefined
-            }
-            removingAttachmentId={removingAttachmentId}
-          />
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "activity", label: "Activity" },
+                { id: "lifecycle", label: "Life Cycle" },
+                { id: "tasks", label: "Tasks" },
+                { id: "controls", label: "Linked controls" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? (
+              <IncidentDetails
+                incident={incident}
+                onRemoveAttachment={
+                  !resolved
+                    ? (id) => void handleRemoveAttachment(id)
+                    : undefined
+                }
+                removingAttachmentId={removingAttachmentId}
+              />
+            ) : null}
+            {panelTab === "activity" ? (
+              <ActivityTimeline
+                moduleType="incidents"
+                moduleId={incident.id}
+                readOnly={resolved}
+                title="Activity"
+              />
+            ) : null}
+            {panelTab === "lifecycle" ? (
+              <IncidentLifecyclePanel incident={incident} />
+            ) : null}
+            {panelTab === "tasks" ? (
+              <IncidentRelatedTasks
+                incidentId={incident.id}
+                businessUnitId={incident.businessUnitId}
+                canLink={!resolved}
+              />
+            ) : null}
+            {panelTab === "controls" ? (
+              <IncidentLinkedControls
+                incident={incident}
+                canEdit={!resolved}
+              />
+            ) : null}
+          </>
         ) : null}
 
         {mode === "edit" && incident ? (

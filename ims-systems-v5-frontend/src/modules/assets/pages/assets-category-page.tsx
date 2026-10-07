@@ -11,6 +11,12 @@ import { PageHeader } from "@/shared/layout";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import {
+  CategoryMultiFilter,
+  ModuleViewTabs,
+  TagsManagementPanel,
+  assetCategoryToTagModule,
+} from "@/modules/tags-and-categories";
+import {
   AssetSheet,
   type AssetSheetMode,
 } from "../components/asset-sheet";
@@ -50,6 +56,8 @@ export function AssetsCategoryPage({ category }: AssetsCategoryPageProps) {
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [categoryIds, setCategoryIds] = useState<string[]>([]);
+  const [view, setView] = useState<"records" | "categories">("records");
   const [editMode, setEditMode] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(
     null
@@ -72,13 +80,16 @@ export function AssetsCategoryPage({ category }: AssetsCategoryPageProps) {
       ? "edit"
       : "view";
 
+  const tagModule = assetCategoryToTagModule(category);
+
   const queryParams = useMemo(
     () => ({
       page,
       pageSize: 10,
       search: search || undefined,
+      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
     }),
-    [page, search]
+    [page, search, categoryIds]
   );
 
   const listQuery = useAssetsQuery(category, queryParams);
@@ -134,13 +145,30 @@ export function AssetsCategoryPage({ category }: AssetsCategoryPageProps) {
         title={meta.label}
         description={`Inventory register for ${meta.label.toLowerCase()} assets.`}
         actions={
-          <Button type="button" onClick={openCreate}>
-            <Plus />
-            {meta.createLabel}
-          </Button>
+          view === "records" ? (
+            <Button type="button" onClick={openCreate}>
+              <Plus />
+              {meta.createLabel}
+            </Button>
+          ) : null
         }
       />
 
+      <ModuleViewTabs
+        recordsLabel={meta.label}
+        categoriesLabel="Categories"
+        value={view}
+        onChange={setView}
+      />
+
+      {view === "categories" ? (
+        <TagsManagementPanel
+          applicableModule={tagModule}
+          title={`${meta.label} categories`}
+          description={`Classify ${meta.label.toLowerCase()} assets for reporting and filtering. Categories created here are available when adding or editing a ${meta.singular.toLowerCase()}.`}
+        />
+      ) : (
+        <>
       <div className="ims-toolbar">
         <SearchInput
           placeholder={`Search ${meta.label.toLowerCase()}`}
@@ -149,6 +177,29 @@ export function AssetsCategoryPage({ category }: AssetsCategoryPageProps) {
           value={searchInput}
           onChange={(event) => setSearchInput(event.target.value)}
         />
+        <CategoryMultiFilter
+          applicableModule={tagModule}
+          value={categoryIds}
+          onChange={(next) => {
+            setPage(1);
+            setCategoryIds(next);
+          }}
+        />
+        {search || categoryIds.length > 0 ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchInput("");
+              setSearch("");
+              setCategoryIds([]);
+              setPage(1);
+            }}
+          >
+            Clear
+          </Button>
+        ) : null}
       </div>
 
       {listQuery.isLoading ? (
@@ -166,13 +217,13 @@ export function AssetsCategoryPage({ category }: AssetsCategoryPageProps) {
         <EmptyState
           icon={<Package />}
           title={
-            search
-              ? `No ${meta.label.toLowerCase()} assets match your search`
+            search || categoryIds.length > 0
+              ? `No ${meta.label.toLowerCase()} assets match your filters`
               : `No ${meta.label.toLowerCase()} assets yet`
           }
           description={
-            search
-              ? "Try a different search term."
+            search || categoryIds.length > 0
+              ? "Try clearing filters or adjusting your search."
               : `Add a ${meta.singular.toLowerCase()} to start building this inventory.`
           }
         />
@@ -280,6 +331,8 @@ export function AssetsCategoryPage({ category }: AssetsCategoryPageProps) {
           </Button>
         </div>
       ) : null}
+        </>
+      )}
 
       <AssetSheet
         category={category}

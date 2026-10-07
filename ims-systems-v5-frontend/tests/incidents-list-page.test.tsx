@@ -6,6 +6,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/shared/theme";
 import { IncidentsListPage } from "@/modules/incidents";
 import * as incidentsApi from "@/modules/incidents/api/incidents";
+import * as complianceApi from "@/modules/compliance/api/compliance";
+import * as tasksApi from "@/modules/tasks/api/tasks";
 import * as usersApi from "@/modules/users/api/users";
 import * as fuApi from "@/modules/functional-units/api/functional-units";
 import type { Incident } from "@/modules/incidents/types";
@@ -288,6 +290,96 @@ describe("IncidentsListPage", () => {
       screen.getByRole("button", { name: /^escalate$/i })
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /^nudge$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^details$/i })).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^activity$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /^life cycle$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^tasks$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /^linked controls$/i })
+    ).toBeInTheDocument();
+  }, 15_000);
+
+  it("shows lifecycle timeline and linked controls panels", async () => {
+    const user = userEvent.setup();
+    stubLookups();
+    const incident = makeIncident({
+      escalated: {
+        status: true,
+        by: "bbbbbbbbbbbbbbbbbbbbbbbb",
+        on: new Date().toISOString(),
+      },
+      displayStatus: "Escalated",
+      complianceLinks: [{ toolkitId: "ISO 9001", clauseIds: ["4.1"] }],
+    });
+    vi.spyOn(incidentsApi, "listIncidents").mockResolvedValue({
+      items: [incident],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(incidentsApi, "getIncidentStats").mockResolvedValue({
+      total: 1,
+      open: 0,
+      escalated: 1,
+      resolved: 0,
+      byPriority: { P1: 0, P2: 1, P3: 0, P4: 0 },
+    });
+    vi.spyOn(incidentsApi, "getIncident").mockResolvedValue(incident);
+    vi.spyOn(complianceApi, "listCatalogueControls").mockResolvedValue({
+      items: [
+        {
+          id: "cccccccccccccccccccccccc",
+          name: "ISO 9001",
+          clause: "4.1",
+          title: "Understanding the organization",
+          isLocked: false,
+          parentClause: "4",
+        },
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(tasksApi, "listTasks").mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 1,
+    });
+
+    renderIncidentsPage();
+
+    await waitFor(() => {
+      expect(screen.getByText("Server room water leak")).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("Server room water leak"));
+    await user.click(await screen.findByRole("tab", { name: /^life cycle$/i }));
+    expect(await screen.findByText("Current status")).toBeInTheDocument();
+    expect(screen.getAllByText("Escalated").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Raised").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not yet").length).toBeGreaterThan(0);
+
+    await user.click(
+      screen.getByRole("tab", { name: /^linked controls$/i })
+    );
+    expect(
+      (await screen.findAllByText("ISO 9001")).length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("4.1").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/understanding the organization/i)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /^tasks$/i }));
+    expect(
+      await screen.findByText(/no tasks linked to this incident/i)
+    ).toBeInTheDocument();
   }, 15_000);
 
   it("shows forbidden state", async () => {

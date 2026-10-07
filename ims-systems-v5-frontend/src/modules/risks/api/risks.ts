@@ -7,6 +7,7 @@ import type {
   PaginatedRisks,
   Risk,
   RiskStats,
+  SetComplianceLinksInput,
   UpdateRiskInput,
 } from "../types";
 
@@ -80,6 +81,16 @@ export function acceptRisk(
   body: { acceptanceRationale: string; decisionMaker?: string }
 ): Promise<Risk> {
   return apiRequest<Risk>(`/risks/${id}/accept`, { method: "POST", body });
+}
+
+export function setRiskComplianceLinks(
+  id: string,
+  body: SetComplianceLinksInput
+): Promise<Risk> {
+  return apiRequest<Risk>(`/risks/${id}/compliance-links`, {
+    method: "PUT",
+    body,
+  });
 }
 
 /**

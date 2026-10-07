@@ -13,10 +13,12 @@ import {
 } from "../../../shared";
 import type {
   IncidentCalendarPort,
+  IncidentComplianceLinkPort,
   IncidentListScopePort,
   IncidentNotificationPort,
   IncidentTaskPort,
 } from "../ports";
+import { NoOpIncidentComplianceLinkAdapter } from "../ports";
 import {
   newActivityEntry,
   newAttachmentId,
@@ -26,6 +28,7 @@ import {
 import {
   INCIDENTS_RESOURCE,
   NUDGE_COOLDOWN_MS,
+  type ComplianceLink,
   type CreateIncidentInput,
   type Incident,
   type IncidentAttachment,
@@ -103,13 +106,55 @@ export type IncidentServiceDeps = {
   calendar: IncidentCalendarPort;
   tasks: IncidentTaskPort;
   listScope: IncidentListScopePort;
+  complianceLinks?: IncidentComplianceLinkPort;
 };
 
 export type IncidentService = ReturnType<typeof createIncidentService>;
 
+function mergeComplianceClause(
+  links: ComplianceLink[],
+  toolkitId: string,
+  clause: string
+): ComplianceLink[] {
+  const existing = links.find((link) => link.toolkitId === toolkitId);
+  if (!existing) {
+    return [...links, { toolkitId, clauseIds: [clause] }];
+  }
+  if (existing.clauseIds.includes(clause)) return links;
+  return links.map((link) =>
+    link.toolkitId === toolkitId
+      ? { ...link, clauseIds: [...link.clauseIds, clause] }
+      : link
+  );
+}
+
+function removeComplianceClause(
+  links: ComplianceLink[],
+  toolkitId: string,
+  clause: string
+): ComplianceLink[] {
+  return links
+    .map((link) =>
+      link.toolkitId === toolkitId
+        ? {
+            ...link,
+            clauseIds: link.clauseIds.filter((item) => item !== clause),
+          }
+        : link
+    )
+    .filter((link) => link.clauseIds.length > 0);
+}
+
 export function createIncidentService(deps: IncidentServiceDeps) {
-  const { repository, authorizer, notifications, calendar, tasks, listScope } =
-    deps;
+  const {
+    repository,
+    authorizer,
+    notifications,
+    calendar,
+    tasks,
+    listScope,
+    complianceLinks = new NoOpIncidentComplianceLinkAdapter(),
+  } = deps;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -517,6 +562,15 @@ export function createIncidentService(deps: IncidentServiceDeps) {
         incidentId: existing.id,
       });
 
+      try {
+        await complianceLinks.clearIncidentLinks({
+          organizationId: actor.organizationId,
+          incidentId: existing.id,
+        });
+      } catch {
+        // Evidence cleanup must not block incident delete.
+      }
+
       if (existing.priority === "P1") {
         await calendar.removePriorityEvent({
           organizationId: actor.organizationId,
@@ -578,7 +632,67 @@ export function createIncidentService(deps: IncidentServiceDeps) {
         ),
       });
       if (!updated) throw new NotFoundError("Incident not found");
+
+      try {
+        await complianceLinks.syncIncidentLinks({
+          organizationId: actor.organizationId,
+          actorId: actor.identity.subjectId,
+          incidentId: updated.id,
+          previousLinks: existing.complianceLinks,
+          nextLinks: updated.complianceLinks,
+        });
+      } catch {
+        // Sync is best-effort; incident links remain saved.
+      }
+
       return updated;
+    },
+
+    async mirrorAddComplianceClause(input: {
+      organizationId: string;
+      incidentId: string;
+      toolkitId: string;
+      clause: string;
+    }): Promise<void> {
+      const incident = await repository.findById(
+        input.organizationId,
+        input.incidentId
+      );
+      if (!incident || incident.deletedAt || incident.resolved.status) return;
+      const next = mergeComplianceClause(
+        incident.complianceLinks,
+        input.toolkitId,
+        input.clause
+      );
+      if (next === incident.complianceLinks) return;
+      await repository.update(input.organizationId, input.incidentId, {
+        complianceLinks: next,
+        updatedBy: "system-compliance-mirror",
+        updatedOn: new Date(),
+      });
+    },
+
+    async mirrorRemoveComplianceClause(input: {
+      organizationId: string;
+      incidentId: string;
+      toolkitId: string;
+      clause: string;
+    }): Promise<void> {
+      const incident = await repository.findById(
+        input.organizationId,
+        input.incidentId
+      );
+      if (!incident || incident.deletedAt) return;
+      const next = removeComplianceClause(
+        incident.complianceLinks,
+        input.toolkitId,
+        input.clause
+      );
+      await repository.update(input.organizationId, input.incidentId, {
+        complianceLinks: next,
+        updatedBy: "system-compliance-mirror",
+        updatedOn: new Date(),
+      });
     },
 
     async stats(

@@ -183,3 +183,6 @@ export const AUDIT_STATUS_OPTIONS: AuditDisplayStatus[] = [
   "Scheduled",
   "Completed",
 ];
+
+/** Module type used when linking tasks to an audit. */
+export const AUDIT_SOURCE_MODULE = "audits";

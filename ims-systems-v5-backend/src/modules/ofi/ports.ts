@@ -78,4 +78,35 @@ export class DevAllOfisListScopeAdapter implements OfiListScopePort {
   }
 }
 
+export type OfiComplianceLinkPair = {
+  toolkitId: string;
+  clauseIds: string[];
+};
+
+/**
+ * Sync OFI compliance links into Compliance control evidence (cip type).
+ */
+export type OfiComplianceLinkPort = {
+  syncOfiLinks(input: {
+    organizationId: string;
+    actorId: string;
+    ofiId: string;
+    previousLinks: OfiComplianceLinkPair[];
+    nextLinks: OfiComplianceLinkPair[];
+  }): Promise<void>;
+  clearOfiLinks(input: {
+    organizationId: string;
+    ofiId: string;
+  }): Promise<void>;
+};
+
+export class NoOpOfiComplianceLinkAdapter implements OfiComplianceLinkPort {
+  async syncOfiLinks(): Promise<void> {
+    return;
+  }
+  async clearOfiLinks(): Promise<void> {
+    return;
+  }
+}
+
 export type { Ofi };

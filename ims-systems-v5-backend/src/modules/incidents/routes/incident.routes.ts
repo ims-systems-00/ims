@@ -3,9 +3,11 @@ import type { Authorizer } from "../../../security";
 import {
   DevAllIncidentsListScopeAdapter,
   NoOpIncidentCalendarAdapter,
+  NoOpIncidentComplianceLinkAdapter,
   NoOpIncidentNotificationAdapter,
   NoOpIncidentTaskAdapter,
   type IncidentCalendarPort,
+  type IncidentComplianceLinkPort,
   type IncidentListScopePort,
   type IncidentNotificationPort,
   type IncidentTaskPort,
@@ -23,6 +25,7 @@ export type IncidentRouterDeps = {
   calendar?: IncidentCalendarPort;
   tasks?: IncidentTaskPort;
   listScope?: IncidentListScopePort;
+  complianceLinks?: IncidentComplianceLinkPort;
 };
 
 /**
@@ -41,6 +44,8 @@ export function createIncidentModule(deps: IncidentRouterDeps): {
     calendar: deps.calendar ?? new NoOpIncidentCalendarAdapter(),
     tasks: deps.tasks ?? new NoOpIncidentTaskAdapter(),
     listScope: deps.listScope ?? new DevAllIncidentsListScopeAdapter(),
+    complianceLinks:
+      deps.complianceLinks ?? new NoOpIncidentComplianceLinkAdapter(),
   });
   const controller = createIncidentController(service);
   const router = Router();

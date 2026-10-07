@@ -6,6 +6,7 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/shared/theme";
 import { UsersListPage } from "@/modules/users";
 import * as usersApi from "@/modules/users/api/users";
+import * as fuApi from "@/modules/functional-units/api/functional-units";
 import type { UserWithMembership } from "@/modules/users/types";
 
 afterEach(() => {
@@ -55,10 +56,62 @@ function makeUserDetail(
       userId: "100000000000000000000001",
       role: "Super User",
       jobTitle: "Head of Operations",
-      groupIds: [],
+      groupIds: ["200000000000000000000001", "200000000000000000000003"],
       lineManagerIds: [],
     },
   };
+}
+
+function stubFunctionalUnits() {
+  const now = new Date().toISOString();
+  vi.spyOn(fuApi, "listFunctionalUnits").mockResolvedValue({
+    items: [
+      {
+        id: "200000000000000000000001",
+        organizationId: "000000000000000000000001",
+        reference: "FU-OPS",
+        name: "Operations",
+        accessType: "Internal business function",
+        responsibility: "Ops",
+        totalMembers: 3,
+        complianceToolkits: [],
+        userLicences: {
+          superUser: { allocated: 0, used: 0 },
+          hosUser: { allocated: 0, used: 0 },
+          basicUser: { allocated: 0, used: 0 },
+          auditorUser: { allocated: 0, used: 0 },
+        },
+        isSystemDefault: false,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+      {
+        id: "200000000000000000000003",
+        organizationId: "000000000000000000000001",
+        reference: "FU-COMP",
+        name: "Compliance",
+        accessType: "Internal business function",
+        responsibility: "Compliance",
+        totalMembers: 2,
+        complianceToolkits: [],
+        userLicences: {
+          superUser: { allocated: 0, used: 0 },
+          hosUser: { allocated: 0, used: 0 },
+          basicUser: { allocated: 0, used: 0 },
+          auditorUser: { allocated: 0, used: 0 },
+        },
+        isSystemDefault: false,
+        deletedAt: null,
+        createdAt: now,
+        updatedAt: now,
+      },
+    ],
+    page: 1,
+    pageSize: 100,
+    total: 2,
+    totalPages: 1,
+  });
 }
 
 function renderUsersPage(initial = "/users") {
@@ -85,6 +138,7 @@ function renderUsersPage(initial = "/users") {
 describe("UsersListPage user details", () => {
   it("opens user details from the row actions menu", async () => {
     const user = userEvent.setup();
+    stubFunctionalUnits();
     vi.spyOn(usersApi, "listUsers").mockResolvedValue({
       items: [
         {
@@ -128,6 +182,76 @@ describe("UsersListPage user details", () => {
     });
     expect(screen.getByText("USR-DEMO-001")).toBeInTheDocument();
     expect(screen.getAllByText("Head of Operations").length).toBeGreaterThan(0);
+    expect(
+      await screen.findByRole("heading", { name: /^business units$/i })
+    ).toBeInTheDocument();
+    expect(await screen.findByText("Operations")).toBeInTheDocument();
+    expect(screen.getByText("Compliance")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /edit profile/i })
+    ).toBeInTheDocument();
+  }, 15_000);
+
+  it("edits own profile name from user details", async () => {
+    const user = userEvent.setup();
+    stubFunctionalUnits();
+    const detail = makeUserDetail();
+    vi.spyOn(usersApi, "listUsers").mockResolvedValue({
+      items: [
+        {
+          user: {
+            id: detail.user.id,
+            reference: detail.user.reference,
+            name: detail.user.name,
+            email: detail.user.email,
+            systemAccess: { status: "Active" },
+            loggedIn: { status: null, on: null },
+          },
+          membership: {
+            userId: detail.user.id,
+            role: "Super User",
+            jobTitle: "Head of Operations",
+          },
+        },
+      ],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(usersApi, "getUser").mockResolvedValue(detail);
+    const update = vi.spyOn(usersApi, "updateUserProfile").mockResolvedValue({
+      ...detail.user,
+      firstName: "Augusta",
+      lastName: "Lovelace",
+      name: "Augusta Lovelace",
+    });
+
+    renderUsersPage();
+
+    await user.click(
+      await screen.findByRole("button", { name: /Actions for Ada Lovelace/i })
+    );
+    await user.click(await screen.findByRole("menuitem", { name: /Details/i }));
+    await user.click(
+      await screen.findByRole("button", { name: /edit profile/i })
+    );
+
+    expect(
+      await screen.findByRole("heading", { name: /^edit profile$/i })
+    ).toBeInTheDocument();
+
+    const firstName = screen.getByRole("textbox", { name: /first name/i });
+    await user.clear(firstName);
+    await user.type(firstName, "Augusta");
+    await user.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(update).toHaveBeenCalledWith("100000000000000000000001", {
+        firstName: "Augusta",
+        lastName: "Lovelace",
+      });
+    });
   }, 15_000);
 
   it("shows forbidden state in user details", async () => {

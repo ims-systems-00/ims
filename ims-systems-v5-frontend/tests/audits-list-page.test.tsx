@@ -6,6 +6,8 @@ import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/shared/theme";
 import { InternalAuditsListPage } from "@/modules/audits";
 import * as auditsApi from "@/modules/audits/api/audits";
+import * as complianceApi from "@/modules/compliance/api/compliance";
+import * as tasksApi from "@/modules/tasks/api/tasks";
 import * as usersApi from "@/modules/users/api/users";
 import * as fuApi from "@/modules/functional-units/api/functional-units";
 import type { Audit } from "@/modules/audits/types";
@@ -306,6 +308,90 @@ describe("InternalAuditsListPage", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /^complete$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^details$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /^life cycle$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole("tab", { name: /^tasks$/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("tab", { name: /^linked controls$/i })
+    ).toBeInTheDocument();
+  }, 15_000);
+
+  it("shows lifecycle timeline and linked controls panels", async () => {
+    const user = userEvent.setup();
+    stubLookups();
+    const audit = makeAudit({
+      complianceLinks: [{ toolkitId: "ISO 9001", clauseIds: ["4.1"] }],
+    });
+    vi.spyOn(auditsApi, "listAudits").mockResolvedValue({
+      items: [audit],
+      page: 1,
+      pageSize: 10,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(auditsApi, "getAuditStats").mockResolvedValue({
+      total: 1,
+      scheduled: 1,
+      completed: 0,
+      upcoming: 0,
+      byType: { Internal: 1, External: 0 },
+    });
+    vi.spyOn(auditsApi, "getAudit").mockResolvedValue(audit);
+    vi.spyOn(complianceApi, "listCatalogueControls").mockResolvedValue({
+      items: [
+        {
+          id: "cccccccccccccccccccccccc",
+          name: "ISO 9001",
+          clause: "4.1",
+          title: "Understanding the organization",
+          isLocked: false,
+          parentClause: "4",
+        },
+      ],
+      page: 1,
+      pageSize: 100,
+      total: 1,
+      totalPages: 1,
+    });
+    vi.spyOn(tasksApi, "listTasks").mockResolvedValue({
+      items: [],
+      page: 1,
+      pageSize: 20,
+      total: 0,
+      totalPages: 1,
+    });
+
+    renderAuditsPage();
+
+    await waitFor(() => {
+      expect(
+        screen.getByText("ISO 27001 internal review")
+      ).toBeInTheDocument();
+    });
+
+    await user.click(screen.getByText("ISO 27001 internal review"));
+    await user.click(await screen.findByRole("tab", { name: /^life cycle$/i }));
+    expect(await screen.findByText("Current status")).toBeInTheDocument();
+    expect(screen.getAllByText("Scheduled").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not yet").length).toBeGreaterThan(0);
+
+    await user.click(
+      screen.getByRole("tab", { name: /^linked controls$/i })
+    );
+    expect(
+      (await screen.findAllByText("ISO 9001")).length
+    ).toBeGreaterThan(0);
+    expect(screen.getAllByText("4.1").length).toBeGreaterThan(0);
+    expect(
+      screen.getByText(/understanding the organization/i)
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: /^tasks$/i }));
+    expect(
+      await screen.findByText(/no tasks linked to this audit/i)
     ).toBeInTheDocument();
   }, 15_000);
 

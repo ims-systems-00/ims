@@ -7,23 +7,30 @@ import {
   type ReactNode,
 } from "react";
 import {
-  applyCustomTheme,
+  applyCustomThemeColors,
   applyPresetTheme,
-  persistCustomHex,
+  DEFAULT_THEME_COLORS,
+  persistCustomColors,
   persistThemeId,
-  readStoredCustomHex,
+  readStoredCustomColors,
   readStoredThemeId,
   type AppliedThemeId,
+  type ThemeColors,
   type ThemeId,
   themeOptions,
 } from "./presets";
-import { normalizeHexColor } from "./color-utils";
+import { deriveThemeFromPrimary, normalizeHexColor } from "./color-utils";
 
 type ThemeContextValue = {
   themeId: AppliedThemeId;
+  /** Active 4-shade palette (preset or custom). */
+  colors: ThemeColors;
+  /** Convenience: primary hex (custom drafts / legacy). */
   customHex: string;
   isCustom: boolean;
   setThemeId: (themeId: ThemeId) => void;
+  setCustomColors: (colors: Partial<ThemeColors>) => boolean;
+  /** Derive remaining shades from primary and apply (V4 “Generate from primary”). */
   setCustomHex: (hex: string) => boolean;
   themes: typeof themeOptions;
 };
@@ -34,13 +41,22 @@ type ThemeProviderProps = {
   children: ReactNode;
 };
 
+function colorsForTheme(
+  themeId: AppliedThemeId,
+  custom: ThemeColors
+): ThemeColors {
+  if (themeId === "custom") return custom;
+  const preset = themeOptions.find((theme) => theme.id === themeId);
+  return preset?.colors ?? DEFAULT_THEME_COLORS;
+}
+
 export function ThemeProvider({ children }: ThemeProviderProps) {
   const [themeId, setThemeIdState] = useState<AppliedThemeId>(() => {
     const initial = readStoredThemeId();
-    const hex = readStoredCustomHex();
+    const custom = readStoredCustomColors();
     if (typeof document !== "undefined") {
       if (initial === "custom") {
-        applyCustomTheme(hex);
+        applyCustomThemeColors(custom);
       } else {
         applyPresetTheme(initial);
       }
@@ -48,8 +64,8 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     return initial;
   });
 
-  const [customHex, setCustomHexState] = useState<string>(() =>
-    readStoredCustomHex()
+  const [customColors, setCustomColorsState] = useState<ThemeColors>(() =>
+    readStoredCustomColors()
   );
 
   const setThemeId = useCallback((next: ThemeId) => {
@@ -58,29 +74,51 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     persistThemeId(next);
   }, []);
 
-  const setCustomHex = useCallback((hex: string) => {
-    const normalized = normalizeHexColor(hex);
-    if (!normalized) return false;
-    setCustomHexState(normalized);
+  const setCustomColors = useCallback((next: Partial<ThemeColors>) => {
+    const applied = applyCustomThemeColors(next);
+    if (!applied) return false;
+    setCustomColorsState(applied);
     setThemeIdState("custom");
-    const applied = applyCustomTheme(normalized);
-    if (applied) {
-      persistThemeId("custom");
-      persistCustomHex(normalized);
-    }
-    return applied;
+    persistThemeId("custom");
+    persistCustomColors(applied);
+    return true;
   }, []);
+
+  const setCustomHex = useCallback(
+    (hex: string) => {
+      const normalized = normalizeHexColor(hex);
+      if (!normalized) return false;
+      const palette = deriveThemeFromPrimary(normalized);
+      if (!palette) return false;
+      return setCustomColors(palette);
+    },
+    [setCustomColors]
+  );
+
+  const colors = useMemo(
+    () => colorsForTheme(themeId, customColors),
+    [themeId, customColors]
+  );
 
   const value = useMemo(
     () => ({
       themeId,
-      customHex,
+      colors,
+      customHex: customColors.primary,
       isCustom: themeId === "custom",
       setThemeId,
+      setCustomColors,
       setCustomHex,
       themes: themeOptions,
     }),
-    [themeId, customHex, setThemeId, setCustomHex]
+    [
+      themeId,
+      colors,
+      customColors.primary,
+      setThemeId,
+      setCustomColors,
+      setCustomHex,
+    ]
   );
 
   return (

@@ -51,15 +51,15 @@ export function AppSidebar({
             collapsed && "md:justify-center md:px-2"
           )}
         >
-          <Link
-            to="/"
-            className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary"
-            onClick={() => onMobileOpenChange(false)}
-          >
-            <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-sidebar-primary text-[0.625rem] font-semibold tracking-wide text-sidebar">
-              iMS
-            </span>
-            {!collapsed ? (
+          {!collapsed ? (
+            <Link
+              to="/"
+              className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary"
+              onClick={() => onMobileOpenChange(false)}
+            >
+              <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-sidebar-primary text-[0.625rem] font-semibold tracking-wide text-sidebar">
+                iMS
+              </span>
               <span className="min-w-0">
                 <span className="block truncate text-[0.8125rem] font-semibold tracking-[-0.01em]">
                   IMS Systems
@@ -68,13 +68,16 @@ export function AppSidebar({
                   Platform V5
                 </span>
               </span>
-            ) : null}
-          </Link>
+            </Link>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            className="ml-auto hidden text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:inline-flex"
+            className={cn(
+              "hidden text-sidebar-muted hover:bg-sidebar-accent hover:text-sidebar-accent-foreground md:inline-flex",
+              !collapsed && "ml-auto"
+            )}
             aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
             onClick={() => onCollapsedChange(!collapsed)}
           >
@@ -86,7 +89,10 @@ export function AppSidebar({
           </Button>
         </div>
 
-        <nav className="flex-1 overflow-y-auto px-2 py-3" aria-label="Primary">
+        <nav
+          className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          aria-label="Primary"
+        >
           {navigationSections.map((section) => (
             <div key={section.id} className="mb-5">
               {!collapsed ? (
@@ -96,7 +102,7 @@ export function AppSidebar({
               ) : (
                 <span className="sr-only">{section.label}</span>
               )}
-              <div className="space-y-0.5">
+              <div className="space-y-1.5">
                 {section.items.map((item) => (
                   <SidebarNavItem
                     key={item.id}

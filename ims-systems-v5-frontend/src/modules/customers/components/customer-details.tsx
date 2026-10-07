@@ -5,6 +5,7 @@ import { notify } from "@/shared/lib/toast";
 import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
+import { CategoryLabel } from "@/modules/tags-and-categories";
 import {
   useCustomerOverviewQuery,
   useRemoveCustomerAttachmentMutation,
@@ -170,6 +171,15 @@ export function CustomerDetails({ customer }: { customer: Customer }) {
           <Item
             label="Business unit"
             value={<BusinessUnitLabel id={customer.businessUnitId} />}
+          />
+          <Item
+            label="Category"
+            value={
+              <CategoryLabel
+                categoryId={customer.categoryId}
+                showPrefix={false}
+              />
+            }
           />
           <Item
             label="Account manager"

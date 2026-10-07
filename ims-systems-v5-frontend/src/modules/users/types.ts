@@ -122,3 +122,8 @@ export type UserWithMembership = {
   user: User;
   membership: OrgMembershipView | null;
 };
+
+export type UpdateUserProfileInput = {
+  firstName?: string;
+  lastName?: string;
+};

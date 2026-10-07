@@ -93,6 +93,39 @@ export class NoOpIncidentTaskAdapter implements IncidentTaskPort {
   }
 }
 
+export type IncidentComplianceLinkPair = {
+  toolkitId: string;
+  clauseIds: string[];
+};
+
+/**
+ * Sync incident compliance links into Compliance control evidence.
+ */
+export type IncidentComplianceLinkPort = {
+  syncIncidentLinks(input: {
+    organizationId: string;
+    actorId: string;
+    incidentId: string;
+    previousLinks: IncidentComplianceLinkPair[];
+    nextLinks: IncidentComplianceLinkPair[];
+  }): Promise<void>;
+  clearIncidentLinks(input: {
+    organizationId: string;
+    incidentId: string;
+  }): Promise<void>;
+};
+
+export class NoOpIncidentComplianceLinkAdapter
+  implements IncidentComplianceLinkPort
+{
+  async syncIncidentLinks(): Promise<void> {
+    return;
+  }
+  async clearIncidentLinks(): Promise<void> {
+    return;
+  }
+}
+
 /**
  * Role-based list visibility (Super Admin / Auditor → all;
  * HoS / Basic → BU + unassigned; External → BU only).

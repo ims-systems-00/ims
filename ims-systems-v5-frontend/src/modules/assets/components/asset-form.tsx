@@ -1,6 +1,10 @@
 import { useState, type FormEvent } from "react";
 import { Button } from "@/shared/components/ui/button";
 import {
+  CategorySelectField,
+  assetCategoryToTagModule,
+} from "@/modules/tags-and-categories";
+import {
   hardwareFormSchema,
   informationFormSchema,
   peopleFormSchema,
@@ -463,6 +467,14 @@ export function AssetForm({
           </Field>
         </>
       ) : null}
+
+      <CategorySelectField
+        applicableModule={assetCategoryToTagModule(category)}
+        value={values.categoryId || undefined}
+        disabled={pending}
+        error={fieldErrors.categoryId}
+        onChange={(next) => setField("categoryId", next ?? "")}
+      />
 
       {!hideActions ? (
         <div className="flex gap-2">

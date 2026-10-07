@@ -2,8 +2,10 @@ import { Router } from "express";
 import type { Authorizer } from "../../../security";
 import {
   DevAllOfisListScopeAdapter,
+  NoOpOfiComplianceLinkAdapter,
   NoOpOfiNotificationAdapter,
   NoOpOfiTaskAdapter,
+  type OfiComplianceLinkPort,
   type OfiListScopePort,
   type OfiNotificationPort,
   type OfiTaskPort,
@@ -20,6 +22,7 @@ export type OfiRouterDeps = {
   notifications?: OfiNotificationPort;
   tasks?: OfiTaskPort;
   listScope?: OfiListScopePort;
+  complianceLinks?: OfiComplianceLinkPort;
 };
 
 /**
@@ -36,6 +39,8 @@ export function createOfiModule(deps: OfiRouterDeps): {
     notifications: deps.notifications ?? new NoOpOfiNotificationAdapter(),
     tasks: deps.tasks ?? new NoOpOfiTaskAdapter(),
     listScope: deps.listScope ?? new DevAllOfisListScopeAdapter(),
+    complianceLinks:
+      deps.complianceLinks ?? new NoOpOfiComplianceLinkAdapter(),
   });
   const controller = createOfiController(service);
   const router = Router();

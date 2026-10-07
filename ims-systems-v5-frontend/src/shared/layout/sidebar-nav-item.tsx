@@ -34,11 +34,11 @@ export function SidebarNavItem({
   }, [branchActive]);
 
   const baseItem =
-    "group relative flex w-full items-center gap-2 rounded-sm px-2.5 py-[0.4375rem] text-[0.9rem] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary";
+    "group relative flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-[0.9rem] transition-colors duration-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary";
 
   if (hasChildren) {
     return (
-      <div className="space-y-0.5">
+      <div className="space-y-1.5">
         <button
           type="button"
           className={cn(

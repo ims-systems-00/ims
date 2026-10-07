@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { SheetPanelTabs } from "@/modules/activities";
 import {
   useCreateSupplierMutation,
   useDeleteSupplierMutation,
@@ -16,6 +17,9 @@ import {
   SupplierDetailsLoading,
 } from "./supplier-details";
 import { SupplierForm, SupplierFormActions } from "./supplier-form";
+import { SupplierKpiPanel } from "./supplier-kpi-panel";
+import { SupplierRelatedIncidents } from "./supplier-related-incidents";
+import { SupplierRelatedTasks } from "./supplier-related-tasks";
 
 export type SupplierSheetMode = "create" | "view" | "edit";
 
@@ -42,6 +46,11 @@ export function SupplierSheet({
   onDeleted,
 }: SupplierSheetProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [panelTab, setPanelTab] = useState("details");
+
+  useEffect(() => {
+    if (!open || mode !== "view") setPanelTab("details");
+  }, [open, mode, supplierId]);
 
   const supplierQuery = useSupplierQuery(
     mode === "create" ? undefined : (supplierId ?? undefined)
@@ -173,7 +182,36 @@ export function SupplierSheet({
         ) : null}
 
         {mode === "view" && supplier ? (
-          <SupplierDetails supplier={supplier} />
+          <>
+            <SheetPanelTabs
+              tabs={[
+                { id: "details", label: "Details" },
+                { id: "kpis", label: "KPI/Objectives" },
+                { id: "incidents", label: "Incidents" },
+                { id: "tasks", label: "Tasks" },
+              ]}
+              value={panelTab}
+              onChange={setPanelTab}
+            />
+            {panelTab === "details" ? (
+              <SupplierDetails supplier={supplier} />
+            ) : null}
+            {panelTab === "kpis" ? (
+              <SupplierKpiPanel supplier={supplier} />
+            ) : null}
+            {panelTab === "incidents" ? (
+              <SupplierRelatedIncidents
+                supplierId={supplier.id}
+                businessUnitId={supplier.businessUnitId}
+              />
+            ) : null}
+            {panelTab === "tasks" ? (
+              <SupplierRelatedTasks
+                supplierId={supplier.id}
+                businessUnitId={supplier.businessUnitId}
+              />
+            ) : null}
+          </>
         ) : null}
 
         {mode === "edit" && supplier ? (

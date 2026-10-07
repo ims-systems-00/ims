@@ -43,6 +43,7 @@ export const createRiskFormSchema = z.object({
   ownerId: objectIdSchema,
   businessUnitId: optionalObjectId,
   assetId: optionalObjectId,
+  categoryId: optionalObjectId,
   likelihood: scoreComponentSchema,
   consequence: scoreComponentSchema,
 });
@@ -55,6 +56,7 @@ export const updateRiskFormSchema = z.object({
   type: z.enum(RISK_TYPES),
   ownerId: nullableObjectId,
   assetId: nullableObjectId,
+  categoryId: nullableObjectId,
   likelihood: scoreComponentSchema,
   consequence: scoreComponentSchema,
   mitigationText: z.string().trim().optional(),

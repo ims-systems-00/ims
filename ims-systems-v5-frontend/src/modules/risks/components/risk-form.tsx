@@ -6,6 +6,7 @@ import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-fu
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useAssetsQuery } from "@/modules/assets/hooks/use-assets";
 import type { AnyAsset, AssetCategory } from "@/modules/assets/types";
+import { CategorySelectField } from "@/modules/tags-and-categories";
 import {
   createRiskFormSchema,
   updateRiskFormSchema,
@@ -74,6 +75,7 @@ export function RiskForm({
     initialRisk?.businessUnitId ?? ""
   );
   const [assetId, setAssetId] = useState(initialRisk?.assetId ?? "");
+  const [categoryId, setCategoryId] = useState(initialRisk?.categoryId ?? "");
   const [likelihood, setLikelihood] = useState(
     initialRisk?.currentScore.likelihood ?? 1
   );
@@ -148,6 +150,7 @@ export function RiskForm({
         ownerId,
         businessUnitId,
         assetId: showAsset ? assetId : undefined,
+        categoryId: categoryId || undefined,
         likelihood,
         consequence,
       });
@@ -170,6 +173,7 @@ export function RiskForm({
           ownerId: data.ownerId,
           businessUnitId: data.businessUnitId,
           assetId: data.assetId,
+          categoryId: data.categoryId,
           likelihood: data.likelihood,
           consequence: data.consequence,
         });
@@ -199,6 +203,7 @@ export function RiskForm({
       type,
       ownerId,
       assetId: showAsset ? assetId : "",
+      categoryId: categoryId || "",
       likelihood,
       consequence,
       mitigationText,
@@ -225,6 +230,7 @@ export function RiskForm({
         type: data.type,
         ownerId: data.ownerId,
         assetId: showAsset ? data.assetId : null,
+        categoryId: data.categoryId,
         likelihood: data.likelihood,
         consequence: data.consequence,
         mitigationText: data.mitigationText || null,
@@ -281,6 +287,16 @@ export function RiskForm({
             ))}
           </select>
         </FormField>
+      </FormSection>
+
+      <FormSection title="Classification">
+        <CategorySelectField
+          applicableModule="risks"
+          value={categoryId || undefined}
+          disabled={pending}
+          error={fieldErrors.categoryId}
+          onChange={(next) => setCategoryId(next ?? "")}
+        />
       </FormSection>
 
       <FormSection title="Ownership">

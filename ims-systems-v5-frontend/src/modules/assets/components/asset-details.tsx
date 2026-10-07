@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+import { CategoryLabel } from "@/modules/tags-and-categories";
 import type {
   AnyAsset,
   AssetCategory,
@@ -13,14 +15,13 @@ function Item({
   value,
 }: {
   label: string;
-  value: string | number | undefined | null;
+  value: ReactNode;
 }) {
+  const empty = value === undefined || value === null || value === "";
   return (
     <div>
       <dt className="ims-detail-label">{label}</dt>
-      <dd className="ims-detail-value">
-        {value === undefined || value === null || value === "" ? "—" : value}
-      </dd>
+      <dd className="ims-detail-value">{empty ? "—" : value}</dd>
     </div>
   );
 }
@@ -36,6 +37,12 @@ export function AssetDetails({
     <dl className="ims-detail-grid">
       <Item label="Reference" value={asset.reference} />
       <Item label="Business unit" value={asset.businessUnitId} />
+      <Item
+        label="Category"
+        value={
+          <CategoryLabel categoryId={asset.categoryId} showPrefix={false} />
+        }
+      />
       <Item label="Cost" value={asset.cost} />
       <Item
         label="Created"

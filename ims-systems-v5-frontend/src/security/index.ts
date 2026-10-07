@@ -5,6 +5,8 @@ export {
   DevelopmentAuthzClient,
   DEV_STUB_IDENTITY,
   DEV_STUB_ORGANIZATION_ID,
+  DEV_STUB_PROFILE_USER_ID,
+  resolveProfileUserId,
   assertDevelopmentStubAllowed,
 } from "./development-stub";
 export {

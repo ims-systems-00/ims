@@ -1,6 +1,20 @@
 import { Router } from "express";
+import type { AppConfig } from "../../../config";
+import type { Logger } from "../../../infrastructure/logging/logger";
 import type { MongoConnection } from "../../../infrastructure/mongodb/connection";
+import type { EmailSystem } from "../../../infrastructure/queue";
+import { createObjectStorageFromConfig } from "../../../infrastructure/s3/object-storage";
+import type { ObjectStoragePort } from "../../../infrastructure/s3/object-storage";
 import type { SecurityPorts } from "../../../security";
+import { createFilesModule } from "../../../modules/files";
+import {
+  createDocumentManagementModule,
+  createDocumentActivityAdapter,
+  createDocumentFilesAdapter,
+  createDocumentNotificationAdapter,
+} from "../../../modules/document-management";
+import { createReportBugModule } from "../../../modules/report-bug";
+import { createOrganisationModule } from "../../../modules/organisation";
 import { createAssetsModule } from "../../../modules/assets";
 import {
   createAuditModule,
@@ -30,6 +44,8 @@ import {
 import { createFunctionalUnitModule } from "../../../modules/functional-units";
 import {
   createIncidentModule,
+  NoOpIncidentComplianceLinkAdapter,
+  type IncidentComplianceLinkPort,
   type IncidentTaskPort,
 } from "../../../modules/incidents";
 import {
@@ -39,7 +55,9 @@ import {
 } from "../../../modules/management-reviews";
 import {
   createOfiModule,
+  NoOpOfiComplianceLinkAdapter,
   OFI_SOURCE_MODULE,
+  type OfiComplianceLinkPort,
   type OfiTaskPort,
 } from "../../../modules/ofi";
 import {
@@ -56,6 +74,8 @@ import {
 } from "../../../modules/customers";
 import {
   createRiskModule,
+  NoOpRiskComplianceLinkAdapter,
+  type RiskComplianceLinkPort,
   type RiskTaskPort,
 } from "../../../modules/risks";
 import {
@@ -68,11 +88,36 @@ import {
   createNotificationsUsersAdapter,
 } from "../../../modules/notifications";
 import { createChartsModule } from "../../../modules/charts";
+import {
+  createKpiObjectivesModule,
+  createKpiBusinessUnitAdapter,
+  createKpiObjectiveNotificationAdapter,
+} from "../../../modules/kpi-objectives";
+import { createTagsAndCategoriesModule } from "../../../modules/tags-and-categories";
+import {
+  createActivitiesModule,
+  createActivityOfiFollowUpAdapter,
+} from "../../../modules/activities";
+import {
+  createComplianceModule,
+  createComplianceActivityAdapter,
+  createComplianceEvidenceLinkAdapter,
+  createComplianceIncidentMirrorAdapter,
+  createComplianceNotificationAdapter,
+  createComplianceOfiMirrorAdapter,
+  createComplianceRiskMirrorAdapter,
+  createIncidentComplianceLinkAdapter,
+  createOfiComplianceLinkAdapter,
+  createRiskComplianceLinkAdapter,
+} from "../../../modules/compliance";
 import { createHealthRouter } from "./health";
 
 export type V1RouterDeps = {
   mongo: MongoConnection;
   security: SecurityPorts;
+  email?: EmailSystem;
+  config?: AppConfig;
+  logger?: Logger;
 };
 
 /**
@@ -80,9 +125,44 @@ export type V1RouterDeps = {
  * Business modules mount here; keep this as the single version root.
  */
 export function createV1Router(deps: V1RouterDeps): Router {
-  const { mongo, security } = deps;
+  const { mongo, security, email, config, logger } = deps;
   const router = Router();
   router.use(createHealthRouter(mongo));
+
+  const reportBug = createReportBugModule({
+    email,
+    supportEmails: config?.REPORT_BUG_SUPPORT_EMAILS ?? [
+      "support@imssystems.tech",
+    ],
+    // Mailtrap free testing limits ~1 msg/sec; skip delay in automated tests.
+    confirmationDelayMs: config?.NODE_ENV === "test" ? 0 : 1_200,
+  });
+  router.use("/report-bug", reportBug.router);
+
+  let objectStorage: ObjectStoragePort | undefined;
+  if (config && logger) {
+    objectStorage = createObjectStorageFromConfig({ config, logger });
+    const files = createFilesModule({
+      storage: objectStorage,
+      config: {
+        enabled: config.FILES_ENABLED,
+        provider: config.FILES_PROVIDER,
+        nodeEnv: config.NODE_ENV,
+        privateBucket: config.AWS_PRIVATE_BUCKET,
+        bucketSuffix: config.AWS_BUCKET_SUFFIX,
+        publicBucket: config.AWS_PUBLIC_BUCKET,
+        uploadUrlTtlSeconds: config.FILES_UPLOAD_URL_TTL_SECONDS,
+        viewUrlTtlSeconds: config.FILES_VIEW_URL_TTL_SECONDS,
+        allowedPaths: config.ALLOWED_FILE_PATHS,
+      },
+    });
+    router.use("/files", files.router);
+  }
+
+  const organisations = createOrganisationModule({
+    authorizer: security.authorizer,
+  });
+  router.use("/organisations", organisations.router);
 
   const functionalUnits = createFunctionalUnitModule({
     authorizer: security.authorizer,
@@ -103,12 +183,27 @@ export function createV1Router(deps: V1RouterDeps): Router {
     authorizer: security.authorizer,
   });
 
+  const kpiObjectives = createKpiObjectivesModule({
+    authorizer: security.authorizer,
+    businessUnits: createKpiBusinessUnitAdapter(functionalUnits.service),
+    notifications: createKpiObjectiveNotificationAdapter({
+      notifications: notifications.application,
+      unitUsers: functionalUnits.unitUsers,
+    }),
+  });
+
+  const tagsAndCategories = createTagsAndCategoriesModule({
+    authorizer: security.authorizer,
+  });
+
   router.use("/functional-units", functionalUnits.router);
   router.use("/assets", assets.router);
   router.use("/business-premises", businessPremises.router);
   router.use("/users", users.router);
   router.use("/notifications", notifications.router);
   router.use("/charts", charts.router);
+  router.use("/kpi-objectives", kpiObjectives.router);
+  router.use("/tags-and-categories", tagsAndCategories.router);
 
   const calendar = createCalendarModule({
     authorizer: security.authorizer,
@@ -190,15 +285,37 @@ export function createV1Router(deps: V1RouterDeps): Router {
     },
   };
 
+  const riskComplianceLinkHolder: { current: RiskComplianceLinkPort } = {
+    current: new NoOpRiskComplianceLinkAdapter(),
+  };
+
+  const incidentComplianceLinkHolder: {
+    current: IncidentComplianceLinkPort;
+  } = {
+    current: new NoOpIncidentComplianceLinkAdapter(),
+  };
+
   const risks = createRiskModule({
     authorizer: security.authorizer,
     tasks: riskTasksAdapter,
+    complianceLinks: {
+      syncRiskLinks: (input) =>
+        riskComplianceLinkHolder.current.syncRiskLinks(input),
+      clearRiskLinks: (input) =>
+        riskComplianceLinkHolder.current.clearRiskLinks(input),
+    },
   });
 
   const incidents = createIncidentModule({
     authorizer: security.authorizer,
     tasks: incidentTasksAdapter,
     calendar: createIncidentCalendarAdapter(calendar.service),
+    complianceLinks: {
+      syncIncidentLinks: (input) =>
+        incidentComplianceLinkHolder.current.syncIncidentLinks(input),
+      clearIncidentLinks: (input) =>
+        incidentComplianceLinkHolder.current.clearIncidentLinks(input),
+    },
   });
 
   const supplierIncidentStatsAdapter: SupplierIncidentStatsPort = {
@@ -261,10 +378,67 @@ export function createV1Router(deps: V1RouterDeps): Router {
     },
   };
 
+  const ofiComplianceLinkHolder: { current: OfiComplianceLinkPort } = {
+    current: new NoOpOfiComplianceLinkAdapter(),
+  };
+
   const ofis = createOfiModule({
     authorizer: security.authorizer,
     tasks: ofiTasksAdapter,
+    complianceLinks: {
+      syncOfiLinks: (input) =>
+        ofiComplianceLinkHolder.current.syncOfiLinks(input),
+      clearOfiLinks: (input) =>
+        ofiComplianceLinkHolder.current.clearOfiLinks(input),
+    },
   });
+
+  const activities = createActivitiesModule({
+    authorizer: security.authorizer,
+    ofiFollowUp: createActivityOfiFollowUpAdapter({
+      markInProgressIfPending: (organizationId, ofiId) =>
+        ofis.service.markInProgressIfPending(organizationId, ofiId),
+    }),
+  });
+
+  const documentManagement = createDocumentManagementModule({
+    authorizer: security.authorizer,
+    files: objectStorage
+      ? createDocumentFilesAdapter(objectStorage)
+      : undefined,
+    activities: createDocumentActivityAdapter(activities.application),
+    notifications: createDocumentNotificationAdapter(notifications.application),
+  });
+  router.use("/document-management", documentManagement.managementRouter);
+  router.use("/document-repositories", documentManagement.repositoriesRouter);
+  router.use("/document-trees", documentManagement.treesRouter);
+
+  const compliance = createComplianceModule({
+    authorizer: security.authorizer,
+    activities: createComplianceActivityAdapter(activities.application),
+    notifications: createComplianceNotificationAdapter({
+      notifications: notifications.application,
+      users: createNotificationsUsersAdapter(users.service),
+    }),
+    evidenceLinks: createComplianceEvidenceLinkAdapter({
+      risks: risks.service,
+      incidents: incidents.service,
+      ofi: ofis.service,
+    }),
+    riskMirror: createComplianceRiskMirrorAdapter(risks.service),
+    incidentMirror: createComplianceIncidentMirrorAdapter(incidents.service),
+    ofiMirror: createComplianceOfiMirrorAdapter(ofis.service),
+  });
+
+  riskComplianceLinkHolder.current = createRiskComplianceLinkAdapter(
+    compliance.application
+  );
+  incidentComplianceLinkHolder.current = createIncidentComplianceLinkAdapter(
+    compliance.application
+  );
+  ofiComplianceLinkHolder.current = createOfiComplianceLinkAdapter(
+    compliance.application
+  );
 
   const suppliers = createSupplierModule({
     authorizer: security.authorizer,
@@ -370,6 +544,7 @@ export function createV1Router(deps: V1RouterDeps): Router {
       functionalUnits: functionalUnits.service,
       users: users.service,
       customers: customers.service,
+      compliance: compliance.application,
     }),
   });
 
@@ -381,6 +556,8 @@ export function createV1Router(deps: V1RouterDeps): Router {
   router.use("/audits", audits.router);
   router.use("/management-reviews", managementReviews.router);
   router.use("/ofi", ofis.router);
+  router.use("/activities", activities.router);
+  router.use("/compliance", compliance.router);
   router.use("/suppliers", suppliers.router);
   router.use("/customers", customers.router);
   router.use("/tasks", tasks.router);

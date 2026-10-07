@@ -12,10 +12,12 @@ import {
   ValidationAppError,
 } from "../../../shared";
 import type {
+  RiskComplianceLinkPort,
   RiskListScopePort,
   RiskNotificationPort,
   RiskTaskPort,
 } from "../ports";
+import { NoOpRiskComplianceLinkAdapter } from "../ports";
 import {
   newActivityEntry,
   newAttachmentId,
@@ -35,6 +37,7 @@ import {
   type Risk,
   type RiskAttachment,
   type RiskStats,
+  type ComplianceLink,
   type SetComplianceLinksInput,
   type UpdateRiskInput,
 } from "../types";
@@ -95,12 +98,54 @@ export type RiskServiceDeps = {
   notifications: RiskNotificationPort;
   tasks: RiskTaskPort;
   listScope: RiskListScopePort;
+  complianceLinks?: RiskComplianceLinkPort;
 };
 
 export type RiskService = ReturnType<typeof createRiskService>;
 
+function mergeComplianceClause(
+  links: ComplianceLink[],
+  toolkitId: string,
+  clause: string
+): ComplianceLink[] {
+  const existing = links.find((link) => link.toolkitId === toolkitId);
+  if (!existing) {
+    return [...links, { toolkitId, clauseIds: [clause] }];
+  }
+  if (existing.clauseIds.includes(clause)) return links;
+  return links.map((link) =>
+    link.toolkitId === toolkitId
+      ? { ...link, clauseIds: [...link.clauseIds, clause] }
+      : link
+  );
+}
+
+function removeComplianceClause(
+  links: ComplianceLink[],
+  toolkitId: string,
+  clause: string
+): ComplianceLink[] {
+  return links
+    .map((link) =>
+      link.toolkitId === toolkitId
+        ? {
+            ...link,
+            clauseIds: link.clauseIds.filter((item) => item !== clause),
+          }
+        : link
+    )
+    .filter((link) => link.clauseIds.length > 0);
+}
+
 export function createRiskService(deps: RiskServiceDeps) {
-  const { repository, authorizer, notifications, tasks, listScope } = deps;
+  const {
+    repository,
+    authorizer,
+    notifications,
+    tasks,
+    listScope,
+    complianceLinks = new NoOpRiskComplianceLinkAdapter(),
+  } = deps;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -589,6 +634,15 @@ export function createRiskService(deps: RiskServiceDeps) {
         organizationId: actor.organizationId,
         riskId: existing.id,
       });
+
+      try {
+        await complianceLinks.clearRiskLinks({
+          organizationId: actor.organizationId,
+          riskId: existing.id,
+        });
+      } catch {
+        // Evidence cleanup must not block risk delete.
+      }
     },
 
     async removeAttachment(
@@ -648,7 +702,65 @@ export function createRiskService(deps: RiskServiceDeps) {
       if (!updated) {
         throw new NotFoundError("Risk not found");
       }
+
+      try {
+        await complianceLinks.syncRiskLinks({
+          organizationId: actor.organizationId,
+          actorId: actor.identity.subjectId,
+          riskId: updated.id,
+          previousLinks: existing.complianceLinks,
+          nextLinks: updated.complianceLinks,
+        });
+      } catch {
+        // Sync is best-effort; risk links remain saved.
+      }
+
       return updated;
+    },
+
+    /**
+     * Mirror Compliance evidence onto risk links without re-entering sync.
+     * Used by ComplianceRiskMirrorPort adapter.
+     */
+    async mirrorAddComplianceClause(input: {
+      organizationId: string;
+      riskId: string;
+      toolkitId: string;
+      clause: string;
+    }): Promise<void> {
+      const risk = await repository.findById(input.organizationId, input.riskId);
+      if (!risk || risk.deletedAt || risk.mitigated.status) return;
+      const next = mergeComplianceClause(
+        risk.complianceLinks,
+        input.toolkitId,
+        input.clause
+      );
+      if (next === risk.complianceLinks) return;
+      await repository.update(input.organizationId, input.riskId, {
+        complianceLinks: next,
+        updatedBy: "system-compliance-mirror",
+        updatedOn: new Date(),
+      });
+    },
+
+    async mirrorRemoveComplianceClause(input: {
+      organizationId: string;
+      riskId: string;
+      toolkitId: string;
+      clause: string;
+    }): Promise<void> {
+      const risk = await repository.findById(input.organizationId, input.riskId);
+      if (!risk || risk.deletedAt) return;
+      const next = removeComplianceClause(
+        risk.complianceLinks,
+        input.toolkitId,
+        input.clause
+      );
+      await repository.update(input.organizationId, input.riskId, {
+        complianceLinks: next,
+        updatedBy: "system-compliance-mirror",
+        updatedOn: new Date(),
+      });
     },
 
     async stats(

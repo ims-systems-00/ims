@@ -32,11 +32,13 @@ export {
 export {
   NoOpOfiNotificationAdapter,
   NoOpOfiTaskAdapter,
+  NoOpOfiComplianceLinkAdapter,
   DevAllOfisListScopeAdapter,
 } from "./ports";
 export type {
   OfiNotificationPort,
   OfiTaskPort,
+  OfiComplianceLinkPort,
   OfiListScopePort,
   OfiListScope,
 } from "./ports";
