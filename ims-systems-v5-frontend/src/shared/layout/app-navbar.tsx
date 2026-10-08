@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
-import { Bell, Menu } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { SearchInput } from "@/shared/components/search-input";
 import { cn } from "@/shared/lib/utils";
 import type { BreadcrumbItem } from "@/shared/navigation";
+import { NotificationBell } from "@/modules/notifications";
 import { ThemeSelector } from "./theme-selector";
 import { UserMenu } from "./user-menu";
 
@@ -75,15 +76,7 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
           className="w-44 bg-surface-muted/50"
         />
         <ThemeSelector />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Notifications (placeholder)"
-          disabled
-        >
-          <Bell className="size-4" />
-        </Button>
+        <NotificationBell />
         <UserMenu />
       </div>
     </header>

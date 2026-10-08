@@ -1,31 +1,59 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { cleanup, render, screen, within } from "@testing-library/react";
-import { afterEach } from "vitest";
 import { ApplicationShell } from "@/shared/layout";
 import { ThemeProvider } from "@/shared/theme";
+
+vi.mock("@/modules/notifications", () => ({
+  NotificationBell: () => (
+    <button type="button" aria-label="Notifications">
+      Notifications
+    </button>
+  ),
+  NotificationPopupQueue: () => null,
+}));
+
+vi.mock("@/modules/users/hooks/use-users", () => ({
+  useUserQuery: () => ({
+    data: {
+      id: "u1",
+      name: "Test User",
+      email: "test@example.com",
+    },
+    isLoading: false,
+    isError: false,
+  }),
+}));
 
 afterEach(() => {
   cleanup();
 });
 
 function renderShell(initialPath = "/") {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, refetchOnWindowFocus: false },
+    },
+  });
   return render(
-    <ThemeProvider>
-      <MemoryRouter initialEntries={[initialPath]}>
-        <Routes>
-          <Route element={<ApplicationShell />}>
-            <Route index element={<div>Dashboard content</div>} />
-            <Route
-              path="functional-units"
-              element={<div>Functional units content</div>}
-            />
-            <Route path="users" element={<div>Users content</div>} />
-            <Route path="risks" element={<div>Risks content</div>} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <MemoryRouter initialEntries={[initialPath]}>
+          <Routes>
+            <Route element={<ApplicationShell />}>
+              <Route index element={<div>Dashboard content</div>} />
+              <Route
+                path="functional-units"
+                element={<div>Functional units content</div>}
+              />
+              <Route path="users" element={<div>Users content</div>} />
+              <Route path="risks" element={<div>Risks content</div>} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 

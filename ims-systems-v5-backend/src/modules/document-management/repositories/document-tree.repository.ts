@@ -583,6 +583,25 @@ export function createDocumentTreeStore() {
       };
     },
 
+    /**
+     * Published documents whose reviewDate falls on the given calendar day (UTC).
+     * Used by the document-review reminder job.
+     */
+    async listDueForReviewOnDay(
+      dayStart: Date,
+      dayEnd: Date
+    ): Promise<DocumentTreeNode[]> {
+      const docs = await Model.find({
+        type: "document",
+        status: "Published",
+        deletedAt: null,
+        "documentData.reviewDate": { $gte: dayStart, $lt: dayEnd },
+      })
+        .limit(2_000)
+        .lean();
+      return docs.map((doc) => toDomain(doc as DocumentTreeDocument));
+    },
+
     async changeRepositoryForFamily(
       organizationId: string,
       node: DocumentTreeNode,

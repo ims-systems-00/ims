@@ -12,12 +12,14 @@ import {
   createDocumentActivityAdapter,
   createDocumentFilesAdapter,
   createDocumentNotificationAdapter,
+  startDocumentReviewReminderSchedule,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
 import { createOrganisationModule } from "../../../modules/organisation";
 import { createAssetsModule } from "../../../modules/assets";
 import {
   createAuditModule,
+  createAuditNotificationAdapter,
   type AuditCipPromotionPort,
   type AuditIncidentPromotionPort,
   type AuditRiskPromotionPort,
@@ -44,17 +46,20 @@ import {
 import { createFunctionalUnitModule } from "../../../modules/functional-units";
 import {
   createIncidentModule,
+  createIncidentNotificationAdapter,
   NoOpIncidentComplianceLinkAdapter,
   type IncidentComplianceLinkPort,
   type IncidentTaskPort,
 } from "../../../modules/incidents";
 import {
   createManagementReviewModule,
+  createManagementReviewNotificationAdapter,
   MANAGEMENT_REVIEWS_SOURCE_MODULE,
   type ManagementReviewTaskPort,
 } from "../../../modules/management-reviews";
 import {
   createOfiModule,
+  createOfiNotificationAdapter,
   NoOpOfiComplianceLinkAdapter,
   OFI_SOURCE_MODULE,
   type OfiComplianceLinkPort,
@@ -62,24 +67,28 @@ import {
 } from "../../../modules/ofi";
 import {
   createSupplierModule,
+  createSupplierNotificationAdapter,
   SUPPLIERS_SOURCE_MODULE,
   type SupplierIncidentStatsPort,
   type SupplierTaskPort,
 } from "../../../modules/suppliers";
 import {
   createCustomerModule,
+  createCustomerNotificationAdapter,
   CUSTOMERS_SOURCE_MODULE,
   type CustomerIncidentStatsPort,
   type CustomerTaskPort,
 } from "../../../modules/customers";
 import {
   createRiskModule,
+  createRiskNotificationAdapter,
   NoOpRiskComplianceLinkAdapter,
   type RiskComplianceLinkPort,
   type RiskTaskPort,
 } from "../../../modules/risks";
 import {
   createTaskModule,
+  createTaskNotificationAdapter,
   createTasksSourceCleanupAdapter,
 } from "../../../modules/tasks";
 import { createUsersModule } from "../../../modules/users";
@@ -120,11 +129,17 @@ export type V1RouterDeps = {
   logger?: Logger;
 };
 
+export type CreatedV1Router = {
+  router: Router;
+  /** Optional background jobs (document review reminders). */
+  startBackgroundJobs?: () => () => void;
+};
+
 /**
  * Centralized /api/v1 route registration (D-03).
  * Business modules mount here; keep this as the single version root.
  */
-export function createV1Router(deps: V1RouterDeps): Router {
+export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const { mongo, security, email, config, logger } = deps;
   const router = Router();
   router.use(createHealthRouter(mongo));
@@ -174,9 +189,11 @@ export function createV1Router(deps: V1RouterDeps): Router {
   });
   const users = createUsersModule({ authorizer: security.authorizer });
 
+  const notificationsUsers = createNotificationsUsersAdapter(users.service);
+
   const notifications = createNotificationsModule({
     authorizer: security.authorizer,
-    users: createNotificationsUsersAdapter(users.service),
+    users: notificationsUsers,
   });
 
   const charts = createChartsModule({
@@ -212,6 +229,7 @@ export function createV1Router(deps: V1RouterDeps): Router {
   const tasks = createTaskModule({
     authorizer: security.authorizer,
     calendar: createTaskCalendarAdapter(calendar.service),
+    notifications: createTaskNotificationAdapter(notifications.application),
   });
   const tasksCleanup = createTasksSourceCleanupAdapter(tasks.service);
 
@@ -298,6 +316,10 @@ export function createV1Router(deps: V1RouterDeps): Router {
   const risks = createRiskModule({
     authorizer: security.authorizer,
     tasks: riskTasksAdapter,
+    notifications: createRiskNotificationAdapter({
+      notifications: notifications.application,
+      users: notificationsUsers,
+    }),
     complianceLinks: {
       syncRiskLinks: (input) =>
         riskComplianceLinkHolder.current.syncRiskLinks(input),
@@ -310,6 +332,10 @@ export function createV1Router(deps: V1RouterDeps): Router {
     authorizer: security.authorizer,
     tasks: incidentTasksAdapter,
     calendar: createIncidentCalendarAdapter(calendar.service),
+    notifications: createIncidentNotificationAdapter({
+      notifications: notifications.application,
+      users: notificationsUsers,
+    }),
     complianceLinks: {
       syncIncidentLinks: (input) =>
         incidentComplianceLinkHolder.current.syncIncidentLinks(input),
@@ -385,6 +411,10 @@ export function createV1Router(deps: V1RouterDeps): Router {
   const ofis = createOfiModule({
     authorizer: security.authorizer,
     tasks: ofiTasksAdapter,
+    notifications: createOfiNotificationAdapter({
+      notifications: notifications.application,
+      users: notificationsUsers,
+    }),
     complianceLinks: {
       syncOfiLinks: (input) =>
         ofiComplianceLinkHolder.current.syncOfiLinks(input),
@@ -418,7 +448,7 @@ export function createV1Router(deps: V1RouterDeps): Router {
     activities: createComplianceActivityAdapter(activities.application),
     notifications: createComplianceNotificationAdapter({
       notifications: notifications.application,
-      users: createNotificationsUsersAdapter(users.service),
+      users: notificationsUsers,
     }),
     evidenceLinks: createComplianceEvidenceLinkAdapter({
       risks: risks.service,
@@ -445,12 +475,19 @@ export function createV1Router(deps: V1RouterDeps): Router {
     tasks: supplierTasksAdapter,
     incidentStats: supplierIncidentStatsAdapter,
     calendar: createSupplierCalendarAdapter(calendar.service),
+    notifications: createSupplierNotificationAdapter({
+      notifications: notifications.application,
+      users: notificationsUsers,
+    }),
   });
 
   const customers = createCustomerModule({
     authorizer: security.authorizer,
     tasks: customerTasksAdapter,
     incidents: customerIncidentStatsAdapter,
+    notifications: createCustomerNotificationAdapter(
+      notifications.application
+    ),
   });
 
   const auditIncidentPromotion: AuditIncidentPromotionPort = {
@@ -506,12 +543,16 @@ export function createV1Router(deps: V1RouterDeps): Router {
     risks: auditRiskPromotion,
     cips: auditCipPromotion,
     calendar: createAuditCalendarAdapter(calendar.service),
+    notifications: createAuditNotificationAdapter(notifications.application),
   });
 
   const managementReviews = createManagementReviewModule({
     authorizer: security.authorizer,
     tasks: managementReviewTasksAdapter,
     calendar: createManagementReviewCalendarAdapter(calendar.service),
+    notifications: createManagementReviewNotificationAdapter(
+      notifications.application
+    ),
   });
 
   const dashboard = createDashboardModule({
@@ -561,5 +602,13 @@ export function createV1Router(deps: V1RouterDeps): Router {
   router.use("/suppliers", suppliers.router);
   router.use("/customers", customers.router);
   router.use("/tasks", tasks.router);
-  return router;
+
+  return {
+    router,
+    startBackgroundJobs: () =>
+      startDocumentReviewReminderSchedule({
+        service: documentManagement.reviewReminders,
+        logger,
+      }),
+  };
 }

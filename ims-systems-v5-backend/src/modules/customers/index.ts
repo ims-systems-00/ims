@@ -30,6 +30,7 @@ export {
   CUSTOMER_PROBABILITIES,
   DEFAULT_CUSTOMER_LOGO_SRC,
 } from "./types";
+export { createCustomerNotificationAdapter } from "./adapters/notification.adapter";
 export {
   NoOpCustomerNotificationAdapter,
   NoOpCustomerTaskAdapter,

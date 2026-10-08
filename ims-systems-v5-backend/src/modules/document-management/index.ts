@@ -24,6 +24,12 @@ export {
 } from "./adapters";
 
 export {
+  createDocumentReviewReminderService,
+  startDocumentReviewReminderSchedule,
+  type DocumentReviewReminderService,
+} from "./services/document-review-reminder.service";
+
+export {
   NoOpDocumentFilesAdapter,
   NoOpDocumentActivityAdapter,
   NoOpDocumentNotificationAdapter,

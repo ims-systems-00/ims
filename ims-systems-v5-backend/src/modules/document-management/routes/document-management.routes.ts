@@ -16,6 +16,10 @@ import {
   type DocumentManagementApplicationPort,
   type DocumentManagementService,
 } from "../services/document-management.service";
+import {
+  createDocumentReviewReminderService,
+  type DocumentReviewReminderService,
+} from "../services/document-review-reminder.service";
 
 export type DocumentManagementRouterDeps = {
   authorizer: Authorizer;
@@ -37,19 +41,26 @@ export function createDocumentManagementModule(
 ): {
   service: DocumentManagementService;
   application: DocumentManagementApplicationPort;
+  reviewReminders: DocumentReviewReminderService;
   managementRouter: Router;
   repositoriesRouter: Router;
   treesRouter: Router;
 } {
   const repositories = createDocumentRepositoryStore();
   const trees = createDocumentTreeStore();
+  const notificationsPort =
+    deps.notifications ?? new NoOpDocumentNotificationAdapter();
   const service = createDocumentManagementService({
     repositories,
     trees,
     authorizer: deps.authorizer,
     files: deps.files ?? new NoOpDocumentFilesAdapter(),
     activities: deps.activities ?? new NoOpDocumentActivityAdapter(),
-    notifications: deps.notifications ?? new NoOpDocumentNotificationAdapter(),
+    notifications: notificationsPort,
+  });
+  const reviewReminders = createDocumentReviewReminderService({
+    trees,
+    notifications: notificationsPort,
   });
   const controller = createDocumentManagementController(service);
 
@@ -129,6 +140,7 @@ export function createDocumentManagementModule(
       listPublished: (organizationId, query) =>
         service.listPublishedForOrganization(organizationId, query),
     },
+    reviewReminders,
     managementRouter,
     repositoriesRouter,
     treesRouter,

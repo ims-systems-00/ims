@@ -26,6 +26,8 @@ export type CreateAppOptions = {
 export type CreatedApp = {
   app: Express;
   security: SecurityPorts;
+  /** Start optional background jobs; returns a stop function. */
+  startBackgroundJobs?: () => () => void;
 };
 
 /**
@@ -55,12 +57,16 @@ export function createApp(options: CreateAppOptions): CreatedApp {
     logger,
   });
   for (const router of options.additionalV1Routers ?? []) {
-    v1.use(router);
+    v1.router.use(router);
   }
-  app.use("/api/v1", v1);
+  app.use("/api/v1", v1.router);
 
   app.use(notFoundHandler());
   app.use(errorHandler(logger));
 
-  return { app, security };
+  return {
+    app,
+    security,
+    startBackgroundJobs: v1.startBackgroundJobs,
+  };
 }

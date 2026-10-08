@@ -19,7 +19,13 @@ async function main(): Promise<void> {
 
   await mongo.connect();
 
-  const { app } = createApp({ config, logger, mongo, email });
+  const { app, startBackgroundJobs } = createApp({
+    config,
+    logger,
+    mongo,
+    email,
+  });
+  const stopBackgroundJobs = startBackgroundJobs?.();
 
   if (
     config.EMAIL_ENABLED &&
@@ -67,6 +73,11 @@ async function main(): Promise<void> {
     server.close(async (closeError) => {
       if (closeError) {
         logger.error({ err: closeError }, "Error closing HTTP server");
+      }
+      try {
+        stopBackgroundJobs?.();
+      } catch (error) {
+        logger.error({ err: error }, "Error stopping background jobs");
       }
       try {
         await email.close();

@@ -39,3 +39,4 @@ export type {
   RiskListScopePort,
   RiskListScope,
 } from "./ports";
+export { createRiskNotificationAdapter } from "./adapters/notification.adapter";

@@ -37,6 +37,7 @@ export {
   INTERVAL_OCCURRENCES,
   deriveDisplayStatus,
 } from "./types";
+export { createManagementReviewNotificationAdapter } from "./adapters/notification.adapter";
 export {
   NoOpManagementReviewNotificationAdapter,
   NoOpManagementReviewCalendarAdapter,

@@ -13,7 +13,6 @@ import {
 import { FormField } from "@/shared/components/form-field";
 import { cn } from "@/shared/lib/utils";
 import {
-  DEFAULT_THEME_COLORS,
   THEME_COLOR_FIELDS,
   deriveThemeFromPrimary,
   isValidHexColor,

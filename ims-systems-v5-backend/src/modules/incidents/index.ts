@@ -30,6 +30,7 @@ export {
   STANDALONE_SOURCE_MODULE,
   deriveDisplayStatus,
 } from "./types";
+export { createIncidentNotificationAdapter } from "./adapters/notification.adapter";
 export {
   NoOpIncidentNotificationAdapter,
   NoOpIncidentCalendarAdapter,

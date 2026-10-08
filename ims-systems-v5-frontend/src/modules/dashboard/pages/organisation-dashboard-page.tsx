@@ -39,6 +39,8 @@ import {
   DashboardPanel,
   DashboardUnavailableState,
 } from "../components/dashboard-panel";
+import { DigitalMaturityPanelContent } from "../components/digital-maturity-panel";
+import { DashboardTodoList } from "../components/dashboard-todo-list";
 
 function OrgPulseHero({
   state,
@@ -326,6 +328,60 @@ export function OrganisationDashboardPage() {
         </>
       ) : null}
 
+      {/* Todo list — actionable queue */}
+      <div className="grid grid-cols-12 gap-3">
+        <div className="col-span-12 lg:col-span-8">
+          <DashboardPanel
+            title="Todo List"
+            description="Incomplete tasks across the organisation — complete them here or open the full Tasks module."
+            href="/tasks"
+            hrefLabel="Open Tasks"
+            emphasis="featured"
+          >
+            <DashboardTodoList />
+          </DashboardPanel>
+        </div>
+        <div className="col-span-12 lg:col-span-4">
+          <DashboardPanel
+            title="Incident resolution"
+            description="Average resolution time by priority."
+            href="/incidents"
+            hrefLabel="Incidents"
+            isLoading={globalStatsQuery.isLoading}
+            isError={globalStatsQuery.isError}
+            error={globalStatsQuery.error}
+            emphasis="featured"
+          >
+            {globalStatsQuery.data ? (
+              <ul
+                className="space-y-2"
+                aria-label="Resolution times by priority"
+              >
+                {globalStatsQuery.data.incidentResolutionTimes.map((row) => (
+                  <li
+                    key={row.priority}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-muted/30 px-3 py-2.5 text-sm"
+                  >
+                    <span className="font-medium">{row.priority}</span>
+                    <span className="tabular-nums text-muted-foreground">
+                      {formatHours(row.averageHours)} ·{" "}
+                      {formatInteger(row.count)} resolved
+                    </span>
+                    {row.alert ? (
+                      <StatusBadge tone="warning">Above target</StatusBadge>
+                    ) : row.targetHours == null ? (
+                      <StatusBadge tone="neutral">No target set</StatusBadge>
+                    ) : (
+                      <StatusBadge tone="success">Within target</StatusBadge>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </DashboardPanel>
+        </div>
+      </div>
+
       {/* Bento — primary analytics (risk) */}
       <div className="grid grid-cols-12 gap-3">
         <div className="col-span-12 lg:col-span-7">
@@ -392,46 +448,7 @@ export function OrganisationDashboardPage() {
 
       {/* Bento — operational secondary */}
       <div className="grid grid-cols-12 gap-3">
-        <div className="col-span-12 md:col-span-6 xl:col-span-4">
-          <DashboardPanel
-            title="Incident resolution"
-            description="Average resolution time by priority."
-            href="/incidents"
-            hrefLabel="Incidents"
-            isLoading={globalStatsQuery.isLoading}
-            isError={globalStatsQuery.isError}
-            error={globalStatsQuery.error}
-          >
-            {globalStatsQuery.data ? (
-              <ul
-                className="space-y-2"
-                aria-label="Resolution times by priority"
-              >
-                {globalStatsQuery.data.incidentResolutionTimes.map((row) => (
-                  <li
-                    key={row.priority}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border-subtle bg-surface-muted/30 px-3 py-2.5 text-sm"
-                  >
-                    <span className="font-medium">{row.priority}</span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatHours(row.averageHours)} ·{" "}
-                      {formatInteger(row.count)} resolved
-                    </span>
-                    {row.alert ? (
-                      <StatusBadge tone="warning">Above target</StatusBadge>
-                    ) : row.targetHours == null ? (
-                      <StatusBadge tone="neutral">No target set</StatusBadge>
-                    ) : (
-                      <StatusBadge tone="success">Within target</StatusBadge>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-          </DashboardPanel>
-        </div>
-
-        <div className="col-span-12 md:col-span-6 xl:col-span-4">
+        <div className="col-span-12 md:col-span-6">
           <DashboardPanel
             title="Incidents by business function"
             href="/incidents"
@@ -463,7 +480,7 @@ export function OrganisationDashboardPage() {
           </DashboardPanel>
         </div>
 
-        <div className="col-span-12 xl:col-span-4">
+        <div className="col-span-12 md:col-span-6">
           <DashboardPanel
             title="Audits"
             description="Schedule mix and non-conformities."
@@ -767,51 +784,15 @@ export function OrganisationDashboardPage() {
         <div className="col-span-12 lg:col-span-7">
           <DashboardPanel
             title="Digital maturity"
-            description="Utilisation by internal business unit across core modules."
+            description="Organisation score across seven core modules, with utilisation by internal business unit."
             href="/functional-units"
             hrefLabel="Functional units"
             isLoading={maturityQuery.isLoading}
             isError={maturityQuery.isError}
             error={maturityQuery.error}
-            emphasis="compact"
           >
             {maturityQuery.data ? (
-              maturityQuery.data.businessUnitMaturity.length === 0 ? (
-                <DashboardEmptyState
-                  title="No internal business units"
-                  description="Digital maturity is calculated for internal business functions only."
-                />
-              ) : (
-                <ul className="space-y-5" aria-label="Digital maturity by unit">
-                  {maturityQuery.data.businessUnitMaturity.map((unit) => (
-                    <li key={unit.functionalUnitId} className="space-y-2.5">
-                      <p className="text-sm font-medium">{unit.name}</p>
-                      <ul className="space-y-2">
-                        {unit.modules.map((mod) => (
-                          <li key={mod.key} className="space-y-1">
-                            <div className="flex justify-between gap-2 text-[0.75rem]">
-                              <span className="text-muted-foreground">
-                                {mod.label}
-                              </span>
-                              <span className="tabular-nums">
-                                Score {mod.score} · {mod.utilisationPercentage}%
-                              </span>
-                            </div>
-                            <div className="h-1.5 overflow-hidden rounded-sm bg-surface-muted">
-                              <div
-                                className="h-full rounded-sm bg-info/70"
-                                style={{
-                                  width: `${Math.min(100, mod.utilisationPercentage)}%`,
-                                }}
-                              />
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </li>
-                  ))}
-                </ul>
-              )
+              <DigitalMaturityPanelContent data={maturityQuery.data} />
             ) : null}
           </DashboardPanel>
         </div>

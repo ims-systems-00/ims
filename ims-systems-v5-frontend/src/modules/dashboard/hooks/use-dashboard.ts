@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { taskKeys } from "@/modules/tasks/hooks/use-tasks";
 import { getOrganisationDashboard } from "../api/dashboard";
 import {
   getAuditStats,
@@ -109,13 +110,14 @@ export function useCrmStatsQuery() {
   });
 }
 
-/** Refetch organisation dashboard and all independent stats panels. */
+/** Refetch organisation dashboard, stats panels, and embedded todo list. */
 export function useRefreshOrganisationDashboard() {
   const queryClient = useQueryClient();
   return async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
       queryClient.invalidateQueries({ queryKey: statsKeys.all }),
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() }),
     ]);
   };
 }

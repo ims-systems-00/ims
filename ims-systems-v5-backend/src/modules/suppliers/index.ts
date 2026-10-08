@@ -27,6 +27,7 @@ export {
   deriveIsCompliant,
   deriveComplianceRiskLevel,
 } from "./types";
+export { createSupplierNotificationAdapter } from "./adapters/notification.adapter";
 export {
   NoOpSupplierNotificationAdapter,
   NoOpSupplierTaskAdapter,

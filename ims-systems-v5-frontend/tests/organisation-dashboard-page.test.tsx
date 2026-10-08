@@ -22,6 +22,7 @@ import type {
 } from "@/modules/dashboard/types";
 import { ApiClientError } from "@/shared/lib/http/errors";
 import { navigationSections } from "@/shared/navigation";
+import * as tasksApi from "@/modules/tasks/api/tasks";
 
 afterEach(() => {
   cleanup();
@@ -200,6 +201,13 @@ function stubAllStatsSuccess() {
   vi.spyOn(statsApi, "getCrmStats").mockResolvedValue(
     crmWithUnavailableInvoices
   );
+  vi.spyOn(tasksApi, "listTasks").mockResolvedValue({
+    items: [],
+    page: 1,
+    pageSize: 5,
+    total: 0,
+    totalPages: 0,
+  });
 }
 
 function renderDashboard(initial = "/") {
@@ -392,6 +400,63 @@ describe("Organisation Live Dashboard", () => {
     ).toHaveAttribute("href", "/risks");
     expect(
       within(summary).getByRole("link", { name: /open tasks/i })
+    ).toHaveAttribute("href", "/tasks");
+  });
+
+  it("renders the Todo List panel with incomplete tasks", async () => {
+    vi.spyOn(dashboardApi, "getOrganisationDashboard").mockResolvedValue(
+      makeDashboard()
+    );
+    stubAllStatsSuccess();
+    vi.spyOn(tasksApi, "listTasks").mockResolvedValue({
+      items: [
+        {
+          id: "task-1",
+          organizationId: "org1",
+          reference: "TSK-1",
+          name: "Review access logs",
+          description: "Weekly review",
+          dueDate: "2026-10-15T00:00:00.000Z",
+          priority: "High",
+          teamPriority: false,
+          assignees: [],
+          status: "Pending",
+          completedBy: null,
+          completedOn: null,
+          attachments: [],
+          activity: [],
+          createdBy: "u1",
+          createdOn: "2026-10-01T00:00:00.000Z",
+          updatedBy: null,
+          updatedOn: null,
+          nextNudgeAt: null,
+          deletedAt: null,
+          createdAt: "2026-10-01T00:00:00.000Z",
+          updatedAt: "2026-10-01T00:00:00.000Z",
+        },
+      ],
+      page: 1,
+      pageSize: 5,
+      total: 1,
+      totalPages: 1,
+    });
+
+    renderDashboard();
+
+    const todoHeading = await screen.findByRole("heading", {
+      name: /^todo list$/i,
+    });
+    expect(todoHeading).toBeInTheDocument();
+    const todoPanel = todoHeading.closest("section");
+    expect(todoPanel).not.toBeNull();
+    expect(
+      await screen.findByRole("list", { name: /^todo list$/i })
+    ).toBeInTheDocument();
+    expect(screen.getByText("Review access logs")).toBeInTheDocument();
+    expect(
+      within(todoPanel as HTMLElement).getByRole("link", {
+        name: /open tasks/i,
+      })
     ).toHaveAttribute("href", "/tasks");
   });
 });

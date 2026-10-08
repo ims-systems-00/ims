@@ -4,6 +4,7 @@ import {
   breadcrumbsForPath,
   navigationSections,
 } from "@/shared/navigation";
+import { NotificationPopupQueue } from "@/modules/notifications";
 import { AppNavbar } from "./app-navbar";
 import { AppSidebar } from "./app-sidebar";
 import { MainContent } from "./page-header";
@@ -39,6 +40,7 @@ export function ApplicationShell() {
           </MainContent>
         </main>
       </div>
+      <NotificationPopupQueue />
     </div>
   );
 }

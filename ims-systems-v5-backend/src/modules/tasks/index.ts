@@ -36,6 +36,7 @@ export type {
   TaskCalendarPort,
   TaskUnitMembersPort,
 } from "./ports";
+export { createTaskNotificationAdapter } from "./adapters/notification.adapter";
 
 /**
  * Narrow public capability for cascade cleanup when a source record is deleted.

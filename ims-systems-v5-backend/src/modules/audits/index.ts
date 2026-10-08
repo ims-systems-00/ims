@@ -27,6 +27,7 @@ export {
   INTERVAL_OCCURRENCES,
   deriveDisplayStatus,
 } from "./types";
+export { createAuditNotificationAdapter } from "./adapters/notification.adapter";
 export {
   NoOpAuditNotificationAdapter,
   NoOpAuditCalendarAdapter,

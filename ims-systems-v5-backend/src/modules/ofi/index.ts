@@ -29,6 +29,7 @@ export {
   NUDGE_COOLDOWN_MS,
   deriveDisplayStatus,
 } from "./types";
+export { createOfiNotificationAdapter } from "./adapters/notification.adapter";
 export {
   NoOpOfiNotificationAdapter,
   NoOpOfiTaskAdapter,
