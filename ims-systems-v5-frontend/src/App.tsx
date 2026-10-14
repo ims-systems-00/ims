@@ -15,6 +15,7 @@ import { ManagementReviewsListPage } from "@/modules/management-reviews";
 import { KpiObjectivesPage } from "@/modules/kpi-objectives";
 import { TagsAndCategoriesPage } from "@/modules/tags-and-categories";
 import {
+  DocumentDetailPage,
   DocumentsPage,
   RepositoryDetailPage,
 } from "@/modules/document-management";
@@ -88,6 +89,10 @@ export function App() {
         <Route
           path="documents/repositories/:id"
           element={<RepositoryDetailPage />}
+        />
+        <Route
+          path="documents/repositories/:repositoryId/nodes/:nodeId"
+          element={<DocumentDetailPage />}
         />
         <Route path="ofi" element={<OfisListPage />} />
         <Route

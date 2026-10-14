@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { FormField } from "@/shared/components/form-field";
@@ -6,8 +6,9 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { DEV_STUB_IDENTITY, resolveProfileUserId } from "@/security";
 import { uploadFileViaHandler } from "@/modules/files";
+import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useCreateFileNodesMutation } from "../hooks/use-document-management";
 import { uploadDocumentFormSchema } from "../schemas";
 import {
@@ -18,6 +19,7 @@ import {
   type DocumentApplicableModule,
   type DocumentPurpose,
 } from "../types";
+import { OwnerMultiSelect } from "./owner-multi-select";
 
 type UploadDocumentSheetProps = {
   open: boolean;
@@ -26,6 +28,12 @@ type UploadDocumentSheetProps = {
   parentNodeId: string | null;
 };
 
+function fromDateInputValue(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
+}
+
 export function UploadDocumentSheet({
   open,
   onOpenChange,
@@ -33,17 +41,35 @@ export function UploadDocumentSheet({
   parentNodeId,
 }: UploadDocumentSheetProps) {
   const createMutation = useCreateFileNodesMutation(repositoryId);
+  const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
+  const defaultOwnerId =
+    resolveProfileUserId(DEV_STUB_IDENTITY) ?? DEV_STUB_IDENTITY.subjectId;
+
   const [files, setFiles] = useState<FileList | null>(null);
   const [purpose, setPurpose] = useState<DocumentPurpose>("Document");
   const [modules, setModules] = useState<DocumentApplicableModule[]>([]);
+  const [owners, setOwners] = useState<string[]>([defaultOwnerId]);
+  const [reviewDate, setReviewDate] = useState("");
   const [requireAuthorisation, setRequireAuthorisation] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | undefined>();
+
+  const userOptions = useMemo(
+    () =>
+      (usersQuery.data?.items ?? []).map((row) => ({
+        id: row.user.id,
+        label: row.user.name?.trim() || row.user.email,
+        email: row.user.email,
+      })),
+    [usersQuery.data]
+  );
 
   function reset() {
     setFiles(null);
     setPurpose("Document");
     setModules([]);
+    setOwners([defaultOwnerId]);
+    setReviewDate("");
     setRequireAuthorisation(false);
     setFormError(undefined);
   }
@@ -60,6 +86,8 @@ export function UploadDocumentSheet({
     const parsed = uploadDocumentFormSchema.safeParse({
       purpose,
       applicableModules: modules,
+      owners: owners.length > 0 ? owners : [defaultOwnerId],
+      reviewDate: reviewDate.trim() ? reviewDate : null,
       requireAuthorisation,
     });
     if (!parsed.success) {
@@ -80,6 +108,8 @@ export function UploadDocumentSheet({
           storageInfo,
           purpose: parsed.data.purpose,
           applicableModules: parsed.data.applicableModules,
+          owners: parsed.data.owners,
+          reviewDate: fromDateInputValue(parsed.data.reviewDate ?? ""),
           authorisation: parsed.data.requireAuthorisation
             ? [DEV_STUB_IDENTITY.subjectId]
             : [],
@@ -213,6 +243,25 @@ export function UploadDocumentSheet({
               );
             })}
           </div>
+        </FormField>
+
+        <FormField label="Select owner(s)" required>
+          <OwnerMultiSelect
+            options={userOptions}
+            value={owners}
+            onChange={setOwners}
+            loading={usersQuery.isLoading}
+            max={5}
+          />
+        </FormField>
+
+        <FormField label="Document review date" htmlFor="doc-review-date">
+          <Input
+            id="doc-review-date"
+            type="date"
+            value={reviewDate}
+            onChange={(event) => setReviewDate(event.target.value)}
+          />
         </FormField>
 
         <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border-subtle px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/30">

@@ -4,6 +4,7 @@
 
 export { DocumentsPage } from "./pages/documents-page";
 export { RepositoryDetailPage } from "./pages/repository-detail-page";
+export { DocumentDetailPage } from "./pages/document-detail-page";
 export {
   DocumentsTabs,
 } from "./components/documents-tabs";

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
-import { Eye, Loader2 } from "lucide-react";
+import { Eye, Filter, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
@@ -181,16 +181,30 @@ export function ComplianceToolkitPage() {
     );
   }
 
+  const overviewPct =
+    overviewQuery.data?.totalPercentage ?? summary?.totalPercentage ?? null;
+
   return (
     <div className="space-y-5">
       <PageHeader
         title={displayName}
         description="Track control implementation and overall compliance for this framework."
+        actions={
+          overviewPct != null && !needsProvision ? (
+            <div className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-card px-3 py-1.5 text-[0.8125rem]">
+              <ShieldCheck className="size-3.5 text-primary" />
+              <span className="text-muted-foreground">Score</span>
+              <span className="font-semibold tabular-nums text-foreground">
+                {overviewPct}%
+              </span>
+            </div>
+          ) : null
+        }
       />
 
       {needsProvision ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 rounded-xl border border-border-subtle bg-card px-4 py-6 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             Preparing toolkit controls…
           </div>
@@ -222,7 +236,7 @@ export function ComplianceToolkitPage() {
             {(
               [
                 { id: "overview", label: "Overview" },
-                { id: "toolkit", label: displayName },
+                { id: "toolkit", label: "Controls" },
               ] as const
             ).map((item) => {
               const selected = tab === item.id;
@@ -233,7 +247,7 @@ export function ComplianceToolkitPage() {
                   role="tab"
                   aria-selected={selected}
                   className={cn(
-                    "relative px-3 py-2 text-sm font-medium transition-colors",
+                    "relative px-3.5 py-2.5 text-sm font-medium transition-colors",
                     selected
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
@@ -251,7 +265,7 @@ export function ComplianceToolkitPage() {
 
           {tab === "overview" ? (
             overviewQuery.isLoading ? (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
                 <Loader2 className="size-4 animate-spin" />
                 Loading overview…
               </div>
@@ -261,39 +275,46 @@ export function ComplianceToolkitPage() {
                 description="This iso tool has been deleted or removed."
               />
             ) : (
-              <ToolkitOverviewPanel overview={overviewQuery.data} />
+              <ToolkitOverviewPanel
+                overview={overviewQuery.data}
+                toolkitLabel={displayName}
+                onBrowseControls={() => setTab("toolkit")}
+              />
             )
           ) : null}
 
           {tab === "toolkit" ? (
             <div className="space-y-4">
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-card p-3 sm:flex-row sm:items-center">
                 <SearchInput
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Search clause, title, or description"
-                  containerClassName="sm:max-w-sm"
+                  containerClassName="sm:max-w-sm sm:flex-1"
                 />
-                <select
-                  className="ims-select sm:max-w-xs"
-                  value={section}
-                  aria-label="Filter by section"
-                  onChange={(event) => {
-                    setPage(1);
-                    setSection(event.target.value);
-                  }}
-                >
-                  <option value="">All sections</option>
-                  {sectionOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex items-center gap-2 sm:max-w-xs sm:flex-1">
+                  <Filter className="hidden size-3.5 text-muted-foreground sm:block" />
+                  <select
+                    className="ims-select w-full"
+                    value={section}
+                    aria-label="Filter by section"
+                    onChange={(event) => {
+                      setPage(1);
+                      setSection(event.target.value);
+                    }}
+                  >
+                    <option value="">All sections</option>
+                    {sectionOptions.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               {controlsQuery.isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
                   <Loader2 className="size-4 animate-spin" />
                   Loading controls…
                 </div>
@@ -306,7 +327,7 @@ export function ComplianceToolkitPage() {
                 />
               ) : (
                 <>
-                  <div className="ims-table-wrap">
+                  <div className="ims-table-wrap overflow-hidden rounded-xl border border-border-subtle">
                     <table className="ims-table min-w-[56rem]">
                       <thead>
                         <tr>
@@ -328,13 +349,14 @@ export function ComplianceToolkitPage() {
                             key={control.id}
                             onOpen={() => openControl(control.id)}
                           >
-                            <td className="tabular-nums tracking-tight text-muted-foreground">
+                            <td className="font-mono text-[0.8125rem] tabular-nums tracking-tight text-muted-foreground">
                               {control.clause}
                             </td>
-                            <td className="max-w-[16rem] truncate font-medium">
-                              {control.title}
+                            <td className="max-w-[16rem]">
+                              <p className="truncate font-medium">
+                                {control.title}
+                              </p>
                             </td>
-
                             <td className="text-muted-foreground">
                               {selectedDisplayLabel(control.selected)}
                             </td>

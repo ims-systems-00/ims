@@ -33,6 +33,11 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   router.post("/", controller.create);
   router.get("/", controller.listMine);
   router.get("/current", controller.getCurrent);
+  router.post("/current/licence-request", controller.requestLicence);
+  router.put(
+    "/current/document-review-reminders",
+    controller.updateDocumentReviewReminders
+  );
   router.get("/:id", controller.getById);
 
   return { service, router };

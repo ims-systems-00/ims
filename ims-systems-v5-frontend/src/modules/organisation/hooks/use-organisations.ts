@@ -4,8 +4,14 @@ import {
   createOrganisation,
   getCurrentOrganisation,
   listMyOrganisations,
+  requestOrganisationLicence,
+  updateDocumentReviewReminders,
 } from "../api/organisations";
-import type { CreateOrganisationInput } from "../types";
+import type {
+  CreateOrganisationInput,
+  DocumentReviewReminderOffset,
+  RequestOrganisationLicenceInput,
+} from "../types";
 
 export const organisationKeys = {
   all: ["organisations"] as const,
@@ -35,6 +41,28 @@ export function useCreateOrganisationMutation() {
     mutationFn: (body: CreateOrganisationInput) => createOrganisation(body),
     onSuccess: async (result) => {
       setActiveOrganisationId(result.organisation.id);
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useRequestOrganisationLicenceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RequestOrganisationLicenceInput) =>
+      requestOrganisationLicence(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useUpdateDocumentReviewRemindersMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (offsets: DocumentReviewReminderOffset[]) =>
+      updateDocumentReviewReminders(offsets),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
   });

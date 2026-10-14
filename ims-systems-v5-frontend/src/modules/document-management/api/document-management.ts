@@ -164,6 +164,7 @@ export function createFileNodes(
       applicableModules?: DocumentApplicableModule[];
       authorisation?: string[];
       owners?: string[];
+      reviewDate?: string | null;
     }>;
   }
 ): Promise<CreateFileNodesResult> {
@@ -175,6 +176,25 @@ export function createFileNodes(
         parentNode: body.parentNodeId ?? null,
         data: body.data,
       },
+    }
+  );
+}
+
+export function updateDocumentNode(
+  repositoryId: string,
+  nodeId: string,
+  body: {
+    purpose?: DocumentPurpose;
+    owners?: string[];
+    applicableModules?: DocumentApplicableModule[];
+    reviewDate?: string | null;
+  }
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/file-nodes/${nodeId}`,
+    {
+      method: "PUT",
+      body,
     }
   );
 }
@@ -206,6 +226,105 @@ export function hardDeleteNode(
   return apiRequest<{ id: string; deleted: true }>(
     `/document-repositories/${repositoryId}/nodes/${nodeId}/hard`,
     { method: "DELETE" }
+  );
+}
+
+export function addDocumentVersion(
+  repositoryId: string,
+  nodeId: string,
+  body: {
+    parentNodeId?: string | null;
+    storageInfo: DocumentFileMeta;
+    owners?: string[];
+    authorisation?: string[];
+  }
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/new-version`,
+    {
+      method: "POST",
+      body: {
+        parentNodeId: body.parentNodeId ?? null,
+        data: {
+          storageInfo: body.storageInfo,
+          owners: body.owners,
+          authorisation: body.authorisation,
+        },
+      },
+    }
+  );
+}
+
+export function revisePendingDocument(
+  repositoryId: string,
+  nodeId: string,
+  storageInfo: DocumentFileMeta
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/revision`,
+    {
+      method: "PUT",
+      body: { storageInfo },
+    }
+  );
+}
+
+export function moveRepoNode(
+  repositoryId: string,
+  nodeId: string,
+  parentNodeId: string | null
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/move-node`,
+    {
+      method: "PUT",
+      body: { parentNodeId },
+    }
+  );
+}
+
+export function changeNodeRepository(
+  repositoryId: string,
+  nodeId: string,
+  body: { repositoryId: string; parentNodeId?: string | null }
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/change-repository`,
+    {
+      method: "PUT",
+      body: {
+        repositoryId: body.repositoryId,
+        parentNodeId: body.parentNodeId ?? null,
+      },
+    }
+  );
+}
+
+export function copyFolderStructure(
+  repositoryId: string,
+  sourceRepoId: string
+): Promise<{ copied: true }> {
+  return apiRequest<{ copied: true }>(
+    `/document-repositories/${repositoryId}/copy-folder-structure`,
+    {
+      method: "POST",
+      body: { sourceRepoId },
+    }
+  );
+}
+
+export function decideNodeAuthorisation(
+  repositoryId: string,
+  nodeId: string,
+  authorisationId: string,
+  body: { status: "Approved" | "Rejected"; message?: string }
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/authorisation/${authorisationId}`,
+    {
+      method: "PUT",
+      body,
+    }
   );
 }
 

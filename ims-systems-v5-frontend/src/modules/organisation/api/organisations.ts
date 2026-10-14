@@ -2,8 +2,10 @@ import { apiRequest } from "@/shared/lib/http";
 import type {
   CreateOrganisationInput,
   CreateOrganisationResult,
+  DocumentReviewReminderOffset,
   Organisation,
   OrganisationProfile,
+  RequestOrganisationLicenceInput,
 } from "../types";
 
 export function createOrganisation(
@@ -25,4 +27,25 @@ export function getOrganisation(id: string): Promise<OrganisationProfile> {
 
 export function listMyOrganisations(): Promise<Organisation[]> {
   return apiRequest<Organisation[]>("/organisations");
+}
+
+export function requestOrganisationLicence(
+  body: RequestOrganisationLicenceInput
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>("/organisations/current/licence-request", {
+    method: "POST",
+    body,
+  });
+}
+
+export function updateDocumentReviewReminders(
+  documentReviewReminderOffsets: DocumentReviewReminderOffset[]
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    "/organisations/current/document-review-reminders",
+    {
+      method: "PUT",
+      body: { documentReviewReminderOffsets },
+    }
+  );
 }

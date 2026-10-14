@@ -8,6 +8,8 @@
  *   pnpm seed:demo
  */
 import { config as loadDotenv } from "dotenv";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import mongoose from "mongoose";
 import { loadConfig } from "../src/config";
 import { hashPassword } from "../src/modules/users/services/password";
@@ -33,8 +35,50 @@ import { getKpiObjectiveModel } from "../src/modules/kpi-objectives/repositories
 import { getActivityModel } from "../src/modules/activities/repositories/activity.model";
 import { getOrganisationModel } from "../src/modules/organisation/repositories/organisation.model";
 import { getOrganisationMembershipModel } from "../src/modules/organisation/repositories/organisation-membership.model";
+import { getDocumentRepositoryModel } from "../src/modules/document-management/repositories/document-repository.model";
+import { getDocumentTreeModel } from "../src/modules/document-management/repositories/document-tree.model";
 
 loadDotenv();
+
+const DEMO_FILES_BUCKET = "ims-v5-local-demo";
+
+/** Minimal valid PDF — one page with placeholder text for demo preview. */
+const MINIMAL_DEMO_PDF = Buffer.from(
+  `%PDF-1.4
+1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj
+2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj
+3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]/Contents 4 0 R>>endobj
+4 0 obj<</Length 52>>stream
+BT /F1 18 Tf 72 720 Td (IMS V5 demo document) Tj ET
+endstream
+endobj
+xref
+0 5
+0000000000 65535 f 
+0000000010 00000 n 
+0000000060 00000 n 
+0000000117 00000 n 
+0000000237 00000 n 
+trailer<</Size 5/Root 1 0 R>>
+startxref
+334
+%%EOF`
+);
+
+async function writeLocalDemoObject(
+  rootDir: string,
+  bucket: string,
+  key: string,
+  body: Buffer
+): Promise<void> {
+  const root = path.resolve(rootDir);
+  const filePath = path.resolve(root, bucket, key);
+  if (!filePath.startsWith(`${root}${path.sep}`)) {
+    throw new Error(`Refusing to write outside local files root: ${key}`);
+  }
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, body);
+}
 
 /** Matches frontend / backend development stub organisation. */
 const ORG_ID = "000000000000000000000001";
@@ -140,6 +184,18 @@ const ids = {
     phishingSim: "a00000000000000000000005",
     changeWindow: "a00000000000000000000006",
   },
+  documents: {
+    repoPolicies: "c00000000000000000000001",
+    repoOps: "c00000000000000000000002",
+    folderPolicies: "c10000000000000000000001",
+    folderSops: "c10000000000000000000002",
+    folderRootOps: "c10000000000000000000003",
+    docIsmsPolicy: "c20000000000000000000001",
+    docAccessPolicy: "c20000000000000000000002",
+    docBackupSop: "c20000000000000000000003",
+    docPendingChange: "c20000000000000000000004",
+    docIncidentProcess: "c20000000000000000000005",
+  },
   suppliers: {
     cloudflare: "b00000000000000000000001",
     digicert: "b00000000000000000000002",
@@ -241,10 +297,24 @@ async function main(): Promise<void> {
         isPartner: false,
         status: "Running",
         licences: {
-          superUser: { allocated: 5, used: 2 },
-          users: { allocated: 25, used: 6 },
-          groups: { allocated: 10, used: 5 },
+          superUser: { allocated: 2, used: 2 },
+          users: { allocated: 20, used: 1 },
+          groups: { allocated: 10, used: 6 },
+          complianceTools: [
+            "ISO 27001",
+            "ESG Toolkit - Social",
+            "ESG Toolkit - Governance",
+            "ESG Toolkit - Environmental",
+            "ISO 15686-5",
+            "ISO 27001 (2022)",
+            "ISO 20000",
+            "ISO 27002",
+            "ISO 9001",
+            "Building Safety Act",
+          ],
+          additionalModules: ["CRM"],
         },
+        documentReviewReminderOffsets: ["1_month", "1_week", "1_day"],
         referralSource: null,
         logoSrc: null,
         createdBy: CREATED_BY,
@@ -3076,6 +3146,313 @@ async function main(): Promise<void> {
     );
   }
   console.log(`Activities: ${demoActivities.length} demo timeline entries`);
+
+  const DocumentRepository = getDocumentRepositoryModel();
+  const DocumentTree = getDocumentTreeModel();
+
+  const demoRepos = [
+    {
+      id: ids.documents.repoPolicies,
+      reference: "REP-DEMO-001",
+      name: "IMS Policies",
+      description: "Controlled organisational policies library",
+      privacy: "Organisational" as const,
+      owners: [ids.users.ada, STUB_SUBJECT],
+      reviewInterval: "Yearly" as const,
+      createdOn: new Date("2024-02-08T10:00:00.000Z"),
+    },
+    {
+      id: ids.documents.repoOps,
+      reference: "REP-DEMO-002",
+      name: "Operations Playbooks",
+      description: "Day-to-day process and SOP repository",
+      privacy: "Organisational" as const,
+      owners: [ids.users.grace],
+      reviewInterval: "Half yearly" as const,
+      createdOn: new Date("2024-06-01T09:00:00.000Z"),
+    },
+  ];
+
+  for (const repo of demoRepos) {
+    await DocumentRepository.findByIdAndUpdate(
+      repo.id,
+      {
+        $set: {
+          organizationId: ORG_ID,
+          reference: repo.reference,
+          name: repo.name,
+          description: repo.description,
+          privacy: repo.privacy,
+          businessUnitId: null,
+          owners: repo.owners,
+          sharedWith: [],
+          reviewInterval: repo.reviewInterval,
+          createdBy: ids.users.ada,
+          createdOn: repo.createdOn,
+          updatedBy: ids.users.ada,
+          updatedOn: new Date("2026-10-08T12:00:00.000Z"),
+          deletedAt: null,
+        },
+        $setOnInsert: { _id: repo.id },
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+
+  function demoFile(name: string) {
+    const key = `general/demo/${name}`;
+    return {
+      Name: name,
+      Key: key,
+      key,
+      Bucket: DEMO_FILES_BUCKET,
+    };
+  }
+
+  const demoNodes = [
+    {
+      id: ids.documents.folderPolicies,
+      repositoryId: ids.documents.repoPolicies,
+      reference: "DOC-DEMO-F01",
+      name: "Policies",
+      type: "folder" as const,
+      status: "Published" as const,
+      parentNodeId: null,
+      documentData: null,
+      folderData: {
+        reviewDate: new Date("2027-02-08T00:00:00.000Z"),
+        modifiedBy: ids.users.ada,
+        modifiedOn: new Date("2026-09-01T00:00:00.000Z"),
+      },
+      createdBy: ids.users.ada,
+      createdOn: new Date("2024-02-08T11:00:00.000Z"),
+    },
+    {
+      id: ids.documents.folderSops,
+      repositoryId: ids.documents.repoPolicies,
+      reference: "DOC-DEMO-F02",
+      name: "SOPs",
+      type: "folder" as const,
+      status: "Published" as const,
+      parentNodeId: null,
+      documentData: null,
+      folderData: {
+        reviewDate: new Date("2027-02-08T00:00:00.000Z"),
+        modifiedBy: ids.users.grace,
+        modifiedOn: new Date("2026-09-15T00:00:00.000Z"),
+      },
+      createdBy: ids.users.grace,
+      createdOn: new Date("2024-02-09T11:00:00.000Z"),
+    },
+    {
+      id: ids.documents.folderRootOps,
+      repositoryId: ids.documents.repoOps,
+      reference: "DOC-DEMO-F03",
+      name: "Incident response",
+      type: "folder" as const,
+      status: "Published" as const,
+      parentNodeId: null,
+      documentData: null,
+      folderData: {
+        reviewDate: new Date("2026-12-01T00:00:00.000Z"),
+        modifiedBy: ids.users.alan,
+        modifiedOn: new Date("2026-08-01T00:00:00.000Z"),
+      },
+      createdBy: ids.users.alan,
+      createdOn: new Date("2024-06-02T11:00:00.000Z"),
+    },
+    {
+      id: ids.documents.docIsmsPolicy,
+      repositoryId: ids.documents.repoPolicies,
+      reference: "DOC-DEMO-001",
+      name: "Information Security Policy.pdf",
+      type: "document" as const,
+      status: "Published" as const,
+      parentNodeId: ids.documents.folderPolicies,
+      documentData: {
+        storageInfo: demoFile("Information-Security-Policy.pdf"),
+        purpose: "Policy",
+        owners: [ids.users.ada],
+        applicableModules: ["compliancecontrols", "audits"],
+        complianceTools: [],
+        authorisation: [],
+        classification: "Internal",
+        dvID: 2,
+        conformance: -1,
+        threadId: "thread-demo-isms-policy",
+        reviewDate: new Date("2026-10-08T00:00:00.000Z"),
+      },
+      folderData: null,
+      createdBy: ids.users.ada,
+      createdOn: new Date("2024-03-01T10:00:00.000Z"),
+      updatedBy: ids.users.ada,
+      updatedOn: new Date("2026-10-09T09:30:00.000Z"),
+    },
+    {
+      id: ids.documents.docAccessPolicy,
+      repositoryId: ids.documents.repoPolicies,
+      reference: "DOC-DEMO-002",
+      name: "Access Control Policy.pdf",
+      type: "document" as const,
+      status: "Published" as const,
+      parentNodeId: ids.documents.folderPolicies,
+      documentData: {
+        storageInfo: demoFile("Access-Control-Policy.pdf"),
+        purpose: "Policy",
+        owners: [ids.users.tim, ids.users.ada],
+        applicableModules: ["risks", "audits"],
+        complianceTools: [],
+        authorisation: [],
+        classification: "Internal",
+        dvID: 1,
+        conformance: -1,
+        threadId: "thread-demo-access-policy",
+        reviewDate: new Date("2026-11-01T00:00:00.000Z"),
+      },
+      folderData: null,
+      createdBy: ids.users.tim,
+      createdOn: new Date("2024-04-12T10:00:00.000Z"),
+      updatedBy: ids.users.ada,
+      updatedOn: new Date("2026-09-20T14:00:00.000Z"),
+    },
+    {
+      id: ids.documents.docBackupSop,
+      repositoryId: ids.documents.repoPolicies,
+      reference: "DOC-DEMO-003",
+      name: "Backup and Restore SOP.docx",
+      type: "document" as const,
+      status: "Published" as const,
+      parentNodeId: ids.documents.folderSops,
+      documentData: {
+        storageInfo: demoFile("Backup-and-Restore-SOP.docx"),
+        purpose: "Standard operating procedure",
+        owners: [ids.users.margaret],
+        applicableModules: ["incidents"],
+        complianceTools: [],
+        authorisation: [],
+        classification: "Internal",
+        dvID: 3,
+        conformance: -1,
+        threadId: "thread-demo-backup-sop",
+        reviewDate: new Date("2026-12-15T00:00:00.000Z"),
+      },
+      folderData: null,
+      createdBy: ids.users.margaret,
+      createdOn: new Date("2024-05-01T10:00:00.000Z"),
+      updatedBy: ids.users.grace,
+      updatedOn: new Date("2026-10-01T11:00:00.000Z"),
+    },
+    {
+      id: ids.documents.docPendingChange,
+      repositoryId: ids.documents.repoPolicies,
+      reference: "DOC-DEMO-004",
+      name: "Change Management Procedure.pdf",
+      type: "document" as const,
+      status: "Pending" as const,
+      parentNodeId: ids.documents.folderSops,
+      documentData: {
+        storageInfo: demoFile("Change-Management-Procedure.pdf"),
+        purpose: "Process",
+        owners: [ids.users.grace],
+        applicableModules: ["managementreviews"],
+        complianceTools: [],
+        authorisation: [
+          {
+            userId: STUB_SUBJECT,
+            status: "Pending",
+            handledOn: null,
+            message: "",
+          },
+        ],
+        classification: "Internal",
+        dvID: 0,
+        conformance: -1,
+        threadId: "thread-demo-change-mgmt",
+        reviewDate: new Date("2027-01-10T00:00:00.000Z"),
+      },
+      folderData: null,
+      createdBy: ids.users.grace,
+      createdOn: new Date("2026-10-05T10:00:00.000Z"),
+      updatedBy: ids.users.grace,
+      updatedOn: new Date("2026-10-05T10:00:00.000Z"),
+    },
+    {
+      id: ids.documents.docIncidentProcess,
+      repositoryId: ids.documents.repoOps,
+      reference: "DOC-DEMO-005",
+      name: "Incident Response Process.pdf",
+      type: "document" as const,
+      status: "Published" as const,
+      parentNodeId: ids.documents.folderRootOps,
+      documentData: {
+        storageInfo: demoFile("Incident-Response-Process.pdf"),
+        purpose: "Process",
+        owners: [ids.users.alan, ids.users.katherine],
+        applicableModules: ["incidents", "risks"],
+        complianceTools: [],
+        authorisation: [],
+        classification: "Confidential",
+        dvID: 1,
+        conformance: -1,
+        threadId: "thread-demo-incident-process",
+        reviewDate: new Date("2026-10-20T00:00:00.000Z"),
+      },
+      folderData: null,
+      createdBy: ids.users.alan,
+      createdOn: new Date("2024-07-01T10:00:00.000Z"),
+      updatedBy: ids.users.katherine,
+      updatedOn: new Date("2026-10-02T16:00:00.000Z"),
+    },
+  ];
+
+  for (const node of demoNodes) {
+    await DocumentTree.findByIdAndUpdate(
+      node.id,
+      {
+        $set: {
+          organizationId: ORG_ID,
+          repositoryId: node.repositoryId,
+          reference: node.reference,
+          name: node.name,
+          type: node.type,
+          status: node.status,
+          parentNodeId: node.parentNodeId,
+          documentData: node.documentData,
+          folderData: node.folderData,
+          createdBy: node.createdBy,
+          createdOn: node.createdOn,
+          updatedBy: "updatedBy" in node ? node.updatedBy ?? null : null,
+          updatedOn: "updatedOn" in node ? node.updatedOn ?? null : null,
+          deletedAt: null,
+        },
+        $setOnInsert: { _id: node.id },
+      },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+  }
+  console.log(
+    `Document management: ${demoRepos.length} repositories, ${demoNodes.length} tree nodes`
+  );
+
+  const appConfig = loadConfig();
+  const localRoot = appConfig.FILES_LOCAL_ROOT;
+  let demoBytesWritten = 0;
+  for (const node of demoNodes) {
+    const storage = node.documentData?.storageInfo;
+    if (!storage?.Bucket || !storage.Key) continue;
+    await writeLocalDemoObject(
+      localRoot,
+      storage.Bucket,
+      storage.Key,
+      MINIMAL_DEMO_PDF
+    );
+    demoBytesWritten += 1;
+  }
+  if (demoBytesWritten > 0) {
+    console.log(
+      `Local demo files: wrote ${demoBytesWritten} object(s) under ${path.resolve(localRoot)} (FILES_PROVIDER=local + FILES_ENABLED=true for preview)`
+    );
+  }
 
   console.log("Demo seed complete. Refresh the UI to see the data.");
 

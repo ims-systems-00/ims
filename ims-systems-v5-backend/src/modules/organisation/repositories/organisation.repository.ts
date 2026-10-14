@@ -1,12 +1,31 @@
 import type {
   CreateOrganisationInput,
+  DocumentReviewReminderOffset,
   Organisation,
   OrganisationLicences,
 } from "../types";
+import { DOCUMENT_REVIEW_REMINDER_OFFSETS } from "../types";
 import {
   getOrganisationModel,
   type OrganisationDocument,
 } from "./organisation.model";
+
+const OFFSET_SET = new Set<string>(DOCUMENT_REVIEW_REMINDER_OFFSETS);
+
+function normalizeReminderOffsets(
+  value: unknown
+): DocumentReviewReminderOffset[] {
+  if (!Array.isArray(value)) return [];
+  const unique = new Set<DocumentReviewReminderOffset>();
+  for (const item of value) {
+    if (typeof item === "string" && OFFSET_SET.has(item)) {
+      unique.add(item as DocumentReviewReminderOffset);
+    }
+  }
+  return DOCUMENT_REVIEW_REMINDER_OFFSETS.filter((offset) =>
+    unique.has(offset)
+  );
+}
 
 function toDomain(doc: OrganisationDocument): Organisation {
   const licences = (doc.licences ?? {}) as Partial<OrganisationLicences>;
@@ -64,7 +83,13 @@ function toDomain(doc: OrganisationDocument): Organisation {
         allocated: licences.groups?.allocated ?? 0,
         used: licences.groups?.used ?? 0,
       },
+      complianceTools: [...(licences.complianceTools ?? [])],
+      additionalModules: [...(licences.additionalModules ?? [])],
     },
+    documentReviewReminderOffsets: normalizeReminderOffsets(
+      (doc as { documentReviewReminderOffsets?: unknown })
+        .documentReviewReminderOffsets
+    ),
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
     createdBy: doc.createdBy,
@@ -115,7 +140,10 @@ export function createOrganisationRepository() {
           superUser: { allocated: 1, used: 0 },
           users: { allocated: 0, used: 0 },
           groups: { allocated: 0, used: 0 },
+          complianceTools: [],
+          additionalModules: [],
         },
+        documentReviewReminderOffsets: [],
         referralSource: input.data.referralSource ?? null,
         logoSrc: null,
         createdBy: input.createdBy,
@@ -182,10 +210,28 @@ export function createOrganisationRepository() {
             isPartner: false,
             status: "Running",
             licences: {
-              superUser: { allocated: 5, used: 1 },
-              users: { allocated: 25, used: 6 },
-              groups: { allocated: 10, used: 5 },
+              superUser: { allocated: 2, used: 2 },
+              users: { allocated: 20, used: 1 },
+              groups: { allocated: 10, used: 6 },
+              complianceTools: [
+                "ISO 27001",
+                "ESG Toolkit - Social",
+                "ESG Toolkit - Governance",
+                "ESG Toolkit - Environmental",
+                "ISO 15686-5",
+                "ISO 27001 (2022)",
+                "ISO 20000",
+                "ISO 27002",
+                "ISO 9001",
+                "Building Safety Act",
+              ],
+              additionalModules: ["CRM"],
             },
+            documentReviewReminderOffsets: [
+              "1_month",
+              "1_week",
+              "1_day",
+            ],
             referralSource: null,
             logoSrc: null,
             createdBy: input.createdBy,
@@ -195,6 +241,66 @@ export function createOrganisationRepository() {
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       ).lean();
       return toDomain(doc as OrganisationDocument);
+    },
+
+    async updateDocumentReviewReminders(
+      id: string,
+      offsets: DocumentReviewReminderOffset[]
+    ): Promise<Organisation | null> {
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            documentReviewReminderOffsets: normalizeReminderOffsets(offsets),
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async applyLicenceRequest(
+      id: string,
+      input: {
+        superUser?: number;
+        users?: number;
+        groups?: number;
+        complianceTools?: string[];
+        additionalModules?: string[];
+      }
+    ): Promise<Organisation | null> {
+      const $inc: Record<string, number> = {};
+      if ((input.superUser ?? 0) > 0) {
+        $inc["licences.superUser.allocated"] = input.superUser!;
+      }
+      if ((input.users ?? 0) > 0) {
+        $inc["licences.users.allocated"] = input.users!;
+      }
+      if ((input.groups ?? 0) > 0) {
+        $inc["licences.groups.allocated"] = input.groups!;
+      }
+
+      const $addToSet: Record<string, { $each: string[] }> = {};
+      if (input.complianceTools?.length) {
+        $addToSet["licences.complianceTools"] = {
+          $each: [...new Set(input.complianceTools)],
+        };
+      }
+      if (input.additionalModules?.length) {
+        $addToSet["licences.additionalModules"] = {
+          $each: [...new Set(input.additionalModules)],
+        };
+      }
+
+      const update: Record<string, unknown> = {};
+      if (Object.keys($inc).length > 0) update.$inc = $inc;
+      if (Object.keys($addToSet).length > 0) update.$addToSet = $addToSet;
+      if (Object.keys(update).length === 0) {
+        return this.findById(id);
+      }
+
+      await Model.updateOne({ _id: id }, update);
+      return this.findById(id);
     },
   };
 }

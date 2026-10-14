@@ -1,8 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  addDocumentVersion,
+  changeNodeRepository,
+  copyFolderStructure,
   createDocumentRepository,
   createFileNodes,
   createFolderNode,
+  decideNodeAuthorisation,
   getDocumentOverview,
   getDocumentRepository,
   getNodePath,
@@ -12,10 +16,13 @@ import {
   listDocumentRepositories,
   listPublishedDocuments,
   listRepoNodes,
+  moveRepoNode,
   restoreDocumentRepository,
   restoreNode,
+  revisePendingDocument,
   softDeleteDocumentRepository,
   softDeleteNode,
+  updateDocumentNode,
   updateDocumentRepository,
 } from "../api/document-management";
 import type {
@@ -224,8 +231,31 @@ export function useCreateFileNodesMutation(repositoryId: string) {
         purpose?: DocumentPurpose;
         applicableModules?: DocumentApplicableModule[];
         authorisation?: string[];
+        owners?: string[];
+        reviewDate?: string | null;
       }>;
     }) => createFileNodes(repositoryId, body),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useUpdateDocumentNodeMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      nodeId,
+      body,
+    }: {
+      nodeId: string;
+      body: {
+        purpose?: DocumentPurpose;
+        owners?: string[];
+        applicableModules?: DocumentApplicableModule[];
+        reviewDate?: string | null;
+      };
+    }) => updateDocumentNode(repositoryId, nodeId, body),
     onSuccess: async () => {
       await invalidateDocumentQueries(queryClient, repositoryId);
     },
@@ -256,6 +286,104 @@ export function useHardDeleteNodeMutation(repositoryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (nodeId: string) => hardDeleteNode(repositoryId, nodeId),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useAddDocumentVersionMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      nodeId: string;
+      parentNodeId?: string | null;
+      storageInfo: DocumentFileMeta;
+      owners?: string[];
+      authorisation?: string[];
+    }) =>
+      addDocumentVersion(repositoryId, input.nodeId, {
+        parentNodeId: input.parentNodeId,
+        storageInfo: input.storageInfo,
+        owners: input.owners,
+        authorisation: input.authorisation,
+      }),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useRevisePendingDocumentMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nodeId: string; storageInfo: DocumentFileMeta }) =>
+      revisePendingDocument(repositoryId, input.nodeId, input.storageInfo),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useMoveRepoNodeMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nodeId: string; parentNodeId: string | null }) =>
+      moveRepoNode(repositoryId, input.nodeId, input.parentNodeId),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useChangeNodeRepositoryMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      nodeId: string;
+      targetRepositoryId: string;
+      parentNodeId?: string | null;
+    }) =>
+      changeNodeRepository(repositoryId, input.nodeId, {
+        repositoryId: input.targetRepositoryId,
+        parentNodeId: input.parentNodeId,
+      }),
+    onSuccess: async (_node, variables) => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+      await invalidateDocumentQueries(
+        queryClient,
+        variables.targetRepositoryId
+      );
+    },
+  });
+}
+
+export function useCopyFolderStructureMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sourceRepoId: string) =>
+      copyFolderStructure(repositoryId, sourceRepoId),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useDecideAuthorisationMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      nodeId: string;
+      authorisationId: string;
+      status: "Approved" | "Rejected";
+      message?: string;
+    }) =>
+      decideNodeAuthorisation(
+        repositoryId,
+        input.nodeId,
+        input.authorisationId,
+        { status: input.status, message: input.message }
+      ),
     onSuccess: async () => {
       await invalidateDocumentQueries(queryClient, repositoryId);
     },

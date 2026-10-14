@@ -1,7 +1,9 @@
-import { Router } from "express";
+import express, { Router } from "express";
 import type { ObjectStoragePort } from "../ports";
 import { MemoryObjectStorageAdapter } from "../ports";
 import { createFilesController } from "../controllers/files.controller";
+import { createLocalFilesController } from "../controllers/local-files.controller";
+import { LocalObjectStorageAdapter } from "../local-object-storage";
 import {
   createFilesService,
   type FilesService,
@@ -40,6 +42,13 @@ export function createFilesModule(deps: FilesRouterDeps): {
   router.get("/signed-url/uploads", controller.getUploadUrl);
   router.get("/signed-url", controller.getViewUrl);
   router.delete("/", controller.deleteFile);
+
+  if (storage instanceof LocalObjectStorageAdapter) {
+    const local = createLocalFilesController(storage);
+    const rawBody = express.raw({ type: () => true, limit: "100mb" });
+    router.put("/local/object", rawBody, local.putObject);
+    router.get("/local/object", local.getObject);
+  }
 
   return { service, router, storage };
 }

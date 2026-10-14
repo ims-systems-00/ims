@@ -1,5 +1,8 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
-import { ORGANISATION_STATUSES } from "../types";
+import {
+  DOCUMENT_REVIEW_REMINDER_OFFSETS,
+  ORGANISATION_STATUSES,
+} from "../types";
 
 const licenceCounterSchema = new Schema(
   {
@@ -41,9 +44,29 @@ const organisationSchema = new Schema(
       default: "Running",
     },
     licences: {
-      superUser: { type: licenceCounterSchema, default: () => ({ allocated: 1, used: 0 }) },
-      users: { type: licenceCounterSchema, default: () => ({ allocated: 0, used: 0 }) },
-      groups: { type: licenceCounterSchema, default: () => ({ allocated: 0, used: 0 }) },
+      superUser: {
+        type: licenceCounterSchema,
+        default: () => ({ allocated: 1, used: 0 }),
+      },
+      users: {
+        type: licenceCounterSchema,
+        default: () => ({ allocated: 0, used: 0 }),
+      },
+      groups: {
+        type: licenceCounterSchema,
+        default: () => ({ allocated: 0, used: 0 }),
+      },
+      complianceTools: { type: [String], default: [] },
+      additionalModules: { type: [String], default: [] },
+    },
+    documentReviewReminderOffsets: {
+      type: [
+        {
+          type: String,
+          enum: [...DOCUMENT_REVIEW_REMINDER_OFFSETS],
+        },
+      ],
+      default: [],
     },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },

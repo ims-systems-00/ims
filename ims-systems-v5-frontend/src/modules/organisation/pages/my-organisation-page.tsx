@@ -5,8 +5,28 @@ import { PageHeader } from "@/shared/layout";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { DocumentManagementRemindersPanel } from "../components/document-management-reminders-panel";
+import { OrganisationLicencesPanel } from "../components/organisation-licences-panel";
 import { useCurrentOrganisationQuery } from "../hooks/use-organisations";
-import type { OrganisationProfile } from "../types";
+import {
+  DOCUMENT_REVIEW_REMINDER_OPTIONS,
+  normalizeOrganisationLicences,
+  type DocumentReviewReminderOffset,
+  type OrganisationProfile,
+} from "../types";
+
+function normalizeReminderOffsets(
+  value: unknown
+): DocumentReviewReminderOffset[] {
+  if (!Array.isArray(value)) return [];
+  const allowed = new Set(
+    DOCUMENT_REVIEW_REMINDER_OPTIONS.map((option) => option.value)
+  );
+  return value.filter(
+    (item): item is DocumentReviewReminderOffset =>
+      typeof item === "string" && allowed.has(item as DocumentReviewReminderOffset)
+  );
+}
 
 function DetailItem({
   label,
@@ -65,7 +85,7 @@ export function MyOrganisationPage() {
 
   if (orgQuery.isLoading) {
     return (
-      <div className="mx-auto max-w-4xl space-y-5">
+      <div className="mx-auto max-w-8xl space-y-5">
         <PageHeader
           title="My organisation"
           description="Tenant identity and contact details for the organisation in this session."
@@ -80,7 +100,7 @@ export function MyOrganisationPage() {
 
   if (orgQuery.isError || !orgQuery.data) {
     return (
-      <div className="mx-auto max-w-4xl space-y-5">
+      <div className="mx-auto max-w-8xl space-y-5">
         <PageHeader
           title="My organisation"
           description="Tenant identity and contact details for the organisation in this session."
@@ -100,7 +120,7 @@ export function MyOrganisationPage() {
   const addressLine = formatAddress(organisation.address);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5">
+    <div className="mx-auto max-w-8xl space-y-5">
       <PageHeader
         title="My organisation"
         description="Tenant identity and contact details for the organisation in this session."
@@ -256,20 +276,20 @@ export function MyOrganisationPage() {
               label="Customer"
               value={organisation.isCustomer ? "Yes" : "No"}
             />
-            <DetailItem
-              label="Super user licences"
-              value={`${organisation.licences.superUser.used} / ${organisation.licences.superUser.allocated}`}
-            />
           </dl>
         </OrgCard>
-
-        <OrgCard title="Coming soon">
-          <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
-            Editing organisation details, go-live, licences, branding, and
-            billing will expand as the Organisation module grows in V5.
-          </p>
-        </OrgCard>
       </div>
+
+      <OrganisationLicencesPanel
+        licences={normalizeOrganisationLicences(organisation.licences)}
+        isCustomer={organisation.isCustomer}
+      />
+
+      <DocumentManagementRemindersPanel
+        offsets={normalizeReminderOffsets(
+          organisation.documentReviewReminderOffsets
+        )}
+      />
     </div>
   );
 }

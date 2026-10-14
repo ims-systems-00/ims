@@ -40,5 +40,14 @@ export const createFolderFormSchema = z.object({
 export const uploadDocumentFormSchema = z.object({
   purpose: z.enum(DOCUMENT_PURPOSES).default("Document"),
   applicableModules: z.array(z.enum(DOCUMENT_APPLICABLE_MODULES)).default([]),
+  owners: z.array(z.string().trim().min(1)).min(1).max(5),
+  reviewDate: z.string().trim().nullable().optional(),
   requireAuthorisation: z.boolean().default(false),
+});
+
+export const updateDocumentInfoFormSchema = z.object({
+  purpose: z.enum(DOCUMENT_PURPOSES),
+  applicableModules: z.array(z.enum(DOCUMENT_APPLICABLE_MODULES)).default([]),
+  owners: z.array(z.string().trim().min(1)).min(1).max(5),
+  reviewDate: z.string().trim().nullable().optional(),
 });

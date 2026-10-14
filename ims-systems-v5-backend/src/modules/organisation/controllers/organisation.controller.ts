@@ -3,6 +3,8 @@ import { parseWithSchema, sendSuccess } from "../../../shared";
 import {
   createOrganisationBodySchema,
   organisationIdParamSchema,
+  requestOrganisationLicenceBodySchema,
+  updateDocumentReviewRemindersBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
 
@@ -11,6 +13,8 @@ export type OrganisationController = {
   getCurrent: RequestHandler;
   getById: RequestHandler;
   listMine: RequestHandler;
+  requestLicence: RequestHandler;
+  updateDocumentReviewReminders: RequestHandler;
 };
 
 export function createOrganisationController(
@@ -54,5 +58,45 @@ export function createOrganisationController(
     }
   };
 
-  return { create, getCurrent, getById, listMine };
+  const requestLicence: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(
+        requestOrganisationLicenceBodySchema,
+        req.body
+      );
+      const data = await service.requestLicence(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const updateDocumentReviewReminders: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const body = parseWithSchema(
+        updateDocumentReviewRemindersBodySchema,
+        req.body
+      );
+      const data = await service.updateDocumentReviewReminders(
+        req.identity,
+        body
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  return {
+    create,
+    getCurrent,
+    getById,
+    listMine,
+    requestLicence,
+    updateDocumentReviewReminders,
+  };
 }
