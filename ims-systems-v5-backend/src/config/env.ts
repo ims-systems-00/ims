@@ -10,12 +10,27 @@ const logLevelSchema = z.enum([
   "trace",
   "silent",
 ]);
-const securityProviderSchema = z.enum(["development-stub"]);
+const securityProviderSchema = z.enum(["development-stub", "auth0-openfga"]);
 const emailProviderSchema = z.enum(["mailtrap", "sendgrid", "logging"]);
 const filesProviderSchema = z.enum(["s3", "memory"]);
 const booleanFromEnv = z
   .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
   .transform((value) => value === true || value === "true" || value === "1");
+
+function requireNonEmpty(
+  value: string | undefined,
+  path: string,
+  message: string,
+  ctx: z.RefinementCtx
+): void {
+  if (!value?.trim()) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: [path],
+      message,
+    });
+  }
+}
 
 function requireMailFrom(
   value: { MAIL_FROM: string },
@@ -48,7 +63,26 @@ const envSchema = z
         "MONGODB_URI must be a mongodb:// or mongodb+srv:// connection string"
       ),
     LOG_LEVEL: logLevelSchema.default("info"),
+    /**
+     * development-stub — local/test only (forbidden in production).
+     * auth0-openfga — Auth0 JWT AuthN + OpenFGA AuthZ (adapters land in rollout M3/M6).
+     */
     SECURITY_PROVIDER: securityProviderSchema.default("development-stub"),
+
+    /** Auth0 API / tenant (required when SECURITY_PROVIDER=auth0-openfga). */
+    AUTH0_DOMAIN: z.string().default(""),
+    AUTH0_AUDIENCE: z.string().default(""),
+    /**
+     * Issuer URL for JWT validation. Empty = derived as `https://${AUTH0_DOMAIN}/`.
+     */
+    AUTH0_ISSUER: z.string().default(""),
+
+    /** OpenFGA store (required when SECURITY_PROVIDER=auth0-openfga). */
+    OPENFGA_API_URL: z.string().default(""),
+    OPENFGA_STORE_ID: z.string().default(""),
+    OPENFGA_MODEL_ID: z.string().default(""),
+    /** Optional API token / client credentials depending on deployment. */
+    OPENFGA_API_TOKEN: z.string().default(""),
 
     /** Redis connection used by BullMQ email queues. */
     REDIS_URL: z
@@ -196,6 +230,47 @@ const envSchema = z
       });
     }
 
+    if (value.SECURITY_PROVIDER === "auth0-openfga") {
+      requireNonEmpty(
+        value.AUTH0_DOMAIN,
+        "AUTH0_DOMAIN",
+        "AUTH0_DOMAIN is required when SECURITY_PROVIDER=auth0-openfga",
+        ctx
+      );
+      requireNonEmpty(
+        value.AUTH0_AUDIENCE,
+        "AUTH0_AUDIENCE",
+        "AUTH0_AUDIENCE is required when SECURITY_PROVIDER=auth0-openfga",
+        ctx
+      );
+      if (!value.AUTH0_ISSUER?.trim() && !value.AUTH0_DOMAIN?.trim()) {
+        requireNonEmpty(
+          value.AUTH0_ISSUER,
+          "AUTH0_ISSUER",
+          "AUTH0_ISSUER or AUTH0_DOMAIN is required when SECURITY_PROVIDER=auth0-openfga",
+          ctx
+        );
+      }
+      requireNonEmpty(
+        value.OPENFGA_API_URL,
+        "OPENFGA_API_URL",
+        "OPENFGA_API_URL is required when SECURITY_PROVIDER=auth0-openfga",
+        ctx
+      );
+      requireNonEmpty(
+        value.OPENFGA_STORE_ID,
+        "OPENFGA_STORE_ID",
+        "OPENFGA_STORE_ID is required when SECURITY_PROVIDER=auth0-openfga",
+        ctx
+      );
+      requireNonEmpty(
+        value.OPENFGA_MODEL_ID,
+        "OPENFGA_MODEL_ID",
+        "OPENFGA_MODEL_ID is required when SECURITY_PROVIDER=auth0-openfga",
+        ctx
+      );
+    }
+
     if (value.EMAIL_ENABLED && value.EMAIL_PROVIDER === "mailtrap") {
       if (!value.MAILTRAP_USER?.trim()) {
         ctx.addIssue({
@@ -301,5 +376,22 @@ export function loadConfig(env: EnvSource = process.env): AppConfig {
       .join("; ");
     throw new Error(`Invalid configuration: ${details}`);
   }
-  return result.data;
+
+  const config = result.data;
+  if (
+    config.SECURITY_PROVIDER === "auth0-openfga" &&
+    !config.AUTH0_ISSUER.trim() &&
+    config.AUTH0_DOMAIN.trim()
+  ) {
+    const domain = config.AUTH0_DOMAIN.replace(/^https?:\/\//, "").replace(
+      /\/$/,
+      ""
+    );
+    return {
+      ...config,
+      AUTH0_ISSUER: `https://${domain}/`,
+    };
+  }
+
+  return config;
 }

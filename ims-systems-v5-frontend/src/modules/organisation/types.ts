@@ -51,6 +51,8 @@ export type Organisation = {
   licences: OrganisationLicences;
   referralSource: string | null;
   logoSrc: string | null;
+  /** Auth0 Organization id when linked; null until auth rollout links it. */
+  auth0OrganizationId?: string | null;
   createdBy: string;
   createdOn: string;
   createdAt: string;

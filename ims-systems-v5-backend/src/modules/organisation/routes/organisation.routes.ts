@@ -1,5 +1,6 @@
 import { Router } from "express";
 import type { Authorizer } from "../../../security";
+import type { MembershipProjection } from "../../../security/openfga/membership-projection";
 import { createOrganisationController } from "../controllers/organisation.controller";
 import { createOrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import { createOrganisationRepository } from "../repositories/organisation.repository";
@@ -10,6 +11,7 @@ import {
 
 export type OrganisationRouterDeps = {
   authorizer: Authorizer;
+  membershipProjection?: MembershipProjection;
 };
 
 /**
@@ -26,6 +28,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     organisations,
     memberships,
     authorizer: deps.authorizer,
+    membershipProjection: deps.membershipProjection,
   });
   const controller = createOrganisationController(service);
   const router = Router();

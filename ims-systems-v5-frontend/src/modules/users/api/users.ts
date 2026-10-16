@@ -29,6 +29,14 @@ export function getUser(id: string): Promise<UserWithMembership> {
 }
 
 /**
+ * Current session user (Bearer AuthN → IMS user).
+ * GET /users/me
+ */
+export function getCurrentUser(): Promise<UserWithMembership> {
+  return apiRequest<UserWithMembership>("/users/me");
+}
+
+/**
  * Self-service / authorised profile update (first/last name).
  * PATCH /users/:id
  */

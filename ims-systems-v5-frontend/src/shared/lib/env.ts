@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-const securityProviderSchema = z.enum(["development-stub"]);
+const securityProviderSchema = z.enum(["development-stub", "auth0-openfga"]);
 
 /**
  * Absolute http(s) URL, or a same-origin path (e.g. `/api/v1` behind Nginx).
@@ -29,7 +29,21 @@ const publicEnvSchema = z.object({
       "VITE_API_BASE_URL must be an absolute http(s) URL or a same-origin path such as /api/v1"
     )
     .transform((value) => value.replace(/\/$/, "")),
+  /**
+   * development-stub — local/test only (forbidden in Vite mode=production).
+   * auth0-openfga — Auth0 SPA AuthN (adapter lands in rollout M4).
+   */
   VITE_SECURITY_PROVIDER: securityProviderSchema.default("development-stub"),
+
+  /** Auth0 SPA public config (required when VITE_SECURITY_PROVIDER=auth0-openfga). */
+  VITE_AUTH0_DOMAIN: z.string().default(""),
+  VITE_AUTH0_CLIENT_ID: z.string().default(""),
+  VITE_AUTH0_AUDIENCE: z.string().default(""),
+  /**
+   * Optional Auth0 Organization id for single-org demos until M5 org switch.
+   * Example: org_xxxxxxxx
+   */
+  VITE_AUTH0_ORGANIZATION_ID: z.string().default(""),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -37,12 +51,20 @@ export type PublicEnv = z.infer<typeof publicEnvSchema>;
 export type EnvSource = {
   VITE_API_BASE_URL?: string;
   VITE_SECURITY_PROVIDER?: string;
+  VITE_AUTH0_DOMAIN?: string;
+  VITE_AUTH0_CLIENT_ID?: string;
+  VITE_AUTH0_AUDIENCE?: string;
+  VITE_AUTH0_ORGANIZATION_ID?: string;
 };
 
 function readViteEnv(): EnvSource {
   return {
     VITE_API_BASE_URL: import.meta.env.VITE_API_BASE_URL,
     VITE_SECURITY_PROVIDER: import.meta.env.VITE_SECURITY_PROVIDER,
+    VITE_AUTH0_DOMAIN: import.meta.env.VITE_AUTH0_DOMAIN,
+    VITE_AUTH0_CLIENT_ID: import.meta.env.VITE_AUTH0_CLIENT_ID,
+    VITE_AUTH0_AUDIENCE: import.meta.env.VITE_AUTH0_AUDIENCE,
+    VITE_AUTH0_ORGANIZATION_ID: import.meta.env.VITE_AUTH0_ORGANIZATION_ID,
   };
 }
 
@@ -65,6 +87,20 @@ export function loadPublicEnv(
     throw new Error(
       "Invalid frontend configuration: VITE_SECURITY_PROVIDER: development-stub is not allowed when MODE=production"
     );
+  }
+
+  if (result.data.VITE_SECURITY_PROVIDER === "auth0-openfga") {
+    const missing: string[] = [];
+    if (!result.data.VITE_AUTH0_DOMAIN.trim()) missing.push("VITE_AUTH0_DOMAIN");
+    if (!result.data.VITE_AUTH0_CLIENT_ID.trim())
+      missing.push("VITE_AUTH0_CLIENT_ID");
+    if (!result.data.VITE_AUTH0_AUDIENCE.trim())
+      missing.push("VITE_AUTH0_AUDIENCE");
+    if (missing.length > 0) {
+      throw new Error(
+        `Invalid frontend configuration: ${missing.join(", ")} required when VITE_SECURITY_PROVIDER=auth0-openfga`
+      );
+    }
   }
 
   return result.data;

@@ -12,6 +12,7 @@ import {
   type Authorizer,
   type SecurityIdentity,
 } from "../../../security";
+import type { MembershipProjection } from "../../../security/openfga/membership-projection";
 import {
   ConflictError,
   ForbiddenError,
@@ -46,12 +47,14 @@ export type OrganisationServiceDeps = {
   organisations: OrganisationRepository;
   memberships: OrganisationMembershipRepository;
   authorizer: Authorizer;
+  membershipProjection?: MembershipProjection;
 };
 
 export type OrganisationService = ReturnType<typeof createOrganisationService>;
 
 export function createOrganisationService(deps: OrganisationServiceDeps) {
   const { organisations, memberships, authorizer } = deps;
+  const membershipProjection = deps.membershipProjection;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -108,6 +111,14 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         createdOn,
       });
 
+      if (membershipProjection) {
+        await membershipProjection.onMembershipCreated({
+          userId: subjectId,
+          organizationId: organisation.id,
+          role: "Super Admin",
+        });
+      }
+
       await organisations.incrementSuperUserUsed(organisation.id, 1);
       const refreshed = await organisations.findById(organisation.id);
 
@@ -151,6 +162,13 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
             jobTitle: "Platform operator",
             createdOn: new Date("2024-01-01T00:00:00.000Z"),
           });
+          if (membershipProjection) {
+            await membershipProjection.onMembershipCreated({
+              userId: subjectId,
+              organizationId: organisation.id,
+              role: "Super Admin",
+            });
+          }
         }
       }
 

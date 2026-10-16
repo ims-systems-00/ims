@@ -21,6 +21,7 @@ import type { UsersService } from "../services/users.service";
 export type UsersController = {
   list: RequestHandler;
   create: RequestHandler;
+  getMe: RequestHandler;
   getClassified: RequestHandler;
   getBasic: RequestHandler;
   updateProfile: RequestHandler;
@@ -58,6 +59,15 @@ export function createUsersController(
     try {
       parseWithSchema(createUserBodySchema, req.body ?? {});
       await service.rejectDirectCreate();
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const getMe: RequestHandler = async (req, res, next) => {
+    try {
+      const data = await service.getMe(req.identity);
+      sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
     }
@@ -298,6 +308,7 @@ export function createUsersController(
   return {
     list,
     create,
+    getMe,
     getClassified,
     getBasic,
     updateProfile,

@@ -120,6 +120,8 @@ import {
   createRiskComplianceLinkAdapter,
 } from "../../../modules/compliance";
 import { createHealthRouter } from "./health";
+import { createSecurityRouter } from "./security";
+
 
 export type V1RouterDeps = {
   mongo: MongoConnection;
@@ -143,6 +145,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const { mongo, security, email, config, logger } = deps;
   const router = Router();
   router.use(createHealthRouter(mongo));
+  router.use("/security", createSecurityRouter(security.authorizer));
 
   const reportBug = createReportBugModule({
     email,
@@ -176,6 +179,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const organisations = createOrganisationModule({
     authorizer: security.authorizer,
+    membershipProjection: security.membershipProjection,
   });
   router.use("/organisations", organisations.router);
 

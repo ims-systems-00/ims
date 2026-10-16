@@ -33,12 +33,12 @@ This folder stores formalized decisions for the V5 rebuild.
 | D-13 | Zod application-boundary validation | Accepted | [0013-zod-validation.md](./0013-zod-validation.md) |
 | D-14 | Pino structured logging + correlation IDs | Accepted | [0014-pino-structured-logging.md](./0014-pino-structured-logging.md) |
 | D-15 | TanStack Query for server state | Accepted | [0015-tanstack-query-server-state.md](./0015-tanstack-query-server-state.md) |
-| D-16 | Auth0 Next.js integration | Deferred | [0016-auth0-nextjs-deferred.md](./0016-auth0-nextjs-deferred.md) |
+| D-16 | Auth0 Vite SPA integration (org-user) | Accepted | [0016-auth0-nextjs-deferred.md](./0016-auth0-nextjs-deferred.md) |
 | D-17 | Mongoose ODM | Accepted | [0017-mongoose-odm.md](./0017-mongoose-odm.md) |
 | D-18 | Production data migration tooling | Deferred | [0018-production-migrations-deferred.md](./0018-production-migrations-deferred.md) |
 | D-19 | Query-driven MongoDB indexes | Accepted | [0019-query-driven-indexes.md](./0019-query-driven-indexes.md) |
-| D-20 | Production session transport (cookie vs bearer) | Deferred | [0020-session-transport-deferred.md](./0020-session-transport-deferred.md) |
-| D-21 | OpenFGA model ownership/design | Deferred | [0021-openfga-model-deferred.md](./0021-openfga-model-deferred.md) |
+| D-20 | Org-user session transport (Bearer) | Accepted | [0020-session-transport-deferred.md](./0020-session-transport-deferred.md) |
+| D-21 | OpenFGA model ownership and write paths | Accepted | [0021-openfga-model-deferred.md](./0021-openfga-model-deferred.md) |
 | D-22 | Feature branches and pull requests | Accepted | [0022-feature-branches-and-prs.md](./0022-feature-branches-and-prs.md) |
 | D-23 | ESLint and Prettier | Accepted | [0023-eslint-prettier.md](./0023-eslint-prettier.md) |
 | D-24 | Vite + React + TypeScript frontend | Accepted | [D-24-vite-react-frontend.md](./D-24-vite-react-frontend.md) |

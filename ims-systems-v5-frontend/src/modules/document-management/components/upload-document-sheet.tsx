@@ -6,7 +6,7 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { uploadFileViaHandler } from "@/modules/files";
 import { useCreateFileNodesMutation } from "../hooks/use-document-management";
 import { uploadDocumentFormSchema } from "../schemas";
@@ -32,6 +32,7 @@ export function UploadDocumentSheet({
   repositoryId,
   parentNodeId,
 }: UploadDocumentSheetProps) {
+  const subjectId = useSessionSubjectId();
   const createMutation = useCreateFileNodesMutation(repositoryId);
   const [files, setFiles] = useState<FileList | null>(null);
   const [purpose, setPurpose] = useState<DocumentPurpose>("Document");
@@ -81,7 +82,9 @@ export function UploadDocumentSheet({
           purpose: parsed.data.purpose,
           applicableModules: parsed.data.applicableModules,
           authorisation: parsed.data.requireAuthorisation
-            ? [DEV_STUB_IDENTITY.subjectId]
+            ? subjectId
+              ? [subjectId]
+              : []
             : [],
         });
       }

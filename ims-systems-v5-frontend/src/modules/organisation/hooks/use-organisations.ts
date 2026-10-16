@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { setActiveOrganisationId } from "@/shared/lib/active-organisation";
+import { useAuthClient } from "@/security";
+import { setActiveOrganisationContext } from "@/shared/lib/active-organisation";
 import {
   createOrganisation,
   getCurrentOrganisation,
@@ -31,10 +32,24 @@ export function useMyOrganisationsQuery(enabled = true) {
 
 export function useCreateOrganisationMutation() {
   const queryClient = useQueryClient();
+  const authClient = useAuthClient();
   return useMutation({
     mutationFn: (body: CreateOrganisationInput) => createOrganisation(body),
     onSuccess: async (result) => {
-      setActiveOrganisationId(result.organisation.id);
+      // Prefer switchOrganisation so Auth0 mode only persists after token success
+      // when an Auth0 Organization id is already linked.
+      try {
+        await authClient.switchOrganisation({
+          organizationId: result.organisation.id,
+          auth0OrganizationId: result.organisation.auth0OrganizationId,
+        });
+      } catch {
+        // Unlinked Auth0 org: still bind IMS id for local x-org-id (stub / pre-link).
+        setActiveOrganisationContext({
+          organizationId: result.organisation.id,
+          auth0OrganizationId: result.organisation.auth0OrganizationId,
+        });
+      }
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
   });

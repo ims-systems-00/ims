@@ -1,7 +1,8 @@
 # Security Architecture
 
 **Status:** Foundation rules  
-**Related:** [V5_ARCHITECTURE.md](./V5_ARCHITECTURE.md), [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md), [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md)
+**Related:** [V5_ARCHITECTURE.md](./V5_ARCHITECTURE.md), [BACKEND_ARCHITECTURE.md](./BACKEND_ARCHITECTURE.md), [FRONTEND_ARCHITECTURE.md](./FRONTEND_ARCHITECTURE.md)  
+**Org-user Auth0 + OpenFGA rollout:** [AUTH_ROLLOUT_TRACKER.md](../security/AUTH_ROLLOUT_TRACKER.md)
 
 ---
 
@@ -18,10 +19,10 @@
 
 | Concern | Target | Timing |
 | ------- | ------ | ------ |
-| Authentication | Auth0 | Later — senior engineers |
-| Authorization | OpenFGA | Later — senior engineers |
+| Authentication | Auth0 (Vite SPA + Bearer) | Org-user rollout tracker M3–M5 |
+| Authorization | OpenFGA | Org-user rollout tracker M6–M7 |
 
-Do **not** implement full Auth0 or OpenFGA integrations in early scaffolding unless a dedicated senior-led task requests it.
+Use `SECURITY_PROVIDER` / `VITE_SECURITY_PROVIDER` = `development-stub` (default local) or `auth0-openfga`. Adapters must not silently fall back to the stub when `auth0-openfga` is selected.
 
 ---
 
@@ -86,10 +87,12 @@ V5 must **not** assume CASL or custom JWT remain the long-term solution. Use V4 
 
 ## 7. Pending decisions
 
-| ID | Topic |
-| -- | ----- |
-| D-06 | Stub contract and Auth0/OpenFGA adapter ownership |
-| D-08 | Separate admin authentication in V5 |
-| D-16 | Auth0 Next.js integration approach |
-| D-20 | Cookie vs bearer token session transport for V5 APIs |
-| D-21 | OpenFGA model ownership and tuple write paths |
+Live status for the org-user Auth0 + OpenFGA programme is tracked in [AUTH_ROLLOUT_TRACKER.md](../security/AUTH_ROLLOUT_TRACKER.md) (milestones M0–M7). Summary:
+
+| ID | Topic | Rollout note |
+| -- | ----- | ------------ |
+| D-06 | Stub contract and Auth0/OpenFGA adapter ownership | Ports + stub remain; adapters land in M3–M6 |
+| D-08 | Separate admin authentication in V5 | Accepted boundary; admin implementation deferred |
+| D-16 | Auth0 Vite SPA integration | Accepted — see ADR 0016 |
+| D-20 | Org-user Bearer transport | Accepted — see ADR 0020 |
+| D-21 | OpenFGA ownership / write paths | Accepted path; model DSL still senior-gated before M6 |

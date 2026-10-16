@@ -7,10 +7,7 @@ import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
-import {
-  DEV_STUB_IDENTITY,
-  resolveProfileUserId,
-} from "@/security";
+import { useSessionProfileUserId } from "@/security";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useCreateDocumentRepositoryMutation } from "../hooks/use-document-management";
@@ -37,8 +34,7 @@ export function RepositoryFormSheet({
   const unitsQuery = useFunctionalUnitsQuery({ page: 1, pageSize: 100 });
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
 
-  const defaultOwnerId =
-    resolveProfileUserId(DEV_STUB_IDENTITY) ?? DEV_STUB_IDENTITY.subjectId;
+  const defaultOwnerId = useSessionProfileUserId() ?? "";
 
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -63,11 +59,17 @@ export function RepositoryFormSheet({
   );
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !defaultOwnerId) return;
     if (privacy === "Only me") {
       setOwners([defaultOwnerId]);
       setSharedWith([]);
+      return;
     }
+    setOwners((current) =>
+      current.length === 0 || (current.length === 1 && !current[0])
+        ? [defaultOwnerId]
+        : current
+    );
   }, [privacy, open, defaultOwnerId]);
 
   function reset() {

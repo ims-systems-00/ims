@@ -1,0 +1,24 @@
+# IMS V5 OpenFGA authorization model (M7)
+# Status: org-user org-level AuthZ across modules — senior confirmation still recommended (D-21).
+# All module resourceTypes check relations on organization:{imsOrgId}.
+
+model
+  schema 1.1
+
+type user
+
+type organization
+  relations
+    define super_admin: [user]
+    define head_of_service: [user]
+    define basic: [user]
+    define auditor: [user]
+
+    define member: super_admin or head_of_service or basic or auditor
+
+    # Mapped from Authorizer actions (any module resourceType, org-scoped)
+    define can_read: member
+    define can_create: super_admin or head_of_service
+    define can_update: super_admin or head_of_service
+    define can_delete: super_admin
+    define can_manage: super_admin

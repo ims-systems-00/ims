@@ -5,7 +5,7 @@ import { EmptyState } from "@/shared/components/empty-state";
 import { Textarea } from "@/shared/components/ui/textarea";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import {
   useActivitiesQuery,
@@ -188,9 +188,11 @@ export function ActivityTimeline({
   addLabel = "Add comment",
   emptyTitle = "No activities found",
   emptyDescription = "Comments and system events for this record will appear here.",
-  subjectId = DEV_STUB_IDENTITY.subjectId,
+  subjectId: subjectIdProp,
   className,
 }: ActivityTimelineProps) {
+  const sessionSubjectId = useSessionSubjectId();
+  const subjectId = subjectIdProp ?? sessionSubjectId ?? "";
   const [page, setPage] = useState(1);
   const [items, setItems] = useState<Activity[]>([]);
   const [draft, setDraft] = useState("");

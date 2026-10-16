@@ -87,4 +87,4 @@ Do not install a second UI framework or invent a custom design system.
 | ID | Topic |
 | -- | ----- |
 | D-07 | Carbo Calc / `cc-frontend-master` relationship to V5 frontend |
-| D-16 | Auth0 client integration approach (senior-owned; previously Next.js-oriented) |
+| D-16 | Auth0 Vite SPA integration (Accepted; see auth rollout tracker) |

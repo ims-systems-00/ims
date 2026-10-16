@@ -47,6 +47,8 @@ const organisationSchema = new Schema(
     },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },
+    /** Auth0 Organization id (`org_…`); omit until linked. */
+    auth0OrganizationId: { type: String, default: null, trim: true },
     createdBy: { type: String, required: true },
     createdOn: { type: Date, required: true },
   },
@@ -55,6 +57,13 @@ const organisationSchema = new Schema(
 
 organisationSchema.index({ reference: 1 }, { unique: true });
 organisationSchema.index({ name: 1 });
+organisationSchema.index(
+  { auth0OrganizationId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { auth0OrganizationId: { $type: "string" } },
+  }
+);
 
 export type OrganisationDocument = InferSchemaType<typeof organisationSchema> & {
   _id: mongoose.Types.ObjectId;

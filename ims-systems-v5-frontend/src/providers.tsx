@@ -4,6 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { AppToaster } from "@/shared/components/app-toaster";
 import { createQueryClient } from "@/shared/lib/query/client";
 import { ThemeProvider } from "@/shared/theme";
+import { RequireAuth, SecurityProvider } from "@/security";
 
 type AppProvidersProps = {
   children: React.ReactNode;
@@ -16,8 +17,12 @@ export function AppProviders({ children }: AppProvidersProps) {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <BrowserRouter>
-          {children}
-          <AppToaster />
+          <SecurityProvider>
+            <RequireAuth>
+              {children}
+              <AppToaster />
+            </RequireAuth>
+          </SecurityProvider>
         </BrowserRouter>
       </QueryClientProvider>
     </ThemeProvider>

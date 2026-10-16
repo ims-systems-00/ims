@@ -26,6 +26,7 @@ function toDomain(doc: UserDocument): User {
     lastName: doc.lastName,
     name: doc.name,
     email: doc.email,
+    auth0SubjectId: doc.auth0SubjectId?.trim() ? doc.auth0SubjectId.trim() : null,
     emailVerified: {
       status: (doc.emailVerified?.status as User["emailVerified"]["status"]) ??
         "pending",
@@ -109,6 +110,13 @@ export type UserRepository = {
   findById: (id: string) => Promise<User | null>;
   findByIdIncludingDeleted: (id: string) => Promise<User | null>;
   findByEmail: (email: string) => Promise<User | null>;
+  /** Resolve Auth0 `sub` → active IMS user (auth rollout M2+). */
+  findByAuth0SubjectId: (auth0SubjectId: string) => Promise<User | null>;
+  /** Link or clear Auth0 `sub` on an IMS user. */
+  linkAuth0SubjectId: (
+    id: string,
+    auth0SubjectId: string | null
+  ) => Promise<User | null>;
   findPasswordHash: (id: string) => Promise<string | null>;
   listActiveByIds: (
     ids: string[],
@@ -207,6 +215,33 @@ export function createUserRepository(): UserRepository {
     async findByEmail(email) {
       const doc = await model
         .findOne({ email: email.toLowerCase(), deletedAt: null })
+        .exec();
+      return doc ? toDomain(doc) : null;
+    },
+
+    async findByAuth0SubjectId(auth0SubjectId) {
+      const subject = auth0SubjectId.trim();
+      if (!subject) return null;
+      const doc = await model
+        .findOne({ auth0SubjectId: subject, deletedAt: null })
+        .exec();
+      return doc ? toDomain(doc) : null;
+    },
+
+    async linkAuth0SubjectId(id, auth0SubjectId) {
+      if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+        return null;
+      }
+      const next =
+        typeof auth0SubjectId === "string" && auth0SubjectId.trim()
+          ? auth0SubjectId.trim()
+          : null;
+      const doc = await model
+        .findOneAndUpdate(
+          { _id: id, deletedAt: null },
+          { $set: { auth0SubjectId: next } },
+          { returnDocument: "after" }
+        )
         .exec();
       return doc ? toDomain(doc) : null;
     },

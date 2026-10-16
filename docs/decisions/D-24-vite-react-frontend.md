@@ -47,4 +47,4 @@ This ADR does not redefine D-04, D-05, or D-15; it selects the application shell
 - D-05 Zustand
 - D-06 Auth ports / development stub
 - D-15 TanStack Query
-- D-16 Auth0 integration (Deferred; title still references Next.js — revisit when Auth0 work resumes)
+- D-16 Auth0 Vite SPA integration (Accepted; see auth rollout tracker)

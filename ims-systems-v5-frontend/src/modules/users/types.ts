@@ -50,6 +50,8 @@ export type User = {
   lastName: string;
   name: string;
   email: string;
+  /** Auth0 `sub` when linked; null until auth rollout links it. */
+  auth0SubjectId?: string | null;
   emailVerified: {
     status: EmailVerificationStatus;
     on: string | null;

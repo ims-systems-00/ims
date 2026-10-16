@@ -305,6 +305,17 @@ export function createUsersService(deps: UsersServiceDeps) {
       return withMembership(actor.organizationId, user);
     },
 
+    /**
+     * Session user (Auth0 / stub identity subject → IMS user).
+     * Used by the SPA after Bearer AuthN (auth rollout M4).
+     */
+    async getMe(
+      identity: SecurityIdentity | null | undefined
+    ): Promise<UserWithMembership> {
+      const actor = requireOrgIdentity(identity);
+      return this.getClassified(identity, actor.identity.subjectId);
+    },
+
     async getBasic(
       identity: SecurityIdentity | null | undefined,
       id: string

@@ -3,6 +3,7 @@ import { getActiveOrganisationId } from "../active-organisation";
 import { ApiClientError, mapStatusToCode } from "./errors";
 import { apiErrorSchema, apiSuccessSchema } from "./types";
 import type { AuthClient } from "@/security/auth-client";
+import { getActiveAuthClient } from "@/security/runtime";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
 
@@ -12,8 +13,7 @@ export type ApiRequestOptions = {
   headers?: Record<string, string>;
   signal?: AbortSignal;
   /**
-   * Optional auth client for future credential attachment (Auth0 later).
-   * The development stub does not establish production transport.
+   * Optional auth client override. Defaults to the active SecurityProvider client.
    */
   authClient?: AuthClient;
 };
@@ -55,8 +55,12 @@ export async function apiRequest<T>(
     headers["x-org-id"] = activeOrgId;
   }
 
-  if (options.authClient) {
-    await options.authClient.getIdentity();
+  const authClient = options.authClient ?? getActiveAuthClient();
+  if (authClient && !headers.Authorization && !headers.authorization) {
+    const token = await authClient.getAccessToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
   }
 
   let response: Response;

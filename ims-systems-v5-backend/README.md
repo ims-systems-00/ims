@@ -56,11 +56,11 @@ pnpm test
 See `.env.example`. Required:
 
 - `MONGODB_URI` — dedicated V5 MongoDB URI
-- `SECURITY_PROVIDER=development-stub` — forbidden when `NODE_ENV=production`
+- `SECURITY_PROVIDER` — `development-stub` (local/test; forbidden in production) or `auth0-openfga` (requires Auth0 + OpenFGA env)
 
 ## Security
 
-Authentication/authorization use ports under `src/security/`. The development stub is for local/test only and must not run in production. Auth0 and OpenFGA are not implemented here.
+Authentication/authorization use ports under `src/security/`. The development stub is for local/test only and must not run in production. With `auth0-openfga`, AuthN validates Auth0 Bearer JWTs (M3); AuthZ uses OpenFGA for the `organisation` module (M6 draft model) and stays permissive for other modules until M7. Rollout tracker: `docs/security/AUTH_ROLLOUT_TRACKER.md`.
 
 ## Architecture
 

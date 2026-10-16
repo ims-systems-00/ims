@@ -1,6 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getUser, listUsers, updateUserProfile } from "../api/users";
+import {
+  getCurrentUser,
+  getUser,
+  listUsers,
+  updateUserProfile,
+} from "../api/users";
 import type { ListUsersParams, UpdateUserProfileInput } from "../types";
+import { loadPublicEnv } from "@/shared/lib/env";
 
 export const userKeys = {
   all: ["users"] as const,
@@ -8,7 +14,22 @@ export const userKeys = {
   list: (params: ListUsersParams) => [...userKeys.lists(), params] as const,
   details: () => [...userKeys.all, "detail"] as const,
   detail: (id: string) => [...userKeys.details(), id] as const,
+  me: () => [...userKeys.all, "me"] as const,
 };
+
+/**
+ * Session profile. Auth0 mode uses GET /users/me; stub uses resolved demo user id.
+ */
+export function useSessionUserQuery(fallbackUserId?: string) {
+  const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
+  const useMe = provider === "auth0-openfga";
+
+  return useQuery({
+    queryKey: useMe ? userKeys.me() : userKeys.detail(fallbackUserId ?? ""),
+    queryFn: () => (useMe ? getCurrentUser() : getUser(fallbackUserId!)),
+    enabled: useMe || Boolean(fallbackUserId),
+  });
+}
 
 export function useUsersQuery(params: ListUsersParams) {
   return useQuery({

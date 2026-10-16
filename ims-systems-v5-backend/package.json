@@ -14,7 +14,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
-    "seed:compliance-catalogues": "tsx scripts/seed-compliance-catalogues.ts"
+    "seed:compliance-catalogues": "tsx scripts/seed-compliance-catalogues.ts",
+    "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts"
   },
   "engines": {
     "node": ">=20"
@@ -22,11 +23,13 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1146.0",
     "@aws-sdk/s3-request-presigner": "^3.1146.0",
+    "@openfga/sdk": "^0.9.7",
     "@sendgrid/mail": "^8.1.6",
     "bullmq": "^6.3.11",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
+    "jose": "^6.2.12",
     "mongoose": "^9.9.5",
     "nodemailer": "^10.0.15",
     "pino": "^10.3.1",

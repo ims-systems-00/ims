@@ -60,5 +60,13 @@ export function createOrganisationMembershipRepository() {
     async countActiveMembers(organizationId: string): Promise<number> {
       return Model.countDocuments({ organizationId });
     },
+
+    /** All memberships (OpenFGA tuple backfill). */
+    async listAll(): Promise<OrganisationMembership[]> {
+      const docs = await Model.find({}).lean();
+      return docs.map((doc) =>
+        toDomain(doc as OrganisationMembershipDocument)
+      );
+    },
   };
 }

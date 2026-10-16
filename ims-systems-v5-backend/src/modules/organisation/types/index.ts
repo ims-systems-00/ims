@@ -51,6 +51,11 @@ export type Organisation = {
   licences: OrganisationLicences;
   referralSource: string | null;
   logoSrc: string | null;
+  /**
+   * Auth0 Organization id (`org_…`). Optional until linked (auth rollout M2+).
+   * Canonical tenant key remains `id` (IMS ObjectId / organizationId).
+   */
+  auth0OrganizationId: string | null;
   createdBy: string;
   createdOn: Date;
   createdAt: Date;

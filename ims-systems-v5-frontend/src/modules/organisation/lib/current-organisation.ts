@@ -1,12 +1,11 @@
-import { DEV_STUB_ORGANIZATION_ID } from "@/security";
 import type { OrganisationProfileView } from "../types";
 
 /**
- * Development stand-in for the session organisation until
- * GET /organisations/:id (or equivalent) is available in V5.
+ * Fallback organisation profile shape for demos.
+ * Prefer useCurrentOrganisationQuery for live session data.
  */
 export function getCurrentOrganisationProfile(
-  organizationId: string = DEV_STUB_ORGANIZATION_ID
+  organizationId: string
 ): OrganisationProfileView {
   return {
     id: organizationId,

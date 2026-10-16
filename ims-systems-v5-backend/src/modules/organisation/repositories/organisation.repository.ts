@@ -67,6 +67,9 @@ function toDomain(doc: OrganisationDocument): Organisation {
     },
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
+    auth0OrganizationId: doc.auth0OrganizationId?.trim()
+      ? doc.auth0OrganizationId.trim()
+      : null,
     createdBy: doc.createdBy,
     createdOn: doc.createdOn,
     createdAt: doc.createdAt,
@@ -133,6 +136,36 @@ export function createOrganisationRepository() {
       if (ids.length === 0) return [];
       const docs = await Model.find({ _id: { $in: ids } }).lean();
       return docs.map((doc) => toDomain(doc as OrganisationDocument));
+    },
+
+    /** Resolve Auth0 Organization id → IMS organisation (auth rollout M2+). */
+    async findByAuth0OrganizationId(
+      auth0OrganizationId: string
+    ): Promise<Organisation | null> {
+      const orgId = auth0OrganizationId.trim();
+      if (!orgId) return null;
+      const doc = await Model.findOne({ auth0OrganizationId: orgId }).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    /** Link or clear Auth0 Organization id on an IMS organisation. */
+    async linkAuth0OrganizationId(
+      id: string,
+      auth0OrganizationId: string | null
+    ): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+        return null;
+      }
+      const next =
+        typeof auth0OrganizationId === "string" && auth0OrganizationId.trim()
+          ? auth0OrganizationId.trim()
+          : null;
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { auth0OrganizationId: next } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
     async incrementSuperUserUsed(id: string, by = 1): Promise<void> {

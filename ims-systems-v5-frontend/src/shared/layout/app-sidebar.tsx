@@ -1,8 +1,17 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { navigationSections } from "@/shared/navigation";
+import {
+  filterNavigationSections,
+  navigationSections,
+} from "@/shared/navigation";
 import { Button } from "@/shared/components/ui/button";
+import {
+  permissionAllowed,
+  useSecurityCapabilitiesQuery,
+} from "@/modules/security/hooks/use-security-capabilities";
+import { loadPublicEnv } from "@/shared/lib/env";
 import { SidebarNavItem } from "./sidebar-nav-item";
 
 type AppSidebarProps = {
@@ -20,6 +29,18 @@ export function AppSidebar({
   onCollapsedChange,
   onMobileOpenChange,
 }: AppSidebarProps) {
+  const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
+  const capabilitiesQuery = useSecurityCapabilitiesQuery();
+  const permissions = capabilitiesQuery.data?.permissions;
+
+  const sections = useMemo(
+    () =>
+      filterNavigationSections(navigationSections, (permission) =>
+        permissionAllowed(permission, permissions, provider)
+      ),
+    [permissions, provider]
+  );
+
   return (
     <>
       {mobileOpen ? (
@@ -93,7 +114,7 @@ export function AppSidebar({
           className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Primary"
         >
-          {navigationSections.map((section) => (
+          {sections.map((section) => (
             <div key={section.id} className="mb-5">
               {!collapsed ? (
                 <p className="mb-1.5 px-2.5 text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-sidebar-muted">
