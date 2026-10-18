@@ -9,6 +9,9 @@ import type {
   AuthClient,
   ClientIdentity,
   GetAccessTokenOptions,
+  LoginOptions,
+  PasswordCredentials,
+  RegisterCredentials,
   SwitchOrganisationInput,
 } from "./auth-client";
 import type { AuthzClient, ClientAuthorizationCheck } from "./authz-client";
@@ -65,8 +68,21 @@ export class DevelopmentAuthClient implements AuthClient {
     });
   }
 
-  async login(): Promise<void> {
+  async login(_options?: LoginOptions): Promise<void> {
+    void _options;
     // Stub sessions are always authenticated.
+  }
+
+  async loginWithPassword(_credentials: PasswordCredentials): Promise<void> {
+    void _credentials;
+  }
+
+  async register(_credentials: RegisterCredentials): Promise<void> {
+    void _credentials;
+  }
+
+  async requestPasswordReset(_input: { email: string }): Promise<void> {
+    void _input;
   }
 
   async logout(): Promise<void> {

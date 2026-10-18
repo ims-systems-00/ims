@@ -27,8 +27,9 @@ Living progress log for replacing the V5 development-stub AuthN/AuthZ with Auth0
 | **Status** | `done` |
 | **Last updated** | 2026-10-16 |
 | **Active branch / PR** | _(none yet)_ |
-| **Blocked on** | Live OpenFGA store + Auth0 tenant owners still unassigned for staging/prod execution of checklists. |
+| **Blocked on** | Production cutover (Phase 6) — schedule window + prod tenant. |
 | **Do not touch yet** | — programme complete (D-08 admin remains a separate future programme) |
+| **Production readiness** | [PRODUCTION_READINESS_PLAN.md](./PRODUCTION_READINESS_PLAN.md) — Phase 5 local dual-run signed; next Phase 6 |
 
 ---
 
@@ -74,11 +75,11 @@ Status values: `not_started` | `in_progress` | `blocked` | `done`
 | --- | --- | --- | --- |
 | OpenFGA model DSL + ownership (D-21) | `approved` | M6 | Working draft published under `docs/security/openfga/` (senior may revise) |
 | Role → permission matrix (incl. `create` vs update quirk) | `approved` | M6–M7 | Org module matrix in ROLE_PERMISSION_MATRIX.md; expand in M7 |
-| JIT vs invite-only provisioning; fate of `passwordHash` | `open` | M2–M4 | |
-| Auth0 Orgs + Management API ownership (envs) | `open` | M4–M5 | |
-| OpenFGA hosting (self-hosted vs Auth0 FGA) | `open` | M6 | |
+| JIT vs invite-only provisioning; fate of `passwordHash` | `approved` | M2–M4 | Invite-only; keep `passwordHash` for now (Phase 0, 2026-10-16) |
+| Auth0 Orgs + Management API ownership (envs) | `approved` | M4–M5 | Owner: Mehrab (Phase 0) |
+| OpenFGA hosting (self-hosted vs Auth0 FGA) | `approved` | M6 | Self-hosted OpenFGA (Phase 0, 2026-10-16) |
 | Accept Bearer (D-20) + rewrite D-16 for Vite SPA | `approved` | M1 | ADRs updated 2026-10-16 (Accepted) |
-| Shadow / enforce kill-switch for cutover? | `open` | M7 | |
+| Shadow / enforce kill-switch for cutover? | `approved` | M7 | No — rollback via provider flip / redeploy (Phase 0) |
 | `subjectId` = IMS user ObjectId vs Auth0 `sub` | `approved` | M2–M3 | IMS user ObjectId (working agreement M0) |
 | Org-level vs object-level AuthZ at launch | `approved` | M6 | Org-level first (working agreement M0) |
 | Admin timeline so audiences stay separate (D-08) | `deferred` | review gate | Separate future programme; not in M0–M7 |
@@ -89,9 +90,9 @@ Status values: `open` | `approved` | `deferred`
 
 | Resource | Owner | Env ready? | Notes |
 | --- | --- | --- | --- |
-| Auth0 tenant (SPA + API + Organizations) | **BLOCKED — unassigned** | no | Assign before M3 live Auth0 validation / M4 login demo |
-| OpenFGA store / Auth0 FGA | **BLOCKED — unassigned** | no | Assign before M6 |
-| Staging secrets (backend only) | **BLOCKED — unassigned** | no | Never put Management/OpenFGA secrets in Vite |
+| Auth0 tenant (SPA + API + Organizations) | Mehrab | yes | Staging SPA/API/Org + user token with org_id verified (Phase 1) |
+| OpenFGA store / Auth0 FGA | Mehrab | yes | Self-hosted Docker local; store+model+check OK (Phase 2) |
+| Staging secrets (backend only) | Mehrab | no | Never put Management/OpenFGA secrets in Vite |
 
 When owners are known, replace **BLOCKED — unassigned** with a name and set `Env ready?` accordingly. Update the Dashboard **Blocked on** field.
 

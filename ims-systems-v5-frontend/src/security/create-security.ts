@@ -32,7 +32,7 @@ export function createSecurityPorts(options: {
 
   if (options.provider === "auth0-openfga") {
     throw new Error(
-      "Auth0 security ports must be created via SecurityProvider (Auth0 React SDK). Do not call createSecurityPorts({ provider: \"auth0-openfga\" }) directly."
+      "Auth0 security ports must be created via SecurityProvider (BffAuthClient). Do not call createSecurityPorts({ provider: \"auth0-openfga\" }) directly."
     );
   }
 

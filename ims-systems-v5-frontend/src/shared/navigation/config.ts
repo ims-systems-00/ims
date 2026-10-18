@@ -73,12 +73,6 @@ export const navigationSections: NavSection[] = [
             icon: Landmark,
             requiredPermission: "business-premises:read",
           },
-          {
-            id: "create-organisation",
-            label: "Create organisation",
-            href: "/onboard/organisation",
-            icon: Building2,
-          },
         ],
       },
       {

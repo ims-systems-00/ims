@@ -2,8 +2,17 @@ export type {
   AuthClient,
   ClientIdentity,
   GetAccessTokenOptions,
+  LoginOptions,
+  PasswordCredentials,
+  RegisterCredentials,
   SwitchOrganisationInput,
 } from "./auth-client";
+export { BffAuthClient } from "./bff-auth-client";
+export {
+  clearStoredSession,
+  getStoredSession,
+  setStoredSession,
+} from "./token-store";
 export type { AuthzClient, ClientAuthorizationCheck } from "./authz-client";
 export { ApiAuthzClient } from "./api-authz-client";
 export {

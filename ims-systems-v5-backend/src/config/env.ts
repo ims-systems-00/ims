@@ -77,6 +77,23 @@ const envSchema = z
      */
     AUTH0_ISSUER: z.string().default(""),
 
+    /**
+     * Auth0 Database connection name for embedded signup / password grant / reset.
+     * Example: Username-Password-Authentication
+     */
+    AUTH0_DB_CONNECTION: z.string().default("Username-Password-Authentication"),
+    /**
+     * Public SPA client id used for Auth0 dbconnections/signup + change_password.
+     * Never expose a client secret via VITE_*.
+     */
+    AUTH0_SPA_CLIENT_ID: z.string().default(""),
+    /**
+     * Confidential app (Password + Refresh Token grants) for Resource Owner Password.
+     * Client secret is backend-only.
+     */
+    AUTH0_ROPG_CLIENT_ID: z.string().default(""),
+    AUTH0_ROPG_CLIENT_SECRET: z.string().default(""),
+
     /** OpenFGA store (required when SECURITY_PROVIDER=auth0-openfga). */
     OPENFGA_API_URL: z.string().default(""),
     OPENFGA_STORE_ID: z.string().default(""),

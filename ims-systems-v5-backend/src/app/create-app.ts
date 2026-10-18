@@ -4,7 +4,11 @@ import type { AppConfig } from "../config";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { MongoConnection } from "../infrastructure/mongodb/connection";
 import type { EmailSystem } from "../infrastructure/queue";
-import { createSecurityPorts, type SecurityPorts } from "../security";
+import {
+  createSecurityPorts,
+  type SecurityPorts,
+  type Auth0AuthenticationApi,
+} from "../security";
 import { correlationIdMiddleware } from "./middleware/correlation-id";
 import { corsMiddleware } from "./middleware/cors";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
@@ -21,6 +25,8 @@ export type CreateAppOptions = {
   email?: EmailSystem;
   /** Extra routers mounted under `/api/v1` (tests / temporary platform probes). */
   additionalV1Routers?: Router[];
+  /** Test injection for Auth0 BFF Authentication API client. */
+  auth0Api?: Auth0AuthenticationApi;
 };
 
 export type CreatedApp = {
@@ -55,6 +61,7 @@ export function createApp(options: CreateAppOptions): CreatedApp {
     email: options.email,
     config,
     logger,
+    auth0Api: options.auth0Api,
   });
   for (const router of options.additionalV1Routers ?? []) {
     v1.router.use(router);

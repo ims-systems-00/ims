@@ -6,6 +6,9 @@ import type {
   AuthClient,
   ClientIdentity,
   GetAccessTokenOptions,
+  LoginOptions,
+  PasswordCredentials,
+  RegisterCredentials,
   SwitchOrganisationInput,
 } from "./auth-client";
 import {
@@ -117,19 +120,54 @@ export class Auth0AuthClient implements AuthClient {
     });
   }
 
-  async login(options?: { returnTo?: string }): Promise<void> {
+  async login(options?: LoginOptions): Promise<void> {
     const authorizationParams: Record<string, string> = {
       audience: this.audience,
     };
-    const auth0OrganizationId =
-      getActiveAuth0OrganizationId() || this.defaultOrganizationId;
-    if (auth0OrganizationId) {
-      authorizationParams.organization = auth0OrganizationId;
+    if (options?.mode === "signup") {
+      authorizationParams.screen_hint = "signup";
+    }
+    // Only bind an Auth0 Organization when explicitly requested or already active.
+    // Self-signup must not force VITE_AUTH0_ORGANIZATION_ID on every login.
+    if (options?.includeOrganization) {
+      const auth0OrganizationId =
+        getActiveAuth0OrganizationId() || this.defaultOrganizationId;
+      if (auth0OrganizationId) {
+        authorizationParams.organization = auth0OrganizationId;
+      }
+    } else {
+      const active = getActiveAuth0OrganizationId();
+      if (active) {
+        authorizationParams.organization = active;
+      }
     }
     await this.sdk.loginWithRedirect({
-      appState: { returnTo: options?.returnTo },
+      appState: {
+        returnTo: options?.returnTo ?? "/",
+      },
       authorizationParams,
     });
+  }
+
+  async loginWithPassword(_credentials: PasswordCredentials): Promise<void> {
+    void _credentials;
+    throw new Error(
+      "Auth0AuthClient does not support password login; use BffAuthClient"
+    );
+  }
+
+  async register(_credentials: RegisterCredentials): Promise<void> {
+    void _credentials;
+    throw new Error(
+      "Auth0AuthClient does not support register; use BffAuthClient"
+    );
+  }
+
+  async requestPasswordReset(_input: { email: string }): Promise<void> {
+    void _input;
+    throw new Error(
+      "Auth0AuthClient does not support password reset; use BffAuthClient"
+    );
   }
 
   async logout(options?: { returnTo?: string }): Promise<void> {

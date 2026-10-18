@@ -18,6 +18,12 @@ export {
   type VerifiedAccessToken,
 } from "./auth0/jwt-verifier";
 export {
+  Auth0AuthenticationApi,
+  createAuth0AuthenticationApiFromConfig,
+  type Auth0TokenResponse,
+  type Auth0SignupInput,
+} from "./auth0/auth0-authentication-api";
+export {
   OpenFgaAuthorizer,
   type OpenFgaAuthorizerDeps,
 } from "./openfga/openfga-authorizer";

@@ -2,12 +2,14 @@ import type { RequestHandler } from "express";
 import { parseWithSchema, sendSuccess } from "../../../shared";
 import {
   createOrganisationBodySchema,
+  goLiveOrganisationBodySchema,
   organisationIdParamSchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
 
 export type OrganisationController = {
   create: RequestHandler;
+  goLive: RequestHandler;
   getCurrent: RequestHandler;
   getById: RequestHandler;
   listMine: RequestHandler;
@@ -21,6 +23,17 @@ export function createOrganisationController(
       const body = parseWithSchema(createOrganisationBodySchema, req.body);
       const data = await service.create(req.identity, body);
       sendSuccess(res, data, 201, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const goLive: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const body = parseWithSchema(goLiveOrganisationBodySchema, req.body);
+      const data = await service.goLive(req.identity, id, body);
+      sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
     }
@@ -54,5 +67,5 @@ export function createOrganisationController(
     }
   };
 
-  return { create, getCurrent, getById, listMine };
+  return { create, goLive, getCurrent, getById, listMine };
 }

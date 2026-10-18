@@ -7,8 +7,10 @@ import {
 
 export type VerifiedAccessToken = {
   sub: string;
-  orgId: string;
+  /** Present for org-bound tokens; absent during self-signup / pre-tenant bootstrap. */
+  orgId: string | null;
   email?: string;
+  name?: string;
   payload: JWTPayload;
 };
 
@@ -64,15 +66,21 @@ export function createAuth0AccessTokenVerifier(
         });
 
         const sub = asSingleString(payload.sub);
-        const orgId = asSingleString(payload.org_id);
-        if (!sub || !orgId) {
+        if (!sub) {
           return null;
         }
+
+        const orgId = asSingleString(payload.org_id) ?? null;
+        const name =
+          asSingleString(payload.name) ??
+          asSingleString(payload.nickname) ??
+          undefined;
 
         return {
           sub,
           orgId,
           email: asSingleString(payload.email),
+          name,
           payload,
         };
       } catch {

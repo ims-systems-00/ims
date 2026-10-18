@@ -7,7 +7,8 @@ This folder holds **business / product Module Specifications** for the IMS syste
 | File | Purpose |
 | ---- | ------- |
 | [`MODULE_SPECIFICATION_REFERENCE.md`](./MODULE_SPECIFICATION_REFERENCE.md) | Canonical rules, section order, inspection guidance, writing standards, and blank template for every module specification |
-| `<module-slug>.md` | One future specification file per business module (create only when tasked) |
+| [`organisation-onboarding.md`](./organisation-onboarding.md) | V4 organisation create / onboard / Go Live / partner journey (porting SoT) |
+| `<module-slug>.md` | One specification file per business module |
 
 ## Conventions
 

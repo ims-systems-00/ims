@@ -1,7 +1,10 @@
 import type {
   CreateOrganisationInput,
+  GoLiveOrganisationInput,
   Organisation,
   OrganisationLicences,
+  OrganisationPaymentStatus,
+  OrganisationPaymentType,
 } from "../types";
 import {
   getOrganisationModel,
@@ -9,7 +12,13 @@ import {
 } from "./organisation.model";
 
 function toDomain(doc: OrganisationDocument): Organisation {
-  const licences = (doc.licences ?? {}) as Partial<OrganisationLicences>;
+  const licences = (doc.licences ?? {}) as Partial<OrganisationLicences> & {
+    complianceTools?: string[];
+    additionalModules?: string[];
+    carbocalc?: boolean;
+    imsforms?: boolean;
+    projectims?: boolean;
+  };
   const address = doc.address ?? {
     line1: "",
     line2: "",
@@ -23,6 +32,17 @@ function toDomain(doc: OrganisationDocument): Organisation {
     code: "",
     currency: "",
     phoneCode: 0,
+  };
+  const payment = (doc.paymentSystem ?? {}) as {
+    type?: OrganisationPaymentType | null;
+    status?: OrganisationPaymentStatus;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+  };
+  const systemDate = (doc.systemDate ?? {}) as {
+    start?: Date | null;
+    end?: Date | null;
+    unset?: boolean;
   };
   return {
     id: String(doc._id),
@@ -64,6 +84,22 @@ function toDomain(doc: OrganisationDocument): Organisation {
         allocated: licences.groups?.allocated ?? 0,
         used: licences.groups?.used ?? 0,
       },
+      complianceTools: [...(licences.complianceTools ?? [])],
+      additionalModules: [...(licences.additionalModules ?? [])],
+      carbocalc: Boolean(licences.carbocalc),
+      imsforms: Boolean(licences.imsforms),
+      projectims: Boolean(licences.projectims),
+    },
+    paymentSystem: {
+      type: payment.type ?? null,
+      status: payment.status ?? "Trial",
+      stripeCustomerId: payment.stripeCustomerId ?? null,
+      stripeSubscriptionId: payment.stripeSubscriptionId ?? null,
+    },
+    systemDate: {
+      start: systemDate.start ?? null,
+      end: systemDate.end ?? null,
+      unset: systemDate.unset !== false && !systemDate.start,
     },
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
@@ -118,13 +154,84 @@ export function createOrganisationRepository() {
           superUser: { allocated: 1, used: 0 },
           users: { allocated: 0, used: 0 },
           groups: { allocated: 0, used: 0 },
+          complianceTools: [],
+          additionalModules: [],
+          carbocalc: false,
+          imsforms: false,
+          projectims: false,
+        },
+        paymentSystem: {
+          type: null,
+          status: "Trial",
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+        },
+        systemDate: {
+          start: null,
+          end: null,
+          unset: true,
         },
         referralSource: input.data.referralSource ?? null,
-        logoSrc: null,
+        logoSrc: input.data.logoSrc?.trim() ? input.data.logoSrc.trim() : null,
         createdBy: input.createdBy,
         createdOn: input.createdOn,
       });
       return toDomain(doc);
+    },
+
+    async applyGoLive(input: {
+      id: string;
+      data: GoLiveOrganisationInput;
+      paymentStatus: OrganisationPaymentStatus;
+      systemStart: Date;
+      systemEnd: Date;
+    }): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(input.id)) {
+        return null;
+      }
+
+      const doc = await Model.findOneAndUpdate(
+        { _id: input.id, isCustomer: false },
+        {
+          $set: {
+            isCustomer: true,
+            "licences.superUser.allocated": input.data.superUser,
+            "licences.users.allocated": input.data.users,
+            "licences.groups.allocated": input.data.groups,
+            "licences.complianceTools": [
+              ...(input.data.complianceTools ?? []),
+            ],
+            "licences.additionalModules": [
+              ...(input.data.additionalModules ?? []),
+            ],
+            "licences.carbocalc": Boolean(input.data.carbocalc),
+            "licences.imsforms": Boolean(input.data.imsforms),
+            "licences.projectims": Boolean(input.data.projectims),
+            "paymentSystem.type": input.data.paymentType,
+            "paymentSystem.status": input.paymentStatus,
+            "systemDate.start": input.systemStart,
+            "systemDate.end": input.systemEnd,
+            "systemDate.unset": false,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async setPaymentStatus(
+      id: string,
+      status: OrganisationPaymentStatus
+    ): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+        return null;
+      }
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { "paymentSystem.status": status } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
     async findById(id: string): Promise<Organisation | null> {
@@ -218,6 +325,24 @@ export function createOrganisationRepository() {
               superUser: { allocated: 5, used: 1 },
               users: { allocated: 25, used: 6 },
               groups: { allocated: 10, used: 5 },
+              complianceTools: [],
+              additionalModules: [],
+              carbocalc: false,
+              imsforms: false,
+              projectims: false,
+            },
+            paymentSystem: {
+              type: "Monthly invoice",
+              status: "Subscribed",
+              stripeCustomerId: null,
+              stripeSubscriptionId: null,
+            },
+            systemDate: {
+              start: input.createdOn,
+              end: new Date(
+                input.createdOn.getTime() + 86400000 * 365
+              ),
+              unset: false,
             },
             referralSource: null,
             logoSrc: null,

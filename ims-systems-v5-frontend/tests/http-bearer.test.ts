@@ -17,6 +17,9 @@ describe("apiRequest Bearer attachment", () => {
       getAccessToken: vi.fn().mockResolvedValue("access-token-1"),
       switchOrganisation: vi.fn(),
       login: vi.fn(),
+      loginWithPassword: vi.fn(),
+      register: vi.fn(),
+      requestPasswordReset: vi.fn(),
       logout: vi.fn(),
     };
     setActiveAuthClient(authClient);
@@ -44,6 +47,9 @@ describe("apiRequest Bearer attachment", () => {
       getAccessToken: vi.fn().mockResolvedValue(null),
       switchOrganisation: vi.fn(),
       login: vi.fn(),
+      loginWithPassword: vi.fn(),
+      register: vi.fn(),
+      requestPasswordReset: vi.fn(),
       logout: vi.fn(),
     };
     setActiveAuthClient(authClient);

@@ -263,11 +263,23 @@ export function MyOrganisationPage() {
           </dl>
         </OrgCard>
 
-        <OrgCard title="Coming soon">
-          <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
-            Editing organisation details, go-live, licences, branding, and
-            billing will expand as the Organisation module grows in V5.
-          </p>
+        <OrgCard title="Onboarding">
+          {organisation.isCustomer ? (
+            <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+              This organisation is live. Profile editing, branding, and billing
+              portal expand in later Organisation milestones.
+            </p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
+                Activate customer status, licences, and reporting period via Go
+                Live.
+              </p>
+              <Button asChild size="sm">
+                <Link to="/onboard/go-live">Go Live</Link>
+              </Button>
+            </div>
+          )}
         </OrgCard>
       </div>
     </div>

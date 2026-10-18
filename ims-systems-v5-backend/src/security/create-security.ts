@@ -62,6 +62,7 @@ export function createSecurityPorts(config: AppConfig): SecurityPorts {
       authenticator: new Auth0Authenticator({
         verifier,
         lookups: createMongoAuth0Lookups(),
+        domain: config.AUTH0_DOMAIN,
       }),
       authorizer: new HybridAuthorizer(
         openfgaAuthorizer,

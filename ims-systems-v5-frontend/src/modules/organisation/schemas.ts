@@ -36,3 +36,17 @@ export type CreateOrganisationBasicValues = z.infer<
 export type CreateOrganisationAddressValues = z.infer<
   typeof createOrganisationAddressSchema
 >;
+
+export const goLiveOrganisationSchema = z.object({
+  paymentType: z.enum(["Card", "Monthly invoice"]),
+  superUser: z.coerce.number().int().min(1, "At least one Super Admin seat"),
+  users: z.coerce.number().int().min(0),
+  groups: z.coerce.number().int().min(0),
+  complianceTools: z.array(z.string().trim().min(1)).optional().default([]),
+  additionalModules: z.array(z.string().trim().min(1)).optional().default([]),
+  carbocalc: z.boolean().optional().default(false),
+  imsforms: z.boolean().optional().default(false),
+  projectims: z.boolean().optional().default(false),
+});
+
+export type GoLiveOrganisationValues = z.infer<typeof goLiveOrganisationSchema>;

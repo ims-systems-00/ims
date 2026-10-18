@@ -7,6 +7,19 @@ import { ThemeProvider } from "@/shared/theme";
 import { CreateOrganisationPage } from "@/modules/organisation";
 import * as orgApi from "@/modules/organisation/api/organisations";
 
+vi.mock("@/security", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/security")>();
+  return {
+    ...actual,
+    useAuthClient: () => ({
+      // Force the local-context fallback path used for unlinked Auth0 orgs / stub.
+      switchOrganisation: vi.fn().mockRejectedValue(new Error("unlinked")),
+      logout: vi.fn(),
+      getAccessToken: vi.fn().mockResolvedValue(null),
+    }),
+  };
+});
+
 afterEach(() => {
   cleanup();
   vi.restoreAllMocks();

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { ORGANISATION_PAYMENT_TYPES } from "../types";
 
 const objectIdSchema = z
   .string()
@@ -29,6 +30,25 @@ export const createOrganisationBodySchema = z.object({
     .union([objectIdSchema, z.null()])
     .optional()
     .default(null),
+  logoSrc: z
+    .union([z.string().trim().url().max(2000), z.null()])
+    .optional()
+    .default(null),
+});
+
+export const goLiveOrganisationBodySchema = z.object({
+  paymentType: z.enum(ORGANISATION_PAYMENT_TYPES),
+  superUser: z.coerce.number().int().min(1).max(10_000),
+  users: z.coerce.number().int().min(0).max(100_000),
+  groups: z.coerce.number().int().min(0).max(10_000),
+  complianceTools: z.array(z.string().trim().min(1).max(120)).optional().default([]),
+  additionalModules: z
+    .array(z.string().trim().min(1).max(120))
+    .optional()
+    .default([]),
+  carbocalc: z.boolean().optional().default(false),
+  imsforms: z.boolean().optional().default(false),
+  projectims: z.boolean().optional().default(false),
 });
 
 export const organisationIdParamSchema = z.object({

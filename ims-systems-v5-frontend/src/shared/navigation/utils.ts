@@ -59,12 +59,9 @@ export function breadcrumbsForPath(
   if (pathname === "/organisation" || pathname.startsWith("/organisation/")) {
     return [...crumbs, { label: "My organisation", href: "/organisation" }];
   }
-  if (pathname === "/onboard/flow-selection") {
-    return [
-      ...crumbs,
-      { label: "Create organisation", href: "/onboard/organisation" },
-      { label: "What next?", href: "/onboard/flow-selection" },
-    ];
+  if (pathname.startsWith("/onboard/")) {
+    // Onboarding uses OnboardingShell (no product breadcrumbs).
+    return [];
   }
 
   return crumbs;

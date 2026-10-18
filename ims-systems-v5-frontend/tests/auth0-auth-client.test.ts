@@ -156,6 +156,31 @@ describe("Auth0AuthClient", () => {
     ).rejects.toThrow(/Auth0 Organization id is not linked/);
   });
 
+  it("login requests signup screen without forcing default organisation", async () => {
+    const loginWithRedirect = vi.fn().mockResolvedValue(undefined);
+    const client = new Auth0AuthClient({
+      audience: "https://api.example.local",
+      defaultOrganizationId: "org_default",
+      sdk: {
+        isAuthenticated: false,
+        user: null,
+        getAccessTokenSilently: vi.fn(),
+        loginWithRedirect,
+        logout: vi.fn(),
+      },
+    });
+
+    await client.login({ mode: "signup", returnTo: "/onboard/organisation" });
+
+    expect(loginWithRedirect).toHaveBeenCalledWith({
+      appState: { returnTo: "/onboard/organisation" },
+      authorizationParams: {
+        audience: "https://api.example.local",
+        screen_hint: "signup",
+      },
+    });
+  });
+
   it("logout clears active organisation state", async () => {
     setActiveOrganisationContext({
       organizationId: IMS_ORG_A,

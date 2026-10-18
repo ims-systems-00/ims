@@ -121,6 +121,8 @@ import {
 } from "../../../modules/compliance";
 import { createHealthRouter } from "./health";
 import { createSecurityRouter } from "./security";
+import { createAuthRouter } from "./auth";
+import type { Auth0AuthenticationApi } from "../../../security/auth0/auth0-authentication-api";
 
 
 export type V1RouterDeps = {
@@ -129,6 +131,8 @@ export type V1RouterDeps = {
   email?: EmailSystem;
   config?: AppConfig;
   logger?: Logger;
+  /** Test injection for Auth0 BFF client. */
+  auth0Api?: Auth0AuthenticationApi;
 };
 
 export type CreatedV1Router = {
@@ -142,10 +146,13 @@ export type CreatedV1Router = {
  * Business modules mount here; keep this as the single version root.
  */
 export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
-  const { mongo, security, email, config, logger } = deps;
+  const { mongo, security, email, config, logger, auth0Api } = deps;
   const router = Router();
   router.use(createHealthRouter(mongo));
   router.use("/security", createSecurityRouter(security.authorizer));
+  if (config) {
+    router.use("/auth", createAuthRouter({ config, auth0Api }));
+  }
 
   const reportBug = createReportBugModule({
     email,

@@ -1,18 +1,19 @@
 # Auth0 + OpenFGA cutover checklist (M7)
 
-Use with [AUTH_ROLLOUT_TRACKER.md](./AUTH_ROLLOUT_TRACKER.md). Stub remains the local default; staging/prod use `auth0-openfga`.
+Use with [AUTH_ROLLOUT_TRACKER.md](./AUTH_ROLLOUT_TRACKER.md) and the phased runbook [PRODUCTION_READINESS_PLAN.md](./PRODUCTION_READINESS_PLAN.md). Stub remains the local default; staging/prod use `auth0-openfga`.
 
 ## Staging dual-run
 
-- [ ] Auth0 SPA + API + Organizations configured for staging
-- [ ] Users/orgs linked (`auth0SubjectId` / `auth0OrganizationId`) — see [AUTH0_IDENTITY_BACKFILL.md](./AUTH0_IDENTITY_BACKFILL.md)
-- [ ] OpenFGA model deployed; `pnpm backfill:openfga-memberships` run — see [OPENFGA_MEMBERSHIP_BACKFILL.md](./OPENFGA_MEMBERSHIP_BACKFILL.md)
-- [ ] Backend `SECURITY_PROVIDER=auth0-openfga` + Auth0 + OpenFGA env
-- [ ] Frontend `VITE_SECURITY_PROVIDER=auth0-openfga` + public Auth0 SPA env only
-- [ ] Login → org switch → API calls with Bearer succeed
-- [ ] Nav hides modules when `*:read` capability is false
-- [ ] Role matrix spot-check (Super Admin / Head of Service / Basic / Auditor)
-- [ ] Fail-closed: stop OpenFGA briefly → org-scoped actions deny (not allow)
+- [x] Auth0 SPA + API + Organizations configured for staging
+- [x] Users/orgs linked (`auth0SubjectId` / `auth0OrganizationId`) — see [AUTH0_IDENTITY_BACKFILL.md](./AUTH0_IDENTITY_BACKFILL.md)
+- [x] OpenFGA model deployed; `pnpm backfill:openfga-memberships` run — see [OPENFGA_MEMBERSHIP_BACKFILL.md](./OPENFGA_MEMBERSHIP_BACKFILL.md)
+- [x] Backend `SECURITY_PROVIDER=auth0-openfga` + Auth0 + OpenFGA env
+- [x] Frontend `VITE_SECURITY_PROVIDER=auth0-openfga` + public Auth0 SPA env only
+- [x] Login → org switch → API calls with Bearer succeed
+- [x] Nav hides modules when `*:read` capability is false
+- [ ] Role matrix spot-check (Super Admin / Head of Service / Basic / Auditor) — Ada Super Admin only so far
+- [x] Fail-closed: stop OpenFGA briefly → org-scoped actions deny (not allow)
+- [x] Rollback drill: flip to `development-stub` → restore `auth0-openfga` (2026-10-16)
 
 ## Production config
 

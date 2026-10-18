@@ -1,5 +1,7 @@
 # Organisation
 
+> **Onboarding / create-organisation journey (V4):** see dedicated [organisation-onboarding.md](./organisation-onboarding.md) for wizard steps, preparation-screen routing, Go Live / partner paths, and side effects. This document covers the full Organisation tenant lifecycle and admin settings.
+
 ## 1. Module Overview
 
 The **Organisation** module is the central tenant entity in iMS. An Organisation represents a company or institution using the platform: its identity, address and contact details, branding, licence entitlements, billing relationship, operational reporting period, incident resolution targets, and scheduled dashboard report recipients.

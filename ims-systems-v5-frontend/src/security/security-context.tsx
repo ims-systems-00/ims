@@ -5,7 +5,6 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
   type ReactNode,
 } from "react";
 import { loadPublicEnv } from "@/shared/lib/env";
@@ -56,8 +55,8 @@ function StubSecurityProvider({ children }: { children: ReactNode }) {
 }
 
 /**
- * Wires stub or Auth0 SPA security ports for the app tree.
- * Auth0 SDK is dynamically imported so stub mode works without the package linked.
+ * Wires stub or Auth0 BFF (password session) security ports for the app tree.
+ * Auth0-mode provider is lazy-loaded so stub mode stays light.
  */
 export function SecurityProvider({ children }: { children: ReactNode }) {
   const env = loadPublicEnv();
@@ -92,50 +91,4 @@ export function SecurityProvider({ children }: { children: ReactNode }) {
   );
 }
 
-/**
- * Redirects unauthenticated Auth0 users to login; stub always passes.
- */
-export function RequireAuth({ children }: { children: ReactNode }) {
-  const env = loadPublicEnv();
-  const authClient = useAuthClient();
-  const [ready, setReady] = useState(
-    env.VITE_SECURITY_PROVIDER === "development-stub"
-  );
-  const [authed, setAuthed] = useState(
-    env.VITE_SECURITY_PROVIDER === "development-stub"
-  );
-
-  useEffect(() => {
-    if (env.VITE_SECURITY_PROVIDER === "development-stub") {
-      setReady(true);
-      setAuthed(true);
-      return;
-    }
-
-    let cancelled = false;
-    void (async () => {
-      const ok = await authClient.isAuthenticated();
-      if (cancelled) return;
-      if (!ok) {
-        await authClient.login({ returnTo: window.location.pathname });
-        return;
-      }
-      setAuthed(true);
-      setReady(true);
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [authClient, env.VITE_SECURITY_PROVIDER]);
-
-  if (!ready || !authed) {
-    return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Signing in…
-      </div>
-    );
-  }
-
-  return <>{children}</>;
-}
+export { RequireAuth } from "./require-auth";

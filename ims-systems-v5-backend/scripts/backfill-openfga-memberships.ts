@@ -36,6 +36,7 @@ async function main(): Promise<void> {
   const rows = await memberships.listAll();
 
   let written = 0;
+  let skipped = 0;
   let failed = 0;
   for (const row of rows) {
     try {
@@ -49,16 +50,28 @@ async function main(): Promise<void> {
         `OK ${row.userId} → ${row.organizationId} (${row.role})`
       );
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      // OpenFGA rejects duplicate writes; treat as idempotent success.
+      if (
+        message.includes("already exists") ||
+        message.includes("tuple to be written already existed")
+      ) {
+        skipped += 1;
+        console.log(
+          `SKIP ${row.userId} → ${row.organizationId} (${row.role}) — already present`
+        );
+        continue;
+      }
       failed += 1;
       console.error(
         `FAIL ${row.userId} → ${row.organizationId}:`,
-        error instanceof Error ? error.message : error
+        message
       );
     }
   }
 
   console.log(
-    `Backfill complete: ${written} written, ${failed} failed, ${rows.length} total`
+    `Backfill complete: ${written} written, ${skipped} skipped, ${failed} failed, ${rows.length} total`
   );
   await mongoose.disconnect();
   if (failed > 0) process.exitCode = 1;

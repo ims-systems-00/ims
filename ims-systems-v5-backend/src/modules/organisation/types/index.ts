@@ -31,6 +31,38 @@ export type OrganisationLicences = {
   superUser: { allocated: number; used: number };
   users: { allocated: number; used: number };
   groups: { allocated: number; used: number };
+  /** Toolkit display names selected at Go Live (compliance provision uses these). */
+  complianceTools: string[];
+  additionalModules: string[];
+  carbocalc: boolean;
+  imsforms: boolean;
+  projectims: boolean;
+};
+
+export const ORGANISATION_PAYMENT_TYPES = ["Card", "Monthly invoice"] as const;
+export type OrganisationPaymentType =
+  (typeof ORGANISATION_PAYMENT_TYPES)[number];
+
+export const ORGANISATION_PAYMENT_STATUSES = [
+  "Trial",
+  "Subscribed",
+  "Unsubscribed",
+] as const;
+export type OrganisationPaymentStatus =
+  (typeof ORGANISATION_PAYMENT_STATUSES)[number];
+
+export type OrganisationPaymentSystem = {
+  type: OrganisationPaymentType | null;
+  status: OrganisationPaymentStatus;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+export type OrganisationSystemDate = {
+  start: Date | null;
+  end: Date | null;
+  /** True until Go Live (or until an admin explicitly sets dates). */
+  unset: boolean;
 };
 
 export type Organisation = {
@@ -49,6 +81,8 @@ export type Organisation = {
   isPartner: boolean;
   status: OrganisationStatus;
   licences: OrganisationLicences;
+  paymentSystem: OrganisationPaymentSystem;
+  systemDate: OrganisationSystemDate;
   referralSource: string | null;
   logoSrc: string | null;
   /**
@@ -95,11 +129,30 @@ export type CreateOrganisationInput = {
     phoneCode: number;
   };
   referralSource?: string | null;
+  /** Optional public logo URL from file upload (wizard step). */
+  logoSrc?: string | null;
 };
 
 export type CreateOrganisationResult = {
   organisation: Organisation;
   membership: OrganisationMembership;
+};
+
+export type GoLiveOrganisationInput = {
+  paymentType: OrganisationPaymentType;
+  superUser: number;
+  users: number;
+  groups: number;
+  complianceTools?: string[];
+  additionalModules?: string[];
+  carbocalc?: boolean;
+  imsforms?: boolean;
+  projectims?: boolean;
+};
+
+export type GoLiveOrganisationResult = {
+  organisation: Organisation;
+  paymentSession: { url: string } | null;
 };
 
 export type OrganisationProfile = Organisation & {

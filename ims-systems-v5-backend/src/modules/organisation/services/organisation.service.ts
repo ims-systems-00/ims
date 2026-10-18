@@ -1,10 +1,11 @@
 /**
  * Organisation application service.
- * Spec: docs/module-specifications/organisation.md (create + view current).
+ * Spec: docs/module-specifications/organisation.md
+ * Onboard: docs/module-specifications/organisation-onboarding.md
  *
  * Create does not require an existing organisation context.
  * Creator becomes Super Admin and consumes one super-user licence slot.
- * Go-live / licences / branding are out of scope for this foundation.
+ * Go Live activates customer status, licence pools, and system dates.
  */
 
 import {
@@ -18,13 +19,20 @@ import {
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
+  ValidationAppError,
 } from "../../../shared";
+import {
+  NoOpOrganisationGoLiveSideEffectsAdapter,
+  type OrganisationGoLiveSideEffectsPort,
+} from "../ports";
 import type { OrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import type { OrganisationRepository } from "../repositories/organisation.repository";
 import {
   ORGANISATION_RESOURCE,
   type CreateOrganisationInput,
   type CreateOrganisationResult,
+  type GoLiveOrganisationInput,
+  type GoLiveOrganisationResult,
   type Organisation,
   type OrganisationProfile,
 } from "../types";
@@ -48,6 +56,7 @@ export type OrganisationServiceDeps = {
   memberships: OrganisationMembershipRepository;
   authorizer: Authorizer;
   membershipProjection?: MembershipProjection;
+  goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
 };
 
 export type OrganisationService = ReturnType<typeof createOrganisationService>;
@@ -55,6 +64,8 @@ export type OrganisationService = ReturnType<typeof createOrganisationService>;
 export function createOrganisationService(deps: OrganisationServiceDeps) {
   const { organisations, memberships, authorizer } = deps;
   const membershipProjection = deps.membershipProjection;
+  const goLiveSideEffects =
+    deps.goLiveSideEffects ?? new NoOpOrganisationGoLiveSideEffectsAdapter();
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -84,6 +95,21 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     );
     if (!membership) {
       throw new ForbiddenError("You are not a member of this organisation");
+    }
+  }
+
+  async function assertSuperAdmin(
+    userId: string,
+    organizationId: string
+  ): Promise<void> {
+    const membership = await memberships.findByUserAndOrg(
+      userId,
+      organizationId
+    );
+    if (!membership || membership.role !== "Super Admin") {
+      throw new ForbiddenError(
+        "Only a Super Admin can activate this organisation"
+      );
     }
   }
 
@@ -126,6 +152,100 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         organisation: refreshed ?? organisation,
         membership,
       };
+    },
+
+    async goLive(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string,
+      input: GoLiveOrganisationInput
+    ): Promise<GoLiveOrganisationResult> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+
+      if (!authed.organizationId || authed.organizationId !== organizationId) {
+        throw new ForbiddenError(
+          "You don't have permission to go live for this organisation."
+        );
+      }
+
+      await assertAllowed(authed, "manage", organizationId);
+      await assertSuperAdmin(subjectId, organizationId);
+
+      const existing = await organisations.findById(organizationId);
+      if (!existing) {
+        throw new NotFoundError("Organisation not found");
+      }
+      if (existing.isCustomer) {
+        throw new ConflictError(
+          "This organisation already has an iMS setup."
+        );
+      }
+      if (input.superUser < existing.licences.superUser.used) {
+        throw new ValidationAppError(
+          "Super Admin licence allocation cannot be below seats already used."
+        );
+      }
+
+      const systemStart = new Date();
+      const systemEnd = new Date(systemStart.getTime() + 86400000 * 365);
+      const paymentStatus =
+        input.paymentType === "Monthly invoice" ? "Subscribed" : "Trial";
+
+      const activated = await organisations.applyGoLive({
+        id: organizationId,
+        data: input,
+        paymentStatus,
+        systemStart,
+        systemEnd,
+      });
+      if (!activated) {
+        throw new ConflictError(
+          "This organisation already has an iMS setup."
+        );
+      }
+
+      const toolkitNames = input.complianceTools ?? [];
+      try {
+        await goLiveSideEffects.provisionComplianceToolkits({
+          organizationId,
+          actorId: subjectId,
+          toolkitNames,
+        });
+      } catch {
+        // Best-effort: org is already customer; toolkits can be provisioned later.
+      }
+
+      let paymentSession: { url: string } | null = null;
+      if (input.paymentType === "Card") {
+        try {
+          paymentSession = await goLiveSideEffects.createCardCheckoutSession({
+            organizationId,
+            actorId: subjectId,
+          });
+        } catch {
+          paymentSession = null;
+        }
+      }
+
+      try {
+        await goLiveSideEffects.notifyGoLive({
+          organizationId,
+          actorId: subjectId,
+          paymentType: input.paymentType,
+          licences: {
+            superUser: input.superUser,
+            users: input.users,
+            groups: input.groups,
+            complianceTools: toolkitNames,
+          },
+        });
+      } catch {
+        // Best-effort notifications.
+      }
+
+      const organisation =
+        (await organisations.findById(organizationId)) ?? activated;
+
+      return { organisation, paymentSession };
     },
 
     async getCurrent(

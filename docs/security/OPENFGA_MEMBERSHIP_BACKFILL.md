@@ -16,6 +16,8 @@ Run this in **staging** before flipping AuthZ to enforce (or immediately after e
 2. Backend env: `SECURITY_PROVIDER=auth0-openfga`, `OPENFGA_API_URL`, `OPENFGA_STORE_ID`, `OPENFGA_MODEL_ID`, credentials.
 3. IMS user ids in memberships are the same ids used as `SecurityIdentity.subjectId` (Auth0-linked users).
 
+**Local Docker memory wipe** (after PC / `docker stop`): recreate store + model first — see [OPENFGA_LOCAL_DEV.md](./OPENFGA_LOCAL_DEV.md).
+
 ## Command
 
 From `ims-systems-v5-backend`:

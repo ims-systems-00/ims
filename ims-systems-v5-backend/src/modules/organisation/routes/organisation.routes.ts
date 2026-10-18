@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Authorizer } from "../../../security";
 import type { MembershipProjection } from "../../../security/openfga/membership-projection";
 import { createOrganisationController } from "../controllers/organisation.controller";
+import type { OrganisationGoLiveSideEffectsPort } from "../ports";
 import { createOrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import { createOrganisationRepository } from "../repositories/organisation.repository";
 import {
@@ -12,6 +13,7 @@ import {
 export type OrganisationRouterDeps = {
   authorizer: Authorizer;
   membershipProjection?: MembershipProjection;
+  goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
 };
 
 /**
@@ -29,6 +31,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     memberships,
     authorizer: deps.authorizer,
     membershipProjection: deps.membershipProjection,
+    goLiveSideEffects: deps.goLiveSideEffects,
   });
   const controller = createOrganisationController(service);
   const router = Router();
@@ -36,6 +39,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   router.post("/", controller.create);
   router.get("/", controller.listMine);
   router.get("/current", controller.getCurrent);
+  router.post("/:id/go-live", controller.goLive);
   router.get("/:id", controller.getById);
 
   return { service, router };

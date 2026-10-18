@@ -10,8 +10,12 @@
 | Org switch (M5) notes | [security/M5_ORG_SWITCH_NOTES.md](./security/M5_ORG_SWITCH_NOTES.md) |
 | OpenFGA model + matrix | [security/openfga/](./security/openfga/) |
 | OpenFGA membership backfill | [security/OPENFGA_MEMBERSHIP_BACKFILL.md](./security/OPENFGA_MEMBERSHIP_BACKFILL.md) |
+| OpenFGA local Docker recovery (memory wipe) | [security/OPENFGA_LOCAL_DEV.md](./security/OPENFGA_LOCAL_DEV.md) |
+| Auth0 self-signup + post-login onboard | [security/AUTH_SELF_SIGNUP.md](./security/AUTH_SELF_SIGNUP.md) |
 | Auth cutover checklist | [security/CUTOVER_CHECKLIST.md](./security/CUTOVER_CHECKLIST.md) |
+| Auth production readiness (phases 0–6) | [security/PRODUCTION_READINESS_PLAN.md](./security/PRODUCTION_READINESS_PLAN.md) |
 | Module specifications (business SoT) | [module-specifications/](./module-specifications/) |
+| Organisation onboarding / create org (V4) | [module-specifications/organisation-onboarding.md](./module-specifications/organisation-onboarding.md) |
 | Current-state DB map (V4 investigation) | [MASTER_DB_SCHEMA_PLAN.md](./MASTER_DB_SCHEMA_PLAN.md) |
 
 Start with [architecture/V5_ARCHITECTURE.md](./architecture/V5_ARCHITECTURE.md).

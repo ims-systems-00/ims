@@ -1,5 +1,9 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
-import { ORGANISATION_STATUSES } from "../types";
+import {
+  ORGANISATION_PAYMENT_STATUSES,
+  ORGANISATION_PAYMENT_TYPES,
+  ORGANISATION_STATUSES,
+} from "../types";
 
 const licenceCounterSchema = new Schema(
   {
@@ -41,9 +45,42 @@ const organisationSchema = new Schema(
       default: "Running",
     },
     licences: {
-      superUser: { type: licenceCounterSchema, default: () => ({ allocated: 1, used: 0 }) },
-      users: { type: licenceCounterSchema, default: () => ({ allocated: 0, used: 0 }) },
-      groups: { type: licenceCounterSchema, default: () => ({ allocated: 0, used: 0 }) },
+      superUser: {
+        type: licenceCounterSchema,
+        default: () => ({ allocated: 1, used: 0 }),
+      },
+      users: {
+        type: licenceCounterSchema,
+        default: () => ({ allocated: 0, used: 0 }),
+      },
+      groups: {
+        type: licenceCounterSchema,
+        default: () => ({ allocated: 0, used: 0 }),
+      },
+      complianceTools: { type: [String], default: [] },
+      additionalModules: { type: [String], default: [] },
+      carbocalc: { type: Boolean, default: false },
+      imsforms: { type: Boolean, default: false },
+      projectims: { type: Boolean, default: false },
+    },
+    paymentSystem: {
+      type: {
+        type: String,
+        enum: [...ORGANISATION_PAYMENT_TYPES],
+        default: undefined,
+      },
+      status: {
+        type: String,
+        enum: [...ORGANISATION_PAYMENT_STATUSES],
+        default: "Trial",
+      },
+      stripeCustomerId: { type: String, default: null },
+      stripeSubscriptionId: { type: String, default: null },
+    },
+    systemDate: {
+      start: { type: Date, default: null },
+      end: { type: Date, default: null },
+      unset: { type: Boolean, default: true },
     },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },

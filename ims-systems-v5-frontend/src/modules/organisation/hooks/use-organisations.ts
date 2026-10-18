@@ -4,9 +4,13 @@ import { setActiveOrganisationContext } from "@/shared/lib/active-organisation";
 import {
   createOrganisation,
   getCurrentOrganisation,
+  goLiveOrganisation,
   listMyOrganisations,
 } from "../api/organisations";
-import type { CreateOrganisationInput } from "../types";
+import type {
+  CreateOrganisationInput,
+  GoLiveOrganisationInput,
+} from "../types";
 
 export const organisationKeys = {
   all: ["organisations"] as const,
@@ -50,6 +54,19 @@ export function useCreateOrganisationMutation() {
           auth0OrganizationId: result.organisation.auth0OrganizationId,
         });
       }
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useGoLiveOrganisationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      organizationId: string;
+      body: GoLiveOrganisationInput;
+    }) => goLiveOrganisation(input.organizationId, input.body),
+    onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
   });

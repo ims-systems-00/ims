@@ -26,10 +26,13 @@ async function createTestSigner() {
     getKey,
   });
 
-  async function sign(claims: JWTPayload & { org_id: string; sub: string }) {
+  async function sign(
+    claims: JWTPayload & { sub: string; org_id?: string }
+  ) {
     return new SignJWT({
-      org_id: claims.org_id,
+      ...(claims.org_id ? { org_id: claims.org_id } : {}),
       email: claims.email,
+      name: claims.name,
     })
       .setProtectedHeader({ alg: "RS256", kid: "test-kid" })
       .setSubject(claims.sub)
@@ -45,13 +48,15 @@ async function createTestSigner() {
 function mockLookups(
   overrides: Partial<Auth0AuthenticatorLookups> = {}
 ): Auth0AuthenticatorLookups {
+  const linkedUser = {
+    id: "aaaaaaaaaaaaaaaaaaaaaaaa",
+    email: "ada@example.com",
+    systemAccessStatus: "Active",
+    lockedUntil: null,
+  };
   return {
-    findUserByAuth0SubjectId: vi.fn().mockResolvedValue({
-      id: "aaaaaaaaaaaaaaaaaaaaaaaa",
-      email: "ada@example.com",
-      systemAccessStatus: "Active",
-      lockedUntil: null,
-    }),
+    findUserByAuth0SubjectId: vi.fn().mockResolvedValue(linkedUser),
+    ensureUserFromAuth0: vi.fn().mockResolvedValue(linkedUser),
     findOrganisationByAuth0OrganizationId: vi.fn().mockResolvedValue({
       id: "bbbbbbbbbbbbbbbbbbbbbbbb",
       status: "Running",
@@ -194,5 +199,102 @@ describe("Auth0Authenticator", () => {
         headers: { authorization: `Bearer ${token}` },
       })
     ).toBeNull();
+  });
+
+  it("accepts user-only tokens and JIT-ensures the IMS user", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const lookups = mockLookups({
+      findUserByAuth0SubjectId: vi.fn().mockResolvedValue(null),
+    });
+    const authenticator = new Auth0Authenticator({ verifier, lookups });
+    const token = await sign({
+      sub: "auth0|newbie",
+      email: "new@example.com",
+      name: "New User",
+    });
+
+    const identity = await authenticator.authenticate({
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(identity).toEqual({
+      subjectId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+      email: "new@example.com",
+      organizationId: undefined,
+    });
+    expect(lookups.ensureUserFromAuth0).toHaveBeenCalledWith({
+      auth0SubjectId: "auth0|newbie",
+      email: "new@example.com",
+      name: "New User",
+    });
+  });
+
+  it("binds x-org-id on user-only tokens when membership exists", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const authenticator = new Auth0Authenticator({
+      verifier,
+      lookups: mockLookups(),
+    });
+    const token = await sign({ sub: "auth0|ada", email: "ada@example.com" });
+    const identity = await authenticator.authenticate({
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-org-id": "bbbbbbbbbbbbbbbbbbbbbbbb",
+      },
+    });
+    expect(identity?.organizationId).toBe("bbbbbbbbbbbbbbbbbbbbbbbb");
+  });
+
+  it("ignores stale x-org-id on user-only tokens when not a member", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const authenticator = new Auth0Authenticator({
+      verifier,
+      lookups: mockLookups({
+        hasMembership: vi.fn().mockResolvedValue(false),
+      }),
+    });
+    const token = await sign({ sub: "auth0|ada", email: "ada@example.com" });
+    const identity = await authenticator.authenticate({
+      headers: {
+        authorization: `Bearer ${token}`,
+        "x-org-id": "cccccccccccccccccccccccc",
+      },
+    });
+    expect(identity).toEqual({
+      subjectId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+      email: "ada@example.com",
+      organizationId: undefined,
+    });
+  });
+
+  it("resolves email via /userinfo when access token omits email", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const fetchFn = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({ sub: "auth0|newbie", email: "new@example.com" }),
+        { status: 200, headers: { "Content-Type": "application/json" } }
+      )
+    );
+    const lookups = mockLookups({
+      findUserByAuth0SubjectId: vi.fn().mockResolvedValue(null),
+    });
+    const authenticator = new Auth0Authenticator({
+      verifier,
+      lookups,
+      domain: "example.auth0.com",
+      fetchFn: fetchFn as unknown as typeof fetch,
+    });
+    const token = await sign({ sub: "auth0|newbie" });
+
+    const identity = await authenticator.authenticate({
+      headers: { authorization: `Bearer ${token}` },
+    });
+
+    expect(lookups.ensureUserFromAuth0).toHaveBeenCalledWith({
+      auth0SubjectId: "auth0|newbie",
+      email: "new@example.com",
+      name: undefined,
+    });
+    expect(identity?.subjectId).toBe("aaaaaaaaaaaaaaaaaaaaaaaa");
   });
 });
