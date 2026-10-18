@@ -21,6 +21,7 @@ import { ManagementReviewsListPage } from "@/modules/management-reviews";
 import { KpiObjectivesPage } from "@/modules/kpi-objectives";
 import { TagsAndCategoriesPage } from "@/modules/tags-and-categories";
 import {
+  DocumentDetailPage,
   DocumentsPage,
   RepositoryDetailPage,
 } from "@/modules/document-management";

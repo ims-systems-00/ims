@@ -35,6 +35,8 @@ import {
   type GoLiveOrganisationResult,
   type Organisation,
   type OrganisationProfile,
+  type RequestOrganisationLicenceInput,
+  type UpdateDocumentReviewRemindersInput,
 } from "../types";
 
 function requireIdentity(identity: SecurityIdentity | null | undefined): {
@@ -329,6 +331,80 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
 
       const ids = await memberships.listOrganizationIdsForUser(subjectId);
       return organisations.findByIds(ids);
+    },
+
+    /**
+     * Demo-grade licence request: apply seats/toolkits immediately (no Stripe).
+     * Full License Request module (emails, LR refs, admin approve) comes later.
+     */
+    async requestLicence(
+      identity: SecurityIdentity | null | undefined,
+      input: RequestOrganisationLicenceInput
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+
+      const hasSeats =
+        (input.superUser ?? 0) > 0 ||
+        (input.users ?? 0) > 0 ||
+        (input.groups ?? 0) > 0;
+      const hasTools = (input.complianceTools?.length ?? 0) > 0;
+      const hasModules = (input.additionalModules?.length ?? 0) > 0;
+      if (!hasSeats && !hasTools && !hasModules) {
+        throw new ValidationAppError(
+          "Request at least one licence seat, toolkit, or module"
+        );
+      }
+
+      const updated = await organisations.applyLicenceRequest(
+        authed.organizationId,
+        {
+          superUser: input.superUser ?? 0,
+          users: input.users ?? 0,
+          groups: input.groups ?? 0,
+          complianceTools: input.complianceTools ?? [],
+          additionalModules: input.additionalModules ?? [],
+        }
+      );
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        updated.id
+      );
+      return { ...updated, membership };
+    },
+
+    async updateDocumentReviewReminders(
+      identity: SecurityIdentity | null | undefined,
+      input: UpdateDocumentReviewRemindersInput
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+
+      const updated = await organisations.updateDocumentReviewReminders(
+        authed.organizationId,
+        input.documentReviewReminderOffsets
+      );
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        updated.id
+      );
+      return { ...updated, membership };
     },
 
     async ensureNotDuplicateMembership(

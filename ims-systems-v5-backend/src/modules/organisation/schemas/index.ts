@@ -54,3 +54,32 @@ export const goLiveOrganisationBodySchema = z.object({
 export const organisationIdParamSchema = z.object({
   id: objectIdSchema,
 });
+
+export const requestOrganisationLicenceBodySchema = z
+  .object({
+    superUser: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+    users: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+    groups: z.coerce.number().int().min(0).max(10_000).optional().default(0),
+    complianceTools: z.array(z.string().trim().min(1).max(120)).max(50).optional().default([]),
+    additionalModules: z
+      .array(z.string().trim().min(1).max(120))
+      .max(20)
+      .optional()
+      .default([]),
+    message: z.string().trim().max(2000).optional().default(""),
+  })
+  .refine(
+    (value) =>
+      value.superUser > 0 ||
+      value.users > 0 ||
+      value.groups > 0 ||
+      value.complianceTools.length > 0 ||
+      value.additionalModules.length > 0,
+    "Request at least one licence seat, toolkit, or module"
+  );
+
+export const updateDocumentReviewRemindersBodySchema = z.object({
+  documentReviewReminderOffsets: z
+    .array(z.enum(DOCUMENT_REVIEW_REMINDER_OFFSETS))
+    .max(DOCUMENT_REVIEW_REMINDER_OFFSETS.length),
+});

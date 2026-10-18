@@ -8,6 +8,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { AppConfig } from "../../config";
 import type { Logger } from "../logging/logger";
 import {
+  createLocalObjectStorageAdapter,
+  type LocalObjectStorageAdapter,
+} from "../../modules/files/local-object-storage";
+import {
   MemoryObjectStorageAdapter,
   type ObjectStoragePort,
 } from "../../modules/files/ports";
@@ -90,6 +94,14 @@ export function createS3ObjectStorageAdapter(options: {
   };
 }
 
+function localObjectEndpoint(config: AppConfig): string {
+  const base = config.FILES_LOCAL_PUBLIC_BASE_URL.trim();
+  if (base) {
+    return `${base.replace(/\/+$/, "")}/api/v1/files/local/object`;
+  }
+  return `http://127.0.0.1:${config.PORT}/api/v1/files/local/object`;
+}
+
 /**
  * Build the object-storage port from app config.
  * Uses the in-memory adapter when FILES_PROVIDER=memory or FILES_ENABLED=false.
@@ -100,8 +112,24 @@ export function createObjectStorageFromConfig(options: {
 }): ObjectStoragePort {
   const { config, logger } = options;
 
-  if (!config.FILES_ENABLED || config.FILES_PROVIDER === "memory") {
+  if (!config.FILES_ENABLED) {
     return new MemoryObjectStorageAdapter();
+  }
+
+  if (config.FILES_PROVIDER === "memory") {
+    return new MemoryObjectStorageAdapter();
+  }
+
+  if (config.FILES_PROVIDER === "local") {
+    logger.info(
+      { rootDir: config.FILES_LOCAL_ROOT },
+      "Using local disk file storage (demo / dev)"
+    );
+    return createLocalObjectStorageAdapter({
+      rootDir: config.FILES_LOCAL_ROOT,
+      objectEndpointUrl: localObjectEndpoint(config),
+      signingSecret: config.FILES_LOCAL_SIGNING_SECRET,
+    });
   }
 
   const client = createS3Client({
@@ -113,4 +141,4 @@ export function createObjectStorageFromConfig(options: {
   return createS3ObjectStorageAdapter({ client, logger });
 }
 
-export type { ObjectStoragePort };
+export type { ObjectStoragePort, LocalObjectStorageAdapter };

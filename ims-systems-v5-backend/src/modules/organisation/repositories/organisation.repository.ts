@@ -6,10 +6,28 @@ import type {
   OrganisationPaymentStatus,
   OrganisationPaymentType,
 } from "../types";
+import { DOCUMENT_REVIEW_REMINDER_OFFSETS } from "../types";
 import {
   getOrganisationModel,
   type OrganisationDocument,
 } from "./organisation.model";
+
+const OFFSET_SET = new Set<string>(DOCUMENT_REVIEW_REMINDER_OFFSETS);
+
+function normalizeReminderOffsets(
+  value: unknown
+): DocumentReviewReminderOffset[] {
+  if (!Array.isArray(value)) return [];
+  const unique = new Set<DocumentReviewReminderOffset>();
+  for (const item of value) {
+    if (typeof item === "string" && OFFSET_SET.has(item)) {
+      unique.add(item as DocumentReviewReminderOffset);
+    }
+  }
+  return DOCUMENT_REVIEW_REMINDER_OFFSETS.filter((offset) =>
+    unique.has(offset)
+  );
+}
 
 function toDomain(doc: OrganisationDocument): Organisation {
   const licences = (doc.licences ?? {}) as Partial<OrganisationLicences> & {
@@ -101,6 +119,10 @@ function toDomain(doc: OrganisationDocument): Organisation {
       end: systemDate.end ?? null,
       unset: systemDate.unset !== false && !systemDate.start,
     },
+    documentReviewReminderOffsets: normalizeReminderOffsets(
+      (doc as { documentReviewReminderOffsets?: unknown })
+        .documentReviewReminderOffsets
+    ),
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
     auth0OrganizationId: doc.auth0OrganizationId?.trim()
@@ -171,6 +193,7 @@ export function createOrganisationRepository() {
           end: null,
           unset: true,
         },
+        documentReviewReminderOffsets: [],
         referralSource: input.data.referralSource ?? null,
         logoSrc: input.data.logoSrc?.trim() ? input.data.logoSrc.trim() : null,
         createdBy: input.createdBy,
@@ -344,6 +367,11 @@ export function createOrganisationRepository() {
               ),
               unset: false,
             },
+            documentReviewReminderOffsets: [
+              "1_month",
+              "1_week",
+              "1_day",
+            ],
             referralSource: null,
             logoSrc: null,
             createdBy: input.createdBy,
@@ -353,6 +381,66 @@ export function createOrganisationRepository() {
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       ).lean();
       return toDomain(doc as OrganisationDocument);
+    },
+
+    async updateDocumentReviewReminders(
+      id: string,
+      offsets: DocumentReviewReminderOffset[]
+    ): Promise<Organisation | null> {
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            documentReviewReminderOffsets: normalizeReminderOffsets(offsets),
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async applyLicenceRequest(
+      id: string,
+      input: {
+        superUser?: number;
+        users?: number;
+        groups?: number;
+        complianceTools?: string[];
+        additionalModules?: string[];
+      }
+    ): Promise<Organisation | null> {
+      const $inc: Record<string, number> = {};
+      if ((input.superUser ?? 0) > 0) {
+        $inc["licences.superUser.allocated"] = input.superUser!;
+      }
+      if ((input.users ?? 0) > 0) {
+        $inc["licences.users.allocated"] = input.users!;
+      }
+      if ((input.groups ?? 0) > 0) {
+        $inc["licences.groups.allocated"] = input.groups!;
+      }
+
+      const $addToSet: Record<string, { $each: string[] }> = {};
+      if (input.complianceTools?.length) {
+        $addToSet["licences.complianceTools"] = {
+          $each: [...new Set(input.complianceTools)],
+        };
+      }
+      if (input.additionalModules?.length) {
+        $addToSet["licences.additionalModules"] = {
+          $each: [...new Set(input.additionalModules)],
+        };
+      }
+
+      const update: Record<string, unknown> = {};
+      if (Object.keys($inc).length > 0) update.$inc = $inc;
+      if (Object.keys($addToSet).length > 0) update.$addToSet = $addToSet;
+      if (Object.keys(update).length === 0) {
+        return this.findById(id);
+      }
+
+      await Model.updateOne({ _id: id }, update);
+      return this.findById(id);
     },
   };
 }

@@ -47,6 +47,52 @@ export type OrganisationSystemDate = {
   unset: boolean;
 };
 
+export const ADDITIONAL_MODULE_OPTIONS = ["CRM"] as const;
+
+export const DOCUMENT_REVIEW_REMINDER_OPTIONS = [
+  { value: "3_months", label: "3 Months" },
+  { value: "2_months", label: "2 Months" },
+  { value: "1_month", label: "1 Month" },
+  { value: "3_weeks", label: "3 Weeks" },
+  { value: "2_weeks", label: "2 Weeks" },
+  { value: "1_week", label: "1 Week" },
+  { value: "5_days", label: "5 Days" },
+  { value: "1_day", label: "1 Day" },
+] as const;
+
+export type DocumentReviewReminderOffset =
+  (typeof DOCUMENT_REVIEW_REMINDER_OPTIONS)[number]["value"];
+
+export type RequestOrganisationLicenceInput = {
+  superUser?: number;
+  users?: number;
+  groups?: number;
+  complianceTools?: string[];
+  additionalModules?: string[];
+  message?: string;
+};
+
+export function normalizeOrganisationLicences(
+  licences: Partial<OrganisationLicences> | null | undefined
+): OrganisationLicences {
+  return {
+    superUser: {
+      allocated: licences?.superUser?.allocated ?? 0,
+      used: licences?.superUser?.used ?? 0,
+    },
+    users: {
+      allocated: licences?.users?.allocated ?? 0,
+      used: licences?.users?.used ?? 0,
+    },
+    groups: {
+      allocated: licences?.groups?.allocated ?? 0,
+      used: licences?.groups?.used ?? 0,
+    },
+    complianceTools: [...(licences?.complianceTools ?? [])],
+    additionalModules: [...(licences?.additionalModules ?? [])],
+  };
+}
+
 export type OrganisationMembership = {
   id: string;
   organizationId: string;

@@ -62,7 +62,7 @@ export function deleteStoredFile(input: {
 
 /**
  * Upload a browser File via File Handler.
- * Memory provider URLs are skipped (no real S3 PUT).
+ * Memory provider URLs are skipped (no real storage PUT).
  */
 export async function uploadFileViaHandler(
   file: File,
@@ -72,17 +72,18 @@ export async function uploadFileViaHandler(
     fileName: file.name,
     path,
   });
-  if (!signed.url.startsWith("memory://")) {
-    const response = await fetch(signed.url, {
-      method: "PUT",
-      body: file,
-      headers: {
-        "Content-Type": file.type || "application/octet-stream",
-      },
-    });
-    if (!response.ok) {
-      throw new Error(`File upload failed (${response.status})`);
-    }
+  if (signed.url.startsWith("memory://")) {
+    return signed.uploadInformation;
+  }
+  const response = await fetch(signed.url, {
+    method: "PUT",
+    body: file,
+    headers: {
+      "Content-Type": file.type || "application/octet-stream",
+    },
+  });
+  if (!response.ok) {
+    throw new Error(`File upload failed (${response.status})`);
   }
   return signed.uploadInformation;
 }

@@ -12,7 +12,7 @@ const logLevelSchema = z.enum([
 ]);
 const securityProviderSchema = z.enum(["development-stub", "auth0-openfga"]);
 const emailProviderSchema = z.enum(["mailtrap", "sendgrid", "logging"]);
-const filesProviderSchema = z.enum(["s3", "memory"]);
+const filesProviderSchema = z.enum(["s3", "memory", "local"]);
 const booleanFromEnv = z
   .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
   .transform((value) => value === true || value === "true" || value === "1");
@@ -217,6 +217,18 @@ const envSchema = z
       .int()
       .positive()
       .default(43_200),
+
+    /** Local disk provider: directory for stored objects (demo / dev without AWS). */
+    FILES_LOCAL_ROOT: z.string().default(".local-files"),
+    /**
+     * Public base URL for local signed object GET/PUT (no trailing slash).
+     * Default uses PORT on localhost.
+     */
+    FILES_LOCAL_PUBLIC_BASE_URL: z.string().default(""),
+    /** HMAC secret for local signed URLs. Use a strong value outside development. */
+    FILES_LOCAL_SIGNING_SECRET: z
+      .string()
+      .default("dev-local-files-signing-secret"),
 
     /**
      * Comma-separated allowed upload path prefixes (x-file-path).

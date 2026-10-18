@@ -19,7 +19,7 @@ import type {
 export type FilesServiceConfig = {
   enabled: boolean;
   /** When provider is memory, endpoints work without real AWS (tests / local). */
-  provider: "s3" | "memory";
+  provider: "s3" | "memory" | "local";
   nodeEnv: string;
   privateBucket: string;
   /** Production: `${organizationId}${bucketSuffix}`. */
@@ -62,10 +62,10 @@ function requireIdentity(identity: SecurityIdentity | null | undefined): {
 
 function assertFilesAvailable(config: FilesServiceConfig): void {
   if (config.enabled) return;
-  if (config.provider === "memory") return;
+  if (config.provider === "memory" || config.provider === "local") return;
   throw new AppError({
     message:
-      "File Handler is disabled. Set FILES_ENABLED=true and configure S3 credentials.",
+      "File Handler is disabled. Set FILES_ENABLED=true and configure storage (S3 or local).",
     statusCode: 503,
     code: "FILES_DISABLED",
   });
@@ -122,6 +122,12 @@ function resolvePrivateBucket(
   // Memory provider needs a logical bucket name only — no AWS config required.
   if (config.provider === "memory") {
     return `ims-v5-memory-${organizationId}`;
+  }
+  if (config.provider === "local") {
+    if (config.privateBucket.trim()) {
+      return config.privateBucket.trim();
+    }
+    return `ims-v5-local-${organizationId}`;
   }
   throw new AppError({
     message:

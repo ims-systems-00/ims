@@ -27,6 +27,26 @@ export type OrganisationAddress = {
   country: string;
 };
 
+/** Advance offsets before document review date (on-day is always sent). */
+export const DOCUMENT_REVIEW_REMINDER_OFFSETS = [
+  "3_months",
+  "2_months",
+  "1_month",
+  "3_weeks",
+  "2_weeks",
+  "1_week",
+  "5_days",
+  "1_day",
+] as const;
+
+export type DocumentReviewReminderOffset =
+  (typeof DOCUMENT_REVIEW_REMINDER_OFFSETS)[number];
+
+export type OrganisationLicenceCounter = {
+  allocated: number;
+  used: number;
+};
+
 export type OrganisationLicences = {
   superUser: { allocated: number; used: number };
   users: { allocated: number; used: number };
@@ -94,6 +114,10 @@ export type Organisation = {
   createdOn: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type UpdateDocumentReviewRemindersInput = {
+  documentReviewReminderOffsets: DocumentReviewReminderOffset[];
 };
 
 export type OrganisationMembership = {

@@ -4,6 +4,8 @@ import {
   createOrganisationBodySchema,
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
+  requestOrganisationLicenceBodySchema,
+  updateDocumentReviewRemindersBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
 
@@ -13,6 +15,8 @@ export type OrganisationController = {
   getCurrent: RequestHandler;
   getById: RequestHandler;
   listMine: RequestHandler;
+  requestLicence: RequestHandler;
+  updateDocumentReviewReminders: RequestHandler;
 };
 
 export function createOrganisationController(

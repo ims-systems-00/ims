@@ -6,6 +6,8 @@ import {
   getCurrentOrganisation,
   goLiveOrganisation,
   listMyOrganisations,
+  requestOrganisationLicence,
+  updateDocumentReviewReminders,
 } from "../api/organisations";
 import type {
   CreateOrganisationInput,
@@ -66,6 +68,28 @@ export function useGoLiveOrganisationMutation() {
       organizationId: string;
       body: GoLiveOrganisationInput;
     }) => goLiveOrganisation(input.organizationId, input.body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useRequestOrganisationLicenceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: RequestOrganisationLicenceInput) =>
+      requestOrganisationLicence(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useUpdateDocumentReviewRemindersMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (offsets: DocumentReviewReminderOffset[]) =>
+      updateDocumentReviewReminders(offsets),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
