@@ -6,7 +6,7 @@ import { PageHeader } from "@/shared/layout";
 import { cn } from "@/shared/lib/utils";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { KpiCard } from "../components/kpi-card";
 import { KpiCreateForm } from "../components/kpi-create-form";
@@ -33,7 +33,7 @@ const TABS: Array<{ id: TabId; label: string }> = [
  * Spec: docs/module-specifications/kpi-objective.md
  */
 export function KpiObjectivesPage() {
-  const subjectId = DEV_STUB_IDENTITY.subjectId;
+  const subjectId = useSessionSubjectId() ?? "";
   const [tab, setTab] = useState<TabId>("organisation");
   const [selectedUnitId, setSelectedUnitId] = useState("");
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(

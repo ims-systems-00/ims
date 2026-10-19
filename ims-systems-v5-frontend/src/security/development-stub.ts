@@ -5,8 +5,20 @@
  * Transport-agnostic — does not establish production cookie/bearer transport (D-20).
  */
 
-import type { AuthClient, ClientIdentity } from "./auth-client";
+import type {
+  AuthClient,
+  ClientIdentity,
+  GetAccessTokenOptions,
+  LoginOptions,
+  PasswordCredentials,
+  RegisterCredentials,
+  SwitchOrganisationInput,
+} from "./auth-client";
 import type { AuthzClient, ClientAuthorizationCheck } from "./authz-client";
+import {
+  clearActiveOrganisation,
+  setActiveOrganisationContext,
+} from "@/shared/lib/active-organisation";
 
 /** Deterministic ObjectId-shaped organisation id for local/dev (D-09). */
 export const DEV_STUB_ORGANIZATION_ID = "000000000000000000000001";
@@ -42,6 +54,39 @@ export class DevelopmentAuthClient implements AuthClient {
 
   async isAuthenticated(): Promise<boolean> {
     return true;
+  }
+
+  async getAccessToken(_options?: GetAccessTokenOptions): Promise<string | null> {
+    void _options;
+    return null;
+  }
+
+  async switchOrganisation(input: SwitchOrganisationInput): Promise<void> {
+    setActiveOrganisationContext({
+      organizationId: input.organizationId,
+      auth0OrganizationId: input.auth0OrganizationId,
+    });
+  }
+
+  async login(_options?: LoginOptions): Promise<void> {
+    void _options;
+    // Stub sessions are always authenticated.
+  }
+
+  async loginWithPassword(_credentials: PasswordCredentials): Promise<void> {
+    void _credentials;
+  }
+
+  async register(_credentials: RegisterCredentials): Promise<void> {
+    void _credentials;
+  }
+
+  async requestPasswordReset(_input: { email: string }): Promise<void> {
+    void _input;
+  }
+
+  async logout(): Promise<void> {
+    clearActiveOrganisation();
   }
 }
 

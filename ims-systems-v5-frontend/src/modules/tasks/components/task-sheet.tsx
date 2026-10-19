@@ -4,7 +4,7 @@ import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import {
   ActivityTimeline,
   SheetPanelTabs,
@@ -82,10 +82,12 @@ export function TaskSheet({
   onCreated,
   onDeleted,
   onActionMessage,
-  subjectId = DEV_STUB_IDENTITY.subjectId,
+  subjectId: subjectIdProp,
   createSource,
   createBusinessUnitId,
 }: TaskSheetProps) {
+  const sessionSubjectId = useSessionSubjectId();
+  const subjectId = subjectIdProp ?? sessionSubjectId ?? "";
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [completeOpen, setCompleteOpen] = useState(false);
   const [removingAttachmentId, setRemovingAttachmentId] = useState<

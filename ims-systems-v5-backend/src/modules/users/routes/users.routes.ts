@@ -59,6 +59,9 @@ export function createUsersModule(deps: UsersRouterDeps): {
   router.post("/expired-users", controller.blockExpired);
   router.put("/reset-password", controller.resetPassword);
 
+  // Must be registered before "/:id" so "me" is not parsed as an id.
+  router.get("/me", controller.getMe);
+
   router.get("/:id/classified-info", controller.getClassified);
   router.get("/:id/basic-info", controller.getBasic);
   router.get("/:id/profile-image", controller.getProfileImage);

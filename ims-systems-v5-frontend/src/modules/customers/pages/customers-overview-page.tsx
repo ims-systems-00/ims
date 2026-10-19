@@ -3,7 +3,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { PageHeader } from "@/shared/layout";
 import { isApiClientError } from "@/shared/lib/http/errors";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { useAccountManagerOverviewQuery } from "../hooks/use-customers";
 import { CustomerStageBadge } from "../components/customer-badges";
 import type { CustomerStage } from "../types";
@@ -46,7 +46,7 @@ function StatCard({
  * Uses session user id — backend forbids other manager IDs.
  */
 export function CustomersOverviewPage() {
-  const managerId = DEV_STUB_IDENTITY.subjectId;
+  const managerId = useSessionSubjectId() ?? "";
   const overviewQuery = useAccountManagerOverviewQuery(managerId);
 
   return (

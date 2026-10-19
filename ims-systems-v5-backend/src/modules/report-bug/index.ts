@@ -12,6 +12,7 @@ export {
   NoOpReportBugEmailAdapter,
   type ReportBugEmailPort,
 } from "./ports";
+export { createReportBugEmailAdapter } from "./adapters/email.adapter";
 export {
   REPORT_BUG_CATEGORIES,
   type ReportBugCategory,

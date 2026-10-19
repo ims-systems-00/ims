@@ -1,10 +1,11 @@
 /**
  * Organisation application service.
- * Spec: docs/module-specifications/organisation.md (create + view current).
+ * Spec: docs/module-specifications/organisation.md
+ * Onboard: docs/module-specifications/organisation-onboarding.md
  *
  * Create does not require an existing organisation context.
  * Creator becomes Super Admin and consumes one super-user licence slot.
- * Go-live / licences / branding are out of scope for this foundation.
+ * Go Live activates customer status, licence pools, and system dates.
  */
 
 import {
@@ -12,6 +13,7 @@ import {
   type Authorizer,
   type SecurityIdentity,
 } from "../../../security";
+import type { MembershipProjection } from "../../../security/openfga/membership-projection";
 import {
   ConflictError,
   ForbiddenError,
@@ -19,12 +21,18 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
+import {
+  NoOpOrganisationGoLiveSideEffectsAdapter,
+  type OrganisationGoLiveSideEffectsPort,
+} from "../ports";
 import type { OrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import type { OrganisationRepository } from "../repositories/organisation.repository";
 import {
   ORGANISATION_RESOURCE,
   type CreateOrganisationInput,
   type CreateOrganisationResult,
+  type GoLiveOrganisationInput,
+  type GoLiveOrganisationResult,
   type Organisation,
   type OrganisationProfile,
   type RequestOrganisationLicenceInput,
@@ -49,12 +57,21 @@ export type OrganisationServiceDeps = {
   organisations: OrganisationRepository;
   memberships: OrganisationMembershipRepository;
   authorizer: Authorizer;
+  membershipProjection?: MembershipProjection;
+  goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
+  /** When false (auth0-openfga), never auto-create the stub demo tenant. */
+  allowStubOrganisationAutoProvision?: boolean;
 };
 
 export type OrganisationService = ReturnType<typeof createOrganisationService>;
 
 export function createOrganisationService(deps: OrganisationServiceDeps) {
   const { organisations, memberships, authorizer } = deps;
+  const membershipProjection = deps.membershipProjection;
+  const goLiveSideEffects =
+    deps.goLiveSideEffects ?? new NoOpOrganisationGoLiveSideEffectsAdapter();
+  const allowStubOrganisationAutoProvision =
+    deps.allowStubOrganisationAutoProvision === true;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -87,6 +104,21 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     }
   }
 
+  async function assertSuperAdmin(
+    userId: string,
+    organizationId: string
+  ): Promise<void> {
+    const membership = await memberships.findByUserAndOrg(
+      userId,
+      organizationId
+    );
+    if (!membership || membership.role !== "Super Admin") {
+      throw new ForbiddenError(
+        "Only a Super Admin can activate this organisation"
+      );
+    }
+  }
+
   return {
     async create(
       identity: SecurityIdentity | null | undefined,
@@ -111,6 +143,14 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         createdOn,
       });
 
+      if (membershipProjection) {
+        await membershipProjection.onMembershipCreated({
+          userId: subjectId,
+          organizationId: organisation.id,
+          role: "Super Admin",
+        });
+      }
+
       await organisations.incrementSuperUserUsed(organisation.id, 1);
       const refreshed = await organisations.findById(organisation.id);
 
@@ -118,6 +158,100 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         organisation: refreshed ?? organisation,
         membership,
       };
+    },
+
+    async goLive(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string,
+      input: GoLiveOrganisationInput
+    ): Promise<GoLiveOrganisationResult> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+
+      if (!authed.organizationId || authed.organizationId !== organizationId) {
+        throw new ForbiddenError(
+          "You don't have permission to go live for this organisation."
+        );
+      }
+
+      await assertAllowed(authed, "manage", organizationId);
+      await assertSuperAdmin(subjectId, organizationId);
+
+      const existing = await organisations.findById(organizationId);
+      if (!existing) {
+        throw new NotFoundError("Organisation not found");
+      }
+      if (existing.isCustomer) {
+        throw new ConflictError(
+          "This organisation already has an iMS setup."
+        );
+      }
+      if (input.superUser < existing.licences.superUser.used) {
+        throw new ValidationAppError(
+          "Super Admin licence allocation cannot be below seats already used."
+        );
+      }
+
+      const systemStart = new Date();
+      const systemEnd = new Date(systemStart.getTime() + 86400000 * 365);
+      const paymentStatus =
+        input.paymentType === "Monthly invoice" ? "Subscribed" : "Trial";
+
+      const activated = await organisations.applyGoLive({
+        id: organizationId,
+        data: input,
+        paymentStatus,
+        systemStart,
+        systemEnd,
+      });
+      if (!activated) {
+        throw new ConflictError(
+          "This organisation already has an iMS setup."
+        );
+      }
+
+      const toolkitNames = input.complianceTools ?? [];
+      try {
+        await goLiveSideEffects.provisionComplianceToolkits({
+          organizationId,
+          actorId: subjectId,
+          toolkitNames,
+        });
+      } catch {
+        // Best-effort: org is already customer; toolkits can be provisioned later.
+      }
+
+      let paymentSession: { url: string } | null = null;
+      if (input.paymentType === "Card") {
+        try {
+          paymentSession = await goLiveSideEffects.createCardCheckoutSession({
+            organizationId,
+            actorId: subjectId,
+          });
+        } catch {
+          paymentSession = null;
+        }
+      }
+
+      try {
+        await goLiveSideEffects.notifyGoLive({
+          organizationId,
+          actorId: subjectId,
+          paymentType: input.paymentType,
+          licences: {
+            superUser: input.superUser,
+            users: input.users,
+            groups: input.groups,
+            complianceTools: toolkitNames,
+          },
+        });
+      } catch {
+        // Best-effort notifications.
+      }
+
+      const organisation =
+        (await organisations.findById(organizationId)) ?? activated;
+
+      return { organisation, paymentSession };
     },
 
     async getCurrent(
@@ -131,8 +265,9 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
 
       let organisation = await organisations.findById(authed.organizationId);
 
-      // Dev stub tenant: auto-provision when seed:demo has not been run yet.
+      // Dev stub tenant only: auto-provision when seed:demo has not been run yet.
       if (
+        allowStubOrganisationAutoProvision &&
         !organisation &&
         authed.organizationId === DEV_STUB_ORGANIZATION_ID
       ) {
@@ -154,6 +289,13 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
             jobTitle: "Platform operator",
             createdOn: new Date("2024-01-01T00:00:00.000Z"),
           });
+          if (membershipProjection) {
+            await membershipProjection.onMembershipCreated({
+              userId: subjectId,
+              organizationId: organisation.id,
+              role: "Super Admin",
+            });
+          }
         }
       }
 

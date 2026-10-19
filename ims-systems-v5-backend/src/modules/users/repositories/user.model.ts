@@ -61,6 +61,8 @@ const userSchema = new Schema(
     lastName: { type: String, required: true, trim: true },
     name: { type: String, required: true, trim: true },
     email: { type: String, required: true, trim: true },
+    /** Auth0 `sub`; omit until linked. Unique among linked users only. */
+    auth0SubjectId: { type: String, default: null, trim: true },
     emailVerified: { type: verificationSchema, default: () => ({}) },
     passwordHash: { type: String, required: true },
     phone: { type: String, default: "" },
@@ -116,6 +118,14 @@ userSchema.index({ email: 1 }, { unique: true });
 userSchema.index({ "systemAccess.status": 1, deletedAt: 1, name: 1 });
 // Lookup by stable product reference.
 userSchema.index({ reference: 1 }, { unique: true });
+// Auth0 subject → IMS user (sparse: only documents with a string sub).
+userSchema.index(
+  { auth0SubjectId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { auth0SubjectId: { $type: "string" } },
+  }
+);
 
 export type UserDocument = InferSchemaType<typeof userSchema> & {
   _id: mongoose.Types.ObjectId;

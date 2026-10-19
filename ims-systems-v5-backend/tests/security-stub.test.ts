@@ -1,21 +1,23 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
   assertDevelopmentStubAllowed,
+  Auth0Authenticator,
   createSecurityPorts,
   DEV_STUB_IDENTITY,
   DevelopmentAuthenticator,
   DevelopmentAuthorizer,
+  HybridAuthorizer,
   type SecurityPorts,
 } from "../src/security";
-import type { AppConfig } from "../src/config";
+import { loadConfig, type AppConfig } from "../src/config";
 
-const baseConfig: AppConfig = {
+const baseConfig = loadConfig({
   NODE_ENV: "test",
-  PORT: 3001,
+  PORT: "3001",
   MONGODB_URI: "mongodb://127.0.0.1:27017/ims_v5_test",
   LOG_LEVEL: "silent",
   SECURITY_PROVIDER: "development-stub",
-};
+});
 
 describe("development security stub", () => {
   it("assertDevelopmentStubAllowed rejects production", () => {
@@ -60,4 +62,25 @@ describe("development security stub", () => {
       })
     ).toThrow(/must not be used when NODE_ENV=production/);
   });
+
+  it("createSecurityPorts wires Auth0Authenticator + Hybrid OpenFGA authorizer", () => {
+    const config: AppConfig = {
+      ...baseConfig,
+      SECURITY_PROVIDER: "auth0-openfga",
+      AUTH0_DOMAIN: "example.eu.auth0.com",
+      AUTH0_AUDIENCE: "https://api.example.local",
+      AUTH0_ISSUER: "https://example.eu.auth0.com/",
+      OPENFGA_API_URL: "http://127.0.0.1:8080",
+      // OpenFGA SDK requires ULID-shaped ids
+      OPENFGA_STORE_ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      OPENFGA_MODEL_ID: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+      OPENFGA_API_TOKEN: "",
+    };
+    const ports = createSecurityPorts(config);
+    expect(ports.authenticator).toBeInstanceOf(Auth0Authenticator);
+    expect(ports.authorizer).toBeInstanceOf(HybridAuthorizer);
+    expect(ports.membershipProjection).toBeDefined();
+  });
 });
+
+

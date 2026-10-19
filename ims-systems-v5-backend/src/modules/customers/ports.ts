@@ -125,7 +125,8 @@ export class NoOpCustomerIncidentStatsAdapter
 
 /**
  * Email campaign metrics for MY CRM.
- * Email Campaign submodule is out of scope — narrow stub.
+ * Wired to Email Campaign module via createCustomerCampaignStatsAdapter;
+ * NoOp remains for tests / when campaigns module is omitted.
  */
 export type CustomerCampaignStatsPort = {
   getManagerCampaignStats(input: {

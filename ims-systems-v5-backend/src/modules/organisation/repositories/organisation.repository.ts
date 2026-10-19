@@ -1,8 +1,10 @@
 import type {
   CreateOrganisationInput,
-  DocumentReviewReminderOffset,
+  GoLiveOrganisationInput,
   Organisation,
   OrganisationLicences,
+  OrganisationPaymentStatus,
+  OrganisationPaymentType,
 } from "../types";
 import { DOCUMENT_REVIEW_REMINDER_OFFSETS } from "../types";
 import {
@@ -28,7 +30,13 @@ function normalizeReminderOffsets(
 }
 
 function toDomain(doc: OrganisationDocument): Organisation {
-  const licences = (doc.licences ?? {}) as Partial<OrganisationLicences>;
+  const licences = (doc.licences ?? {}) as Partial<OrganisationLicences> & {
+    complianceTools?: string[];
+    additionalModules?: string[];
+    carbocalc?: boolean;
+    imsforms?: boolean;
+    projectims?: boolean;
+  };
   const address = doc.address ?? {
     line1: "",
     line2: "",
@@ -43,6 +51,17 @@ function toDomain(doc: OrganisationDocument): Organisation {
     currency: "",
     phoneCode: 0,
   };
+  const payment = (doc.paymentSystem ?? {}) as {
+    type?: OrganisationPaymentType | null;
+    status?: OrganisationPaymentStatus;
+    stripeCustomerId?: string | null;
+    stripeSubscriptionId?: string | null;
+  };
+  const systemDate = (doc.systemDate ?? {}) as {
+    start?: Date | null;
+    end?: Date | null;
+    unset?: boolean;
+  };
   return {
     id: String(doc._id),
     reference: doc.reference,
@@ -50,6 +69,10 @@ function toDomain(doc: OrganisationDocument): Organisation {
     industry: doc.industry,
     sizeOfOrganisation: doc.sizeOfOrganisation,
     officeEmail: doc.officeEmail,
+    campaignEmail:
+      typeof (doc as { campaignEmail?: string }).campaignEmail === "string"
+        ? (doc as { campaignEmail?: string }).campaignEmail
+        : undefined,
     contactNumber: doc.contactNumber ?? "",
     companyNumber: doc.companyNumber ?? "",
     vatNumber: doc.vatNumber ?? "",
@@ -85,6 +108,20 @@ function toDomain(doc: OrganisationDocument): Organisation {
       },
       complianceTools: [...(licences.complianceTools ?? [])],
       additionalModules: [...(licences.additionalModules ?? [])],
+      carbocalc: Boolean(licences.carbocalc),
+      imsforms: Boolean(licences.imsforms),
+      projectims: Boolean(licences.projectims),
+    },
+    paymentSystem: {
+      type: payment.type ?? null,
+      status: payment.status ?? "Trial",
+      stripeCustomerId: payment.stripeCustomerId ?? null,
+      stripeSubscriptionId: payment.stripeSubscriptionId ?? null,
+    },
+    systemDate: {
+      start: systemDate.start ?? null,
+      end: systemDate.end ?? null,
+      unset: systemDate.unset !== false && !systemDate.start,
     },
     documentReviewReminderOffsets: normalizeReminderOffsets(
       (doc as { documentReviewReminderOffsets?: unknown })
@@ -92,6 +129,9 @@ function toDomain(doc: OrganisationDocument): Organisation {
     ),
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
+    auth0OrganizationId: doc.auth0OrganizationId?.trim()
+      ? doc.auth0OrganizationId.trim()
+      : null,
     createdBy: doc.createdBy,
     createdOn: doc.createdOn,
     createdAt: doc.createdAt,
@@ -142,14 +182,83 @@ export function createOrganisationRepository() {
           groups: { allocated: 0, used: 0 },
           complianceTools: [],
           additionalModules: [],
+          carbocalc: false,
+          imsforms: false,
+          projectims: false,
+        },
+        paymentSystem: {
+          type: null,
+          status: "Trial",
+          stripeCustomerId: null,
+          stripeSubscriptionId: null,
+        },
+        systemDate: {
+          start: null,
+          end: null,
+          unset: true,
         },
         documentReviewReminderOffsets: [],
         referralSource: input.data.referralSource ?? null,
-        logoSrc: null,
+        logoSrc: input.data.logoSrc?.trim() ? input.data.logoSrc.trim() : null,
         createdBy: input.createdBy,
         createdOn: input.createdOn,
       });
       return toDomain(doc);
+    },
+
+    async applyGoLive(input: {
+      id: string;
+      data: GoLiveOrganisationInput;
+      paymentStatus: OrganisationPaymentStatus;
+      systemStart: Date;
+      systemEnd: Date;
+    }): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(input.id)) {
+        return null;
+      }
+
+      const doc = await Model.findOneAndUpdate(
+        { _id: input.id, isCustomer: false },
+        {
+          $set: {
+            isCustomer: true,
+            "licences.superUser.allocated": input.data.superUser,
+            "licences.users.allocated": input.data.users,
+            "licences.groups.allocated": input.data.groups,
+            "licences.complianceTools": [
+              ...(input.data.complianceTools ?? []),
+            ],
+            "licences.additionalModules": [
+              ...(input.data.additionalModules ?? []),
+            ],
+            "licences.carbocalc": Boolean(input.data.carbocalc),
+            "licences.imsforms": Boolean(input.data.imsforms),
+            "licences.projectims": Boolean(input.data.projectims),
+            "paymentSystem.type": input.data.paymentType,
+            "paymentSystem.status": input.paymentStatus,
+            "systemDate.start": input.systemStart,
+            "systemDate.end": input.systemEnd,
+            "systemDate.unset": false,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async setPaymentStatus(
+      id: string,
+      status: OrganisationPaymentStatus
+    ): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+        return null;
+      }
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { "paymentSystem.status": status } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
     async findById(id: string): Promise<Organisation | null> {
@@ -161,6 +270,36 @@ export function createOrganisationRepository() {
       if (ids.length === 0) return [];
       const docs = await Model.find({ _id: { $in: ids } }).lean();
       return docs.map((doc) => toDomain(doc as OrganisationDocument));
+    },
+
+    /** Resolve Auth0 Organization id → IMS organisation (auth rollout M2+). */
+    async findByAuth0OrganizationId(
+      auth0OrganizationId: string
+    ): Promise<Organisation | null> {
+      const orgId = auth0OrganizationId.trim();
+      if (!orgId) return null;
+      const doc = await Model.findOne({ auth0OrganizationId: orgId }).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    /** Link or clear Auth0 Organization id on an IMS organisation. */
+    async linkAuth0OrganizationId(
+      id: string,
+      auth0OrganizationId: string | null
+    ): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+        return null;
+      }
+      const next =
+        typeof auth0OrganizationId === "string" && auth0OrganizationId.trim()
+          ? auth0OrganizationId.trim()
+          : null;
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { auth0OrganizationId: next } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
     async incrementSuperUserUsed(id: string, by = 1): Promise<void> {
@@ -210,22 +349,27 @@ export function createOrganisationRepository() {
             isPartner: false,
             status: "Running",
             licences: {
-              superUser: { allocated: 2, used: 2 },
-              users: { allocated: 20, used: 1 },
-              groups: { allocated: 10, used: 6 },
-              complianceTools: [
-                "ISO 27001",
-                "ESG Toolkit - Social",
-                "ESG Toolkit - Governance",
-                "ESG Toolkit - Environmental",
-                "ISO 15686-5",
-                "ISO 27001 (2022)",
-                "ISO 20000",
-                "ISO 27002",
-                "ISO 9001",
-                "Building Safety Act",
-              ],
-              additionalModules: ["CRM"],
+              superUser: { allocated: 5, used: 1 },
+              users: { allocated: 25, used: 6 },
+              groups: { allocated: 10, used: 5 },
+              complianceTools: [],
+              additionalModules: [],
+              carbocalc: false,
+              imsforms: false,
+              projectims: false,
+            },
+            paymentSystem: {
+              type: "Monthly invoice",
+              status: "Subscribed",
+              stripeCustomerId: null,
+              stripeSubscriptionId: null,
+            },
+            systemDate: {
+              start: input.createdOn,
+              end: new Date(
+                input.createdOn.getTime() + 86400000 * 365
+              ),
+              unset: false,
             },
             documentReviewReminderOffsets: [
               "1_month",

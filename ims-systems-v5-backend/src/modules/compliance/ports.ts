@@ -114,10 +114,7 @@ export type ComplianceEvidenceLinkPort = {
   riskExists(organizationId: string, id: string): Promise<boolean>;
   incidentExists(organizationId: string, id: string): Promise<boolean>;
   cipExists(organizationId: string, id: string): Promise<boolean>;
-  /**
-   * Document Management is not yet implemented in V5.
-   * Adapter may return false to reject links until Documents ships.
-   */
+  /** Document tree node in the same organisation (active, not soft-deleted). */
   documentExists(organizationId: string, id: string): Promise<boolean>;
 };
 

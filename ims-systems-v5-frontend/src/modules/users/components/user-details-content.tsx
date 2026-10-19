@@ -3,7 +3,7 @@ import { Loader2, Pencil } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { isApiClientError } from "@/shared/lib/http/errors";
-import { DEV_STUB_IDENTITY, resolveProfileUserId } from "@/security";
+import { useSessionProfileUserId } from "@/security";
 import { useUserQuery } from "../hooks/use-users";
 import type { OrgMembershipView, User } from "../types";
 import { EditProfileSheet } from "./edit-profile-sheet";
@@ -92,7 +92,7 @@ export function UserDetailsContent({
   canEditProfile,
 }: UserDetailsContentProps) {
   const query = useUserQuery(userId, enabled);
-  const sessionProfileId = resolveProfileUserId(DEV_STUB_IDENTITY);
+  const sessionProfileId = useSessionProfileUserId();
   const allowEdit =
     canEditProfile ?? (Boolean(sessionProfileId) && userId === sessionProfileId);
 

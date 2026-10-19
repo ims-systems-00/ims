@@ -1,6 +1,7 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 import {
-  DOCUMENT_REVIEW_REMINDER_OFFSETS,
+  ORGANISATION_PAYMENT_STATUSES,
+  ORGANISATION_PAYMENT_TYPES,
   ORGANISATION_STATUSES,
 } from "../types";
 
@@ -19,6 +20,8 @@ const organisationSchema = new Schema(
     industry: { type: String, required: true, trim: true },
     sizeOfOrganisation: { type: Number, required: true, min: 1 },
     officeEmail: { type: String, required: true, trim: true },
+    /** Reply-to for CRM email campaigns; falls back to officeEmail when unset. */
+    campaignEmail: { type: String, trim: true },
     contactNumber: { type: String, default: "", trim: true },
     companyNumber: { type: String, default: "", trim: true },
     vatNumber: { type: String, default: "", trim: true },
@@ -58,18 +61,33 @@ const organisationSchema = new Schema(
       },
       complianceTools: { type: [String], default: [] },
       additionalModules: { type: [String], default: [] },
+      carbocalc: { type: Boolean, default: false },
+      imsforms: { type: Boolean, default: false },
+      projectims: { type: Boolean, default: false },
     },
-    documentReviewReminderOffsets: {
-      type: [
-        {
-          type: String,
-          enum: [...DOCUMENT_REVIEW_REMINDER_OFFSETS],
-        },
-      ],
-      default: [],
+    paymentSystem: {
+      type: {
+        type: String,
+        enum: [...ORGANISATION_PAYMENT_TYPES],
+        default: undefined,
+      },
+      status: {
+        type: String,
+        enum: [...ORGANISATION_PAYMENT_STATUSES],
+        default: "Trial",
+      },
+      stripeCustomerId: { type: String, default: null },
+      stripeSubscriptionId: { type: String, default: null },
+    },
+    systemDate: {
+      start: { type: Date, default: null },
+      end: { type: Date, default: null },
+      unset: { type: Boolean, default: true },
     },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },
+    /** Auth0 Organization id (`org_…`); omit until linked. */
+    auth0OrganizationId: { type: String, default: null, trim: true },
     createdBy: { type: String, required: true },
     createdOn: { type: Date, required: true },
   },
@@ -78,6 +96,13 @@ const organisationSchema = new Schema(
 
 organisationSchema.index({ reference: 1 }, { unique: true });
 organisationSchema.index({ name: 1 });
+organisationSchema.index(
+  { auth0OrganizationId: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { auth0OrganizationId: { $type: "string" } },
+  }
+);
 
 export type OrganisationDocument = InferSchemaType<typeof organisationSchema> & {
   _id: mongoose.Types.ObjectId;

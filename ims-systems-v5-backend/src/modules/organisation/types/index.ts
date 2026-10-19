@@ -48,22 +48,41 @@ export type OrganisationLicenceCounter = {
 };
 
 export type OrganisationLicences = {
-  superUser: OrganisationLicenceCounter;
-  users: OrganisationLicenceCounter;
-  groups: OrganisationLicenceCounter;
-  /** Licensed compliance toolkit names (e.g. ISO 9001). */
+  superUser: { allocated: number; used: number };
+  users: { allocated: number; used: number };
+  groups: { allocated: number; used: number };
+  /** Toolkit display names selected at Go Live (compliance provision uses these). */
   complianceTools: string[];
-  /** Licensed add-on modules (e.g. CRM). */
   additionalModules: string[];
+  carbocalc: boolean;
+  imsforms: boolean;
+  projectims: boolean;
 };
 
-export type RequestOrganisationLicenceInput = {
-  superUser?: number;
-  users?: number;
-  groups?: number;
-  complianceTools?: string[];
-  additionalModules?: string[];
-  message?: string;
+export const ORGANISATION_PAYMENT_TYPES = ["Card", "Monthly invoice"] as const;
+export type OrganisationPaymentType =
+  (typeof ORGANISATION_PAYMENT_TYPES)[number];
+
+export const ORGANISATION_PAYMENT_STATUSES = [
+  "Trial",
+  "Subscribed",
+  "Unsubscribed",
+] as const;
+export type OrganisationPaymentStatus =
+  (typeof ORGANISATION_PAYMENT_STATUSES)[number];
+
+export type OrganisationPaymentSystem = {
+  type: OrganisationPaymentType | null;
+  status: OrganisationPaymentStatus;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+export type OrganisationSystemDate = {
+  start: Date | null;
+  end: Date | null;
+  /** True until Go Live (or until an admin explicitly sets dates). */
+  unset: boolean;
 };
 
 export type Organisation = {
@@ -73,6 +92,8 @@ export type Organisation = {
   industry: string;
   sizeOfOrganisation: number;
   officeEmail: string;
+  /** Reply-to for CRM email campaigns; optional. */
+  campaignEmail?: string;
   contactNumber: string;
   companyNumber: string;
   vatNumber: string;
@@ -82,10 +103,15 @@ export type Organisation = {
   isPartner: boolean;
   status: OrganisationStatus;
   licences: OrganisationLicences;
-  /** Selected advance reminder offsets (in addition to always-on review day). */
-  documentReviewReminderOffsets: DocumentReviewReminderOffset[];
+  paymentSystem: OrganisationPaymentSystem;
+  systemDate: OrganisationSystemDate;
   referralSource: string | null;
   logoSrc: string | null;
+  /**
+   * Auth0 Organization id (`org_…`). Optional until linked (auth rollout M2+).
+   * Canonical tenant key remains `id` (IMS ObjectId / organizationId).
+   */
+  auth0OrganizationId: string | null;
   createdBy: string;
   createdOn: Date;
   createdAt: Date;
@@ -129,11 +155,30 @@ export type CreateOrganisationInput = {
     phoneCode: number;
   };
   referralSource?: string | null;
+  /** Optional public logo URL from file upload (wizard step). */
+  logoSrc?: string | null;
 };
 
 export type CreateOrganisationResult = {
   organisation: Organisation;
   membership: OrganisationMembership;
+};
+
+export type GoLiveOrganisationInput = {
+  paymentType: OrganisationPaymentType;
+  superUser: number;
+  users: number;
+  groups: number;
+  complianceTools?: string[];
+  additionalModules?: string[];
+  carbocalc?: boolean;
+  imsforms?: boolean;
+  projectims?: boolean;
+};
+
+export type GoLiveOrganisationResult = {
+  organisation: Organisation;
+  paymentSession: { url: string } | null;
 };
 
 export type OrganisationProfile = Organisation & {

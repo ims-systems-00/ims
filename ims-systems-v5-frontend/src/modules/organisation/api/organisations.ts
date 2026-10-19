@@ -2,7 +2,8 @@ import { apiRequest } from "@/shared/lib/http";
 import type {
   CreateOrganisationInput,
   CreateOrganisationResult,
-  DocumentReviewReminderOffset,
+  GoLiveOrganisationInput,
+  GoLiveOrganisationResult,
   Organisation,
   OrganisationProfile,
   RequestOrganisationLicenceInput,
@@ -15,6 +16,19 @@ export function createOrganisation(
     method: "POST",
     body,
   });
+}
+
+export function goLiveOrganisation(
+  organizationId: string,
+  body: GoLiveOrganisationInput
+): Promise<GoLiveOrganisationResult> {
+  return apiRequest<GoLiveOrganisationResult>(
+    `/organisations/${organizationId}/go-live`,
+    {
+      method: "POST",
+      body,
+    }
+  );
 }
 
 export function getCurrentOrganisation(): Promise<OrganisationProfile> {

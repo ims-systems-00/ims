@@ -3,8 +3,12 @@ import "../types/express-augmentation";
 import type { AppConfig } from "../config";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { MongoConnection } from "../infrastructure/mongodb/connection";
-import type { EmailSystem } from "../infrastructure/queue";
-import { createSecurityPorts, type SecurityPorts } from "../security";
+import { createEmailSystem, type EmailSystem } from "../infrastructure/queue";
+import {
+  createSecurityPorts,
+  type SecurityPorts,
+  type Auth0AuthenticationApi,
+} from "../security";
 import { correlationIdMiddleware } from "./middleware/correlation-id";
 import { corsMiddleware } from "./middleware/cors";
 import { requestLoggerMiddleware } from "./middleware/request-logger";
@@ -17,10 +21,12 @@ export type CreateAppOptions = {
   logger: Logger;
   mongo: MongoConnection;
   security?: SecurityPorts;
-  /** Shared email/queue facade for future module adapters. */
+  /** Shared email/queue facade; defaults to createEmailSystem(config) when omitted. */
   email?: EmailSystem;
   /** Extra routers mounted under `/api/v1` (tests / temporary platform probes). */
   additionalV1Routers?: Router[];
+  /** Test injection for Auth0 BFF Authentication API client. */
+  auth0Api?: Auth0AuthenticationApi;
 };
 
 export type CreatedApp = {
@@ -36,12 +42,13 @@ export type CreatedApp = {
 export function createApp(options: CreateAppOptions): CreatedApp {
   const { config, logger, mongo } = options;
   const security = options.security ?? createSecurityPorts(config);
+  // N-07: always wire EmailSystem so campaigns/report-bug never silently NoOp in boot.
+  const email =
+    options.email ?? createEmailSystem({ config, logger });
   const app = express();
 
   app.disable("x-powered-by");
-  if (options.email) {
-    app.locals.email = options.email;
-  }
+  app.locals.email = email;
   app.use(corsMiddleware());
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
@@ -52,9 +59,10 @@ export function createApp(options: CreateAppOptions): CreatedApp {
   const v1 = createV1Router({
     mongo,
     security,
-    email: options.email,
+    email,
     config,
     logger,
+    auth0Api: options.auth0Api,
   });
   for (const router of options.additionalV1Routers ?? []) {
     v1.router.use(router);

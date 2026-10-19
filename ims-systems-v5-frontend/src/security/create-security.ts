@@ -11,11 +11,12 @@ export type SecurityPorts = {
   authzClient: AuthzClient;
 };
 
-export type SecurityProvider = "development-stub";
+export type SecurityProvider = "development-stub" | "auth0-openfga";
 
 /**
  * Resolve concrete security adapters from configuration.
- * Modules must depend on SecurityPorts, not stub classes directly.
+ * Auth0 SPA ports are built inside `SecurityProvider` (React + Auth0 SDK).
+ * This factory only builds the development stub synchronously.
  */
 export function createSecurityPorts(options: {
   provider: SecurityProvider;
@@ -27,6 +28,12 @@ export function createSecurityPorts(options: {
       authClient: new DevelopmentAuthClient(),
       authzClient: new DevelopmentAuthzClient(),
     };
+  }
+
+  if (options.provider === "auth0-openfga") {
+    throw new Error(
+      "Auth0 security ports must be created via SecurityProvider (BffAuthClient). Do not call createSecurityPorts({ provider: \"auth0-openfga\" }) directly."
+    );
   }
 
   const _exhaustive: never = options.provider;

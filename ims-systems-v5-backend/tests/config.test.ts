@@ -86,4 +86,42 @@ describe("loadConfig", () => {
       })
     ).toThrow(/AWS_ACCESS_KEY_ID|AWS_SECRET_ACCESS_KEY|AWS_PRIVATE_BUCKET/);
   });
+
+  it("rejects auth0-openfga without Auth0 and OpenFGA settings", () => {
+    expect(() =>
+      loadConfig({
+        ...valid,
+        SECURITY_PROVIDER: "auth0-openfga",
+      })
+    ).toThrow(/AUTH0_DOMAIN|AUTH0_AUDIENCE|OPENFGA_/);
+  });
+
+  it("accepts auth0-openfga when Auth0 and OpenFGA settings are present", () => {
+    const config = loadConfig({
+      ...valid,
+      SECURITY_PROVIDER: "auth0-openfga",
+      AUTH0_DOMAIN: "example.eu.auth0.com",
+      AUTH0_AUDIENCE: "https://api.example.local",
+      OPENFGA_API_URL: "http://127.0.0.1:8080",
+      OPENFGA_STORE_ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      OPENFGA_MODEL_ID: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+    });
+    expect(config.SECURITY_PROVIDER).toBe("auth0-openfga");
+    expect(config.AUTH0_ISSUER).toBe("https://example.eu.auth0.com/");
+  });
+
+  it("allows auth0-openfga in production when Auth0 and OpenFGA settings are present", () => {
+    const config = loadConfig({
+      ...valid,
+      NODE_ENV: "production",
+      SECURITY_PROVIDER: "auth0-openfga",
+      AUTH0_DOMAIN: "example.eu.auth0.com",
+      AUTH0_AUDIENCE: "https://api.example.local",
+      OPENFGA_API_URL: "http://127.0.0.1:8080",
+      OPENFGA_STORE_ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
+      OPENFGA_MODEL_ID: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+    });
+    expect(config.NODE_ENV).toBe("production");
+    expect(config.SECURITY_PROVIDER).toBe("auth0-openfga");
+  });
 });

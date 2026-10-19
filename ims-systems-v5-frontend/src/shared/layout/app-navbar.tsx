@@ -5,6 +5,7 @@ import { SearchInput } from "@/shared/components/search-input";
 import { cn } from "@/shared/lib/utils";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { NotificationBell } from "@/modules/notifications";
+import { OrganisationSwitcher } from "./organisation-switcher";
 import { ThemeSelector } from "./theme-selector";
 import { UserMenu } from "./user-menu";
 
@@ -75,6 +76,7 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
           containerClassName="hidden sm:block"
           className="w-44 bg-surface-muted/50"
         />
+        <OrganisationSwitcher />
         <ThemeSelector />
         <NotificationBell />
         <UserMenu />

@@ -12,8 +12,8 @@ export type NavItem = {
   icon?: LucideIcon;
   children?: NavItem[];
   /**
-   * Optional future authorization metadata.
-   * Not enforced by the shell yet (Auth0/OpenFGA deferred).
+   * Capability key (`resourceType:action`), e.g. `users:read`.
+   * Enforced in Auth0 mode via GET /security/capabilities.
    */
   requiredPermission?: string;
   /** Visually available but not navigable (future module placeholder). */

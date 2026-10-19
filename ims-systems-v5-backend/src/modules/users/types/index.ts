@@ -69,6 +69,11 @@ export type User = {
   lastName: string;
   name: string;
   email: string;
+  /**
+   * Auth0 `sub` claim. Optional until the user is linked (auth rollout M2+).
+   * Canonical API identity remains `id` (IMS ObjectId).
+   */
+  auth0SubjectId: string | null;
   emailVerified: {
     status: EmailVerificationStatus;
     on: Date | null;

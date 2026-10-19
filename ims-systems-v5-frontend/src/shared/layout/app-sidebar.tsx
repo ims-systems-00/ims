@@ -1,8 +1,23 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { navigationSections } from "@/shared/navigation";
+import {
+  filterNavigationSections,
+  navigationSections,
+} from "@/shared/navigation";
 import { Button } from "@/shared/components/ui/button";
+import {
+  permissionAllowed,
+  useSecurityCapabilitiesQuery,
+} from "@/modules/security/hooks/use-security-capabilities";
+import { UserAvatar } from "@/modules/users/components/user-avatar";
+import { useSessionUserQuery } from "@/modules/users/hooks/use-users";
+import {
+  DEV_STUB_IDENTITY,
+  resolveProfileUserId,
+} from "@/security";
+import { loadPublicEnv } from "@/shared/lib/env";
 import { SidebarNavItem } from "./sidebar-nav-item";
 
 type AppSidebarProps = {
@@ -20,6 +35,32 @@ export function AppSidebar({
   onCollapsedChange,
   onMobileOpenChange,
 }: AppSidebarProps) {
+  const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
+  const capabilitiesQuery = useSecurityCapabilitiesQuery();
+  const permissions = capabilitiesQuery.data?.permissions;
+  const stubProfileId =
+    provider === "development-stub"
+      ? resolveProfileUserId(DEV_STUB_IDENTITY)
+      : undefined;
+  const userQuery = useSessionUserQuery(stubProfileId);
+  const user = userQuery.data?.user;
+  const displayName =
+    user?.name ??
+    (provider === "auth0-openfga" ? "Signed in" : "Dev user");
+  const displayEmail =
+    user?.email ??
+    (provider === "development-stub"
+      ? (DEV_STUB_IDENTITY.email ?? "Session")
+      : "Session");
+
+  const sections = useMemo(
+    () =>
+      filterNavigationSections(navigationSections, (permission) =>
+        permissionAllowed(permission, permissions, provider)
+      ),
+    [permissions, provider]
+  );
+
   return (
     <>
       {mobileOpen ? (
@@ -93,7 +134,7 @@ export function AppSidebar({
           className="flex-1 overflow-y-auto px-2 py-3 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           aria-label="Primary"
         >
-          {navigationSections.map((section) => (
+          {sections.map((section) => (
             <div key={section.id} className="mb-5">
               {!collapsed ? (
                 <p className="mb-1.5 px-2.5 text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-sidebar-muted">
@@ -129,22 +170,24 @@ export function AppSidebar({
               collapsed && "md:justify-center"
             )}
           >
-            <span
-              className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-sidebar-accent text-[0.625rem] font-semibold text-sidebar-accent-foreground"
-              aria-hidden
-            >
-              DS
-            </span>
+            <UserAvatar
+              name={displayName}
+              imageUrl={user?.profileImage?.url}
+              size="sm"
+              className="size-7 rounded-sm"
+            />
             {!collapsed ? (
               <div className="min-w-0">
                 <p className="truncate text-[0.8125rem] font-medium">
-                  Dev user
+                  {displayName}
                 </p>
                 <p className="truncate text-[0.6875rem] text-sidebar-muted">
-                  Development session
+                  {displayEmail}
                 </p>
               </div>
-            ) : null}
+            ) : (
+              <span className="sr-only">{`${displayName}, ${displayEmail}`}</span>
+            )}
           </div>
         </div>
       </aside>

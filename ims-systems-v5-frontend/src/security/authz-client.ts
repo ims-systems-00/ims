@@ -1,7 +1,8 @@
 /**
  * Frontend authorization port.
  *
- * Real OpenFGA-backed checks will be provided later by senior engineers.
+ * Auth0 mode: ApiAuthzClient → POST /security/check (OpenFGA on backend).
+ * Stub mode: DevelopmentAuthzClient (always allow).
  *
  * @see docs/architecture/SECURITY_ARCHITECTURE.md
  * @see docs/decisions/0006-auth-ports-and-dev-stub.md

@@ -23,7 +23,7 @@ import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import {
   useDecideAuthorisationMutation,
@@ -79,6 +79,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   const pathQuery = useNodePathQuery(repositoryId, parentNodeId);
   const softDeleteMutation = useSoftDeleteNodeMutation(repositoryId);
   const decideMutation = useDecideAuthorisationMutation(repositoryId);
+  const sessionSubjectId = useSessionSubjectId();
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
 
   const items = nodesQuery.data?.items ?? [];
@@ -129,9 +130,11 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
     status: "Approved" | "Rejected"
   ) {
     try {
-      const subjectId = DEV_STUB_IDENTITY.subjectId;
       const entry = node.documentData?.authorisation.find(
-        (item) => item.status === "Pending" && item.userId === subjectId
+        (item) =>
+          item.status === "Pending" &&
+          sessionSubjectId != null &&
+          item.userId === sessionSubjectId
       );
       if (!entry) {
         notify.error("No pending authorisation assigned to you on this document");

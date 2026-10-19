@@ -20,8 +20,31 @@ export type OrganisationLicences = {
   superUser: { allocated: number; used: number };
   users: { allocated: number; used: number };
   groups: { allocated: number; used: number };
-  complianceTools: string[];
-  additionalModules: string[];
+  complianceTools?: string[];
+  additionalModules?: string[];
+  carbocalc?: boolean;
+  imsforms?: boolean;
+  projectims?: boolean;
+};
+
+export type OrganisationPaymentType = "Card" | "Monthly invoice";
+
+export type OrganisationPaymentStatus =
+  | "Trial"
+  | "Subscribed"
+  | "Unsubscribed";
+
+export type OrganisationPaymentSystem = {
+  type: OrganisationPaymentType | null;
+  status: OrganisationPaymentStatus;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+};
+
+export type OrganisationSystemDate = {
+  start: string | null;
+  end: string | null;
+  unset: boolean;
 };
 
 export const ADDITIONAL_MODULE_OPTIONS = ["CRM"] as const;
@@ -97,9 +120,12 @@ export type Organisation = {
   isPartner: boolean;
   status: OrganisationStatus;
   licences: OrganisationLicences;
-  documentReviewReminderOffsets?: DocumentReviewReminderOffset[];
+  paymentSystem?: OrganisationPaymentSystem;
+  systemDate?: OrganisationSystemDate;
   referralSource: string | null;
   logoSrc: string | null;
+  /** Auth0 Organization id when linked; null until auth rollout links it. */
+  auth0OrganizationId?: string | null;
   createdBy: string;
   createdOn: string;
   createdAt: string;
@@ -132,11 +158,29 @@ export type CreateOrganisationInput = {
     phoneCode: number;
   };
   referralSource?: string | null;
+  logoSrc?: string | null;
 };
 
 export type CreateOrganisationResult = {
   organisation: Organisation;
   membership: OrganisationMembership;
+};
+
+export type GoLiveOrganisationInput = {
+  paymentType: OrganisationPaymentType;
+  superUser: number;
+  users: number;
+  groups: number;
+  complianceTools?: string[];
+  additionalModules?: string[];
+  carbocalc?: boolean;
+  imsforms?: boolean;
+  projectims?: boolean;
+};
+
+export type GoLiveOrganisationResult = {
+  organisation: Organisation;
+  paymentSession: { url: string } | null;
 };
 
 /** @deprecated Prefer OrganisationProfile from the API. */

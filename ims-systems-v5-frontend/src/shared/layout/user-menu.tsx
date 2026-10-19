@@ -15,18 +15,32 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { UserAvatar } from "@/modules/users/components/user-avatar";
-import { useUserQuery } from "@/modules/users/hooks/use-users";
-import { DEV_STUB_IDENTITY, resolveProfileUserId } from "@/security";
+import { useSessionUserQuery } from "@/modules/users/hooks/use-users";
+import {
+  DEV_STUB_IDENTITY,
+  resolveProfileUserId,
+  useAuthClient,
+} from "@/security";
+import { loadPublicEnv } from "@/shared/lib/env";
 
 /**
- * Navbar account menu — profile / organisation now; password & logout deferred.
+ * Navbar account menu — profile / organisation / logout (Auth0 when enabled).
  */
 export function UserMenu() {
-  const profileUserId = resolveProfileUserId(DEV_STUB_IDENTITY);
-  const userQuery = useUserQuery(profileUserId);
+  const authClient = useAuthClient();
+  const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
+  const stubProfileId =
+    provider === "development-stub"
+      ? resolveProfileUserId(DEV_STUB_IDENTITY)
+      : undefined;
+  const userQuery = useSessionUserQuery(stubProfileId);
   const user = userQuery.data?.user;
-  const displayName = user?.name ?? "Dev user";
-  const displayEmail = user?.email ?? DEV_STUB_IDENTITY.email ?? "Session";
+  const displayName = user?.name ?? (provider === "auth0-openfga" ? "Signed in" : "Dev user");
+  const displayEmail =
+    user?.email ??
+    (provider === "development-stub"
+      ? (DEV_STUB_IDENTITY.email ?? "Session")
+      : "Session");
 
   return (
     <DropdownMenu>
@@ -82,7 +96,21 @@ export function UserMenu() {
           <KeyRound />
           Change Password
         </DropdownMenuItem>
-        <DropdownMenuItem disabled title="Coming soon">
+        <DropdownMenuItem
+          disabled={provider === "development-stub"}
+          title={
+            provider === "development-stub"
+              ? "Logout requires Auth0 (VITE_SECURITY_PROVIDER=auth0-openfga)"
+              : undefined
+          }
+          onSelect={(event) => {
+            if (provider === "development-stub") {
+              event.preventDefault();
+              return;
+            }
+            void authClient.logout();
+          }}
+        >
           <LogOut />
           Logout
         </DropdownMenuItem>

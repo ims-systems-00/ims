@@ -25,6 +25,7 @@ export type {
 } from "./ports";
 export { createFunctionalUnitUsersAdapter } from "./adapters/functional-unit-users.adapter";
 export type { CreateFunctionalUnitUsersAdapterDeps } from "./adapters/functional-unit-users.adapter";
+export { createOrganisationMembershipLookupAdapter } from "./adapters/organisation-membership-lookup.adapter";
 export type {
   FunctionalUnitUsersPort,
   UnitMemberView,

@@ -7,9 +7,9 @@ import { useCreateOrganisationMutation } from "../hooks/use-organisations";
 import type { CreateOrganisationInput } from "../types";
 
 /**
- * Onboarding-style create organisation wizard.
- * Spec: docs/module-specifications/organisation.md § Create a new organisation
- * (logo upload, partner code, and go-live deferred).
+ * Onboarding create-organisation wizard.
+ * Spec: docs/module-specifications/organisation-onboarding.md
+ * (logo upload and partner code still deferred).
  */
 export function CreateOrganisationPage() {
   const navigate = useNavigate();
@@ -29,7 +29,7 @@ export function CreateOrganisationPage() {
     <div className="mx-auto max-w-2xl space-y-5">
       <PageHeader
         title="Create organisation"
-        description="Register a new tenant. You become Super Admin. Go-live, licences, and branding come later."
+        description="Register a new tenant. You become Super Admin, then choose Go Live or continue to the workspace."
       />
       <section className="ims-panel overflow-hidden">
         <div className="ims-panel-header">

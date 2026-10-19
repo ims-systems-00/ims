@@ -92,4 +92,92 @@ describe("Organisation HTTP", () => {
     expect(current.body.data.id).toBe(orgId);
     expect(current.body.data.name).toBe("Acme Systems Ltd");
   });
+
+  it("POST /api/v1/organisations/:id/go-live activates customer status", async () => {
+    const created = await request(ctx!.app)
+      .post("/api/v1/organisations")
+      .send(createPayload);
+    const orgId = created.body.data.organisation.id as string;
+
+    const response = await request(ctx!.app)
+      .post(`/api/v1/organisations/${orgId}/go-live`)
+      .set("x-org-id", orgId)
+      .send({
+        paymentType: "Monthly invoice",
+        superUser: 2,
+        users: 10,
+        groups: 3,
+        complianceTools: ["ISO 27001"],
+        additionalModules: ["CRM"],
+        carbocalc: false,
+        imsforms: false,
+        projectims: false,
+      });
+
+    expect(response.status).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.data.organisation).toMatchObject({
+      id: orgId,
+      isCustomer: true,
+      paymentSystem: {
+        type: "Monthly invoice",
+        status: "Subscribed",
+      },
+      licences: {
+        superUser: { allocated: 2, used: 1 },
+        users: { allocated: 10, used: 0 },
+        groups: { allocated: 3, used: 0 },
+        complianceTools: ["ISO 27001"],
+        additionalModules: ["CRM"],
+      },
+    });
+    expect(response.body.data.organisation.systemDate.unset).toBe(false);
+    expect(response.body.data.organisation.systemDate.start).toBeTruthy();
+    expect(response.body.data.organisation.systemDate.end).toBeTruthy();
+    expect(response.body.data.paymentSession).toBeNull();
+  });
+
+  it("rejects go-live when already a customer", async () => {
+    const created = await request(ctx!.app)
+      .post("/api/v1/organisations")
+      .send(createPayload);
+    const orgId = created.body.data.organisation.id as string;
+    const body = {
+      paymentType: "Card" as const,
+      superUser: 1,
+      users: 5,
+      groups: 1,
+    };
+
+    await request(ctx!.app)
+      .post(`/api/v1/organisations/${orgId}/go-live`)
+      .set("x-org-id", orgId)
+      .send(body);
+
+    const second = await request(ctx!.app)
+      .post(`/api/v1/organisations/${orgId}/go-live`)
+      .set("x-org-id", orgId)
+      .send(body);
+
+    expect(second.status).toBe(409);
+  });
+
+  it("rejects go-live for a different organisation context", async () => {
+    const created = await request(ctx!.app)
+      .post("/api/v1/organisations")
+      .send(createPayload);
+    const orgId = created.body.data.organisation.id as string;
+
+    const response = await request(ctx!.app)
+      .post(`/api/v1/organisations/${orgId}/go-live`)
+      .set("x-org-id", DEV_STUB_ORGANIZATION_ID)
+      .send({
+        paymentType: "Card",
+        superUser: 1,
+        users: 0,
+        groups: 0,
+      });
+
+    expect(response.status).toBe(403);
+  });
 });

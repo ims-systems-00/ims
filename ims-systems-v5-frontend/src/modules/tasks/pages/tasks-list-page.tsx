@@ -17,7 +17,7 @@ import { SearchInput } from "@/shared/components/search-input";
 import { PageHeader } from "@/shared/layout";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { useUsersQuery, useUserQuery } from "@/modules/users/hooks/use-users";
 import { TaskSheet, type TaskSheetMode } from "../components/task-sheet";
 import {
@@ -100,7 +100,7 @@ export function TasksListPage() {
   const [pendingComplete, setPendingComplete] =
     useState<PendingComplete | null>(null);
 
-  const subjectId = DEV_STUB_IDENTITY.subjectId;
+  const subjectId = useSessionSubjectId() ?? "";
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
