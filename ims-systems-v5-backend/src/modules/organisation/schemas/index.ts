@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { ORGANISATION_PAYMENT_TYPES } from "../types";
+import {
+  DOCUMENT_REVIEW_REMINDER_OFFSETS,
+  ORGANISATION_PAYMENT_TYPES,
+} from "../types";
 
 const objectIdSchema = z
   .string()

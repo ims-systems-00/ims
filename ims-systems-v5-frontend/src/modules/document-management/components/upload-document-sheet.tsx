@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Loader2, Upload } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { FormField } from "@/shared/components/form-field";
@@ -6,7 +6,10 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
-import { useSessionSubjectId } from "@/security";
+import {
+  useSessionProfileUserId,
+  useSessionSubjectId,
+} from "@/security";
 import { uploadFileViaHandler } from "@/modules/files";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useCreateFileNodesMutation } from "../hooks/use-document-management";
@@ -41,15 +44,14 @@ export function UploadDocumentSheet({
   parentNodeId,
 }: UploadDocumentSheetProps) {
   const subjectId = useSessionSubjectId();
+  const defaultOwnerId = useSessionProfileUserId() ?? "";
   const createMutation = useCreateFileNodesMutation(repositoryId);
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
-  const defaultOwnerId =
-    resolveProfileUserId(DEV_STUB_IDENTITY) ?? DEV_STUB_IDENTITY.subjectId;
 
   const [files, setFiles] = useState<FileList | null>(null);
   const [purpose, setPurpose] = useState<DocumentPurpose>("Document");
   const [modules, setModules] = useState<DocumentApplicableModule[]>([]);
-  const [owners, setOwners] = useState<string[]>([defaultOwnerId]);
+  const [owners, setOwners] = useState<string[]>([]);
   const [reviewDate, setReviewDate] = useState("");
   const [requireAuthorisation, setRequireAuthorisation] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -65,11 +67,20 @@ export function UploadDocumentSheet({
     [usersQuery.data]
   );
 
+  useEffect(() => {
+    if (!open || !defaultOwnerId) return;
+    setOwners((current) =>
+      current.length === 0 || (current.length === 1 && !current[0])
+        ? [defaultOwnerId]
+        : current
+    );
+  }, [open, defaultOwnerId]);
+
   function reset() {
     setFiles(null);
     setPurpose("Document");
     setModules([]);
-    setOwners([defaultOwnerId]);
+    setOwners(defaultOwnerId ? [defaultOwnerId] : []);
     setReviewDate("");
     setRequireAuthorisation(false);
     setFormError(undefined);

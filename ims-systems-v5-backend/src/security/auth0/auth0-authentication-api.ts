@@ -105,7 +105,7 @@ function formatAuth0Message(value: unknown, fallback: string): string {
       if (ruleHints.length > 0) {
         return `Password does not meet requirements: ${ruleHints.join("; ")}`;
       }
-      return "Password does not meet Auth0 strength requirements";
+      return "Password does not meet requirements";
     }
     try {
       return JSON.stringify(value);
@@ -120,35 +120,24 @@ function mapAuth0SignupError(body: Auth0ErrorBody): AppError {
   const code = (body.code ?? body.error ?? body.name ?? "").toLowerCase();
   const message = formatAuth0Message(
     body.description ?? body.message ?? body.error_description,
-    "Auth0 signup failed"
+    "Unable to create account"
   );
 
-  if (
-    code === "user_exists" ||
-    code.includes("user_exists") ||
-    /already exists|already registered/i.test(message)
-  ) {
+  // Only rewrite when Auth0’s own error code is definitive.
+  if (code === "user_exists" || code.endsWith("user_exists")) {
     return new ConflictError("An account with this email already exists");
   }
 
   if (
     code === "invalid_password" ||
     code === "passwordstrengtherror" ||
-    code === "password_strength_error" ||
-    /password/i.test(message)
+    code === "password_strength_error"
   ) {
     return new ValidationAppError(message, body.description ?? body);
   }
 
-  // Auth0 returns this vague string for several dashboard misconfigs
-  // (Bot Detection, sign-ups disabled, app not enabled on the DB connection).
-  if (/^invalid sign up$/i.test(message)) {
-    return new ValidationAppError(
-      "Auth0 rejected signup (Invalid sign up). Check: Database sign-ups enabled; SPA app enabled on the Username-Password connection; Bot Detection off for local API signup (or provide captcha).",
-      body
-    );
-  }
-
+  // Pass Auth0’s message through for customers (e.g. "Invalid sign up").
+  // Do not rewrite into operator checklists — those belong in ops docs.
   return new ValidationAppError(message, body.description ?? body);
 }
 
@@ -173,7 +162,10 @@ function mapAuth0TokenError(body: Auth0ErrorBody, status: number): AppError {
   }
 
   return new AppError({
-    message: description,
+    message:
+      description === "Authentication failed"
+        ? "Unable to sign in"
+        : description,
     statusCode: status >= 400 && status < 600 ? status : 502,
     code: "AUTH0_TOKEN_ERROR",
   });

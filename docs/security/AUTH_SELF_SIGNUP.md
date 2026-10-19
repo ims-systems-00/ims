@@ -21,10 +21,11 @@ Universal Login / `loginWithRedirect` is **not** the primary email/password path
 1. **Authentication → Database** (e.g. `Username-Password-Authentication`) → enable **Sign Ups**.
 2. Note the connection name — set as backend `AUTH0_DB_CONNECTION`.
 3. On that connection → **Applications**: enable both your **SPA** app and the **BFF Regular Web** app.
-4. If `POST /auth/register` returns Auth0 **“Invalid sign up”** with no other detail, check in order:
+4. If signup fails with Auth0’s vague **“Invalid sign up”** (shown as-is in the UI), operators should check in order:
    - Sign Ups enabled (step 1)
    - SPA client enabled on this connection (step 3) — `AUTH0_SPA_CLIENT_ID` must be that SPA
-   - **Security → Bot Detection**: for local BFF signup without captcha, disable Bot Detection (or allowlist); when Bot Detection is on, `/dbconnections/signup` often returns only “Invalid sign up”
+   - **Security → Bot Detection**: for local BFF signup without captcha, disable Bot Detection (or allowlist)
+   - Duplicate email: Auth0 may return `user_exists` (mapped to 409) or, in some cases, only “Invalid sign up”
 
 ### BFF application (password grant)
 

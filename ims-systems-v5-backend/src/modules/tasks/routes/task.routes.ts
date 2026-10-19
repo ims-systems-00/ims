@@ -7,6 +7,7 @@ import {
   DevAllActiveUsersMembershipAdapter,
   NoOpUserNotificationAdapter,
   type FunctionalUnitUsersPort,
+  type MembershipLookupPort,
 } from "../../users";
 import {
   EmptyTaskUnitMembersAdapter,
@@ -26,6 +27,8 @@ export type TaskRouterDeps = {
   calendar?: TaskCalendarPort;
   unitMembers?: TaskUnitMembersPort;
   unitUsers?: FunctionalUnitUsersPort;
+  /** When set (and unitUsers omitted), scopes unit members via real org memberships. */
+  memberships?: MembershipLookupPort;
 };
 
 function createUnitMembersFromUsers(
@@ -58,9 +61,11 @@ export function createTaskModule(deps: TaskRouterDeps): {
   if (!unitMembers) {
     const userRepository = createUserRepository();
     const unitMemberships = createUnitMembershipRepository();
-    const membershipLookup = new DevAllActiveUsersMembershipAdapter(() =>
-      userRepository.listAllActiveIds()
-    );
+    const membershipLookup =
+      deps.memberships ??
+      new DevAllActiveUsersMembershipAdapter(() =>
+        userRepository.listAllActiveIds()
+      );
     const unitUsers = createFunctionalUnitUsersAdapter({
       users: userRepository,
       unitMemberships,

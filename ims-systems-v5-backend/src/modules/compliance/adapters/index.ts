@@ -2,21 +2,21 @@
  * Adapters bridging Compliance to Activities / Notifications / evidence modules.
  */
 
+export { createOrganisationComplianceLicenceAdapter } from "./organisation-licence.adapter";
+
 import type { ActivitiesApplicationPort } from "../../activities";
+import { createDocumentTreeStore } from "../../document-management/repositories/document-tree.repository";
 import type {
   IncidentComplianceLinkPort,
   IncidentService,
 } from "../../incidents";
+import { createIncidentRepository } from "../../incidents/repositories/incident.repository";
 import type { NotificationsApplicationPort } from "../../notifications";
 import type { NotificationsUsersPort } from "../../notifications";
-import type {
-  OfiComplianceLinkPort,
-  OfiService,
-} from "../../ofi";
-import type {
-  RiskComplianceLinkPort,
-  RiskService,
-} from "../../risks";
+import type { OfiComplianceLinkPort, OfiService } from "../../ofi";
+import { createOfiRepository } from "../../ofi/repositories/ofi.repository";
+import type { RiskComplianceLinkPort, RiskService } from "../../risks";
+import { createRiskRepository } from "../../risks/repositories/risk.repository";
 import type { SecurityIdentity } from "../../../security";
 import type {
   ComplianceActivityPort,
@@ -81,45 +81,32 @@ export function createComplianceNotificationAdapter(deps: {
   };
 }
 
-export function createComplianceEvidenceLinkAdapter(deps: {
-  risks: Pick<RiskService, "getById">;
-  incidents: Pick<IncidentService, "getById">;
-  ofi: Pick<OfiService, "getById">;
-}): ComplianceEvidenceLinkPort {
-  const stubIdentity = (organizationId: string): SecurityIdentity =>
-    ({
-      subjectId: "compliance-evidence-adapter",
-      organizationId,
-    }) as SecurityIdentity;
+/**
+ * Org-scoped existence checks for control evidence links (C-02).
+ * Uses repositories — not module getById — so OpenFGA stub identity cannot fail-close.
+ */
+export function createComplianceEvidenceLinkAdapter(): ComplianceEvidenceLinkPort {
+  const risks = createRiskRepository();
+  const incidents = createIncidentRepository();
+  const ofis = createOfiRepository();
+  const documents = createDocumentTreeStore();
 
   return {
     async riskExists(organizationId, id) {
-      try {
-        await deps.risks.getById(stubIdentity(organizationId), id);
-        return true;
-      } catch {
-        return false;
-      }
+      const row = await risks.findById(organizationId, id);
+      return row != null;
     },
     async incidentExists(organizationId, id) {
-      try {
-        await deps.incidents.getById(stubIdentity(organizationId), id);
-        return true;
-      } catch {
-        return false;
-      }
+      const row = await incidents.findById(organizationId, id);
+      return row != null;
     },
     async cipExists(organizationId, id) {
-      try {
-        await deps.ofi.getById(stubIdentity(organizationId), id);
-        return true;
-      } catch {
-        return false;
-      }
+      const row = await ofis.findById(organizationId, id);
+      return row != null;
     },
-    async documentExists() {
-      // Document Management module is not available in V5 yet.
-      return false;
+    async documentExists(organizationId, id) {
+      const row = await documents.findById(organizationId, id);
+      return row != null;
     },
   };
 }

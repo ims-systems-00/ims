@@ -69,6 +69,10 @@ function toDomain(doc: OrganisationDocument): Organisation {
     industry: doc.industry,
     sizeOfOrganisation: doc.sizeOfOrganisation,
     officeEmail: doc.officeEmail,
+    campaignEmail:
+      typeof (doc as { campaignEmail?: string }).campaignEmail === "string"
+        ? (doc as { campaignEmail?: string }).campaignEmail
+        : undefined,
     contactNumber: doc.contactNumber ?? "",
     companyNumber: doc.companyNumber ?? "",
     vatNumber: doc.vatNumber ?? "",

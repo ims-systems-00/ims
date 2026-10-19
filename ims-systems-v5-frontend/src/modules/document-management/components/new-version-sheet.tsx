@@ -4,7 +4,7 @@ import { AppSheet } from "@/shared/components/app-sheet";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
-import { DEV_STUB_IDENTITY } from "@/security";
+import { useSessionSubjectId } from "@/security";
 import { uploadFileViaHandler } from "@/modules/files";
 import {
   useAddDocumentVersionMutation,
@@ -27,6 +27,7 @@ export function NewVersionSheet({
   node,
   mode,
 }: NewVersionSheetProps) {
+  const sessionSubjectId = useSessionSubjectId();
   const versionMutation = useAddDocumentVersionMutation(repositoryId);
   const revisionMutation = useRevisePendingDocumentMutation(repositoryId);
   const [file, setFile] = useState<File | null>(null);
@@ -57,7 +58,9 @@ export function NewVersionSheet({
           authorisation:
             priorAuthorisers.length > 0
               ? priorAuthorisers
-              : [DEV_STUB_IDENTITY.subjectId],
+              : sessionSubjectId
+                ? [sessionSubjectId]
+                : [],
         });
         notify.success("New version created");
       }

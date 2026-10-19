@@ -7,6 +7,7 @@ import {
   DevAllActiveUsersMembershipAdapter,
   NoOpUserNotificationAdapter,
   type FunctionalUnitUsersPort,
+  type MembershipLookupPort,
 } from "../../users";
 import {
   AlwaysAllowGroupLicenceAdapter,
@@ -29,6 +30,8 @@ export type FunctionalUnitRouterDeps = {
   dashboardInit?: DashboardInitPort;
   unitUsers?: FunctionalUnitUsersPort;
   invitations?: InvitationPort;
+  /** When set, replaces DevAllActiveUsersMembershipAdapter for unit user flows. */
+  memberships?: MembershipLookupPort;
 };
 
 /**
@@ -44,9 +47,11 @@ export function createFunctionalUnitModule(
   const repository = createFunctionalUnitRepository();
   const userRepository = createUserRepository();
   const unitMemberships = createUnitMembershipRepository();
-  const membershipLookup = new DevAllActiveUsersMembershipAdapter(() =>
-    userRepository.listAllActiveIds()
-  );
+  const membershipLookup =
+    deps.memberships ??
+    new DevAllActiveUsersMembershipAdapter(() =>
+      userRepository.listAllActiveIds()
+    );
 
   const unitUsers =
     deps.unitUsers ??

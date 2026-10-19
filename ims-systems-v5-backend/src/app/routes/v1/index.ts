@@ -1,6 +1,9 @@
 import { Router } from "express";
 import type { AppConfig } from "../../../config";
-import type { Logger } from "../../../infrastructure/logging/logger";
+import {
+  createLogger,
+  type Logger,
+} from "../../../infrastructure/logging/logger";
 import type { MongoConnection } from "../../../infrastructure/mongodb/connection";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import { createObjectStorageFromConfig } from "../../../infrastructure/s3/object-storage";
@@ -80,6 +83,10 @@ import {
   type CustomerTaskPort,
 } from "../../../modules/customers";
 import {
+  createEmailCampaignModule,
+  createCustomerCampaignStatsAdapter,
+} from "../../../modules/email-campaign";
+import {
   createRiskModule,
   createRiskNotificationAdapter,
   NoOpRiskComplianceLinkAdapter,
@@ -91,7 +98,10 @@ import {
   createTaskNotificationAdapter,
   createTasksSourceCleanupAdapter,
 } from "../../../modules/tasks";
-import { createUsersModule } from "../../../modules/users";
+import {
+  createOrganisationMembershipLookupAdapter,
+  createUsersModule,
+} from "../../../modules/users";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -117,6 +127,7 @@ import {
   createComplianceRiskMirrorAdapter,
   createIncidentComplianceLinkAdapter,
   createOfiComplianceLinkAdapter,
+  createOrganisationComplianceLicenceAdapter,
   createRiskComplianceLinkAdapter,
 } from "../../../modules/compliance";
 import { createHealthRouter } from "./health";
@@ -164,9 +175,15 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   });
   router.use("/report-bug", reportBug.router);
 
+  // N-06: wire object storage whenever config is present (silent logger fallback).
   let objectStorage: ObjectStoragePort | undefined;
-  if (config && logger) {
-    objectStorage = createObjectStorageFromConfig({ config, logger });
+  if (config) {
+    const filesLogger =
+      logger ?? createLogger({ level: "silent", name: "files" });
+    objectStorage = createObjectStorageFromConfig({
+      config,
+      logger: filesLogger,
+    });
     const files = createFilesModule({
       storage: objectStorage,
       config: {
@@ -184,21 +201,36 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     router.use("/files", files.router);
   }
 
+  const organisationMembershipLookup =
+    config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? createOrganisationMembershipLookupAdapter()
+      : undefined;
+
   const organisations = createOrganisationModule({
     authorizer: security.authorizer,
     membershipProjection: security.membershipProjection,
+    allowStubOrganisationAutoProvision:
+      config?.SECURITY_PROVIDER === "development-stub",
   });
   router.use("/organisations", organisations.router);
 
   const functionalUnits = createFunctionalUnitModule({
     authorizer: security.authorizer,
     dashboardInit: createLiveDashboardInitAdapter(),
+    ...(organisationMembershipLookup
+      ? { memberships: organisationMembershipLookup }
+      : {}),
   });
   const assets = createAssetsModule({ authorizer: security.authorizer });
   const businessPremises = createBusinessPremiseModule({
     authorizer: security.authorizer,
   });
-  const users = createUsersModule({ authorizer: security.authorizer });
+  const users = createUsersModule({
+    authorizer: security.authorizer,
+    ...(organisationMembershipLookup
+      ? { memberships: organisationMembershipLookup }
+      : {}),
+  });
 
   const notificationsUsers = createNotificationsUsersAdapter(users.service);
 
@@ -241,6 +273,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     authorizer: security.authorizer,
     calendar: createTaskCalendarAdapter(calendar.service),
     notifications: createTaskNotificationAdapter(notifications.application),
+    ...(organisationMembershipLookup
+      ? { memberships: organisationMembershipLookup }
+      : {}),
   });
   const tasksCleanup = createTasksSourceCleanupAdapter(tasks.service);
 
@@ -454,18 +489,22 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/document-repositories", documentManagement.repositoriesRouter);
   router.use("/document-trees", documentManagement.treesRouter);
 
+  const complianceLicenceLookup =
+    config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? createOrganisationComplianceLicenceAdapter()
+      : undefined;
+
   const compliance = createComplianceModule({
     authorizer: security.authorizer,
+    ...(complianceLicenceLookup
+      ? { licences: complianceLicenceLookup }
+      : {}),
     activities: createComplianceActivityAdapter(activities.application),
     notifications: createComplianceNotificationAdapter({
       notifications: notifications.application,
       users: notificationsUsers,
     }),
-    evidenceLinks: createComplianceEvidenceLinkAdapter({
-      risks: risks.service,
-      incidents: incidents.service,
-      ofi: ofis.service,
-    }),
+    evidenceLinks: createComplianceEvidenceLinkAdapter(),
     riskMirror: createComplianceRiskMirrorAdapter(risks.service),
     incidentMirror: createComplianceIncidentMirrorAdapter(incidents.service),
     ofiMirror: createComplianceOfiMirrorAdapter(ofis.service),
@@ -492,10 +531,16 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     }),
   });
 
+  const emailCampaigns = createEmailCampaignModule({
+    authorizer: security.authorizer,
+    email,
+  });
+
   const customers = createCustomerModule({
     authorizer: security.authorizer,
     tasks: customerTasksAdapter,
     incidents: customerIncidentStatsAdapter,
+    campaigns: createCustomerCampaignStatsAdapter(emailCampaigns.service),
     notifications: createCustomerNotificationAdapter(
       notifications.application
     ),
@@ -612,6 +657,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/compliance", compliance.router);
   router.use("/suppliers", suppliers.router);
   router.use("/customers", customers.router);
+  router.use("/email-campaigns", emailCampaigns.router);
   router.use("/tasks", tasks.router);
 
   return {

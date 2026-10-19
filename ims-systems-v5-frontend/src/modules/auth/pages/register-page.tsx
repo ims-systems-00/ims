@@ -55,7 +55,7 @@ export function RegisterPage() {
 
   if (checking) {
     return (
-      <AuthEntryLayout title="Create account" description="Checking session…">
+      <AuthEntryLayout title="Create your account" description="Checking session…">
         <p className="text-sm text-muted-foreground">Please wait…</p>
       </AuthEntryLayout>
     );
@@ -100,10 +100,14 @@ export function RegisterPage() {
 
   return (
     <AuthEntryLayout
-      title="Create account"
-      description="Register as a person first. After Auth0 confirms your identity, you will set up your organisation in iMS."
+      title="Create your account"
+      description="Register as a person first. Next you will set up your organisation and go live in iMS."
     >
-      <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)} noValidate>
+      <form
+        className="space-y-5"
+        onSubmit={(e) => void handleSubmit(e)}
+        noValidate
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField
             label="First name"
@@ -114,6 +118,7 @@ export function RegisterPage() {
             <Input
               id="register-first-name"
               autoComplete="given-name"
+              placeholder="Ada"
               value={values.firstName}
               disabled={pending}
               onChange={(event) =>
@@ -133,6 +138,7 @@ export function RegisterPage() {
             <Input
               id="register-last-name"
               autoComplete="family-name"
+              placeholder="Lovelace"
               value={values.lastName}
               disabled={pending}
               onChange={(event) =>
@@ -154,6 +160,7 @@ export function RegisterPage() {
             id="register-email"
             type="email"
             autoComplete="email"
+            placeholder="you@company.com"
             value={values.email}
             disabled={pending}
             onChange={(event) =>
@@ -174,6 +181,7 @@ export function RegisterPage() {
             id="register-password"
             type="password"
             autoComplete="new-password"
+            placeholder="Create a strong password"
             value={values.password}
             disabled={pending}
             onChange={(event) =>
@@ -194,6 +202,7 @@ export function RegisterPage() {
             id="register-confirm-password"
             type="password"
             autoComplete="new-password"
+            placeholder="Repeat your password"
             value={values.confirmPassword}
             disabled={pending}
             onChange={(event) =>
@@ -209,14 +218,14 @@ export function RegisterPage() {
             {formError}
           </p>
         ) : null}
-        <Button type="submit" className="w-full" disabled={pending}>
+        <Button type="submit" className="h-10 w-full" disabled={pending}>
           {pending ? "Creating account…" : "Sign up"}
         </Button>
         <p className="text-center text-[0.8125rem] text-muted-foreground">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
+            className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Sign in
           </Link>

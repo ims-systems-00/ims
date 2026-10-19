@@ -60,7 +60,7 @@ describe("RegisterPage", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /create account/i })
+      await screen.findByRole("heading", { name: /create your account/i })
     ).toBeInTheDocument();
 
     await user.type(

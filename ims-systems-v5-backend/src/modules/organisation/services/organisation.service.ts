@@ -59,6 +59,8 @@ export type OrganisationServiceDeps = {
   authorizer: Authorizer;
   membershipProjection?: MembershipProjection;
   goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
+  /** When false (auth0-openfga), never auto-create the stub demo tenant. */
+  allowStubOrganisationAutoProvision?: boolean;
 };
 
 export type OrganisationService = ReturnType<typeof createOrganisationService>;
@@ -68,6 +70,8 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
   const membershipProjection = deps.membershipProjection;
   const goLiveSideEffects =
     deps.goLiveSideEffects ?? new NoOpOrganisationGoLiveSideEffectsAdapter();
+  const allowStubOrganisationAutoProvision =
+    deps.allowStubOrganisationAutoProvision === true;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -261,8 +265,9 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
 
       let organisation = await organisations.findById(authed.organizationId);
 
-      // Dev stub tenant: auto-provision when seed:demo has not been run yet.
+      // Dev stub tenant only: auto-provision when seed:demo has not been run yet.
       if (
+        allowStubOrganisationAutoProvision &&
         !organisation &&
         authed.organizationId === DEV_STUB_ORGANIZATION_ID
       ) {

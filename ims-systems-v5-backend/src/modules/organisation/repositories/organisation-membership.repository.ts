@@ -52,6 +52,15 @@ export function createOrganisationMembershipRepository() {
       return doc ? toDomain(doc as OrganisationMembershipDocument) : null;
     },
 
+    async listByOrganization(
+      organizationId: string
+    ): Promise<OrganisationMembership[]> {
+      const docs = await Model.find({ organizationId }).lean();
+      return docs.map((doc) =>
+        toDomain(doc as OrganisationMembershipDocument)
+      );
+    },
+
     async listOrganizationIdsForUser(userId: string): Promise<string[]> {
       const docs = await Model.find({ userId }).select("organizationId").lean();
       return docs.map((doc) => String(doc.organizationId));

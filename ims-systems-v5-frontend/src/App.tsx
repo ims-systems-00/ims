@@ -33,6 +33,10 @@ import {
   CustomersListPage,
   CustomersOverviewPage,
 } from "@/modules/customers";
+import {
+  EmailCampaignDetailPage,
+  EmailCampaignsListPage,
+} from "@/modules/email-campaign";
 import { CalendarPage } from "@/modules/calendar";
 import { SuppliersListPage } from "@/modules/suppliers";
 import { TasksListPage } from "@/modules/tasks";
@@ -132,6 +136,14 @@ export function App() {
             <Route
               path="customers/overview"
               element={<CustomersOverviewPage />}
+            />
+            <Route
+              path="email-campaigns"
+              element={<EmailCampaignsListPage />}
+            />
+            <Route
+              path="email-campaigns/:id"
+              element={<EmailCampaignDetailPage />}
             />
             <Route path="suppliers" element={<SuppliersListPage />} />
             <Route path="calendar" element={<CalendarPage />} />

@@ -53,6 +53,25 @@ async function main(): Promise<void> {
       },
       "HTTP server listening"
     );
+
+    // N-06 / N-07: surface ops gaps when running auth0-openfga without live side effects.
+    if (config.SECURITY_PROVIDER === "auth0-openfga") {
+      if (!config.FILES_ENABLED || config.FILES_PROVIDER === "memory") {
+        logger.warn(
+          {
+            FILES_ENABLED: config.FILES_ENABLED,
+            FILES_PROVIDER: config.FILES_PROVIDER,
+          },
+          "auth0-openfga: document uploads need FILES_ENABLED=true and FILES_PROVIDER=local|s3 (memory is test-only)"
+        );
+      }
+      if (!config.EMAIL_ENABLED) {
+        logger.warn(
+          { EMAIL_PROVIDER: config.EMAIL_PROVIDER },
+          "auth0-openfga: set EMAIL_ENABLED=true and provider credentials for campaign/report-bug delivery"
+        );
+      }
+    }
   });
 
   let shuttingDown = false;

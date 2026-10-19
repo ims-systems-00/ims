@@ -92,6 +92,8 @@ export type Organisation = {
   industry: string;
   sizeOfOrganisation: number;
   officeEmail: string;
+  /** Reply-to for CRM email campaigns; optional. */
+  campaignEmail?: string;
   contactNumber: string;
   companyNumber: string;
   vatNumber: string;

@@ -60,7 +60,7 @@ export function ForgotPasswordPage() {
   return (
     <AuthEntryLayout
       title="Reset password"
-      description="Enter your email. If an account exists, Auth0 will send reset instructions."
+      description="Enter your email and we will send reset instructions if an account exists."
     >
       {done ? (
         <div className="space-y-4">

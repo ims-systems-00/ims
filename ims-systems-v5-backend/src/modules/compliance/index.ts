@@ -17,6 +17,7 @@ export {
   createComplianceActivityAdapter,
   createComplianceNotificationAdapter,
   createComplianceEvidenceLinkAdapter,
+  createOrganisationComplianceLicenceAdapter,
   createRiskComplianceLinkAdapter,
   createComplianceRiskMirrorAdapter,
   createIncidentComplianceLinkAdapter,

@@ -14,6 +14,8 @@ export type OrganisationRouterDeps = {
   authorizer: Authorizer;
   membershipProjection?: MembershipProjection;
   goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
+  /** Only true for SECURITY_PROVIDER=development-stub. */
+  allowStubOrganisationAutoProvision?: boolean;
 };
 
 /**
@@ -32,6 +34,8 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     authorizer: deps.authorizer,
     membershipProjection: deps.membershipProjection,
     goLiveSideEffects: deps.goLiveSideEffects,
+    allowStubOrganisationAutoProvision:
+      deps.allowStubOrganisationAutoProvision === true,
   });
   const controller = createOrganisationController(service);
   const router = Router();

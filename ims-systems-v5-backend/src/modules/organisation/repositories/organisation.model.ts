@@ -20,6 +20,8 @@ const organisationSchema = new Schema(
     industry: { type: String, required: true, trim: true },
     sizeOfOrganisation: { type: Number, required: true, min: 1 },
     officeEmail: { type: String, required: true, trim: true },
+    /** Reply-to for CRM email campaigns; falls back to officeEmail when unset. */
+    campaignEmail: { type: String, trim: true },
     contactNumber: { type: String, default: "", trim: true },
     companyNumber: { type: String, default: "", trim: true },
     vatNumber: { type: String, default: "", trim: true },

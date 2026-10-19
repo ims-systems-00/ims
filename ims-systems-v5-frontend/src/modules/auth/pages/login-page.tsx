@@ -55,7 +55,7 @@ export function LoginPage() {
 
   if (checking) {
     return (
-      <AuthEntryLayout title="Sign in" description="Checking session…">
+      <AuthEntryLayout title="Welcome back" description="Checking session…">
         <p className="text-sm text-muted-foreground">Please wait…</p>
       </AuthEntryLayout>
     );
@@ -98,10 +98,14 @@ export function LoginPage() {
 
   return (
     <AuthEntryLayout
-      title="Sign in"
-      description="Use your iMS account. Passwords are verified by Auth0; this page stays on your product URL."
+      title="Welcome back"
+      description="Sign in to access your dashboard, manage risks, and keep compliance work moving."
     >
-      <form className="space-y-4" onSubmit={(e) => void handleSubmit(e)} noValidate>
+      <form
+        className="space-y-5"
+        onSubmit={(e) => void handleSubmit(e)}
+        noValidate
+      >
         <FormField
           label="Email"
           htmlFor="login-email"
@@ -112,6 +116,7 @@ export function LoginPage() {
             id="login-email"
             type="email"
             autoComplete="email"
+            placeholder="you@company.com"
             value={values.email}
             disabled={pending}
             onChange={(event) =>
@@ -122,18 +127,29 @@ export function LoginPage() {
             }
           />
         </FormField>
-        <FormField
-          label="Password"
-          htmlFor="login-password"
-          required
-          error={fieldErrors.password}
-        >
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between gap-3">
+            <label htmlFor="login-password" className="ims-text-label block">
+              Password
+              <span className="ml-0.5 text-destructive" aria-hidden>
+                *
+              </span>
+            </label>
+            <Link
+              to="/forgot-password"
+              className="text-[0.8125rem] font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Forgot your password?
+            </Link>
+          </div>
           <Input
             id="login-password"
             type="password"
             autoComplete="current-password"
+            placeholder="Enter your password"
             value={values.password}
             disabled={pending}
+            aria-invalid={Boolean(fieldErrors.password)}
             onChange={(event) =>
               setValues((current) => ({
                 ...current,
@@ -141,30 +157,27 @@ export function LoginPage() {
               }))
             }
           />
-        </FormField>
+          {fieldErrors.password ? (
+            <p className="text-xs text-destructive" role="alert">
+              {fieldErrors.password}
+            </p>
+          ) : null}
+        </div>
         {formError ? (
           <p className="text-sm text-destructive" role="alert">
             {formError}
           </p>
         ) : null}
-        <Button type="submit" className="w-full" disabled={pending}>
+        <Button type="submit" className="h-10 w-full" disabled={pending}>
           {pending ? "Signing in…" : "Sign in"}
         </Button>
         <p className="text-center text-[0.8125rem] text-muted-foreground">
-          <Link
-            to="/forgot-password"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-          >
-            Forgot password?
-          </Link>
-        </p>
-        <p className="text-center text-[0.8125rem] text-muted-foreground">
-          New here?{" "}
+          Don&apos;t have an account?{" "}
           <Link
             to="/register"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
+            className="font-medium text-primary underline-offset-4 hover:underline"
           >
-            Create an account
+            Sign up
           </Link>
         </p>
       </form>

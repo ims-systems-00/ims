@@ -3,7 +3,7 @@ import "../types/express-augmentation";
 import type { AppConfig } from "../config";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { MongoConnection } from "../infrastructure/mongodb/connection";
-import type { EmailSystem } from "../infrastructure/queue";
+import { createEmailSystem, type EmailSystem } from "../infrastructure/queue";
 import {
   createSecurityPorts,
   type SecurityPorts,
@@ -21,7 +21,7 @@ export type CreateAppOptions = {
   logger: Logger;
   mongo: MongoConnection;
   security?: SecurityPorts;
-  /** Shared email/queue facade for future module adapters. */
+  /** Shared email/queue facade; defaults to createEmailSystem(config) when omitted. */
   email?: EmailSystem;
   /** Extra routers mounted under `/api/v1` (tests / temporary platform probes). */
   additionalV1Routers?: Router[];
@@ -42,12 +42,13 @@ export type CreatedApp = {
 export function createApp(options: CreateAppOptions): CreatedApp {
   const { config, logger, mongo } = options;
   const security = options.security ?? createSecurityPorts(config);
+  // N-07: always wire EmailSystem so campaigns/report-bug never silently NoOp in boot.
+  const email =
+    options.email ?? createEmailSystem({ config, logger });
   const app = express();
 
   app.disable("x-powered-by");
-  if (options.email) {
-    app.locals.email = options.email;
-  }
+  app.locals.email = email;
   app.use(corsMiddleware());
   app.use(express.json({ limit: "1mb" }));
   app.use(express.urlencoded({ extended: true, limit: "1mb" }));
@@ -58,7 +59,7 @@ export function createApp(options: CreateAppOptions): CreatedApp {
   const v1 = createV1Router({
     mongo,
     security,
-    email: options.email,
+    email,
     config,
     logger,
     auth0Api: options.auth0Api,

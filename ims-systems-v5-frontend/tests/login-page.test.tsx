@@ -62,7 +62,7 @@ describe("LoginPage", () => {
     );
 
     expect(
-      await screen.findByRole("heading", { name: /sign in/i })
+      await screen.findByRole("heading", { name: /welcome back/i })
     ).toBeInTheDocument();
 
     await user.type(screen.getByRole("textbox", { name: /email/i }), "ada@example.com");
