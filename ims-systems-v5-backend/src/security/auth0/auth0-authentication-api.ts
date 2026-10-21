@@ -296,11 +296,14 @@ export class Auth0AuthenticationApi {
     } catch {
       /* ignore */
     }
+    const resetMessage =
+      typeof body.error_description === "string"
+        ? body.error_description
+        : typeof body.message === "string"
+          ? body.message
+          : "Unable to start password reset";
     throw new AppError({
-      message:
-        body.error_description ??
-        body.message ??
-        "Unable to start password reset",
+      message: resetMessage,
       statusCode: 502,
       code: "AUTH0_CHANGE_PASSWORD_FAILED",
     });

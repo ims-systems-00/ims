@@ -84,6 +84,10 @@ const organisationSchema = new Schema(
       end: { type: Date, default: null },
       unset: { type: Boolean, default: true },
     },
+    documentReviewReminderOffsets: {
+      type: [String],
+      default: [],
+    },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },
     /** Auth0 Organization id (`org_…`); omit until linked. */
@@ -96,6 +100,8 @@ const organisationSchema = new Schema(
 
 organisationSchema.index({ reference: 1 }, { unique: true });
 organisationSchema.index({ name: 1 });
+organisationSchema.index({ "paymentSystem.stripeCustomerId": 1 });
+organisationSchema.index({ "paymentSystem.stripeSubscriptionId": 1 });
 organisationSchema.index(
   { auth0OrganizationId: 1 },
   {

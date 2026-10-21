@@ -46,6 +46,9 @@ importers:
       pino:
         specifier: ^10.3.1
         version: 10.3.1
+      stripe:
+        specifier: ^23.0.0
+        version: 23.0.0(@types/node@26.5.0)
       zod:
         specifier: ^4.5.4
         version: 4.5.4
@@ -107,9 +110,6 @@ importers:
       lucide-react:
         specifier: ^1.44.0
         version: 1.44.0(react@19.3.0)
-      package:
-        specifier: link:/tmp/auth0-react-pkg/package
-        version: link:../../../../tmp/auth0-react-pkg/package
       react:
         specifier: ^19.0.0
         version: 19.3.0
@@ -3446,6 +3446,15 @@ packages:
   strip-json-comments@3.1.1:
     resolution: {integrity: sha512-6fPc+R4ihwqP6N/aIv2f1gMH8lOVtWQHoqC4yK6oSDVVocumAsfCqjkXnqiYMhmMwS/mEHLp7Vehlt3ql6lEig==}
     engines: {node: '>=8'}
+
+  stripe@23.0.0:
+    resolution: {integrity: sha512-MDE2A5ZVVluYURORaZEVghSmnLJc3w6aHAlZSxDQMsOjOb3V0O6ro/CiaeFlJS4N7uIVmsg98ocRsPmUK6YfyA==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      '@types/node': '>=20'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   superagent@10.3.0:
     resolution: {integrity: sha512-B+4Ik7ROgVKrQsXTV0Jwp2u+PXYLSlqtDAhYnkkD+zn3yg8s/zjA2MeGayPoY/KICrbitwneDHrjSotxKL+0XQ==}
@@ -6945,6 +6954,10 @@ snapshots:
       min-indent: 1.0.1
 
   strip-json-comments@3.1.1: {}
+
+  stripe@23.0.0(@types/node@26.5.0):
+    optionalDependencies:
+      '@types/node': 26.5.0
 
   superagent@10.3.0:
     dependencies:

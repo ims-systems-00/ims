@@ -4,6 +4,7 @@ import {
   ForgotPasswordPage,
   LoginPage,
   PostLoginMembershipGate,
+  PreparationScreenPage,
   RegisterPage,
 } from "@/modules/auth";
 import { AssetsCategoryPage } from "@/modules/assets";
@@ -30,6 +31,7 @@ import { OfisListPage } from "@/modules/ofi";
 import { RisksListPage } from "@/modules/risks";
 import { IncidentsListPage } from "@/modules/incidents";
 import {
+  CrmLicenceGate,
   CustomersListPage,
   CustomersOverviewPage,
 } from "@/modules/customers";
@@ -46,6 +48,10 @@ import {
   GoLivePage,
   MyOrganisationPage,
 } from "@/modules/organisation";
+import {
+  PartnerApplyPage,
+  PartnerDashboardPage,
+} from "@/modules/partnership";
 import { ReportBugPage } from "@/modules/report-bug";
 import { MyProfilePage, UsersListPage } from "@/modules/users";
 import { OnboardingShell } from "@/shared/layout";
@@ -63,6 +69,10 @@ export function App() {
       <Route path="forgot-password" element={<ForgotPasswordPage />} />
 
       <Route element={<RequireAuth />}>
+        <Route
+          path="auth/preparation-screen"
+          element={<PreparationScreenPage />}
+        />
         <Route element={<PostLoginMembershipGate />}>
           <Route path="onboard" element={<OnboardingShell />}>
             <Route
@@ -71,6 +81,7 @@ export function App() {
             />
             <Route path="flow-selection" element={<FlowSelectionPage />} />
             <Route path="go-live" element={<GoLivePage />} />
+            <Route path="partner" element={<PartnerApplyPage />} />
             <Route
               index
               element={<Navigate to="/onboard/organisation" replace />}
@@ -132,18 +143,24 @@ export function App() {
               path="compliance/:toolkitName"
               element={<ComplianceToolkitPage />}
             />
-            <Route path="customers" element={<CustomersListPage />} />
+            <Route element={<CrmLicenceGate />}>
+              <Route path="customers" element={<CustomersListPage />} />
+              <Route
+                path="customers/overview"
+                element={<CustomersOverviewPage />}
+              />
+              <Route
+                path="email-campaigns"
+                element={<EmailCampaignsListPage />}
+              />
+              <Route
+                path="email-campaigns/:id"
+                element={<EmailCampaignDetailPage />}
+              />
+            </Route>
             <Route
-              path="customers/overview"
-              element={<CustomersOverviewPage />}
-            />
-            <Route
-              path="email-campaigns"
-              element={<EmailCampaignsListPage />}
-            />
-            <Route
-              path="email-campaigns/:id"
-              element={<EmailCampaignDetailPage />}
+              path="partner/dashboard"
+              element={<PartnerDashboardPage />}
             />
             <Route path="suppliers" element={<SuppliersListPage />} />
             <Route path="calendar" element={<CalendarPage />} />

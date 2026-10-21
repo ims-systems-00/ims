@@ -95,7 +95,9 @@ describe("GoLivePage", () => {
 
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: /go live/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /activate your workspace/i })
+    ).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: /^go live$/i }));
 
@@ -109,5 +111,37 @@ describe("GoLivePage", () => {
       );
     });
     expect(await screen.findByText("My organisation")).toBeInTheDocument();
+  });
+
+  it("offers the full toolkit catalogue and CRM add-on", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(orgApi, "getCurrentOrganisation").mockResolvedValue(org);
+    const goLive = vi.spyOn(orgApi, "goLiveOrganisation").mockResolvedValue({
+      organisation: { ...org, isCustomer: true },
+      paymentSession: null,
+    });
+
+    renderPage();
+
+    expect(
+      await screen.findByRole("heading", { name: /activate your workspace/i })
+    ).toBeInTheDocument();
+
+    // Catalogue-only toolkit (not in the old hardcoded shortlist) + CRM.
+    await user.click(
+      screen.getByRole("button", { name: /iso 27001 \(2022 annex a\)/i })
+    );
+    await user.click(screen.getByRole("button", { name: /^crm$/i }));
+    await user.click(screen.getByRole("button", { name: /^go live$/i }));
+
+    await waitFor(() => {
+      expect(goLive).toHaveBeenCalledWith(
+        "aaaaaaaaaaaaaaaaaaaaaaaa",
+        expect.objectContaining({
+          complianceTools: ["ISO 27001 (2022 Annex A)"],
+          additionalModules: ["CRM"],
+        })
+      );
+    });
   });
 });

@@ -106,8 +106,8 @@ export function MyOrganisationPage() {
           description="Tenant identity and contact details for the organisation in this session."
         />
         <p className="ims-alert ims-alert-error" role="alert">
-          Unable to load the current organisation. Seed demo data or create a
-          new organisation.
+          Unable to load the current organisation. Create a new organisation
+          to get started.
         </p>
         <Button asChild>
           <Link to="/onboard/organisation">Create organisation</Link>
@@ -282,8 +282,8 @@ export function MyOrganisationPage() {
         <OrgCard title="Onboarding">
           {organisation.isCustomer ? (
             <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
-              This organisation is live. Profile editing, branding, and billing
-              portal expand in later Organisation milestones.
+              This organisation is live. Use Licenses below for card payment or
+              manage billing when a Stripe subscription is active.
             </p>
           ) : (
             <div className="space-y-3">
@@ -300,8 +300,17 @@ export function MyOrganisationPage() {
       </div>
 
       <OrganisationLicencesPanel
+        organizationId={organisation.id}
         licences={normalizeOrganisationLicences(organisation.licences)}
         isCustomer={organisation.isCustomer}
+        paymentSystem={
+          organisation.paymentSystem ?? {
+            type: null,
+            status: "Trial",
+            stripeCustomerId: null,
+            stripeSubscriptionId: null,
+          }
+        }
       />
 
       <DocumentManagementRemindersPanel

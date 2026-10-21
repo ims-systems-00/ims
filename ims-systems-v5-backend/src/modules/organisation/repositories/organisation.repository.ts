@@ -1,5 +1,6 @@
 import type {
   CreateOrganisationInput,
+  DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
   Organisation,
   OrganisationLicences,
@@ -261,6 +262,120 @@ export function createOrganisationRepository() {
       return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
+    async updatePaymentSystem(
+      id: string,
+      patch: {
+        type?: OrganisationPaymentType | null;
+        status?: OrganisationPaymentStatus;
+        stripeCustomerId?: string | null;
+        stripeSubscriptionId?: string | null;
+      }
+    ): Promise<Organisation | null> {
+      if (!/^[a-fA-F0-9]{24}$/.test(id)) {
+        return null;
+      }
+      const $set: Record<string, unknown> = {};
+      if (patch.type !== undefined) {
+        $set["paymentSystem.type"] = patch.type;
+      }
+      if (patch.status !== undefined) {
+        $set["paymentSystem.status"] = patch.status;
+      }
+      if (patch.stripeCustomerId !== undefined) {
+        $set["paymentSystem.stripeCustomerId"] = patch.stripeCustomerId;
+      }
+      if (patch.stripeSubscriptionId !== undefined) {
+        $set["paymentSystem.stripeSubscriptionId"] = patch.stripeSubscriptionId;
+      }
+      if (Object.keys($set).length === 0) {
+        return this.findById(id);
+      }
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async findByStripeCustomerId(
+      stripeCustomerId: string
+    ): Promise<Organisation | null> {
+      const id = stripeCustomerId.trim();
+      if (!id) return null;
+      const doc = await Model.findOne({
+        "paymentSystem.stripeCustomerId": id,
+      }).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async findByStripeSubscriptionId(
+      stripeSubscriptionId: string
+    ): Promise<Organisation | null> {
+      const id = stripeSubscriptionId.trim();
+      if (!id) return null;
+      const doc = await Model.findOne({
+        "paymentSystem.stripeSubscriptionId": id,
+      }).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async markSubscribedByStripeCustomerId(
+      stripeCustomerId: string,
+      stripeSubscriptionId: string
+    ): Promise<Organisation | null> {
+      const customerId = stripeCustomerId.trim();
+      if (!customerId) return null;
+      const doc = await Model.findOneAndUpdate(
+        { "paymentSystem.stripeCustomerId": customerId },
+        {
+          $set: {
+            "paymentSystem.status": "Subscribed",
+            "paymentSystem.stripeSubscriptionId": stripeSubscriptionId,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async markUnsubscribedByStripeCustomerId(
+      stripeCustomerId: string
+    ): Promise<Organisation | null> {
+      const customerId = stripeCustomerId.trim();
+      if (!customerId) return null;
+      const doc = await Model.findOneAndUpdate(
+        { "paymentSystem.stripeCustomerId": customerId },
+        {
+          $set: {
+            "paymentSystem.status": "Unsubscribed",
+            "paymentSystem.stripeSubscriptionId": null,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async resetPaymentSystemByStripeCustomerId(
+      stripeCustomerId: string
+    ): Promise<Organisation | null> {
+      const customerId = stripeCustomerId.trim();
+      if (!customerId) return null;
+      const doc = await Model.findOneAndUpdate(
+        { "paymentSystem.stripeCustomerId": customerId },
+        {
+          $set: {
+            "paymentSystem.status": "Unsubscribed",
+            "paymentSystem.stripeCustomerId": null,
+            "paymentSystem.stripeSubscriptionId": null,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
     async findById(id: string): Promise<Organisation | null> {
       const doc = await Model.findById(id).lean();
       return doc ? toDomain(doc as OrganisationDocument) : null;
@@ -445,6 +560,26 @@ export function createOrganisationRepository() {
 
       await Model.updateOne({ _id: id }, update);
       return this.findById(id);
+    },
+
+    /** Partnership acceptance: flag the organisation as an iMS partner. */
+    async markAsPartner(id: string): Promise<Organisation | null> {
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { isPartner: true } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    /** Organisations referred by a partner code (partnership record id). */
+    async listByReferralSource(
+      referralSource: string
+    ): Promise<Organisation[]> {
+      const docs = await Model.find({ referralSource })
+        .sort({ createdAt: -1 })
+        .lean();
+      return docs.map((doc) => toDomain(doc as OrganisationDocument));
     },
   };
 }

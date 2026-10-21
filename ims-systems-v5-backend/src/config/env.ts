@@ -245,6 +245,22 @@ const envSchema = z
           .map((part) => part.trim().replace(/^\/+|\/+$/g, ""))
           .filter(Boolean)
       ),
+
+    /**
+     * Stripe billing (see docs/module-specifications/stripe-payments.md).
+     * When false, Go Live / org billing keep no-op adapters (safe default).
+     */
+    STRIPE_ENABLED: booleanFromEnv.default(false),
+    STRIPE_PRIVATE_KEY: z.string().default(""),
+    STRIPE_WEBHOOK_SECRET: z.string().default(""),
+    STRIPE_BU_PRICE: z.string().default(""),
+    STRIPE_SA_PRICE: z.string().default(""),
+    STRIPE_USER_PRICE: z.string().default(""),
+    STRIPE_COMPLIANCE_PRICE: z.string().default(""),
+    STRIPE_ADD_MODULE_PRICE: z.string().default(""),
+    STRIPE_SUPPORT_PRICE: z.string().default(""),
+    /** FE origin for Checkout success/cancel and Billing Portal return. */
+    CLIENT_URL: z.string().default("http://localhost:3000"),
   })
   .superRefine((value, ctx) => {
     if (
@@ -372,6 +388,28 @@ const envSchema = z
           message:
             "AWS_PRIVATE_BUCKET (or AWS_BUCKET_SUFFIX for production) is required when FILES_ENABLED=true and FILES_PROVIDER=s3",
         });
+      }
+    }
+
+    if (value.STRIPE_ENABLED) {
+      const requiredStripe = [
+        ["STRIPE_PRIVATE_KEY", value.STRIPE_PRIVATE_KEY],
+        ["STRIPE_WEBHOOK_SECRET", value.STRIPE_WEBHOOK_SECRET],
+        ["STRIPE_BU_PRICE", value.STRIPE_BU_PRICE],
+        ["STRIPE_SA_PRICE", value.STRIPE_SA_PRICE],
+        ["STRIPE_USER_PRICE", value.STRIPE_USER_PRICE],
+        ["STRIPE_COMPLIANCE_PRICE", value.STRIPE_COMPLIANCE_PRICE],
+        ["STRIPE_ADD_MODULE_PRICE", value.STRIPE_ADD_MODULE_PRICE],
+        ["STRIPE_SUPPORT_PRICE", value.STRIPE_SUPPORT_PRICE],
+        ["CLIENT_URL", value.CLIENT_URL],
+      ] as const;
+      for (const [path, field] of requiredStripe) {
+        requireNonEmpty(
+          field,
+          path,
+          `${path} is required when STRIPE_ENABLED=true`,
+          ctx
+        );
       }
     }
   });

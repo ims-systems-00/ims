@@ -1,11 +1,15 @@
 import { apiRequest } from "@/shared/lib/http";
 import type {
+  CreateLicenceRequestResult,
   CreateOrganisationInput,
   CreateOrganisationResult,
+  DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
   GoLiveOrganisationResult,
   Organisation,
+  OrganisationPaymentSession,
   OrganisationProfile,
+  PaginatedLicenceRequests,
   RequestOrganisationLicenceInput,
 } from "../types";
 
@@ -45,11 +49,36 @@ export function listMyOrganisations(): Promise<Organisation[]> {
 
 export function requestOrganisationLicence(
   body: RequestOrganisationLicenceInput
-): Promise<OrganisationProfile> {
-  return apiRequest<OrganisationProfile>("/organisations/current/licence-request", {
+): Promise<CreateLicenceRequestResult> {
+  return apiRequest<CreateLicenceRequestResult>("/licence-requests", {
     method: "POST",
     body,
   });
+}
+
+export function listLicenceRequests(
+  page = 1,
+  pageSize = 10
+): Promise<PaginatedLicenceRequests> {
+  return apiRequest<PaginatedLicenceRequests>(
+    `/licence-requests?page=${page}&pageSize=${pageSize}`
+  );
+}
+
+export function createCardPaymentSession(
+  organizationId: string
+): Promise<OrganisationPaymentSession> {
+  return apiRequest<OrganisationPaymentSession>(
+    `/organisations/${organizationId}/card-payment-session`
+  );
+}
+
+export function createBillingPortalSession(
+  organizationId: string
+): Promise<OrganisationPaymentSession> {
+  return apiRequest<OrganisationPaymentSession>(
+    `/organisations/${organizationId}/billing-session`
+  );
 }
 
 export function updateDocumentReviewReminders(

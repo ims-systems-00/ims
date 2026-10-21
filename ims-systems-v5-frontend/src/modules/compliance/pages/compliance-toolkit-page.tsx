@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useParams, useSearchParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { Eye, Filter, Loader2, ShieldCheck } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -11,6 +11,8 @@ import { isApiClientError } from "@/shared/lib/http/errors";
 import { cn } from "@/shared/lib/utils";
 import { notify } from "@/shared/lib/toast";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
+import { loadPublicEnv } from "@/shared/lib/env";
 import {
   useComplianceControlsQuery,
   useComplianceOverviewQuery,
@@ -56,7 +58,8 @@ function UpdatedByCell({ userId }: { userId?: string | null }) {
 
 /**
  * Per-toolkit workspace: Overview + toolkit controls tab.
- * Licence module deferred — all catalogue toolkits are reachable from the sidebar.
+ * Only toolkits licensed on the organisation (licences.complianceTools)
+ * are usable — direct URLs to unlicensed toolkits show a licence notice.
  */
 export function ComplianceToolkitPage() {
   const params = useParams<{ toolkitName: string }>();
@@ -93,6 +96,17 @@ export function ComplianceToolkitPage() {
     }, 300);
     return () => window.clearTimeout(handle);
   }, [searchInput]);
+
+  const isAuth0Mode =
+    loadPublicEnv().VITE_SECURITY_PROVIDER === "auth0-openfga";
+  const orgQuery = useCurrentOrganisationQuery(isAuth0Mode);
+  const toolkitNotLicensed =
+    isAuth0Mode &&
+    Boolean(toolkitName) &&
+    orgQuery.isSuccess &&
+    !(orgQuery.data?.licences.complianceTools ?? []).includes(
+      toolkitName as string
+    );
 
   const toolkitsQuery = useComplianceToolkitsQuery();
   const overviewQuery = useComplianceOverviewQuery(toolkitName ?? undefined);
@@ -177,6 +191,20 @@ export function ComplianceToolkitPage() {
       <EmptyState
         title="Unknown compliance toolkit"
         description="This toolkit is not part of the compliance catalogue."
+      />
+    );
+  }
+
+  if (toolkitNotLicensed) {
+    return (
+      <EmptyState
+        title="Toolkit not licensed"
+        description={`${displayName} is not included in your organisation's licences. Add it from Organisation → Request licence.`}
+        action={
+          <Button asChild>
+            <Link to="/organisation">Go to Organisation</Link>
+          </Button>
+        }
       />
     );
   }

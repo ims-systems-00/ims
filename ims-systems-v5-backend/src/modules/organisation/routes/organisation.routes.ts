@@ -1,6 +1,7 @@
 import { Router } from "express";
 import type { Authorizer } from "../../../security";
 import type { MembershipProjection } from "../../../security/openfga/membership-projection";
+import type { OrganisationBillingPort } from "../../payments/ports";
 import { createOrganisationController } from "../controllers/organisation.controller";
 import type { OrganisationGoLiveSideEffectsPort } from "../ports";
 import { createOrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
@@ -14,6 +15,7 @@ export type OrganisationRouterDeps = {
   authorizer: Authorizer;
   membershipProjection?: MembershipProjection;
   goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
+  billing?: OrganisationBillingPort;
   /** Only true for SECURITY_PROVIDER=development-stub. */
   allowStubOrganisationAutoProvision?: boolean;
 };
@@ -34,6 +36,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     authorizer: deps.authorizer,
     membershipProjection: deps.membershipProjection,
     goLiveSideEffects: deps.goLiveSideEffects,
+    billing: deps.billing,
     allowStubOrganisationAutoProvision:
       deps.allowStubOrganisationAutoProvision === true,
   });
@@ -43,7 +46,15 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   router.post("/", controller.create);
   router.get("/", controller.listMine);
   router.get("/current", controller.getCurrent);
+  // Licence requests live in the licence-requests module
+  // (POST /api/v1/licence-requests) so every request gets a record.
+  router.put(
+    "/current/document-review-reminders",
+    controller.updateDocumentReviewReminders
+  );
   router.post("/:id/go-live", controller.goLive);
+  router.get("/:id/card-payment-session", controller.createCardPaymentSession);
+  router.get("/:id/billing-session", controller.createBillingPortalSession);
   router.get("/:id", controller.getById);
 
   return { service, router };

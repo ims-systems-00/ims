@@ -7,6 +7,7 @@ export {
 } from "./components/customer-sheet";
 export type { CustomerSheetMode } from "./components/customer-sheet";
 export { CustomerDetails } from "./components/customer-details";
+export { CrmLicenceGate } from "./components/crm-licence-gate";
 export {
   listCustomers,
   getCustomer,

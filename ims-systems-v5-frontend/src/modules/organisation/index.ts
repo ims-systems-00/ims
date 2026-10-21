@@ -21,6 +21,4 @@ export type {
   GoLiveOrganisationResult,
   Organisation,
   OrganisationProfile,
-  OrganisationProfileView,
 } from "./types";
-export { getCurrentOrganisationProfile } from "./lib/current-organisation";

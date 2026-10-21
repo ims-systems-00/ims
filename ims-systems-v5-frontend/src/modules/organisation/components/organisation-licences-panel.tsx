@@ -1,14 +1,24 @@
 import { useState } from "react";
-import { CreditCard, KeyRound } from "lucide-react";
+import { CreditCard, KeyRound, Settings2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { toolkitDisplayLabel } from "@/modules/compliance/types";
-import type { OrganisationLicences } from "../types";
+import {
+  useBillingPortalSessionMutation,
+  useCardPaymentSessionMutation,
+} from "../hooks/use-organisations";
+import type {
+  OrganisationLicences,
+  OrganisationPaymentSystem,
+} from "../types";
+import { LicenceRequestHistory } from "./licence-request-history";
 import { RequestLicenceSheet } from "./request-licence-sheet";
 
 type OrganisationLicencesPanelProps = {
+  organizationId: string;
   licences: OrganisationLicences;
   isCustomer: boolean;
+  paymentSystem: OrganisationPaymentSystem;
 };
 
 function LicenceStat({
@@ -36,10 +46,14 @@ function LicenceStat({
  * Organisation licences summary — seats, toolkits, modules + request / payment actions.
  */
 export function OrganisationLicencesPanel({
+  organizationId,
   licences,
   isCustomer,
+  paymentSystem,
 }: OrganisationLicencesPanelProps) {
   const [requestOpen, setRequestOpen] = useState(false);
+  const cardPayment = useCardPaymentSessionMutation();
+  const billingPortal = useBillingPortalSessionMutation();
 
   if (!isCustomer) {
     return (
@@ -59,12 +73,47 @@ export function OrganisationLicencesPanel({
 
   const toolkits = licences.complianceTools ?? [];
   const modules = licences.additionalModules ?? [];
+  const hasSubscription = Boolean(paymentSystem.stripeSubscriptionId);
+  const billingBusy = cardPayment.isPending || billingPortal.isPending;
+
+  async function openCardCheckout() {
+    try {
+      const session = await cardPayment.mutateAsync(organizationId);
+      if (!session.url) {
+        notify.error("Stripe checkout did not return a URL");
+        return;
+      }
+      window.location.assign(session.url);
+    } catch (error) {
+      notify.fromError(error, "Unable to start card payment");
+    }
+  }
+
+  async function openBillingPortal() {
+    try {
+      const session = await billingPortal.mutateAsync(organizationId);
+      if (!session.url) {
+        notify.error("Stripe billing portal did not return a URL");
+        return;
+      }
+      window.location.assign(session.url);
+    } catch (error) {
+      notify.fromError(error, "Unable to open billing portal");
+    }
+  }
 
   return (
     <>
       <section className="ims-panel overflow-hidden">
         <div className="ims-panel-header">
-          <h3 className="text-sm font-semibold tracking-tight">Licenses</h3>
+          <div className="min-w-0">
+            <h3 className="text-sm font-semibold tracking-tight">Licenses</h3>
+            <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+              Billing: {paymentSystem.status}
+              {paymentSystem.type ? ` · ${paymentSystem.type}` : ""}
+              {hasSubscription ? " · subscribed" : ""}
+            </p>
+          </div>
           <div className="flex flex-wrap gap-2">
             <Button
               type="button"
@@ -75,18 +124,27 @@ export function OrganisationLicencesPanel({
               <KeyRound className="size-3.5" />
               Request licence
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() =>
-                notify.info(
-                  "Card payment / Stripe checkout is not configured in V5 yet. Use Request licence for demo allocation."
-                )
-              }
-            >
-              <CreditCard className="size-3.5" />
-              Card payment
-            </Button>
+            {hasSubscription ? (
+              <Button
+                type="button"
+                size="sm"
+                disabled={billingBusy}
+                onClick={() => void openBillingPortal()}
+              >
+                <Settings2 className="size-3.5" />
+                {billingPortal.isPending ? "Opening…" : "Manage billing"}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                disabled={billingBusy}
+                onClick={() => void openCardCheckout()}
+              >
+                <CreditCard className="size-3.5" />
+                {cardPayment.isPending ? "Opening…" : "Card payment"}
+              </Button>
+            )}
           </div>
         </div>
 
@@ -137,6 +195,8 @@ export function OrganisationLicencesPanel({
               {modules.length > 0 ? modules.join(", ") : "N/A"}
             </p>
           </div>
+
+          <LicenceRequestHistory />
         </div>
       </section>
 

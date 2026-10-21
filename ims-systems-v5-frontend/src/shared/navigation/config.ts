@@ -11,6 +11,7 @@ import {
   Mail,
   FileText,
   FolderOpen,
+  Handshake,
   HardDrive,
   Landmark,
   LayoutDashboard,
@@ -33,11 +34,46 @@ import {
 } from "@/modules/compliance/types";
 import type { NavSection } from "./types";
 
+export type NavigationLicenceFilter = {
+  /** Licensed compliance toolkit names; null = show full catalogue (dev-stub). */
+  licensedToolkits: readonly string[] | null;
+  /** Whether CRM is licensed; null = show (dev-stub). */
+  crmLicensed: boolean | null;
+};
+
+export const ALL_LICENCES_FILTER: NavigationLicenceFilter = {
+  licensedToolkits: null,
+  crmLicensed: null,
+};
+
+function complianceChildren(
+  licensedToolkits: readonly string[] | null
+) {
+  const names =
+    licensedToolkits === null
+      ? COMPLIANCE_TOOLKIT_NAMES
+      : COMPLIANCE_TOOLKIT_NAMES.filter((name) =>
+          licensedToolkits.includes(name)
+        );
+  return names.map((name) => ({
+    id: `compliance-${name}`,
+    label: toolkitDisplayLabel(name),
+    href: toolkitPath(name),
+    icon: ShieldCheck,
+    requiredPermission: "compliance:read",
+  }));
+}
+
 /**
  * Application navigation — only real routes plus structure for growth.
  * Do not invent business modules here; add entries when modules ship.
+ * Licence-gated sections (Compliance toolkits, CRM) follow V4: only
+ * licensed toolkits/modules are shown.
  */
-export const navigationSections: NavSection[] = [
+export function buildNavigationSections(
+  licences: NavigationLicenceFilter = ALL_LICENCES_FILTER
+): NavSection[] {
+  return [
   {
     id: "workspace",
     label: "Workspace",
@@ -47,6 +83,12 @@ export const navigationSections: NavSection[] = [
         label: "Live Dashboard",
         href: "/",
         icon: LayoutDashboard,
+      },
+      {
+        id: "partnership",
+        label: "Partnership",
+        href: "/partner/dashboard",
+        icon: Handshake,
       },
       {
         id: "organisation",
@@ -195,46 +237,48 @@ export const navigationSections: NavSection[] = [
         icon: Lightbulb,
         requiredPermission: "ofi:read",
       },
-      {
-        id: "compliance",
-        label: "Compliance",
-        icon: ShieldCheck,
-        children: COMPLIANCE_TOOLKIT_NAMES.map((name) => ({
-          id: `compliance-${name}`,
-          label: toolkitDisplayLabel(name),
-          href: toolkitPath(name),
-          icon: ShieldCheck,
-          requiredPermission: "compliance:read",
-        })),
-      },
-      {
-        id: "crm",
-        label: "CRM",
-        icon: BriefcaseBusiness,
-        children: [
-          {
-            id: "customers-overview",
-            label: "MY CRM",
-            href: "/customers/overview",
-            icon: BriefcaseBusiness,
-            requiredPermission: "customers:read",
-          },
-          {
-            id: "customers",
-            label: "Customers",
-            href: "/customers",
-            icon: Contact,
-            requiredPermission: "customers:read",
-          },
-          {
-            id: "email-campaigns",
-            label: "Email Campaign",
-            href: "/email-campaigns",
-            icon: Mail,
-            requiredPermission: "customers:read",
-          },
-        ],
-      },
+      ...(complianceChildren(licences.licensedToolkits).length > 0
+        ? [
+            {
+              id: "compliance",
+              label: "Compliance",
+              icon: ShieldCheck,
+              children: complianceChildren(licences.licensedToolkits),
+            },
+          ]
+        : []),
+      ...(licences.crmLicensed === false
+        ? []
+        : [
+            {
+              id: "crm",
+              label: "CRM",
+              icon: BriefcaseBusiness,
+              children: [
+                {
+                  id: "customers-overview",
+                  label: "MY CRM",
+                  href: "/customers/overview",
+                  icon: BriefcaseBusiness,
+                  requiredPermission: "customers:read",
+                },
+                {
+                  id: "customers",
+                  label: "Customers",
+                  href: "/customers",
+                  icon: Contact,
+                  requiredPermission: "customers:read",
+                },
+                {
+                  id: "email-campaigns",
+                  label: "Email Campaign",
+                  href: "/email-campaigns",
+                  icon: Mail,
+                  requiredPermission: "customers:read",
+                },
+              ],
+            },
+          ]),
       {
         id: "suppliers",
         label: "Suppliers",
@@ -264,4 +308,8 @@ export const navigationSections: NavSection[] = [
       },
     ],
   },
-];
+  ];
+}
+
+/** Full-catalogue navigation (breadcrumbs / dev-stub). */
+export const navigationSections: NavSection[] = buildNavigationSections();

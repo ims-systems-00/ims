@@ -36,7 +36,7 @@ Status values: `todo` | `in_progress` | `blocked` | `done` | `n/a_stub_only`
 | --- | --- |
 | **Last updated** | 2026-10-19 |
 | **P0 remaining** | None (U-01…U-03, O-01 done) |
-| **Ready for prod (auth0-openfga)** | **P0 clear; C-01/C-02 done** — P1 accepted org-wide lists; LIC-01/P4 infra still open |
+| **Ready for prod (auth0-openfga)** | **P0 clear; C-01/C-02 done** — P1 accepted org-wide lists; LIC-01 app done (Stripe staging smoke open) |
 
 ---
 
@@ -146,11 +146,13 @@ Until that exists, items below may be **`blocked`** on “list-scope infra”.
 
 ### LIC-01 — FE licence request / Stripe “demo allocation”
 
-- [ ] Status: `todo`
-- **Where:** FE `request-licence-sheet.tsx`, `organisation-licences-panel.tsx` (Stripe not configured messaging / demo apply)
-- **Fix:** Real billing / request workflow.
-- **Blocked on:** **Stripe (or billing) infra + licence request pipeline** — not built for V5 yet. Toolkit entitlement SoT is already `org.licences.complianceTools` ([LICENCE_SOURCE_OF_TRUTH.md](./LICENCE_SOURCE_OF_TRUTH.md)); LIC-01 does not block C-01.
-- **Evidence:** _
+- [ ] Status: `partial` (app done; staging smoke pending)
+- **Where:** FE `request-licence-sheet.tsx`, `organisation-licences-panel.tsx`
+- **Fix:** Real billing / request workflow per [stripe-payments.md](../module-specifications/stripe-payments.md).
+- **Done (2026-10-19):** Backend `STRIPE_ENABLED` + FE Card payment / Manage billing session redirects; licence request upgrades Stripe when subscribed.
+- **Done (2026-10-21):** Full Licence Request module — `licence-requests` records with `LR-` references, auto-approve (record stays `Pending` if allocation/Stripe fails), support + Super Admin emails, org-side history in the Licenses panel.
+- **Still open:** Staging smoke with Stripe test mode / CLI webhook forward; iMS admin approve/cancel surface (no platform-admin UI in V5).
+- **Evidence:** [stripe-payments.md](../module-specifications/stripe-payments.md); tests `stripe-payment.service.test.ts`, `organisation-billing.service.test.ts`.
 
 ---
 
@@ -170,7 +172,7 @@ Wire what already exists in `v1/index.ts` first; leave NoOp only when the integr
 | N-06 | Document files / activity | `NoOpDocument*` if files disabled | `done` | 2026-10-19 — `/files` + `createDocumentFilesAdapter` + activity adapter always wired when config present; auth0 boot warns on `memory`/disabled. Ops: `FILES_ENABLED=true`, `FILES_PROVIDER=local\|s3`. Test: `side-effect-ports.wiring.test.ts`. |
 | N-07 | Campaign email | Falls back to NoOp when email system absent | `done` | 2026-10-19 — `createApp` always builds `EmailSystem`; campaigns use `createCampaignEmailAdapter`. Delivery still needs `EMAIL_ENABLED=true` + provider credentials. Boot warns when auth0-openfga and email disabled. |
 | N-08 | Report-bug email | NoOp if email not passed | `done` | 2026-10-19 — `createReportBugEmailAdapter` from EmailSystem in module compose; `createApp` always passes email. Same ops as N-07 (`EMAIL_ENABLED` + credentials). Test: `side-effect-ports.wiring.test.ts` + `report-bug.http.test.ts`. |
-| N-09 | Org Go Live side effects | `NoOpOrganisationGoLiveSideEffectsAdapter` default | `todo` | Define required side effects (Auth0 org, billing, etc.) — **may need infra** |
+| N-09 | Org Go Live side effects | `NoOpOrganisationGoLiveSideEffectsAdapter` default | `partial` | 2026-10-19 — Card Checkout + invoice support email wired; Auth0 org / compliance auto-provision / S3 bucket still open |
 | N-10 | Compliance IAM grant | `NoOpComplianceIamGrantAdapter` | `todo` | Membership toolkit assignment — **likely needs infra** |
 | N-11 | Compliance automation | `NoOpComplianceAutomationAdapter` | `todo` | Automation runner — **infra not built** |
 
@@ -227,7 +229,7 @@ Use this order when asking the agent to implement:
 - [x] No runtime path uses `DevAllActiveUsersMembershipAdapter` when provider is auth0-openfga  
 - [x] Users list for org A never returns users who only belong to org B  
 - [x] P1 either fixed or explicitly accepted in writing (org-wide list policy)  
-- [x] No `DevAllComplianceLicencesAdapter` on auth0-openfga compliance path (LIC-01 demo Stripe UX still open)  
+- [x] No `DevAllComplianceLicencesAdapter` on auth0-openfga compliance path (LIC-01 Stripe app path done; staging smoke open)  
 - [ ] No FE localStorage “demo signatures” as the production path  
 - [ ] `development-stub` mode still boots and works for local testing  
 - [ ] Staging smoke: register → onboard → Go Live → `/users` shows **only** that org’s members  
@@ -251,3 +253,4 @@ Use this order when asking the agent to implement:
 | 2026-10-19 | Licence SoT | [LICENCE_SOURCE_OF_TRUTH.md](./LICENCE_SOURCE_OF_TRUTH.md) — `org.licences.complianceTools` unlocks C-01 wire (LIC-01 still Stripe) |
 | 2026-10-19 | C-01 | Org complianceTools adapter wired for auth0-openfga; DevAll stub-only |
 | 2026-10-19 | C-02 | Evidence-link adapter uses org-scoped repos (+ documents); no OpenFGA stub getById |
+| 2026-10-19 | LIC-01 / N-09 | Stripe + FE redirects + `/auth/preparation-screen` return + invoice Go Live notify; staging smoke / Auth0 org / toolkit provision remain |

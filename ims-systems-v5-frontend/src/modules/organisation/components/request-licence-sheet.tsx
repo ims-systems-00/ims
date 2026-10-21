@@ -24,7 +24,8 @@ type RequestLicenceSheetProps = {
 };
 
 /**
- * Organisation licence request drawer (demo: applies immediately, no Stripe).
+ * Organisation licence request drawer.
+ * Applies seats/toolkits immediately; backend upgrades Stripe when subscribed.
  */
 export function RequestLicenceSheet({
   open,
@@ -82,7 +83,7 @@ export function RequestLicenceSheet({
 
   async function handleSubmit() {
     try {
-      await mutation.mutateAsync({
+      const result = await mutation.mutateAsync({
         superUser,
         users,
         groups,
@@ -90,7 +91,9 @@ export function RequestLicenceSheet({
         additionalModules,
         message,
       });
-      notify.success("Licences allocated successfully");
+      notify.success(
+        `Licences allocated successfully (${result.request.reference})`
+      );
       reset();
       onOpenChange(false);
     } catch (error) {
@@ -106,7 +109,7 @@ export function RequestLicenceSheet({
         onOpenChange(next);
       }}
       title="Request licence"
-      description="Add seats, compliance toolkits, or modules. Demo mode applies allocation immediately (no card charge)."
+      description="Add seats, compliance toolkits, or modules. Allocation applies immediately; active Stripe subscriptions are upgraded automatically."
       footer={
         <>
           <Button

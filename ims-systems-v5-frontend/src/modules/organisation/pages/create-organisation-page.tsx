@@ -1,15 +1,18 @@
 import { useNavigate } from "react-router-dom";
-import { Building2 } from "lucide-react";
-import { PageHeader } from "@/shared/layout";
+import { Building2, ShieldCheck } from "lucide-react";
 import { notify } from "@/shared/lib/toast";
 import { CreateOrganisationWizard } from "../components/create-organisation-wizard";
+import {
+  OnboardCard,
+  OnboardCardHeader,
+  OnboardHeader,
+} from "../components/onboarding-ui";
 import { useCreateOrganisationMutation } from "../hooks/use-organisations";
 import type { CreateOrganisationInput } from "../types";
 
 /**
- * Onboarding create-organisation wizard.
- * Spec: docs/module-specifications/organisation-onboarding.md
- * (logo upload and partner code still deferred).
+ * Step 1 — create the organisation. You become its Super Admin;
+ * activation happens at Go Live (step 3).
  */
 export function CreateOrganisationPage() {
   const navigate = useNavigate();
@@ -26,25 +29,31 @@ export function CreateOrganisationPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-5">
-      <PageHeader
-        title="Create organisation"
-        description="Register a new tenant. You become Super Admin, then choose Go Live or continue to the workspace."
+    <div className="mx-auto w-full max-w-2xl space-y-6">
+      <OnboardHeader
+        eyebrow="Step 1 of 3"
+        title="Create your organisation"
+        description="Tell us about your company. You'll be its Super Admin — activation and licensing come at Go Live."
       />
-      <section className="ims-panel overflow-hidden">
-        <div className="ims-panel-header">
-          <h2 className="flex items-center gap-2 text-sm font-semibold tracking-tight">
-            <Building2 className="size-4 text-muted-foreground" aria-hidden />
-            Organisation details
-          </h2>
-        </div>
-        <div className="px-4 py-4">
+
+      <OnboardCard>
+        <OnboardCardHeader
+          icon={<Building2 className="size-4" aria-hidden />}
+          title="Organisation details"
+          description="Registered company information for your workspace"
+        />
+        <div className="px-5 py-5 md:px-6">
           <CreateOrganisationWizard
             pending={mutation.isPending}
             onSubmit={handleSubmit}
           />
         </div>
-      </section>
+      </OnboardCard>
+
+      <p className="flex items-center justify-center gap-1.5 text-center text-[0.75rem] text-muted-foreground">
+        <ShieldCheck className="size-3.5 shrink-0" aria-hidden />
+        Your workspace stays locked until Go Live is complete.
+      </p>
     </div>
   );
 }

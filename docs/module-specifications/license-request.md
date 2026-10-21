@@ -1,5 +1,7 @@
 # License Request
 
+> **V5 status (2026-10-21):** Implemented — `POST/GET /api/v1/licence-requests` (+ `GET /:id`). Every request is stored with an `LR-{n}` reference (global sequence), auto-approved in the same call via the Organisation allocation + Stripe upgrade (record stays `Pending` if that step fails), and emails fire: support/accounts alert + received confirmation on submission, granted notice after approval (all require `EMAIL_ENABLED`). Org-side history (latest 10) shows in Organisation → Licenses. Not yet: iMS admin approve/cancel surface (no platform-admin UI in V5), role/group-scoped request visibility, standalone product toggles (Project IMS / IMS Forms / CarboCalc).
+
 ## 1. Module Overview
 
 The **License Request** module enables an organisation to **request additional iMS licensing capacity and product access** — including user seats, business unit (Functional Unit) seats, super-user seats, compliance toolkits, additional modules (such as CRM), and standalone product flags (Project IMS, IMS Form, CarboCalc).
