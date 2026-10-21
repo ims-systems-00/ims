@@ -1,6 +1,11 @@
 import { useState, type FormEvent } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Check } from "lucide-react";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
+import { Input } from "@/shared/components/ui/input";
+import { cn } from "@/shared/lib/utils";
+import { usePartnershipByCodeQuery } from "@/modules/partnership/hooks/use-partnerships";
 import {
   createOrganisationAddressSchema,
   createOrganisationBasicSchema,
@@ -24,7 +29,8 @@ type CreateOrganisationWizardProps = {
 };
 
 /**
- * Create-organisation wizard (V4 onboard parity, logo/partner deferred).
+ * Create-organisation wizard — Organisation → Address → Review.
+ * Steps cannot be skipped ahead; earlier steps can be revisited.
  */
 export function CreateOrganisationWizard({
   pending = false,
@@ -45,6 +51,29 @@ export function CreateOrganisationWizard({
   const [city, setCity] = useState("");
   const [county, setCounty] = useState("");
   const [postCode, setPostCode] = useState("");
+
+  // Partner referral: prefilled from the signup link (?partnerCode=) or
+  // the cached code, editable on the confirm step.
+  const [searchParams] = useSearchParams();
+  const [partnerCode, setPartnerCode] = useState<string>(() => {
+    const fromUrl = searchParams.get("partnerCode")?.trim();
+    if (fromUrl) {
+      try {
+        window.localStorage.setItem("ims.partnerCode", fromUrl);
+      } catch {
+        // storage unavailable — URL value still applies
+      }
+      return fromUrl;
+    }
+    try {
+      return window.localStorage.getItem("ims.partnerCode") ?? "";
+    } catch {
+      return "";
+    }
+  });
+  const partnerLookup = usePartnershipByCodeQuery(
+    partnerCode.trim() ? partnerCode.trim() : null
+  );
 
   const stepIndex = STEPS.findIndex((item) => item.id === step);
 
@@ -138,33 +167,64 @@ export function CreateOrganisationWizard({
         currency: address.data.countryCurrency,
         phoneCode: address.data.countryPhoneCode,
       },
-      referralSource: null,
+      referralSource:
+        partnerCode.trim() && !partnerLookup.isError
+          ? partnerCode.trim()
+          : null,
     };
     await onSubmit(payload);
+    try {
+      window.localStorage.removeItem("ims.partnerCode");
+    } catch {
+      // storage unavailable — nothing to clear
+    }
   }
 
   return (
-    <div className="space-y-5">
-      <ol className="flex flex-wrap gap-2">
+    <div className="space-y-6">
+      <ol className="flex items-center">
         {STEPS.map((item, index) => {
           const active = item.id === step;
           const done = index < stepIndex;
+          const reachable = index <= stepIndex;
           return (
-            <li key={item.id}>
+            <li
+              key={item.id}
+              className={cn("flex items-center", index < STEPS.length - 1 && "flex-1")}
+            >
               <button
                 type="button"
-                className={
-                  active
-                    ? "rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground"
-                    : done
-                      ? "rounded-md border border-border bg-surface-muted px-3 py-1.5 text-xs font-medium"
-                      : "rounded-md border border-border-subtle px-3 py-1.5 text-xs text-muted-foreground"
-                }
-                onClick={() => setStep(item.id)}
-                disabled={pending}
+                className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-full disabled:cursor-not-allowed"
+                onClick={() => reachable && setStep(item.id)}
+                disabled={pending || !reachable}
+                aria-current={active ? "step" : undefined}
               >
-                {index + 1}. {item.label}
+                <span
+                  aria-hidden
+                  className={cn(
+                    "flex size-6 shrink-0 items-center justify-center rounded-full border text-[0.625rem] font-semibold",
+                    done && "border-primary bg-primary text-primary-foreground",
+                    active && "border-primary text-primary ring-4 ring-primary/10",
+                    !done && !active && "border-border text-muted-foreground"
+                  )}
+                >
+                  {done ? <Check className="size-3" /> : index + 1}
+                </span>
+                <span
+                  className={cn(
+                    "text-[0.75rem] font-medium",
+                    active ? "text-foreground" : "text-muted-foreground"
+                  )}
+                >
+                  {item.label}
+                </span>
               </button>
+              {index < STEPS.length - 1 ? (
+                <span
+                  aria-hidden
+                  className={cn("mx-3 h-px flex-1", done ? "bg-primary" : "bg-border")}
+                />
+              ) : null}
             </li>
           );
         })}
@@ -334,7 +394,7 @@ export function CreateOrganisationWizard({
               {errors.form}
             </p>
           ) : null}
-          <dl className="ims-detail-grid rounded-md border border-border-subtle p-4">
+          <dl className="ims-detail-grid rounded-xl border border-border-subtle bg-surface-muted/40 p-4">
             <div>
               <dt className="ims-detail-label">Name</dt>
               <dd className="ims-detail-value">{name || "—"}</dd>
@@ -360,6 +420,25 @@ export function CreateOrganisationWizard({
               </dd>
             </div>
           </dl>
+          <FormField label="Partner code (optional)" htmlFor="partner-code">
+            <Input
+              id="partner-code"
+              value={partnerCode}
+              placeholder="Referred by an iMS partner? Enter their code"
+              onChange={(event) => setPartnerCode(event.target.value)}
+            />
+            {partnerCode.trim() ? (
+              <p className="mt-1 text-[0.75rem] text-muted-foreground">
+                {partnerLookup.isPending
+                  ? "Checking partner code…"
+                  : partnerLookup.data?.organisationName
+                    ? `Referred by ${partnerLookup.data.organisationName}`
+                    : partnerLookup.isError
+                      ? "This partner code was not recognised."
+                      : "Referred over from one of our strategic partners? You should have received a code."}
+              </p>
+            ) : null}
+          </FormField>
           <label className="flex items-start gap-2 text-sm">
             <input
               type="checkbox"

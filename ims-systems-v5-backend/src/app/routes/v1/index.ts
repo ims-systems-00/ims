@@ -18,7 +18,18 @@ import {
   startDocumentReviewReminderSchedule,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
-import { createOrganisationModule } from "../../../modules/organisation";
+import {
+  composeGoLiveSideEffects,
+  createOrganisationModule,
+  NoOpOrganisationGoLiveSideEffectsAdapter,
+  type OrganisationGoLiveSideEffectsPort,
+} from "../../../modules/organisation";
+import {
+  createLicenceRequestModule,
+  createLicenceRequestRecipientsAdapter,
+} from "../../../modules/licence-requests";
+import { createPartnershipModule } from "../../../modules/partnerships";
+import type { OrganisationBillingPort } from "../../../modules/payments";
 import { createAssetsModule } from "../../../modules/assets";
 import {
   createAuditModule,
@@ -78,6 +89,7 @@ import {
 import {
   createCustomerModule,
   createCustomerNotificationAdapter,
+  createOrganisationCrmLicenceAdapter,
   CUSTOMERS_SOURCE_MODULE,
   type CustomerIncidentStatsPort,
   type CustomerTaskPort,
@@ -123,6 +135,7 @@ import {
   createComplianceEvidenceLinkAdapter,
   createComplianceIncidentMirrorAdapter,
   createComplianceNotificationAdapter,
+  createComplianceGoLiveProvisionAdapter,
   createComplianceOfiMirrorAdapter,
   createComplianceRiskMirrorAdapter,
   createIncidentComplianceLinkAdapter,
@@ -144,6 +157,10 @@ export type V1RouterDeps = {
   logger?: Logger;
   /** Test injection for Auth0 BFF client. */
   auth0Api?: Auth0AuthenticationApi;
+  /** Stripe Go Live checkout when STRIPE_ENABLED. */
+  goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
+  /** Stripe card/portal/upgrade when STRIPE_ENABLED. */
+  billing?: OrganisationBillingPort;
 };
 
 export type CreatedV1Router = {
@@ -157,7 +174,16 @@ export type CreatedV1Router = {
  * Business modules mount here; keep this as the single version root.
  */
 export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
-  const { mongo, security, email, config, logger, auth0Api } = deps;
+  const {
+    mongo,
+    security,
+    email,
+    config,
+    logger,
+    auth0Api,
+    goLiveSideEffects,
+    billing,
+  } = deps;
   const router = Router();
   router.use(createHealthRouter(mongo));
   router.use("/security", createSecurityRouter(security.authorizer));
@@ -206,13 +232,53 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       ? createOrganisationMembershipLookupAdapter()
       : undefined;
 
+  // Compliance is composed after Organisations, so Go Live toolkit
+  // provisioning goes through a late-bound holder (set below once the
+  // compliance service exists).
+  const complianceProvisionHolder: {
+    current: OrganisationGoLiveSideEffectsPort;
+  } = { current: new NoOpOrganisationGoLiveSideEffectsAdapter() };
+  const complianceProvisionDelegatingAdapter: OrganisationGoLiveSideEffectsPort =
+    {
+      provisionComplianceToolkits: (input) =>
+        complianceProvisionHolder.current.provisionComplianceToolkits(input),
+      createCardCheckoutSession: () => Promise.resolve(null),
+      notifyGoLive: () => Promise.resolve(),
+    };
+
   const organisations = createOrganisationModule({
     authorizer: security.authorizer,
     membershipProjection: security.membershipProjection,
+    goLiveSideEffects: composeGoLiveSideEffects([
+      goLiveSideEffects,
+      complianceProvisionDelegatingAdapter,
+    ]),
+    billing,
     allowStubOrganisationAutoProvision:
       config?.SECURITY_PROVIDER === "development-stub",
   });
   router.use("/organisations", organisations.router);
+
+  const licenceRequests = createLicenceRequestModule({
+    allocation: {
+      allocateLicences: (identity, input) =>
+        organisations.service.requestLicence(identity, input),
+    },
+    email,
+    supportEmails: config?.REPORT_BUG_SUPPORT_EMAILS ?? [
+      "support@imssystems.tech",
+    ],
+    recipients: createLicenceRequestRecipientsAdapter(),
+    logger,
+  });
+  router.use("/licence-requests", licenceRequests.router);
+
+  const partnerships = createPartnershipModule({
+    email,
+    clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
+    logger,
+  });
+  router.use("/partnerships", partnerships.router);
 
   const functionalUnits = createFunctionalUnitModule({
     authorizer: security.authorizer,
@@ -510,6 +576,12 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     ofiMirror: createComplianceOfiMirrorAdapter(ofis.service),
   });
 
+  complianceProvisionHolder.current =
+    createComplianceGoLiveProvisionAdapter({
+      compliance: compliance.service,
+      logger,
+    });
+
   riskComplianceLinkHolder.current = createRiskComplianceLinkAdapter(
     compliance.application
   );
@@ -544,6 +616,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     notifications: createCustomerNotificationAdapter(
       notifications.application
     ),
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { licences: createOrganisationCrmLicenceAdapter() }
+      : {}),
   });
 
   const auditIncidentPromotion: AuditIncidentPromotionPort = {

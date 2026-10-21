@@ -2,22 +2,28 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthClient } from "@/security";
 import { setActiveOrganisationContext } from "@/shared/lib/active-organisation";
 import {
+  createBillingPortalSession,
+  createCardPaymentSession,
   createOrganisation,
   getCurrentOrganisation,
   goLiveOrganisation,
+  listLicenceRequests,
   listMyOrganisations,
   requestOrganisationLicence,
   updateDocumentReviewReminders,
 } from "../api/organisations";
 import type {
   CreateOrganisationInput,
+  DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
+  RequestOrganisationLicenceInput,
 } from "../types";
 
 export const organisationKeys = {
   all: ["organisations"] as const,
   current: () => [...organisationKeys.all, "current"] as const,
   mine: () => [...organisationKeys.all, "mine"] as const,
+  licenceRequests: () => [...organisationKeys.all, "licence-requests"] as const,
 };
 
 export function useCurrentOrganisationQuery(enabled = true) {
@@ -71,6 +77,11 @@ export function useGoLiveOrganisationMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
+    onError: async () => {
+      // Go Live commits isCustomer before Stripe Checkout; refresh so a
+      // failed Checkout shows the (resumable) already-live state.
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
   });
 }
 
@@ -82,6 +93,28 @@ export function useRequestOrganisationLicenceMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
+  });
+}
+
+export function useLicenceRequestsQuery(enabled = true) {
+  return useQuery({
+    queryKey: organisationKeys.licenceRequests(),
+    queryFn: () => listLicenceRequests(1, 10),
+    enabled,
+  });
+}
+
+export function useCardPaymentSessionMutation() {
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      createCardPaymentSession(organizationId),
+  });
+}
+
+export function useBillingPortalSessionMutation() {
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      createBillingPortalSession(organizationId),
   });
 }
 

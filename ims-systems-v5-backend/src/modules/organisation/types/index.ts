@@ -105,6 +105,7 @@ export type Organisation = {
   licences: OrganisationLicences;
   paymentSystem: OrganisationPaymentSystem;
   systemDate: OrganisationSystemDate;
+  documentReviewReminderOffsets: DocumentReviewReminderOffset[];
   referralSource: string | null;
   logoSrc: string | null;
   /**
@@ -116,6 +117,15 @@ export type Organisation = {
   createdOn: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type RequestOrganisationLicenceInput = {
+  superUser?: number;
+  users?: number;
+  groups?: number;
+  complianceTools?: string[];
+  additionalModules?: string[];
+  message?: string;
 };
 
 export type UpdateDocumentReviewRemindersInput = {

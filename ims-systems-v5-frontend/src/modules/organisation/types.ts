@@ -72,6 +72,44 @@ export type RequestOrganisationLicenceInput = {
   message?: string;
 };
 
+/** Stripe Checkout or Billing Portal redirect URL. */
+export type OrganisationPaymentSession = {
+  url: string;
+};
+
+export type LicenceRequestStatus = "Pending" | "Granted" | "Cancelled";
+
+/** Licence Request record (LR- reference), org-side history. */
+export type LicenceRequest = {
+  id: string;
+  reference: string;
+  organizationId: string;
+  requestedBy: string;
+  superUser: number;
+  users: number;
+  groups: number;
+  complianceTools: string[];
+  additionalModules: string[];
+  message: string;
+  status: LicenceRequestStatus;
+  grantedBy: string | null;
+  grantedOn: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type CreateLicenceRequestResult = {
+  request: LicenceRequest;
+  organisation: OrganisationProfile;
+};
+
+export type PaginatedLicenceRequests = {
+  items: LicenceRequest[];
+  total: number;
+  page: number;
+  pageSize: number;
+};
+
 export function normalizeOrganisationLicences(
   licences: Partial<OrganisationLicences> | null | undefined
 ): OrganisationLicences {
@@ -182,23 +220,6 @@ export type GoLiveOrganisationResult = {
   organisation: Organisation;
   paymentSession: { url: string } | null;
 };
-
-/** @deprecated Prefer OrganisationProfile from the API. */
-export type OrganisationProfileView = {
-  id: string;
-  reference: string;
-  name: string;
-  industry: string;
-  sizeOfOrganisation: string;
-  officeEmail: string;
-  contactNumber: string;
-  companyNumber: string;
-  vatNumber: string;
-  address: OrganisationAddress;
-  isCustomer: boolean;
-  status: OrganisationStatus;
-};
-
 export const ORGANISATION_INDUSTRIES = [
   "Information technology",
   "Healthcare",

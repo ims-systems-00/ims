@@ -1,77 +1,113 @@
 import { Link } from "react-router-dom";
-import { Building2, Handshake, Rocket } from "lucide-react";
-import { PageHeader } from "@/shared/layout";
+import { ArrowRight, Handshake, Rocket } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { cn } from "@/shared/lib/utils";
+import {
+  OnboardCard,
+  OnboardHeader,
+} from "../components/onboarding-ui";
 import { useCurrentOrganisationQuery } from "../hooks/use-organisations";
 
 /**
- * Post-create choice screen (V4 flow-selection parity).
+ * Step 2 — choose Go Live (customer activation) or the partner programme.
+ * V4 parity: there is no "skip activation" path into the workspace.
  */
 export function FlowSelectionPage() {
   const currentQuery = useCurrentOrganisationQuery();
   const org = currentQuery.data;
   const alreadyCustomer = Boolean(org?.isCustomer);
+  const alreadyPartner = Boolean(org?.isPartner);
 
   return (
-    <div className="mx-auto max-w-3xl space-y-5">
-      <PageHeader
-        title="What next?"
+    <div className="mx-auto w-full max-w-3xl space-y-6">
+        <OnboardHeader
+        eyebrow="Step 2 of 3"
+        title="How will you use iMS?"
         description={
           org
-            ? `${org.name} is ready. Choose how to continue.`
-            : "Your organisation is ready. Choose how to continue."
+            ? `${org.name} is created. Choose how to continue — your workspace unlocks once activation is complete.`
+            : "Your organisation is created. Choose how to continue."
         }
       />
 
+
       <div className="grid gap-4 md:grid-cols-2">
-        <section className="ims-panel overflow-hidden">
-          <div className="space-y-3 px-4 py-5">
-            <Rocket className="size-6 text-muted-foreground" aria-hidden />
-            <h2 className="text-sm font-semibold">Create an iMS (Go Live)</h2>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              Activate customer status, licence pools, compliance toolkits, and
-              a one-year reporting period.
+        <OnboardCard className="group relative transition-shadow hover:shadow-[0_2px_4px_color-mix(in_oklch,var(--foreground)_5%,transparent),0_16px_40px_-16px_color-mix(in_oklch,var(--primary)_25%,transparent)]">
+          <span className="absolute right-4 top-4 rounded-full bg-primary/10 px-2 py-0.5 text-[0.625rem] font-semibold uppercase tracking-[0.08em] text-primary">
+            Recommended
+          </span>
+          <div className="flex h-full flex-col px-5 py-5 md:px-6">
+            <span
+              aria-hidden
+              className="flex size-10 items-center justify-center rounded-xl bg-primary text-primary-foreground"
+            >
+              <Rocket className="size-5" />
+            </span>
+            <h2 className="mt-4 text-base font-semibold tracking-tight">
+              Create an iMS — Go Live
+            </h2>
+            <p className="mt-1.5 flex-1 text-[0.8125rem] leading-relaxed text-muted-foreground">
+              Activate your organisation as a customer: licence seats,
+              compliance toolkits, and a one-year reporting period.
             </p>
             {alreadyCustomer ? (
-              <Button asChild>
-                <Link to="/organisation">Already live — open organisation</Link>
+              <Button asChild className="mt-5 w-full">
+                <Link to="/organisation">
+                  Already live — open workspace
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
               </Button>
             ) : (
-              <Button asChild>
-                <Link to="/onboard/go-live">Go Live</Link>
+              <Button asChild className="mt-5 w-full">
+                <Link to="/onboard/go-live">
+                  Continue to Go Live
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
               </Button>
             )}
           </div>
-        </section>
+        </OnboardCard>
 
-        <section className="ims-panel overflow-hidden">
-          <div className="space-y-3 px-4 py-5">
-            <Building2 className="size-6 text-muted-foreground" aria-hidden />
-            <h2 className="text-sm font-semibold">My organisation</h2>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              Skip activation for now and open the organisation profile in the
-              main workspace.
+        <OnboardCard
+          className={cn("border-dashed bg-surface-muted/30 shadow-none")}
+        >
+          <div className="flex h-full flex-col px-5 py-5 md:px-6">
+            <span
+              aria-hidden
+              className="flex size-10 items-center justify-center rounded-xl border border-border bg-surface text-muted-foreground"
+            >
+              <Handshake className="size-5" />
+            </span>
+            <h2 className="mt-4 text-base font-semibold tracking-tight">
+              Become a partner
+            </h2>
+            <p className="mt-1.5 flex-1 text-[0.8125rem] leading-relaxed text-muted-foreground">
+              Refer and support iMS customers through the partner programme.
+              Get a referral code and track your referred organisations.
             </p>
-            <Button asChild variant="outline">
-              <Link to="/organisation">Open organisation</Link>
-            </Button>
+            {alreadyPartner ? (
+              <Button asChild variant="outline" className="mt-5 w-full">
+                <Link to="/partner/dashboard">
+                  Open partner dashboard
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
+              </Button>
+            ) : (
+              <Button asChild variant="outline" className="mt-5 w-full">
+                <Link to="/onboard/partner">
+                  Apply to become a partner
+                  <ArrowRight className="size-4" aria-hidden />
+                </Link>
+              </Button>
+            )}
           </div>
-        </section>
-
-        <section className="ims-panel overflow-hidden md:col-span-2">
-          <div className="space-y-3 px-4 py-5">
-            <Handshake className="size-6 text-muted-foreground" aria-hidden />
-            <h2 className="text-sm font-semibold">Become a partner</h2>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              Partner programme application is not available in this V5 build
-              yet.
-            </p>
-            <Button type="button" disabled>
-              Coming soon
-            </Button>
-          </div>
-        </section>
+        </OnboardCard>
       </div>
+
+      <p className="text-center text-[0.75rem] text-muted-foreground">
+        Your workspace unlocks as soon as Go Live is complete — partners get
+        access as soon as their application is submitted.
+      </p>
     </div>
   );
 }

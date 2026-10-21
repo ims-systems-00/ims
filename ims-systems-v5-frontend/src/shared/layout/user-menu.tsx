@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import {
   Building2,
   KeyRound,
@@ -28,7 +28,13 @@ import { loadPublicEnv } from "@/shared/lib/env";
  */
 export function UserMenu() {
   const authClient = useAuthClient();
+  const navigate = useNavigate();
   const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
+
+  async function handleLogout() {
+    await authClient.logout();
+    navigate("/login", { replace: true });
+  }
   const stubProfileId =
     provider === "development-stub"
       ? resolveProfileUserId(DEV_STUB_IDENTITY)
@@ -108,7 +114,7 @@ export function UserMenu() {
               event.preventDefault();
               return;
             }
-            void authClient.logout();
+            void handleLogout();
           }}
         >
           <LogOut />

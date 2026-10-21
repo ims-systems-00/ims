@@ -4,7 +4,6 @@ import {
   createOrganisationBodySchema,
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
-  requestOrganisationLicenceBodySchema,
   updateDocumentReviewRemindersBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
@@ -15,7 +14,8 @@ export type OrganisationController = {
   getCurrent: RequestHandler;
   getById: RequestHandler;
   listMine: RequestHandler;
-  requestLicence: RequestHandler;
+  createCardPaymentSession: RequestHandler;
+  createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
 };
 
@@ -71,5 +71,58 @@ export function createOrganisationController(
     }
   };
 
-  return { create, goLive, getCurrent, getById, listMine };
+  const createCardPaymentSession: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.createCardPaymentSession(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const createBillingPortalSession: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.createBillingPortalSession(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const updateDocumentReviewReminders: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const body = parseWithSchema(
+        updateDocumentReviewRemindersBodySchema,
+        req.body
+      );
+      const data = await service.updateDocumentReviewReminders(
+        req.identity,
+        body
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  return {
+    create,
+    goLive,
+    getCurrent,
+    getById,
+    listMine,
+    createCardPaymentSession,
+    createBillingPortalSession,
+    updateDocumentReviewReminders,
+  };
 }

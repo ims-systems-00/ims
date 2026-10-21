@@ -4,9 +4,11 @@
 > **Related product specs:** [organisation.md](./organisation.md) (ongoing tenant management), [invitations.md](./invitations.md), [authentication.md](./authentication.md)  
 > Items marked **[Requires verification]** were inferred from code and not confirmed at runtime.
 >
-> **V5 backend status (2026-10-17):** Create organisation + Super Admin membership + OpenFGA projection already existed. **Go Live** is now implemented as `POST /api/v1/organisations/:id/go-live` (licences, `isCustomer`, system dates, payment type/status). Stripe checkout, S3 bucket, onboard emails, and compliance toolkit provisioning are optional via `OrganisationGoLiveSideEffectsPort` (default no-op). Partner programme module is **not** in V5 yet.
+> **V5 backend status (2026-10-19):** Create organisation + Super Admin membership + OpenFGA projection. **Go Live** is `POST /api/v1/organisations/:id/go-live`. Stripe Checkout / Portal / webhooks / licence upgrades are live behind `STRIPE_ENABLED` ([stripe-payments.md](./stripe-payments.md)). Invoice Go Live notifies support via email when `EMAIL_ENABLED`. Auth0 org + S3 bucket side effects remain NoOp (S3 intentionally not ported). Partner programme module is **not** in V5 yet.
+> **Go Live side effects (2026-10-21):** Licensed compliance toolkits are now provisioned at Go Live (best-effort per toolkit; first-visit lazy provisioning remains the fallback), and the activating user receives the V4 onboard-success email with the adoption pack + service charter attachments (requires `EMAIL_ENABLED=true` and an email on the identity). Monthly invoice Go Live additionally notifies support/accounts internally.
 >
-> **V5 frontend status (2026-10-17):** Create wizard, flow selection, and Go Live under `/onboard/*` use **`OnboardingShell`** (no app sidebar). Partner path remains “Coming soon”. Logo upload and partner referral code steps still deferred.
+> **V5 frontend status (2026-10-20):** Premium minimal onboarding under `/onboard/*` (create → choose path → Go Live) with progress stepper. No skip-activation path: non-customer, non-partner organisations are redirected from the workspace back to flow-selection until Go Live completes. Card Go Live + Organisation Licenses billing redirect to Stripe. Post-Checkout return: `/auth/preparation-screen` → `/` (Live Dashboard). Partner programme is live: flow-selection links to the application (`/onboard/partner`), auto-accepted partners get a dashboard at `/partner/dashboard`, and referral codes are captured during organisation creation (see [partnership-program.md](./partnership-program.md)).
+> **Licence parity (2026-10-20, V4 behaviour):** Go Live offers the full 15-toolkit compliance catalogue plus the CRM additional module. In Auth0 mode the sidebar shows only licensed compliance toolkits and shows CRM only when `licences.additionalModules` includes `CRM`; direct URLs to unlicensed toolkits/CRM show a licence notice, the Compliance API already 403s unlicensed toolkits, and the Customers API now 403s without CRM. Dev-stub keeps the full catalogue open.
 >
 > **Self-signup (2026-10-17):** `/login` + `/register` (V5 UI) → Auth0 AuthN → users with no memberships land on `/onboard/organisation`. See [AUTH_SELF_SIGNUP.md](../security/AUTH_SELF_SIGNUP.md).
 
@@ -101,7 +103,7 @@ Primary actors: newly registered / logged-in users with no memberships; Super Ad
 
 - Ongoing organisation profile edit, licence *increase* requests, report subscribers ([organisation.md](./organisation.md))
 - Invitation *sending* and admin invite management ([invitations.md](./invitations.md))
-- Full Stripe webhook / billing portal lifecycle
+- Full Stripe webhook / billing portal lifecycle — see [stripe-payments.md](./stripe-payments.md)
 - Supplier onboarding file attachments
 - Auth0 (not used in V4; V4 uses JWT v3 auth)
 

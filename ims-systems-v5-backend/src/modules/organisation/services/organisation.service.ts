@@ -21,6 +21,7 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
+import type { OrganisationBillingPort } from "../../payments/ports";
 import {
   NoOpOrganisationGoLiveSideEffectsAdapter,
   type OrganisationGoLiveSideEffectsPort,
@@ -59,6 +60,8 @@ export type OrganisationServiceDeps = {
   authorizer: Authorizer;
   membershipProjection?: MembershipProjection;
   goLiveSideEffects?: OrganisationGoLiveSideEffectsPort;
+  /** Stripe billing when STRIPE_ENABLED; omit for no-op local/dev. */
+  billing?: OrganisationBillingPort;
   /** When false (auth0-openfga), never auto-create the stub demo tenant. */
   allowStubOrganisationAutoProvision?: boolean;
 };
@@ -70,8 +73,16 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
   const membershipProjection = deps.membershipProjection;
   const goLiveSideEffects =
     deps.goLiveSideEffects ?? new NoOpOrganisationGoLiveSideEffectsAdapter();
+  const billing = deps.billing;
   const allowStubOrganisationAutoProvision =
     deps.allowStubOrganisationAutoProvision === true;
+
+  function requireBilling(): OrganisationBillingPort {
+    if (!billing) {
+      throw new ValidationAppError("Stripe billing is not configured");
+    }
+    return billing;
+  }
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -181,8 +192,32 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         throw new NotFoundError("Organisation not found");
       }
       if (existing.isCustomer) {
+        // Resumable Card Go Live: a previous attempt may have activated the
+        // org (applyGoLive commits first) and then failed at Stripe Checkout
+        // (e.g. bad price ids). Let the Super Admin retry Checkout instead
+        // of dead-ending on "already has an iMS setup".
+        const canResumeCardCheckout =
+          input.paymentType === "Card" &&
+          !existing.paymentSystem.stripeSubscriptionId &&
+          (existing.paymentSystem.status === "Trial" ||
+            existing.paymentSystem.type === "Card");
+        if (canResumeCardCheckout) {
+          if (existing.paymentSystem.type !== "Card") {
+            await organisations.updatePaymentSystem(organizationId, {
+              type: "Card",
+            });
+          }
+          const paymentSession =
+            await goLiveSideEffects.createCardCheckoutSession({
+              organizationId,
+              actorId: subjectId,
+            });
+          const organisation =
+            (await organisations.findById(organizationId)) ?? existing;
+          return { organisation, paymentSession };
+        }
         throw new ConflictError(
-          "This organisation already has an iMS setup."
+          "This organisation already has an iMS setup. If card payment is still pending, use Organisation → Licenses → Card payment."
         );
       }
       if (input.superUser < existing.licences.superUser.used) {
@@ -205,7 +240,7 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
       });
       if (!activated) {
         throw new ConflictError(
-          "This organisation already has an iMS setup."
+          "This organisation already has an iMS setup. If card payment is still pending, use Organisation → Licenses → Card payment."
         );
       }
 
@@ -214,6 +249,7 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         await goLiveSideEffects.provisionComplianceToolkits({
           organizationId,
           actorId: subjectId,
+          identity: authed,
           toolkitNames,
         });
       } catch {
@@ -222,20 +258,19 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
 
       let paymentSession: { url: string } | null = null;
       if (input.paymentType === "Card") {
-        try {
-          paymentSession = await goLiveSideEffects.createCardCheckoutSession({
-            organizationId,
-            actorId: subjectId,
-          });
-        } catch {
-          paymentSession = null;
-        }
+        // When Stripe is wired, surface Checkout failures (do not swallow).
+        // NoOp adapter returns null without throwing.
+        paymentSession = await goLiveSideEffects.createCardCheckoutSession({
+          organizationId,
+          actorId: subjectId,
+        });
       }
 
       try {
         await goLiveSideEffects.notifyGoLive({
           organizationId,
           actorId: subjectId,
+          actorEmail: authed.email,
           paymentType: input.paymentType,
           licences: {
             superUser: input.superUser,
@@ -339,8 +374,10 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     },
 
     /**
-     * Demo-grade licence request: apply seats/toolkits immediately (no Stripe).
-     * Full License Request module (emails, LR refs, admin approve) comes later.
+     * Allocation step of a licence request: apply seats/toolkits
+     * immediately; upgrade Stripe subscription when present.
+     * The licence-requests module owns the record (LR- ref), the
+     * auto-approve status flow, and the emails around this call.
      */
     async requestLicence(
       identity: SecurityIdentity | null | undefined,
@@ -365,18 +402,30 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         );
       }
 
+      const existing = await organisations.findById(authed.organizationId);
+      if (!existing) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const delta = {
+        superUser: input.superUser ?? 0,
+        users: input.users ?? 0,
+        groups: input.groups ?? 0,
+        complianceTools: input.complianceTools ?? [],
+        additionalModules: input.additionalModules ?? [],
+      };
+
       const updated = await organisations.applyLicenceRequest(
         authed.organizationId,
-        {
-          superUser: input.superUser ?? 0,
-          users: input.users ?? 0,
-          groups: input.groups ?? 0,
-          complianceTools: input.complianceTools ?? [],
-          additionalModules: input.additionalModules ?? [],
-        }
+        delta
       );
       if (!updated) {
         throw new NotFoundError("Organisation not found");
+      }
+
+      const subscriptionId = existing.paymentSystem.stripeSubscriptionId;
+      if (subscriptionId && billing) {
+        await billing.upgradeSubscription(subscriptionId, delta);
       }
 
       const membership = await memberships.findByUserAndOrg(
@@ -384,6 +433,88 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         updated.id
       );
       return { ...updated, membership };
+    },
+
+    /**
+     * Post–Go Live Card checkout when the org has no Stripe subscription yet.
+     */
+    async createCardPaymentSession(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string
+    ): Promise<{ url: string }> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId || authed.organizationId !== organizationId) {
+        throw new ForbiddenError(
+          "You don't have permission to pay for this organisation."
+        );
+      }
+      await assertAllowed(authed, "manage", organizationId);
+      await assertMember(subjectId, organizationId);
+
+      const org = await organisations.findById(organizationId);
+      if (!org) {
+        throw new NotFoundError("Organisation not found");
+      }
+      if (!org.isCustomer) {
+        throw new ValidationAppError(
+          "Organisation must complete Go Live before card payment."
+        );
+      }
+      if (org.paymentSystem.stripeSubscriptionId) {
+        throw new ConflictError(
+          "Organisation already has a Stripe subscription. Use Manage billing or contact support."
+        );
+      }
+
+      await organisations.updatePaymentSystem(organizationId, { type: "Card" });
+
+      const payments = requireBilling();
+      const session = await payments.createCheckoutSessionForOrg({
+        organizationId,
+        licences: {
+          groups: org.licences.groups.allocated,
+          users: org.licences.users.allocated,
+          superUser: org.licences.superUser.allocated,
+          complianceTools: org.licences.complianceTools,
+          additionalModules: org.licences.additionalModules,
+          includeToolkitsAndModules: org.paymentSystem.status === "Trial",
+        },
+      });
+      return { url: session.url };
+    },
+
+    /**
+     * Stripe Customer Billing Portal when the org has a Stripe customer id.
+     */
+    async createBillingPortalSession(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string
+    ): Promise<{ url: string }> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId || authed.organizationId !== organizationId) {
+        throw new ForbiddenError(
+          "You don't have permission to manage billing for this organisation."
+        );
+      }
+      await assertAllowed(authed, "manage", organizationId);
+      await assertMember(subjectId, organizationId);
+
+      const org = await organisations.findById(organizationId);
+      if (!org) {
+        throw new NotFoundError("Organisation not found");
+      }
+      if (!org.isCustomer) {
+        throw new ValidationAppError(
+          "Organisation must complete Go Live before managing billing."
+        );
+      }
+      if (!org.paymentSystem.stripeCustomerId) {
+        throw new ValidationAppError(
+          "Organisation does not have a Stripe customer id."
+        );
+      }
+
+      return requireBilling().createBillingPortalSession(organizationId);
     },
 
     async updateDocumentReviewReminders(

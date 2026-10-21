@@ -120,3 +120,5 @@ Prompt shape: *Fix DEV_STUB cutover item C-01 for auth0-openfga; keep developmen
 ## 10. LIC-01 (later)
 
 Toolkit SoT remains `org.licences.complianceTools`. LIC-01 adds billing / request UX on top (Stripe, pending requests, remove demo “instant allocate” messaging). Do not block C-01 on LIC-01.
+
+**Billing SoT:** [stripe-payments.md](../module-specifications/stripe-payments.md) (V4 Checkout, Portal, webhooks, licence upgrade).

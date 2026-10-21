@@ -1,5 +1,6 @@
-import { Router } from "express";
+import { Router, type NextFunction, type Request, type Response } from "express";
 import type { Authorizer } from "../../../security";
+import { ForbiddenError } from "../../../shared";
 import {
   DevAllCustomersListScopeAdapter,
   NoOpCustomerCampaignStatsAdapter,
@@ -8,6 +9,7 @@ import {
   NoOpCustomerInvoiceStatsAdapter,
   NoOpCustomerNotificationAdapter,
   NoOpCustomerTaskAdapter,
+  type CrmLicencePort,
   type CustomerCampaignStatsPort,
   type CustomerIncidentStatsPort,
   type CustomerInteractionStatsPort,
@@ -32,6 +34,8 @@ export type CustomerRouterDeps = {
   campaigns?: CustomerCampaignStatsPort;
   interactions?: CustomerInteractionStatsPort;
   listScope?: CustomerListScopePort;
+  /** When set, every CRM route requires the CRM licence (auth0 mode). */
+  licences?: CrmLicencePort;
 };
 
 /**
@@ -57,6 +61,29 @@ export function createCustomerModule(deps: CustomerRouterDeps): {
   });
   const controller = createCustomerController(service);
   const router = Router();
+
+  if (deps.licences) {
+    const licences = deps.licences;
+    router.use(
+      async (req: Request, _res: Response, next: NextFunction) => {
+        try {
+          const organizationId = req.identity?.organizationId;
+          if (!organizationId) {
+            throw new ForbiddenError("Organisation context is required");
+          }
+          const licensed = await licences.isCrmLicensed(organizationId);
+          if (!licensed) {
+            throw new ForbiddenError(
+              "Organisation doesn't have CRM license. Add CRM from Organisation → Request licence."
+            );
+          }
+          next();
+        } catch (error) {
+          next(error);
+        }
+      }
+    );
+  }
 
   router.get("/", controller.list);
   router.post("/", controller.create);

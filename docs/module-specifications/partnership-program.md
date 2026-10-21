@@ -1,5 +1,7 @@
 # Partnership Program
 
+> **V5 status (2026-10-21):** Implemented — `POST /api/v1/partnerships` (apply; org context + membership required; duplicate user/org blocked; auto-accepted with `isPartner=true`), `GET /partnerships/mine`, `GET /partnerships/mine/dashboard` (partner code, signup link, aggregate analytics, referred organisations), `GET /partnerships/:id` (partner-code validation, returns partner org name). Applicant receives received + accepted emails (accepted includes code + `/onboard/organisation?partnerCode=` link; requires `EMAIL_ENABLED`). FE: flow-selection **Become a partner** → `/onboard/partner` application → `/partner/dashboard`; create-organisation wizard captures `partnerCode` (URL/cache/manual, validated live) into `referralSource`. Not yet: iMS admin list/accept/delete/restore (no platform-admin surface in V5), profile-page promo, separate partner layout.
+
 ## 1. Module Overview
 
 The **Partnership Program** module enables an existing iMS user (with an **organisation context**) to **apply to become an iMS Systems partner** and, once accepted, to **refer new customer organisations** into iMS using a **partner code** and **signup link**. A partnership record ties together a **user**, their **partner organisation**, and application information about their service provision and reach.

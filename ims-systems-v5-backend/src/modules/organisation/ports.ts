@@ -6,6 +6,8 @@
  * compliance wiring. Wire real adapters from the app composer when ready.
  */
 
+import type { SecurityIdentity } from "../../security";
+
 export type GoLivePaymentSession = {
   url: string;
 };
@@ -18,6 +20,8 @@ export type OrganisationGoLiveSideEffectsPort = {
   provisionComplianceToolkits(input: {
     organizationId: string;
     actorId: string;
+    /** Actor identity for downstream authorisation (compliance create). */
+    identity: SecurityIdentity;
     toolkitNames: string[];
   }): Promise<void>;
 

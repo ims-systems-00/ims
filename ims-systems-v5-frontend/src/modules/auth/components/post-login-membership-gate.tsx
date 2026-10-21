@@ -10,8 +10,11 @@ import { useEffect } from "react";
 import { Button } from "@/shared/components/ui/button";
 
 /**
- * After Auth0 login: users with no IMS memberships go to organisation onboard.
- * Users with memberships keep the product shell; first org is selected if needed.
+ * After Auth0 login:
+ * - users with no IMS memberships go to organisation onboard;
+ * - members of a non-customer, non-partner organisation stay in onboarding
+ *   (V4 parity — the workspace unlocks only after Go Live);
+ * - customers/partners keep the product shell; first org selected if needed.
  */
 export function PostLoginMembershipGate() {
   const env = loadPublicEnv();
@@ -83,6 +86,16 @@ export function PostLoginMembershipGate() {
   const memberships = orgsQuery.data ?? [];
   if (memberships.length === 0 && !onOnboard) {
     return <Navigate to="/onboard/organisation" replace />;
+  }
+
+  // No skip-activation bypass: a non-customer organisation cannot enter
+  // the workspace directly (typed URL, bookmark, or stale session).
+  if (!onOnboard) {
+    const activeOrgId = getActiveOrganisationId();
+    const activeOrg = memberships.find((org) => org.id === activeOrgId);
+    if (activeOrg && !activeOrg.isCustomer && !activeOrg.isPartner) {
+      return <Navigate to="/onboard/flow-selection" replace />;
+    }
   }
 
   return <Outlet />;

@@ -13,6 +13,8 @@ export {
   type GoLivePaymentSession,
   type OrganisationGoLiveSideEffectsPort,
 } from "./ports";
+export { composeGoLiveSideEffects } from "./adapters/compose-go-live-side-effects";
+export { createGoLiveNotifySideEffectsAdapter } from "./adapters/go-live-notify.adapter";
 export {
   ORGANISATION_PAYMENT_STATUSES,
   ORGANISATION_PAYMENT_TYPES,

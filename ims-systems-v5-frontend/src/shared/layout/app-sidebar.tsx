@@ -3,10 +3,12 @@ import { Link } from "react-router-dom";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
+  buildNavigationSections,
   filterNavigationSections,
-  navigationSections,
+  type NavigationLicenceFilter,
 } from "@/shared/navigation";
 import { Button } from "@/shared/components/ui/button";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import {
   permissionAllowed,
   useSecurityCapabilitiesQuery,
@@ -53,12 +55,33 @@ export function AppSidebar({
       ? (DEV_STUB_IDENTITY.email ?? "Session")
       : "Session");
 
+  // Licence-gated nav (V4 parity): Auth0 mode shows only licensed
+  // toolkits / CRM from the org profile; dev-stub keeps the full catalogue.
+  const orgQuery = useCurrentOrganisationQuery(
+    provider === "auth0-openfga"
+  );
+  const licenceFilter = useMemo<NavigationLicenceFilter>(() => {
+    if (provider !== "auth0-openfga") {
+      return { licensedToolkits: null, crmLicensed: null };
+    }
+    if (!orgQuery.data) {
+      return { licensedToolkits: [], crmLicensed: false };
+    }
+    return {
+      licensedToolkits: orgQuery.data.licences.complianceTools ?? [],
+      crmLicensed: (orgQuery.data.licences.additionalModules ?? []).includes(
+        "CRM"
+      ),
+    };
+  }, [provider, orgQuery.data]);
+
   const sections = useMemo(
     () =>
-      filterNavigationSections(navigationSections, (permission) =>
-        permissionAllowed(permission, permissions, provider)
+      filterNavigationSections(
+        buildNavigationSections(licenceFilter),
+        (permission) => permissionAllowed(permission, permissions, provider)
       ),
-    [permissions, provider]
+    [permissions, provider, licenceFilter]
   );
 
   return (

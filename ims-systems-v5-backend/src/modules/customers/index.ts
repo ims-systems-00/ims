@@ -8,6 +8,8 @@ export {
   createCustomerModule,
 } from "./routes/customer.routes";
 export type { CustomerRouterDeps } from "./routes/customer.routes";
+export { createOrganisationCrmLicenceAdapter } from "./adapters/organisation-licence.adapter";
+export type { CrmLicencePort } from "./ports";
 export { createCustomerService } from "./services/customer.service";
 export type { CustomerService } from "./services/customer.service";
 export { createCustomerRepository } from "./repositories/customer.repository";

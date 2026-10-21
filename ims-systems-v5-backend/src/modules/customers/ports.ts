@@ -218,3 +218,12 @@ export class DevAllCustomersListScopeAdapter
     return { mode: "all" };
   }
 }
+
+/**
+ * CRM licence gate — org.licences.additionalModules includes "CRM".
+ * SoT: docs/security/LICENCE_SOURCE_OF_TRUTH.md. Wired only in
+ * auth0-openfga mode; absent port means no gate (dev-stub).
+ */
+export type CrmLicencePort = {
+  isCrmLicensed(organizationId: string): Promise<boolean>;
+};

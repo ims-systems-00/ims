@@ -16,6 +16,7 @@
 | Auth production readiness (phases 0–6) | [security/PRODUCTION_READINESS_PLAN.md](./security/PRODUCTION_READINESS_PLAN.md) |
 | Dev/demo stub cutover (auth0-openfga zero-stub) | [security/DEV_STUB_PRODUCTION_CUTOVER.md](./security/DEV_STUB_PRODUCTION_CUTOVER.md) |
 | Licence SoT (compliance toolkits / C-01) | [security/LICENCE_SOURCE_OF_TRUTH.md](./security/LICENCE_SOURCE_OF_TRUTH.md) |
+| Stripe payments (billing SoT from V4) | [module-specifications/stripe-payments.md](./module-specifications/stripe-payments.md) |
 | Module specifications (business SoT) | [module-specifications/](./module-specifications/) |
 | Organisation onboarding / create org (V4) | [module-specifications/organisation-onboarding.md](./module-specifications/organisation-onboarding.md) |
 | Current-state DB map (V4 investigation) | [MASTER_DB_SCHEMA_PLAN.md](./MASTER_DB_SCHEMA_PLAN.md) |
