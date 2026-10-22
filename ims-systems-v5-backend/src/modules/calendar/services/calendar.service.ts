@@ -152,7 +152,18 @@ export function createCalendarService(deps: CalendarServiceDeps) {
     ): Promise<CalendarEvent> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireEvent(actor.organizationId, id);
+      const event = await requireEvent(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (
+        scope.mode !== "all" &&
+        !(event.groupIds ?? []).some((g) => scope.businessUnitIds.includes(g))
+      ) {
+        throw new NotFoundError("Calendar event not found");
+      }
+      return event;
     },
 
     async create(

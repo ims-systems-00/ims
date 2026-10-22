@@ -6,6 +6,7 @@
  * Edit/delete restricted to creator of non-automated entries (V5 hardening
  * vs V4 API gap noted in the spec).
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -191,6 +192,13 @@ export function createActivitiesService(deps: ActivitiesServiceDeps) {
       await assertAllowed(actor, "read");
       const activity = await repository.findById(organizationId, id);
       if (!activity) throw new NotFoundError("Activity not found");
+      const scope = await listScope.resolveScope({
+        organizationId,
+        subjectId: actor.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, activity.groupId)) {
+        throw new NotFoundError("Activity not found");
+      }
       return activity;
     },
 

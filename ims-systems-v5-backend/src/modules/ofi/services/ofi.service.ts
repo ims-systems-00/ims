@@ -2,6 +2,7 @@
  * OFI application service.
  * Spec: docs/module-specifications/ofi.md
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -283,7 +284,15 @@ export function createOfiService(deps: OfiServiceDeps) {
     ): Promise<Ofi> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireOfi(actor.organizationId, id);
+      const ofi = await requireOfi(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, ofi.businessUnitId)) {
+        throw new NotFoundError("OFI not found");
+      }
+      return ofi;
     },
 
     async stats(

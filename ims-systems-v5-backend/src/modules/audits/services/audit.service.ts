@@ -2,6 +2,7 @@
  * Audit application service.
  * Spec: docs/module-specifications/audit.md
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -292,7 +293,15 @@ export function createAuditService(deps: AuditServiceDeps) {
     ): Promise<Audit> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireAudit(actor.organizationId, id);
+      const audit = await requireAudit(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, audit.businessUnitId)) {
+        throw new NotFoundError("Audit not found");
+      }
+      return audit;
     },
 
     async stats(

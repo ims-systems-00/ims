@@ -2,6 +2,7 @@
  * Risk Management application service.
  * Spec: docs/module-specifications/risk-management.md
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -268,6 +269,13 @@ export function createRiskService(deps: RiskServiceDeps) {
       }
       if (risk.deletedAt) {
         throw new NotFoundError("This risk has been deleted or removed");
+      }
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, risk.businessUnitId)) {
+        throw new NotFoundError("Risk not found");
       }
       return risk;
     },

@@ -2,6 +2,7 @@
  * Incident Management application service.
  * Spec: docs/module-specifications/incident.md
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -315,7 +316,15 @@ export function createIncidentService(deps: IncidentServiceDeps) {
     ): Promise<Incident> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireIncident(actor.organizationId, id);
+      const incident = await requireIncident(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, incident.businessUnitId)) {
+        throw new NotFoundError("Incident not found");
+      }
+      return incident;
     },
 
     async update(

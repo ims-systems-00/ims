@@ -36,7 +36,7 @@ Status values: `todo` | `in_progress` | `blocked` | `done` | `n/a_stub_only`
 | --- | --- |
 | **Last updated** | 2026-10-22 (full re-audit of backend `src/app/routes/v1/index.ts` wiring + frontend stub scan) |
 | **P0 remaining** | None (U-01…U-03, O-01 done) |
-| **Ready for prod (auth0-openfga)** | **P0 clear; C-01/C-02 done** — P1 accepted org-wide lists; LIC-01 app done (preflight + smoke runbook written 2026-10-22; staging execution open). **2026-10-22 integrity bundle done:** A-01, FU-01, U-06, U-07, N-10. Remaining from re-audit: N-13 (sessions), N-15/N-17 (invoice-blocked), LIC-01 smoke, N-09 remainder (Auth0 org only), N-11 (automation) |
+| **Ready for prod (auth0-openfga)** | **P0 clear; C-01/C-02 done** — P1 accepted org-wide lists; LIC-01 app done (preflight + smoke runbook written 2026-10-22; staging execution open). **2026-10-22 integrity bundle done:** A-01, FU-01, U-06, U-07, N-10. **2026-10-22 list scopes done:** L-01…L-10. Remaining from re-audit: N-13 (sessions), N-15/N-17 (invoice-blocked), LIC-01 smoke, N-09 remainder (Auth0 org only), N-11 (automation) |
 
 ---
 
@@ -109,21 +109,23 @@ Until that exists, items below may be **`blocked`** on “list-scope infra”.
 
 | ID | Module | Default adapter location | Status | Blocked on |
 | --- | --- | --- | --- | --- |
-| L-01 | Incidents | `incidents/routes/incident.routes.ts` → `DevAllIncidentsListScopeAdapter` | `todo` | List-scope design (OpenFGA ListObjects and/or BU filters) |
-| L-02 | Risks | `risks/routes/...` → `DevAllRisksListScopeAdapter` | `todo` | Same |
-| L-03 | Audits | `audits/routes/...` → `DevAllAuditsListScopeAdapter` | `todo` | Same |
-| L-04 | OFIs | `ofi/routes/...` → `DevAllOfisListScopeAdapter` | `todo` | Same |
-| L-05 | Customers | `customers/routes/...` → `DevAllCustomersListScopeAdapter` | `todo` | Same |
-| L-06 | Suppliers | `suppliers/routes/...` → `DevAllSuppliersListScopeAdapter` | `todo` | Same |
-| L-07 | Activities | `activities/routes/...` → `DevAllActivitiesListScopeAdapter` | `todo` | Same |
-| L-08 | Calendar | `calendar/...` → `DevAllCalendarListScopeAdapter` | `todo` | Same |
-| L-09 | KPI objectives | `kpi-objectives/...` → `DevAllKpiObjectivesListScopeAdapter` | `todo` | Same |
-| L-10 | Management reviews | `management-reviews/...` → `DevAllManagementReviewsListScopeAdapter` | `todo` | Same |
+| L-01 | Incidents | `incidents/routes/incident.routes.ts` → `DevAllIncidentsListScopeAdapter` | `done` | 2026-10-22 — real Mongo list scope (see below) |
+| L-02 | Risks | `risks/routes/...` → `DevAllRisksListScopeAdapter` | `done` | Same |
+| L-03 | Audits | `audits/routes/...` → `DevAllAuditsListScopeAdapter` | `done` | Same |
+| L-04 | OFIs | `ofi/routes/...` → `DevAllOfisListScopeAdapter` | `done` | Same |
+| L-05 | Customers | `customers/routes/...` → `DevAllCustomersListScopeAdapter` | `done` | Same |
+| L-06 | Suppliers | `suppliers/routes/...` → `DevAllSuppliersListScopeAdapter` | `done` | Same |
+| L-07 | Activities | `activities/routes/...` → `DevAllActivitiesListScopeAdapter` | `done` | Same |
+| L-08 | Calendar | `calendar/...` → `DevAllCalendarListScopeAdapter` | `done` | Same |
+| L-09 | KPI objectives | `kpi-objectives/...` → `DevAllKpiObjectivesListScopeAdapter` | `done` | Same |
+| L-10 | Management reviews | `management-reviews/...` → `DevAllManagementReviewsListScopeAdapter` | `done` | Same |
 | A-01 | Assets (Inventory) referential checks | `assets/routes/assets.routes.ts` → `AcceptAny*` adapters (route defaults, tests only) | `done` | 2026-10-22 — `assets/adapters/lookups.adapter.ts`: owner = org membership, business unit = FU in org, category = org tag applicable to the asset module. Wired in `v1/index.ts` when `SECURITY_PROVIDER=auth0-openfga`; AcceptAny kept for development-stub. Test: `assets-lookups.adapter.test.ts` (3/3) |
 
 **A-01 note (2026-10-22):** Not a list-scope item, but the same severity class: assets can be saved with owner / business-unit / category ids that do not exist (or belong to another org), because the lookup ports are accept-any development adapters (`assets/ports.ts` header: “Real Users / Business Units / Tags modules replace stub adapters later” — those modules now exist).
 
 **P1 decision (2026-10-19):** **Accept org-wide lists temporarily** for staging / early auth0-openfga. OpenFGA org-level `can_read` remains the AuthZ gate; L-01…L-10 stay `todo` until list-scope infra is authorized. Do **not** delete `DevAll*ListScope` until a real scope implementation lands.
+
+**P1 resolved (2026-10-22):** Real Mongo list scopes landed without OpenFGA model changes. `src/security/list-scope/create-list-scope.adapter.ts` resolves one canonical scope from `organisation_memberships` (role) + `unit_memberships` (`listUnitIdsForUser`): Super Admin/Auditor → `all`; Head of Service/Basic → own units + unassigned; no membership/error → own units only (fail closed). `createListScopePorts()` maps it to each module's scope shape; all 10 modules are wired in `v1/index.ts` when `SECURITY_PROVIDER=auth0-openfga` (DevAll remains the development-stub/test default). `getById` in all 10 services now also enforces the scope (404 on out-of-scope), and calendar checks `groupIds`. Test: `list-scope.adapter.test.ts` (7/7); module suites 98/98.
 
 ---
 
@@ -313,4 +315,5 @@ New modules composed in `v1/index.ts` after the original inventory. All use **re
 | 2026-10-22 | N-12 / N-14 / N-16 | User lifecycle emails, audit extract report generation+delivery, and CRM interaction analytics wired (EmailSystem / Activities-backed). Tests: `user-notification.adapter.test.ts`, `audit-report.adapter.test.ts`, `customer-interaction-stats.adapter.test.ts` (7/7); regression users/audits/customers/activities 104/104. Backend `tsc` clean. Remaining adapter gaps: N-13 (Auth0 session revocation), N-15/N-17 (Invoice module), N-11 (automation runner), N-09 remainder (Auth0 org + bucket provisioning), P1 list scopes. |
 | 2026-10-22 | N-09 (buckets) | Per-org S3 bucket auto-provisioning at org create + Go Live (`ensureFileStorage` port + `createFilesBucketSideEffectsAdapter` in create-app composition; Files-service bucket-name resolution mirrored; best-effort, logged, idempotent). Tests: `files-bucket-side-effects.adapter.test.ts` + existing provisioning/go-live suites (16/16); org/files regression 38/39 (1 known pre-existing `organisation.http` failure). Backend `tsc` clean. |
 | 2026-10-22 | Full re-audit | Re-scanned every `NoOp*` / `DevAll*` / `AcceptAny*` / `AlwaysAllow*` class against `v1/index.ts` composition + FE stub scan. **Closed:** F-02, F-03, N-05 (audit promotions wired). **Opened:** A-01 (assets accept-any), FU-01 (group licences), U-06 (ownership), U-07 (user toolkit assignment), N-12…N-17 (user emails/sessions, audit reports, customer invoice/interaction stats, stats invoices/targets), F-06 (change password), F-07 (global search). **Clarified:** N-09 compliance provisioning is wired; Auth0-org + per-org bucket provisioning remain. New modules (invitations, partnerships, licence-requests, signatures, files) audited — real adapters, shared config gates only. |
+| 2026-10-22 | L-01…L-10 | Real Mongo list scopes for all 10 modules (`security/list-scope/create-list-scope.adapter.ts`): role from organisation membership + unit ids from unit memberships, fail-closed; wired auth0-only in `v1/index.ts`; `getById` scope enforcement added in all 10 services. Tests: `list-scope.adapter.test.ts` 7/7, module http suites 98/98, backend `tsc` clean. |
 | 2026-10-22 | LIC-01 (preflight) | `pnpm preflight:prod` gate added (`scripts/preflight-prod.ts`, `src/infrastructure/preflight/prod-preflight.ts`): pure config matrix + connectivity probes (Mongo, Auth0 JWKS, OpenFGA model, per-org S3 HeadBucket, Redis, Stripe test prices), exit 1 on FAIL. Tests `tests/prod-preflight.test.ts` 6/6 + config 11/11; backend `tsc` clean; offline run against dev `.env` correctly FAILs `CLIENT_URL` http + `EMAIL_ENABLED=false`. Staging smoke runbook (7 steps w/ expected results) added to [CUTOVER_CHECKLIST.md](./CUTOVER_CHECKLIST.md). **Remaining:** execute smoke on a real staging deploy. |

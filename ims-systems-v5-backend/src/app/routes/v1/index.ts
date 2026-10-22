@@ -130,6 +130,7 @@ import {
   createUsersModule,
 } from "../../../modules/users";
 import { createInvitationModule } from "../../../modules/invitations";
+import { createListScopePorts } from "../../../security/list-scope/create-list-scope.adapter";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -250,6 +251,13 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       ? createOrganisationMembershipLookupAdapter()
       : undefined;
 
+  // L-01…L-10: real role/BU list scopes in auth0-openfga mode;
+  // development-stub keeps the DevAll route defaults.
+  const listScopes =
+    config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? createListScopePorts()
+      : undefined;
+
   // Compliance is composed after Organisations, so Go Live toolkit
   // provisioning goes through a late-bound holder (set below once the
   // compliance service exists).
@@ -361,6 +369,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const kpiObjectives = createKpiObjectivesModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.withOrganisational() } : {}),
     businessUnits: createKpiBusinessUnitAdapter(functionalUnits.service),
     notifications: createKpiObjectiveNotificationAdapter({
       notifications: notifications.application,
@@ -383,6 +392,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const calendar = createCalendarModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
   });
 
   const tasks = createTaskModule({
@@ -477,6 +487,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const risks = createRiskModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsWithUnassigned() } : {}),
     tasks: riskTasksAdapter,
     notifications: createRiskNotificationAdapter({
       notifications: notifications.application,
@@ -492,6 +503,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const incidents = createIncidentModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsWithUnassigned() } : {}),
     tasks: incidentTasksAdapter,
     calendar: createIncidentCalendarAdapter(calendar.service),
     notifications: createIncidentNotificationAdapter({
@@ -572,6 +584,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const ofis = createOfiModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
     tasks: ofiTasksAdapter,
     notifications: createOfiNotificationAdapter({
       notifications: notifications.application,
@@ -587,6 +600,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const activities = createActivitiesModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.groups() } : {}),
     ofiFollowUp: createActivityOfiFollowUpAdapter({
       markInProgressIfPending: (organizationId, ofiId) =>
         ofis.service.markInProgressIfPending(organizationId, ofiId),
@@ -651,6 +665,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const suppliers = createSupplierModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
     tasks: supplierTasksAdapter,
     incidentStats: supplierIncidentStatsAdapter,
     calendar: createSupplierCalendarAdapter(calendar.service),
@@ -667,6 +682,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const customers = createCustomerModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.customers() } : {}),
     tasks: customerTasksAdapter,
     incidents: customerIncidentStatsAdapter,
     // N-16: interaction analytics from the Activities timeline.
@@ -728,6 +744,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const audits = createAuditModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsWithUnassigned() } : {}),
     tasks: auditTasksAdapter,
     incidents: auditIncidentPromotion,
     risks: auditRiskPromotion,
@@ -740,6 +757,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const managementReviews = createManagementReviewModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.withOrganisational() } : {}),
     tasks: managementReviewTasksAdapter,
     calendar: createManagementReviewCalendarAdapter(calendar.service),
     notifications: createManagementReviewNotificationAdapter(

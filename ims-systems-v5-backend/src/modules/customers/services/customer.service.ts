@@ -2,6 +2,7 @@
  * Customer Management (CRM) application service.
  * Spec: docs/module-specifications/customers.md
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -331,7 +332,15 @@ export function createCustomerService(deps: CustomerServiceDeps) {
     ): Promise<Customer> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireCustomer(actor.organizationId, id);
+      const customer = await requireCustomer(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, customer.businessUnitId)) {
+        throw new NotFoundError("Customer not found");
+      }
+      return customer;
     },
 
     async update(
