@@ -1,8 +1,15 @@
-import { useEffect, useState } from "react";
-import { ExternalLink, FileText, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Download, Expand, ExternalLink, FileText } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
-import { createViewUrl } from "@/modules/files";
+import {
+  FilePreview,
+  FilePreviewModal,
+  getFilePreviewKind,
+  useDownloadFileMutation,
+  useFileViewUrlQuery,
+  type FilePreviewKind,
+} from "@/modules/files";
 import type { DocumentFileMeta } from "../types";
 
 type DocumentPreviewPanelProps = {
@@ -10,79 +17,38 @@ type DocumentPreviewPanelProps = {
   title: string;
 };
 
-function isPreviewableInBrowser(fileName: string): boolean {
-  const lower = fileName.toLowerCase();
-  return (
-    lower.endsWith(".pdf") ||
-    lower.endsWith(".png") ||
-    lower.endsWith(".jpg") ||
-    lower.endsWith(".jpeg") ||
-    lower.endsWith(".gif") ||
-    lower.endsWith(".webp") ||
-    lower.endsWith(".txt")
-  );
-}
+const KIND_LABELS: Record<FilePreviewKind, string> = {
+  pdf: "PDF",
+  image: "Image",
+  office: "Office document",
+  text: "Text",
+  unsupported: "File",
+};
 
 /**
- * In-app file preview using a signed view URL (local disk or S3).
+ * In-app document preview panel (document detail page). Delegates the
+ * rendering to the shared File Handler preview: PDF inline, images,
+ * Office Online embed, plain-text inline, download fallback otherwise.
+ * The signed view URL comes from the File Handler API (org-bucket gated).
  */
 export function DocumentPreviewPanel({
   storageInfo,
   title,
 }: DocumentPreviewPanelProps) {
-  const [url, setUrl] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      if (!storageInfo?.Bucket || !storageInfo.Key) {
-        setUrl(null);
-        setError("File metadata missing for this document.");
-        return;
-      }
-
-      setLoading(true);
-      setError(null);
-      setUrl(null);
-
-      try {
-        const view = await createViewUrl({
-          bucket: storageInfo.Bucket,
-          key: storageInfo.Key,
-          fileName: storageInfo.Name,
-        });
-        if (cancelled) return;
-
-        if (view.url.startsWith("memory://")) {
-          setError(
-            "No stored file bytes yet. Enable FILES_PROVIDER=local (or S3) and upload or re-seed demo docs."
-          );
-          return;
-        }
-
-        setUrl(view.url);
-      } catch (err) {
-        if (cancelled) return;
-        const message =
-          err instanceof Error ? err.message : "Unable to load document preview";
-        setError(message);
-        notify.fromError(err, "Unable to load document preview");
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
-    };
-  }, [storageInfo?.Bucket, storageInfo?.Key, storageInfo?.Name]);
-
+  const [expanded, setExpanded] = useState(false);
   const fileName = storageInfo?.Name || title;
-  const canEmbed = url ? isPreviewableInBrowser(fileName) : false;
+  const hasFile = Boolean(storageInfo?.Bucket && storageInfo.Key);
+  const kind = getFilePreviewKind(fileName);
+
+  const viewQuery = useFileViewUrlQuery(storageInfo, hasFile);
+  const downloadMutation = useDownloadFileMutation();
+  const viewUrl = viewQuery.data?.url;
+  const canOpenExternal = Boolean(viewUrl && !viewUrl.startsWith("memory://"));
+
+  function openExternal() {
+    if (!viewUrl) return;
+    window.open(viewUrl, "_blank", "noopener,noreferrer");
+  }
 
   return (
     <div className="flex min-h-[28rem] flex-col overflow-hidden rounded-md border border-border-subtle bg-card">
@@ -90,54 +56,71 @@ export function DocumentPreviewPanel({
         <div className="flex min-w-0 items-center gap-2">
           <FileText className="size-4 shrink-0 text-muted-foreground" />
           <p className="truncate text-[0.8125rem] font-medium">{fileName}</p>
+          <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[0.65rem] font-medium text-muted-foreground">
+            {KIND_LABELS[kind]}
+          </span>
         </div>
-        {url ? (
-          <Button type="button" size="sm" variant="outline" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer">
+
+        {hasFile && storageInfo ? (
+          <div className="flex shrink-0 items-center gap-1">
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-label="Open preview in a new tab"
+              title="Open in new tab"
+              disabled={!canOpenExternal}
+              onClick={openExternal}
+            >
               <ExternalLink className="size-3.5" />
-              Open in new tab
-            </a>
-          </Button>
-        ) : null}
-      </div>
-
-      <div className="relative flex min-h-0 flex-1 flex-col bg-muted/20">
-        {loading ? (
-          <div className="flex flex-1 items-center justify-center gap-2 p-8 text-[0.8125rem] text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading preview…
-          </div>
-        ) : null}
-
-        {!loading && error ? (
-          <div className="flex flex-1 items-center justify-center p-8 text-center text-[0.8125rem] text-muted-foreground">
-            {error}
-          </div>
-        ) : null}
-
-        {!loading && !error && url && canEmbed ? (
-          <iframe
-            title={`Preview of ${fileName}`}
-            src={url}
-            className="min-h-[32rem] w-full flex-1 border-0 bg-white"
-          />
-        ) : null}
-
-        {!loading && !error && url && !canEmbed ? (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
-            <p className="max-w-sm text-[0.8125rem] text-muted-foreground">
-              In-app preview is available for PDF and images. Open this file in
-              a new tab to download or view it.
-            </p>
-            <Button type="button" size="sm" asChild>
-              <a href={url} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="size-3.5" />
-                Open file
-              </a>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-label="Expand preview"
+              title="Expand preview"
+              onClick={() => setExpanded(true)}
+            >
+              <Expand className="size-3.5" />
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              aria-label="Download file"
+              title="Download"
+              disabled={downloadMutation.isPending}
+              onClick={() =>
+                downloadMutation.mutate(storageInfo, {
+                  onError: () =>
+                    notify.error("Could not download this file"),
+                })
+              }
+            >
+              <Download className="size-3.5" />
             </Button>
           </div>
         ) : null}
       </div>
+
+      <div className="relative flex min-h-0 flex-1 flex-col bg-muted/20">
+        {hasFile && storageInfo ? (
+          <FilePreview file={storageInfo} />
+        ) : (
+          <div className="flex flex-1 items-center justify-center p-8 text-center text-[0.8125rem] text-muted-foreground">
+            File metadata missing for this document.
+          </div>
+        )}
+      </div>
+
+      {storageInfo ? (
+        <FilePreviewModal
+          file={storageInfo}
+          open={expanded}
+          onOpenChange={setExpanded}
+        />
+      ) : null}
     </div>
   );
 }

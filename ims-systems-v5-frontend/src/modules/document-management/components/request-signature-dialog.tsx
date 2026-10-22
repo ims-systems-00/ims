@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Loader2, PenLine, Trash2 } from "lucide-react";
+import { lazy, Suspense, useMemo, useState } from "react";
+import { Loader2, PenLine, X } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -9,48 +9,61 @@ import {
   DialogTitle,
 } from "@/shared/components/ui/dialog";
 import { FormField } from "@/shared/components/form-field";
-import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { Textarea } from "@/shared/components/ui/textarea";
+import { ErrorBoundary } from "@/shared/components/error-boundary";
 import { notify } from "@/shared/lib/toast";
-import { cn } from "@/shared/lib/utils";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
-import { useDocumentSignaturesStore } from "../store/use-document-signatures-store";
-import type { DocumentTreeNode } from "../types";
+import type { DocumentTreeNode, SignatureLocation } from "../types";
+import {
+  useInviteSignaturesMutation,
+  usePreservedReviewersQuery,
+} from "../hooks/use-document-management";
 import { OwnerMultiSelect } from "./owner-multi-select";
+
+// Lazy: pdf.js is heavy and must never block (or break) the main bundle.
+const SignaturePlacementEditor = lazy(() =>
+  import("./signature-placement-editor").then((module) => ({
+    default: module.SignaturePlacementEditor,
+  }))
+);
 
 type RequestSignatureDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  repositoryId: string;
   node: DocumentTreeNode;
 };
 
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 /**
- * Demo request-signature flow (local persistence).
- * Full e-sign / PDF stamp backend is not in V5 yet.
+ * Request e-signatures (spec §10): internal users are notified in-app,
+ * external invitees receive a tokenised signing link by email. Signature
+ * locations are stamped onto the PDF when each invitee signs.
  */
 export function RequestSignatureDialog({
   open,
   onOpenChange,
+  repositoryId,
   node,
 }: RequestSignatureDialogProps) {
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
-  const allRequests = useDocumentSignaturesStore((state) => state.requests);
-  const addRequests = useDocumentSignaturesStore((state) => state.addRequests);
-  const markSigned = useDocumentSignaturesStore((state) => state.markSigned);
-  const removeRequest = useDocumentSignaturesStore(
-    (state) => state.removeRequest
-  );
-  const requests = useMemo(
-    () => allRequests.filter((row) => row.documentNodeId === node.id),
-    [allRequests, node.id]
+  const inviteMutation = useInviteSignaturesMutation(repositoryId);
+  const preservedQuery = usePreservedReviewersQuery(
+    repositoryId,
+    node.id,
+    open
   );
 
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
-  const [externalEmail, setExternalEmail] = useState("");
+  const [externalEmails, setExternalEmails] = useState<string[]>([]);
+  const [emailInput, setEmailInput] = useState("");
   const [message, setMessage] = useState("");
-  const [submitting, setSubmitting] = useState(false);
+  const [locations, setLocations] = useState<SignatureLocation[]>([
+    { page: 1, x: 0.1, y: 0.8 },
+  ]);
 
   const userOptions = useMemo(
     () =>
@@ -62,77 +75,87 @@ export function RequestSignatureDialog({
     [usersQuery.data]
   );
 
-  const userLabelById = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const option of userOptions) map[option.id] = option.label;
+  const userById = useMemo(() => {
+    const map = new Map(userOptions.map((option) => [option.id, option]));
     return map;
   }, [userOptions]);
 
+  function addExternalEmail() {
+    const email = emailInput.trim().toLowerCase();
+    if (!email) return;
+    if (!EMAIL_PATTERN.test(email)) {
+      notify.error("Enter a valid external email");
+      return;
+    }
+    setExternalEmails((prev) =>
+      prev.includes(email) ? prev : [...prev, email]
+    );
+    setEmailInput("");
+  }
+
   async function handleSend() {
-    const email = externalEmail.trim();
-    const invites: Array<{
-      inviteeType: "user" | "email";
-      userId?: string;
-      email?: string;
-      displayName: string;
-      message?: string;
-    }> = [];
-
-    for (const userId of selectedUserIds) {
-      invites.push({
-        inviteeType: "user",
-        userId,
-        displayName: userLabelById[userId] ?? userId,
-        message,
-      });
+    const pendingEmail = emailInput.trim().toLowerCase();
+    const externals = pendingEmail
+      ? [...new Set([...externalEmails, pendingEmail])]
+      : externalEmails;
+    if (pendingEmail && !EMAIL_PATTERN.test(pendingEmail)) {
+      notify.error("Enter a valid external email");
+      return;
     }
-
-    if (email) {
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        notify.error("Enter a valid external email");
-        return;
-      }
-      invites.push({
-        inviteeType: "email",
-        email,
-        displayName: email,
-        message,
-      });
+    if (selectedUserIds.length === 0 && externals.length === 0) {
+      notify.error("Select at least one user or add an external email");
+      return;
     }
-
-    if (invites.length === 0) {
-      notify.error("Select at least one user or enter an external email");
+    if (locations.length === 0) {
+      notify.error("Add at least one signature location");
       return;
     }
 
-    setSubmitting(true);
     try {
-      // Demo latency so the UI feels like a real invite call.
-      await new Promise((resolve) => window.setTimeout(resolve, 350));
-      addRequests(node.id, invites);
+      const created = await inviteMutation.mutateAsync({
+        nodeId: node.id,
+        body: {
+          internalUsers: selectedUserIds.map((userId) => ({
+            userId,
+            displayName: userById.get(userId)?.label ?? userId,
+            email: userById.get(userId)?.email,
+          })),
+          externalEmails: externals,
+          message: message.trim() || undefined,
+          signatureLocations: locations,
+        },
+      });
       notify.success(
-        invites.length === 1
+        created.length === 1
           ? "Signature request sent"
-          : `${invites.length} signature requests sent`
+          : `${created.length} signature requests sent`
       );
       setSelectedUserIds([]);
-      setExternalEmail("");
+      setExternalEmails([]);
+      setEmailInput("");
       setMessage("");
-    } finally {
-      setSubmitting(false);
+      onOpenChange(false);
+    } catch {
+      notify.error(
+        "Could not send signature requests. Only published documents can be sent for signature."
+      );
     }
   }
 
+  const preserved = preservedQuery.data ?? [];
+  const fileName =
+    node.documentData?.storageInfo?.Name ?? node.name ?? "";
+  const isPdf = /\.pdf$/i.test(fileName);
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
+      <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Request signature</DialogTitle>
           <DialogDescription>
-            Invite internal users or an external email to sign{" "}
+            Invite internal users or external emails to sign{" "}
             <span className="font-medium text-foreground">{node.name}</span>.
-            Demo mode stores requests locally until the full signature backend
-            is ready.
+            External invitees get a secure signing link by email.
           </DialogDescription>
         </DialogHeader>
 
@@ -148,15 +171,74 @@ export function RequestSignatureDialog({
             />
           </FormField>
 
-          <FormField label="External email" htmlFor="sig-email">
-            <Input
-              id="sig-email"
-              type="email"
-              placeholder="partner@example.com"
-              value={externalEmail}
-              onChange={(event) => setExternalEmail(event.target.value)}
-            />
+          <FormField label="External emails" htmlFor="sig-email">
+            <div className="flex gap-2">
+              <Input
+                id="sig-email"
+                type="email"
+                placeholder="partner@example.com"
+                value={emailInput}
+                onChange={(event) => setEmailInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") {
+                    event.preventDefault();
+                    addExternalEmail();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addExternalEmail}
+              >
+                Add
+              </Button>
+            </div>
           </FormField>
+
+          {externalEmails.length > 0 ? (
+            <ul className="flex flex-wrap gap-1.5">
+              {externalEmails.map((email) => (
+                <li
+                  key={email}
+                  className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs"
+                >
+                  {email}
+                  <button
+                    type="button"
+                    aria-label={`Remove ${email}`}
+                    className="text-muted-foreground hover:text-foreground"
+                    onClick={() =>
+                      setExternalEmails((prev) =>
+                        prev.filter((e) => e !== email)
+                      )
+                    }
+                  >
+                    <X className="size-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+
+          {preserved.length > 0 ? (
+            <div className="space-y-1.5">
+              <p className="text-[0.75rem] font-medium text-muted-foreground">
+                Previously invited on this document
+              </p>
+              <ul className="flex flex-wrap gap-1.5">
+                {preserved.map((reviewer) => (
+                  <li
+                    key={`${reviewer.inviteeType}:${reviewer.userId ?? reviewer.email}`}
+                    className="rounded-full border border-border-subtle px-2.5 py-1 text-xs text-muted-foreground"
+                  >
+                    {reviewer.displayName}
+                    {reviewer.inviteeType === "email" ? " (external)" : ""}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <FormField label="Message (optional)" htmlFor="sig-message">
             <Textarea
@@ -168,86 +250,58 @@ export function RequestSignatureDialog({
             />
           </FormField>
 
-          <div className="space-y-2">
-            <p className="text-[0.75rem] font-medium uppercase tracking-[0.06em] text-muted-foreground">
-              Requests on this document
-            </p>
-            {requests.length === 0 ? (
-              <p className="rounded-md border border-dashed border-border-subtle px-3 py-4 text-[0.8125rem] text-muted-foreground">
-                No signature requests yet.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {requests.map((row) => (
-                  <li
-                    key={row.id}
-                    className={cn(
-                      "flex items-start justify-between gap-3 rounded-md border border-border-subtle px-3 py-2.5"
-                    )}
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <p className="truncate text-sm font-medium">
-                        {row.displayName}
-                      </p>
-                      <p className="text-[0.6875rem] text-muted-foreground">
-                        {row.inviteeType === "email"
-                          ? "External"
-                          : "Internal"}{" "}
-                        · {new Date(row.requestedAt).toLocaleString()}
-                      </p>
-                      <StatusBadge
-                        tone={row.status === "Signed" ? "success" : "warning"}
-                      >
-                        {row.status}
-                      </StatusBadge>
-                    </div>
-                    <div className="flex shrink-0 flex-col gap-1">
-                      {row.status === "Pending" ? (
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            markSigned(row.id);
-                            notify.success("Marked as signed (demo)");
-                          }}
-                        >
-                          <PenLine className="size-3.5" />
-                          Sign
-                        </Button>
-                      ) : null}
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="ghost"
-                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => removeRequest(row.id)}
-                      >
-                        <Trash2 className="size-3.5" />
-                      </Button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          <FormField label="Signature placement">
+            {/* Boundary is essential: if the lazy pdf.js chunk ever fails
+                to load, only this panel degrades — the dialog (and app)
+                must never blank. The default location stays usable. */}
+            <ErrorBoundary
+              resetKey={`${node.id}:${open}`}
+              fallback={
+                <div className="rounded-md border border-amber-300/60 bg-amber-50 px-3 py-2.5 text-[0.75rem] text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200">
+                  The visual placement editor could not be loaded. You can
+                  still send this request — the signature will be placed at
+                  the default position (first page, lower area).
+                </div>
+              }
+            >
+              <Suspense
+                fallback={
+                  <div className="flex items-center gap-2 rounded-md border border-border-subtle px-3 py-6 text-sm text-muted-foreground">
+                    <Loader2 className="size-4 animate-spin" />
+                    Loading placement editor…
+                  </div>
+                }
+              >
+                <SignaturePlacementEditor
+                  value={locations}
+                  onChange={setLocations}
+                  file={node.documentData?.storageInfo ?? null}
+                />
+              </Suspense>
+            </ErrorBoundary>
+          </FormField>
         </div>
 
         <DialogFooter>
           <Button
             type="button"
             variant="outline"
-            disabled={submitting}
+            disabled={inviteMutation.isPending}
             onClick={() => onOpenChange(false)}
           >
-            Close
+            Cancel
           </Button>
           <Button
             type="button"
-            disabled={submitting}
+            disabled={inviteMutation.isPending || !isPdf}
+            title={
+              !isPdf
+                ? "Signature requests are currently supported for PDF documents only"
+                : undefined
+            }
             onClick={() => void handleSend()}
           >
-            {submitting ? (
+            {inviteMutation.isPending ? (
               <Loader2 className="size-3.5 animate-spin" />
             ) : (
               <PenLine className="size-3.5" />

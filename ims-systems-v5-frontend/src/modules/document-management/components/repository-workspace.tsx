@@ -9,7 +9,6 @@ import {
   LayoutGrid,
   LayoutList,
   Loader2,
-  MoreHorizontal,
   RefreshCw,
   Trash2,
   Upload,
@@ -19,6 +18,10 @@ import { Link, useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
+import {
+  RowActionsMenu,
+  type RowActionItem,
+} from "@/shared/components/row-actions-menu";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
@@ -63,7 +66,6 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   const [versionMode, setVersionMode] = useState<"version" | "revision">(
     "version"
   );
-  const [menuNodeId, setMenuNodeId] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<DocumentTreeNode | null>(
     null
   );
@@ -153,13 +155,11 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
 
   function selectNode(node: DocumentTreeNode) {
     setSelectedId(node.id);
-    setMenuNodeId(null);
   }
 
   function openFolder(node: DocumentTreeNode) {
     setParentNodeId(node.id);
     setSelectedId(null);
-    setMenuNodeId(null);
   }
 
   if (repoQuery.isLoading) {
@@ -186,10 +186,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   }
 
   const repo = repoQuery.data;
-  const actionNode =
-    items.find((item) => item.id === menuNodeId) ??
-    (selectedId ? items.find((item) => item.id === selectedId) : null) ??
-    null;
+  const actionNode = selected;
 
   return (
     <div className="space-y-5">
@@ -370,10 +367,6 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                       <td className="px-3 py-2.5 text-right">
                         <NodeActions
                           node={node}
-                          open={menuNodeId === node.id}
-                          onOpenChange={(open) =>
-                            setMenuNodeId(open ? node.id : null)
-                          }
                           onSelect={() => selectNode(node)}
                           onDelete={() => setPendingDelete(node)}
                           onMove={() => {
@@ -454,10 +447,6 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                       <td className="px-3 py-2.5 text-right">
                         <NodeActions
                           node={node}
-                          open={menuNodeId === node.id}
-                          onOpenChange={(open) =>
-                            setMenuNodeId(open ? node.id : null)
-                          }
                           onSelect={() => selectNode(node)}
                           onDelete={() => setPendingDelete(node)}
                           onMove={() => {
@@ -703,8 +692,6 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
 
 function NodeActions({
   node,
-  open,
-  onOpenChange,
   onSelect,
   onDelete,
   onMove,
@@ -715,8 +702,6 @@ function NodeActions({
   onReject,
 }: {
   node: DocumentTreeNode;
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
   onSelect: () => void;
   onDelete: () => void;
   onMove: () => void;
@@ -726,67 +711,68 @@ function NodeActions({
   onApprove?: () => void;
   onReject?: () => void;
 }) {
-  return (
-    <div className="relative inline-flex justify-end">
-      <Button
-        type="button"
-        size="sm"
-        variant="ghost"
-        aria-label="More actions"
-        onClick={(event) => {
-          event.stopPropagation();
-          onSelect();
-          onOpenChange(!open);
-        }}
-      >
-        <MoreHorizontal className="size-3.5" />
-      </Button>
-      {open ? (
-        <div className="absolute right-0 top-full z-20 mt-1 min-w-[11rem] rounded-md border border-border-subtle bg-card py-1 shadow-md">
-          <ActionItem label="Details" onClick={onSelect} />
-          <ActionItem label="Move…" onClick={onMove} />
-          <ActionItem label="Change repository…" onClick={onChangeRepo} />
-          {node.type === "document" && node.status === "Published" && onNewVersion ? (
-            <ActionItem label="New version…" onClick={onNewVersion} />
-          ) : null}
-          {node.type === "document" && node.status === "Pending" && onRevise ? (
-            <ActionItem label="Revise file…" onClick={onRevise} />
-          ) : null}
-          {node.type === "document" && node.status === "Pending" && onApprove ? (
-            <ActionItem label="Approve" onClick={onApprove} />
-          ) : null}
-          {node.type === "document" && node.status === "Pending" && onReject ? (
-            <ActionItem label="Reject" onClick={onReject} />
-          ) : null}
-          <ActionItem label="Move to bin" onClick={onDelete} danger />
-        </div>
-      ) : null}
-    </div>
-  );
-}
+  // Portalled Radix menu (shared RowActionsMenu) — rendered outside the
+  // table's overflow container, so it is never clipped by table height,
+  // and it flips above the trigger near the bottom of the viewport.
+  const actions: RowActionItem[] = [
+    { id: "details", label: "Details", onSelect },
+    { id: "move", label: "Move…", onSelect: onMove },
+    {
+      id: "change-repository",
+      label: "Change repository…",
+      onSelect: onChangeRepo,
+    },
+    ...(node.type === "document" && node.status === "Published" && onNewVersion
+      ? [
+          {
+            id: "new-version",
+            label: "New version…",
+            onSelect: onNewVersion,
+          } satisfies RowActionItem,
+        ]
+      : []),
+    ...(node.type === "document" && node.status === "Pending" && onRevise
+      ? [
+          {
+            id: "revise",
+            label: "Revise file…",
+            onSelect: onRevise,
+          } satisfies RowActionItem,
+        ]
+      : []),
+    ...(node.type === "document" && node.status === "Pending" && onApprove
+      ? [
+          {
+            id: "approve",
+            label: "Approve",
+            onSelect: onApprove,
+          } satisfies RowActionItem,
+        ]
+      : []),
+    ...(node.type === "document" && node.status === "Pending" && onReject
+      ? [
+          {
+            id: "reject",
+            label: "Reject",
+            onSelect: onReject,
+          } satisfies RowActionItem,
+        ]
+      : []),
+    {
+      id: "delete",
+      label: "Move to bin",
+      variant: "destructive",
+      onSelect: onDelete,
+    },
+  ];
 
-function ActionItem({
-  label,
-  onClick,
-  danger,
-}: {
-  label: string;
-  onClick: () => void;
-  danger?: boolean;
-}) {
   return (
-    <button
-      type="button"
-      className={cn(
-        "block w-full px-3 py-1.5 text-left text-[0.8125rem] hover:bg-muted/50",
-        danger && "text-destructive"
-      )}
-      onClick={(event) => {
-        event.stopPropagation();
-        onClick();
-      }}
+    <div
+      className="inline-flex justify-end"
+      // Keep the row highlighted while its menu is being used.
+      onPointerDownCapture={onSelect}
     >
-      {label}
-    </button>
+      <RowActionsMenu actions={actions} label={`Actions for ${node.name}`} />
+    </div>
   );
 }

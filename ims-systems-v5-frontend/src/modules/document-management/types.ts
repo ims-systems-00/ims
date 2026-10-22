@@ -205,3 +205,84 @@ export type ListRepoNodesParams = {
 };
 
 export type DocumentsTabId = "overview" | "repositories" | "recycle";
+
+export type CrossOrgCopySource = {
+  organizationId: string;
+  repositories: Array<{ id: string; name: string; reference: string }>;
+};
+
+// ---------------------------------------------------------------------------
+// Share by email + electronic signatures
+// ---------------------------------------------------------------------------
+
+export type ShareDocumentResult = {
+  sharedWith: string[];
+  expiresAt: string;
+};
+
+export const SIGNATURE_STATUSES = ["Pending", "Reviewed", "Signed"] as const;
+export type SignatureStatus = (typeof SIGNATURE_STATUSES)[number];
+
+export type SignatureLocation = {
+  /** 1-based page number. */
+  page: number;
+  /** Relative X (0..1) from the left edge of the page. */
+  x: number;
+  /** Relative Y (0..1) from the top edge of the page. */
+  y: number;
+};
+
+export type DocumentSignature = {
+  id: string;
+  organizationId: string;
+  repositoryId: string;
+  documentNodeId: string;
+  inviteeType: "user" | "email";
+  userId?: string;
+  email?: string;
+  displayName: string;
+  message: string;
+  status: SignatureStatus;
+  signatureLocations: SignatureLocation[];
+  signatureName?: string;
+  signatureFont?: string;
+  jobTitle?: string;
+  organisation?: string;
+  signedCopy?: DocumentFileMeta;
+  lastOpenedAt: string | null;
+  signedAt: string | null;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type InviteSignaturesInput = {
+  internalUsers?: Array<{
+    userId: string;
+    displayName: string;
+    email?: string;
+  }>;
+  externalEmails?: string[];
+  message?: string;
+  signatureLocations: SignatureLocation[];
+};
+
+export type SignDocumentInput = {
+  name: string;
+  font?: string;
+  jobTitle?: string;
+  organisation?: string;
+};
+
+export type PreservedReviewer = {
+  inviteeType: "user" | "email";
+  userId?: string;
+  email?: string;
+  displayName: string;
+};
+
+export type PublicSignatureContext = {
+  signature: DocumentSignature;
+  documentName: string;
+  repositoryId: string;
+};

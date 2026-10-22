@@ -10,9 +10,17 @@ import type {
   PaginatedDocumentNodes,
   PaginatedDocumentRepositories,
   UpdateDocumentRepositoryInput,
+  CrossOrgCopySource,
   DocumentApplicableModule,
   DocumentPurpose,
   DocumentFileMeta,
+  DocumentSignature,
+  InviteSignaturesInput,
+  PreservedReviewer,
+  PublicSignatureContext,
+  ShareDocumentResult,
+  SignDocumentInput,
+  SignatureStatus,
 } from "../types";
 
 function toQuery(
@@ -126,6 +134,15 @@ export function getRepoNode(
 ): Promise<DocumentTreeNode> {
   return apiRequest<DocumentTreeNode>(
     `/document-repositories/${repositoryId}/nodes/${nodeId}`
+  );
+}
+
+export function getNodeVersions(
+  repositoryId: string,
+  nodeId: string
+): Promise<DocumentTreeNode[]> {
+  return apiRequest<DocumentTreeNode[]>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/versions`
   );
 }
 
@@ -302,14 +319,21 @@ export function changeNodeRepository(
 
 export function copyFolderStructure(
   repositoryId: string,
-  sourceRepoId: string
+  sourceRepoId: string,
+  sourceOrgId?: string
 ): Promise<{ copied: true }> {
   return apiRequest<{ copied: true }>(
     `/document-repositories/${repositoryId}/copy-folder-structure`,
     {
       method: "POST",
-      body: { sourceRepoId },
+      body: { sourceRepoId, sourceOrgId },
     }
+  );
+}
+
+export function listCrossOrgCopySources(): Promise<CrossOrgCopySource[]> {
+  return apiRequest<CrossOrgCopySource[]>(
+    "/document-repositories/cross-org-copy-sources"
   );
 }
 
@@ -325,6 +349,107 @@ export function decideNodeAuthorisation(
       method: "PUT",
       body,
     }
+  );
+}
+
+export function shareDocument(
+  repositoryId: string,
+  nodeId: string,
+  body: { emails: string[]; message?: string }
+): Promise<ShareDocumentResult> {
+  return apiRequest<ShareDocumentResult>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/share`,
+    { method: "POST", body }
+  );
+}
+
+export function inviteSignatures(
+  repositoryId: string,
+  nodeId: string,
+  body: InviteSignaturesInput
+): Promise<DocumentSignature[]> {
+  return apiRequest<DocumentSignature[]>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/signatures`,
+    { method: "POST", body }
+  );
+}
+
+export function listSignatures(
+  repositoryId: string,
+  nodeId: string
+): Promise<DocumentSignature[]> {
+  return apiRequest<DocumentSignature[]>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/signatures`
+  );
+}
+
+export function resendSignature(
+  repositoryId: string,
+  nodeId: string,
+  signatureId: string
+): Promise<DocumentSignature> {
+  return apiRequest<DocumentSignature>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/signatures/${signatureId}/resend`,
+    { method: "POST" }
+  );
+}
+
+export function removeSignature(
+  repositoryId: string,
+  nodeId: string,
+  signatureId: string
+): Promise<{ id: string; deleted: true }> {
+  return apiRequest<{ id: string; deleted: true }>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/signatures/${signatureId}`,
+    { method: "DELETE" }
+  );
+}
+
+export function listPreservedReviewers(
+  repositoryId: string,
+  nodeId: string
+): Promise<PreservedReviewer[]> {
+  return apiRequest<PreservedReviewer[]>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/preserved-reviewers`
+  );
+}
+
+export function signDocument(
+  repositoryId: string,
+  nodeId: string,
+  signatureId: string,
+  body: SignDocumentInput
+): Promise<DocumentSignature> {
+  return apiRequest<DocumentSignature>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/signatures/${signatureId}/sign`,
+    { method: "PUT", body }
+  );
+}
+
+export function listSignatureRequests(params: {
+  mine?: boolean;
+  status?: SignatureStatus;
+}): Promise<DocumentSignature[]> {
+  return apiRequest<DocumentSignature[]>(
+    `/document-signatures/requests${toQuery(params)}`
+  );
+}
+
+export function getPublicSignature(
+  token: string
+): Promise<PublicSignatureContext> {
+  return apiRequest<PublicSignatureContext>(
+    `/document-signatures/public/${token}`
+  );
+}
+
+export function signDocumentPublic(
+  token: string,
+  body: SignDocumentInput
+): Promise<DocumentSignature> {
+  return apiRequest<DocumentSignature>(
+    `/document-signatures/public/${token}/sign`,
+    { method: "PUT", body }
   );
 }
 

@@ -1,34 +1,33 @@
 import { useMemo, useState } from "react";
-import {
-  ArrowLeft,
-  History,
-  Loader2,
-  ListTree,
-  MessageSquareText,
-  PenLine,
-} from "lucide-react";
+import { ArrowLeft, Loader2, Share2 } from "lucide-react";
 import { Link, useParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { PageHeader } from "@/shared/layout";
 import { cn } from "@/shared/lib/utils";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
-import { DocumentDemoTabPanel } from "../components/document-demo-tab-panel";
 import { DocumentInfoPanel } from "../components/document-info-panel";
 import { DocumentPreviewPanel } from "../components/document-preview-panel";
+import { DocumentVersionsPanel } from "../components/document-versions-panel";
+import { DocumentAuditTrailPanel } from "../components/document-audit-trail-panel";
+import { ActivityTimeline } from "@/modules/activities";
 import { DocumentUpdateDialog } from "../components/document-update-dialog";
 import { NewVersionSheet } from "../components/new-version-sheet";
 import { RequestSignatureDialog } from "../components/request-signature-dialog";
+import { ShareDocumentDialog } from "../components/share-document-dialog";
+import { DocumentSignaturesPanel } from "../components/document-signatures-panel";
+import { SignedDocumentPanel } from "../components/signed-document-panel";
 import {
   useDocumentRepositoryQuery,
   useRepoNodeQuery,
+  useSignaturesQuery,
 } from "../hooks/use-document-management";
-import { useDocumentSignaturesStore } from "../store/use-document-signatures-store";
 
 type DocumentTabId =
   | "overview"
   | "new-version"
   | "request-signature"
+  | "signed"
   | "activities"
   | "versions"
   | "update"
@@ -38,6 +37,7 @@ const TABS: Array<{ id: DocumentTabId; label: string }> = [
   { id: "overview", label: "Overview" },
   { id: "new-version", label: "Add new version" },
   { id: "request-signature", label: "Request signature" },
+  { id: "signed", label: "Signed document" },
   { id: "activities", label: "Activities" },
   { id: "versions", label: "Versions" },
   { id: "update", label: "Update" },
@@ -48,30 +48,26 @@ const TABS: Array<{ id: DocumentTabId; label: string }> = [
  * Individual document page — preview, metadata, and action tabs.
  */
 export function DocumentDetailPage() {
-  const { repositoryId, nodeId } = useParams<{
-    repositoryId: string;
-    nodeId: string;
-  }>();
+  const params = useParams<{ id: string; nodeId: string }>();
+  const repositoryId = params.id;
+  const nodeId = params.nodeId;
 
   const [tab, setTab] = useState<DocumentTabId>("overview");
   const [updateOpen, setUpdateOpen] = useState(false);
   const [versionOpen, setVersionOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const repoQuery = useDocumentRepositoryQuery(repositoryId);
   const nodeQuery = useRepoNodeQuery(repositoryId, nodeId);
   const parentId = nodeQuery.data?.parentNodeId ?? undefined;
   const parentQuery = useRepoNodeQuery(repositoryId, parentId);
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
-  const allSignatureRequests = useDocumentSignaturesStore(
-    (state) => state.requests
-  );
-  const signatureCount = useMemo(
-    () =>
-      allSignatureRequests.filter((row) => row.documentNodeId === nodeId)
-        .length,
-    [allSignatureRequests, nodeId]
-  );
+  const signaturesQuery = useSignaturesQuery(repositoryId, nodeId);
+  const signatureCount = signaturesQuery.data?.length ?? 0;
+  const signedCopyCount = (signaturesQuery.data ?? []).filter(
+    (row) => row.status === "Signed" && row.signedCopy
+  ).length;
 
   const userNames = useMemo(() => {
     const map: Record<string, string> = {
@@ -178,12 +174,23 @@ export function DocumentDetailPage() {
         title={node.name}
         description={`${node.reference} · ${repoQuery.data.name}`}
         actions={
-          <Button type="button" variant="outline" size="sm" asChild>
-            <Link to={`/documents/repositories/${repositoryId}`}>
-              <ArrowLeft className="size-3.5" />
-              Back to repository
-            </Link>
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setShareOpen(true)}
+            >
+              <Share2 className="size-3.5" />
+              Share
+            </Button>
+            <Button type="button" variant="outline" size="sm" asChild>
+              <Link to={`/documents/repositories/${repositoryId}`}>
+                <ArrowLeft className="size-3.5" />
+                Back to repository
+              </Link>
+            </Button>
+          </div>
         }
       />
 
@@ -223,6 +230,11 @@ export function DocumentDetailPage() {
                   {signatureCount}
                 </span>
               ) : null}
+              {item.id === "signed" && signedCopyCount > 0 ? (
+                <span className="ml-1.5 rounded-full bg-success/15 px-1.5 py-0.5 text-[0.65rem] tabular-nums text-success">
+                  {signedCopyCount}
+                </span>
+              ) : null}
               {selected ? (
                 <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
               ) : null}
@@ -247,52 +259,37 @@ export function DocumentDetailPage() {
       ) : null}
 
       {tab === "activities" ? (
-        <DocumentDemoTabPanel
-          icon={<MessageSquareText className="size-4" />}
+        <ActivityTimeline
+          moduleType="documenttrees"
+          moduleId={nodeId}
           title="Activities"
-          description="Comments and timeline events for this document will appear here."
+          emptyTitle="No activities yet"
+          emptyDescription="Comments, authorisation, version and signature events for this document will appear here."
         />
       ) : null}
 
       {tab === "versions" ? (
-        <DocumentDemoTabPanel
-          icon={<ListTree className="size-4" />}
-          title="Versions"
-          description="A full version history browser will appear here."
+        <DocumentVersionsPanel
+          repositoryId={repositoryId}
+          nodeId={nodeId}
+          userNames={userNames}
         />
       ) : null}
 
       {tab === "audit-trail" ? (
-        <DocumentDemoTabPanel
-          icon={<History className="size-4" />}
-          title="Audit trail"
-          description="Immutable audit events for this document will appear here."
-        />
+        <DocumentAuditTrailPanel nodeId={nodeId} userNames={userNames} />
       ) : null}
 
       {tab === "request-signature" ? (
-        <div className="rounded-xl border border-border-subtle bg-card p-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold tracking-tight">
-                Signature requests
-              </h2>
-              <p className="text-[0.75rem] text-muted-foreground">
-                {signatureCount === 0
-                  ? "No requests yet — invite people to sign this document."
-                  : `${signatureCount} request${signatureCount === 1 ? "" : "s"} stored for demo.`}
-              </p>
-            </div>
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setSignatureOpen(true)}
-            >
-              <PenLine className="size-3.5" />
-              Request signature
-            </Button>
-          </div>
-        </div>
+        <DocumentSignaturesPanel
+          repositoryId={repositoryId}
+          node={node}
+          onRequestSignature={() => setSignatureOpen(true)}
+        />
+      ) : null}
+
+      {tab === "signed" ? (
+        <SignedDocumentPanel repositoryId={repositoryId} node={node} />
       ) : null}
 
       <NewVersionSheet
@@ -311,6 +308,13 @@ export function DocumentDetailPage() {
       <RequestSignatureDialog
         open={signatureOpen}
         onOpenChange={setSignatureOpen}
+        repositoryId={repositoryId}
+        node={node}
+      />
+      <ShareDocumentDialog
+        open={shareOpen}
+        onOpenChange={setShareOpen}
+        repositoryId={repositoryId}
         node={node}
       />
     </div>
