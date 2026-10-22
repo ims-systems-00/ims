@@ -132,6 +132,7 @@ import {
   createUsersModule,
 } from "../../../modules/users";
 import { createInvitationModule } from "../../../modules/invitations";
+import { createSearchModule } from "../../../modules/search";
 import { createListScopePorts } from "../../../security/list-scope/create-list-scope.adapter";
 import { createInvoiceModule } from "../../../modules/invoices";
 import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
@@ -378,6 +379,13 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
   });
   router.use("/invitations", invitations.router);
+
+  // F-07: global search (org-scoped, authorizer-checked per resource).
+  const search = createSearchModule({
+    authorizer: security.authorizer,
+    useScopedVisibility: config?.SECURITY_PROVIDER === "auth0-openfga",
+  });
+  router.use("/search", search.router);
 
   const notificationsUsers = createNotificationsUsersAdapter(users.service);
 
@@ -694,7 +702,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
             config,
             logger: logger ?? createLogger({ level: "silent", name: "automation" }),
             handler: async (job) => {
-              await automationRunner.runScan(job);
+              await automationRunner.runScan(
+                job as Parameters<typeof automationRunner.runScan>[0],
+              );
             },
           });
           q.startWorker();

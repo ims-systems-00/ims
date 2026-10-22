@@ -36,7 +36,7 @@ Status values: `todo` | `in_progress` | `blocked` | `done` | `n/a_stub_only`
 | --- | --- |
 | **Last updated** | 2026-10-22 (full re-audit of backend `src/app/routes/v1/index.ts` wiring + frontend stub scan) |
 | **P0 remaining** | None (U-01…U-03, O-01 done) |
-| **Ready for prod (auth0-openfga)** | **P0 clear; C-01/C-02 done** — P1 accepted org-wide lists; LIC-01 app done (preflight + smoke runbook written 2026-10-22; staging execution open). **2026-10-22 integrity bundle done:** A-01, FU-01, U-06, U-07, N-10. **2026-10-22 list scopes done:** L-01…L-10. Remaining from re-audit: LIC-01 smoke, F-07 (search). N-11 done 2026-10-22 (scan runner; auto-implement mapping is a product definition, catalogues carry no automation hints) |
+| **Ready for prod (auth0-openfga)** | **P0 clear; C-01/C-02 done** — P1 accepted org-wide lists; LIC-01 app done (preflight + smoke runbook written 2026-10-22; staging execution open). **2026-10-22 integrity bundle done:** A-01, FU-01, U-06, U-07, N-10. **2026-10-22 list scopes done:** L-01…L-10. Remaining from re-audit: LIC-01 staging smoke execution only (needs a staging deploy). All code items done 2026-10-22. |
 
 ---
 
@@ -223,7 +223,7 @@ Allowed when `VITE_SECURITY_PROVIDER=development-stub`. Must not be the auth0-op
 | F-02 | Document signature **localStorage demo** | ~~`use-document-signatures-store.ts`~~ (deleted) | `done` | 2026-10-22 — Real signatures API shipped: `document-signatures` routes, pdf-lib stamping, hashed access tokens, public signing page (`/documents/sign/:token`), signed-copy previews. localStorage demo store + demo tab deleted. |
 | F-03 | Document “demo tab” placeholders | ~~`document-demo-tab-panel.tsx`~~ (deleted) | `done` | 2026-10-22 — Replaced by real tabs: Versions, Signatures, Signed document, Audit trail (Activities), Share. |
 | F-06 | Account-menu **Change Password** | `shared/layout/user-menu.tsx` | `done` | 2026-10-22 — menu item opens a confirmation dialog and sends the Auth0 `dbconnections/change_password` email via the existing `requestPasswordReset` flow (same as forgot-password); disabled only in development-stub or when the session user has no email. |
-| F-07 | Navbar global search | `shared/layout/app-navbar.tsx` (disabled `SearchInput`, “Search (coming soon)”) | `todo` | Product scope — global search not built |
+| F-07 | Navbar global search | `src/modules/search` (BE) + `shared/layout/global-search.tsx` (FE) | `done` | 2026-10-22 — `GET /search?q=` aggregates risks/incidents/audits/suppliers/documents/customers/org-members, each resource only when the caller may read it; auth0 mode applies BU list scopes (documents/users org-level). Navbar input (Zustand store + TanStack Query, debounced dropdown) navigates to module lists. Searchable set chosen: risks, incidents, audits, suppliers, documents, customers, users. Tests: `search.service.test.ts` |
 | F-04 | Upload/sheets falling back to stub subject | e.g. `upload-document-sheet.tsx`, `new-version-sheet.tsx` | `done` | 2026-10-19 — owners/authorisers use `useSessionProfileUserId` / `useSessionSubjectId` (no hard-coded `DEV_STUB_IDENTITY`). |
 | F-05 | Repository workspace demo-seed labels / stub subject | `repository-workspace.tsx` | `done` | 2026-10-19 — authorisation decide uses session subject; demo-seed label kept only as display map for historical seed ids. |
 

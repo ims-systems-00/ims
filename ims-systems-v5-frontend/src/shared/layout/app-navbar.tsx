@@ -1,8 +1,8 @@
 import { Link } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
-import { SearchInput } from "@/shared/components/search-input";
 import { cn } from "@/shared/lib/utils";
+import { GlobalSearch } from "./global-search";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { NotificationBell } from "@/modules/notifications";
 import { OrganisationSwitcher } from "./organisation-switcher";
@@ -69,13 +69,7 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
       </nav>
 
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <SearchInput
-          disabled
-          placeholder="Search"
-          aria-label="Search (coming soon)"
-          containerClassName="hidden sm:block"
-          className="w-44 bg-surface-muted/50"
-        />
+        <GlobalSearch />
         <OrganisationSwitcher />
         <ThemeSelector />
         <NotificationBell />
