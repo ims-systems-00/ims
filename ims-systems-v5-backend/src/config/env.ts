@@ -94,6 +94,15 @@ const envSchema = z
     AUTH0_ROPG_CLIENT_ID: z.string().default(""),
     AUTH0_ROPG_CLIENT_SECRET: z.string().default(""),
 
+    /**
+     * Machine-to-Machine app authorized for the Auth0 Management API.
+     * Unlocks session revocation (N-13) and Auth0 Organization
+     * provisioning at Go Live (N-09). Optional until configured;
+     * preflight warns when absent under auth0-openfga.
+     */
+    AUTH0_MGMT_CLIENT_ID: z.string().default(""),
+    AUTH0_MGMT_CLIENT_SECRET: z.string().default(""),
+
     /** OpenFGA store (required when SECURITY_PROVIDER=auth0-openfga). */
     OPENFGA_API_URL: z.string().default(""),
     OPENFGA_STORE_ID: z.string().default(""),

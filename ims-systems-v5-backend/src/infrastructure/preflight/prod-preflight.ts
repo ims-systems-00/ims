@@ -87,6 +87,16 @@ export const evaluateProdConfig = (config: AppConfig): PreflightCheck[] => {
   );
 
   checks.push(
+    config.AUTH0_MGMT_CLIENT_ID && config.AUTH0_MGMT_CLIENT_SECRET
+      ? pass("security.auth0.mgmt", "security", "Auth0 Management API (M2M) configured — session revocation + Auth0 Organization provisioning active")
+      : warn(
+          "security.auth0.mgmt",
+          "security",
+          "AUTH0_MGMT_CLIENT_ID/SECRET empty — N-13 session revocation and N-09 Auth0 Organization provisioning will be inert",
+        ),
+  );
+
+  checks.push(
     config.OPENFGA_API_URL && config.OPENFGA_STORE_ID && config.OPENFGA_MODEL_ID
       ? pass("security.openfga.config", "security", `OpenFGA ${config.OPENFGA_API_URL} store/model configured`)
       : fail(
