@@ -68,7 +68,7 @@ describe("FilesService", () => {
 
     const result = await service.createViewUrl(DEV_STUB_IDENTITY, {
       bucket: "ims-test-private",
-      key: "abc-123.pdf",
+      key: "123e4567-e89b-12d3-a456-426614174000.pdf",
       fileName: "evidence.pdf",
     });
 
@@ -82,16 +82,96 @@ describe("FilesService", () => {
     const service = createFilesService({ storage, config: baseConfig });
 
     const result = await service.deleteFile(DEV_STUB_IDENTITY, {
-      key: "abc-123.pdf",
+      key: "123e4567-e89b-12d3-a456-426614174000.pdf",
     });
 
     expect(result).toEqual({
       Bucket: "ims-test-private",
-      Key: "abc-123.pdf",
+      Key: "123e4567-e89b-12d3-a456-426614174000.pdf",
     });
     expect(storage.deleted).toEqual([
-      { bucket: "ims-test-private", key: "abc-123.pdf" },
+      {
+        bucket: "ims-test-private",
+        key: "123e4567-e89b-12d3-a456-426614174000.pdf",
+      },
     ]);
+  });
+
+  it("binds content type and size into the signed upload", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({ storage, config: baseConfig });
+
+    await service.createUploadUrl(DEV_STUB_IDENTITY, {
+      fileName: "evidence.pdf",
+      path: "risks",
+      contentType: "application/pdf",
+      fileSize: 2048,
+    });
+
+    expect(storage.uploads[0]).toMatchObject({
+      bucket: "ims-test-private",
+      contentType: "application/pdf",
+      contentLength: 2048,
+    });
+  });
+
+  it("rejects uploads over the configured maximum size", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({
+      storage,
+      config: { ...baseConfig, maxUploadBytes: 1024 },
+    });
+
+    await expect(
+      service.createUploadUrl(DEV_STUB_IDENTITY, {
+        fileName: "big.zip",
+        fileSize: 2048,
+      })
+    ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
+  });
+
+  it("rejects view/delete for buckets outside the caller's organisation", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({ storage, config: baseConfig });
+    const key = "123e4567-e89b-12d3-a456-426614174000.pdf";
+
+    await expect(
+      service.createViewUrl(DEV_STUB_IDENTITY, {
+        bucket: "another-org-bucket",
+        key,
+      })
+    ).rejects.toMatchObject({ statusCode: 403, code: "FORBIDDEN" });
+    await expect(
+      service.deleteFile(DEV_STUB_IDENTITY, {
+        bucket: "another-org-bucket",
+        key,
+      })
+    ).rejects.toMatchObject({ statusCode: 403, code: "FORBIDDEN" });
+    expect(storage.deleted).toEqual([]);
+  });
+
+  it("rejects non-UUID storage keys (traversal / foreign keys)", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({ storage, config: baseConfig });
+
+    await expect(
+      service.deleteFile(DEV_STUB_IDENTITY, { key: "../../etc/passwd" })
+    ).rejects.toMatchObject({ statusCode: 400, code: "VALIDATION_ERROR" });
+  });
+
+  it("surfaces a clear error when the bucket does not exist", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    storage.assertBucketExists = async () => {
+      throw new Error("NoSuchBucket");
+    };
+    const service = createFilesService({ storage, config: baseConfig });
+
+    await expect(
+      service.createUploadUrl(DEV_STUB_IDENTITY, { fileName: "a.pdf" })
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "FILES_BUCKET_UNAVAILABLE",
+    });
   });
 
   it("uses org-scoped bucket in production", async () => {

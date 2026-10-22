@@ -68,19 +68,21 @@ export function createLocalFilesController(storage: LocalObjectStorageAdapter): 
 
   const getObject: RequestHandler = async (req, res, next) => {
     try {
-      const { bucket, key, downloadFileName } = storage.verifySignedRequest(
-        req.query as Record<string, unknown>,
-        "view"
-      );
+      const { bucket, key, downloadFileName, disposition } =
+        storage.verifySignedRequest(
+          req.query as Record<string, unknown>,
+          "view"
+        );
       const data = await storage.readObject({ bucket, key });
       const safeName = sanitizeDownloadName(downloadFileName);
       res.setHeader("Content-Type", contentTypeForKey(key));
-      if (safeName) {
-        res.setHeader(
-          "Content-Disposition",
-          `inline; filename="${safeName}"`
-        );
-      }
+      // Inline unless a download was explicitly requested.
+      res.setHeader(
+        "Content-Disposition",
+        safeName
+          ? `${disposition ?? "inline"}; filename="${safeName}"`
+          : (disposition ?? "inline")
+      );
       res.send(data);
     } catch (error) {
       if (error instanceof Error) {

@@ -44,7 +44,7 @@ describe("Files HTTP", () => {
     const response = await request(ctx!.app)
       .get("/api/v1/files/signed-url")
       .set("x-file-bucket", "ims-test-private")
-      .set("x-file-key", "abc-uuid.pdf")
+      .set("x-file-key", "123e4567-e89b-12d3-a456-426614174000.pdf")
       .set("x-file-name", "quarterly.pdf");
 
     expect(response.status).toBe(200);
@@ -56,14 +56,29 @@ describe("Files HTTP", () => {
   it("DELETE /api/v1/files removes the object key", async () => {
     const response = await request(ctx!.app)
       .delete("/api/v1/files")
-      .set("x-file-key", "abc-uuid.pdf");
+      .set("x-file-key", "123e4567-e89b-12d3-a456-426614174000.pdf");
 
     expect(response.status).toBe(200);
     expect(response.body.success).toBe(true);
     expect(response.body.data).toEqual({
       Bucket: "ims-test-private",
-      Key: "abc-uuid.pdf",
+      Key: "123e4567-e89b-12d3-a456-426614174000.pdf",
     });
+  });
+
+  it("rejects view URLs for another organisation's bucket", async () => {
+    const response = await request(ctx!.app)
+      .get("/api/v1/files/signed-url")
+      .set("x-file-bucket", "someone-elses-bucket")
+      .set("x-file-key", "123e4567-e89b-12d3-a456-426614174000.pdf");
+    expect(response.status).toBe(403);
+  });
+
+  it("rejects traversal-style file keys", async () => {
+    const response = await request(ctx!.app)
+      .delete("/api/v1/files")
+      .set("x-file-key", encodeURIComponent("../secret.pdf"));
+    expect(response.status).toBe(400);
   });
 
   it("rejects upload without x-file-key", async () => {

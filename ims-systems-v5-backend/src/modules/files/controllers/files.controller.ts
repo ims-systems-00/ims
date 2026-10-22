@@ -19,10 +19,14 @@ function header(req: { header: (name: string) => string | undefined }, name: str
 export function createFilesController(service: FilesService): FilesController {
   const getUploadUrl: RequestHandler = async (req, res, next) => {
     try {
+      const rawSize = header(req, "x-file-size").trim();
+      const fileSize = rawSize ? Number(rawSize) : undefined;
       const data = await service.createUploadUrl(req.identity, {
         fileName: header(req, "x-file-key"),
         path: header(req, "x-file-path") || undefined,
         publicBucket: header(req, "x-file-public") || undefined,
+        contentType: header(req, "x-file-content-type") || undefined,
+        fileSize,
       });
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
@@ -36,6 +40,10 @@ export function createFilesController(service: FilesService): FilesController {
         bucket: header(req, "x-file-bucket"),
         key: header(req, "x-file-key"),
         fileName: header(req, "x-file-name") || undefined,
+        disposition:
+          header(req, "x-file-disposition") === "attachment"
+            ? "attachment"
+            : "inline",
       });
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {

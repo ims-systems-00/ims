@@ -17,6 +17,10 @@ export type CreateUploadUrlInput = {
   path?: string;
   /** When true (or equals public bucket name), use the public bucket. */
   publicBucket?: string | boolean;
+  /** Browser-reported MIME type; bound into the signed PUT when present. */
+  contentType?: string;
+  /** Browser-reported byte size; validated and bound into the signed PUT. */
+  fileSize?: number;
 };
 
 export type CreateUploadUrlResult = {
@@ -29,6 +33,12 @@ export type CreateViewUrlInput = {
   bucket: string;
   key: string;
   fileName?: string;
+  /**
+   * How the browser should treat the file when the URL is opened.
+   * "inline" (default) renders in-app previews; "attachment" is only
+   * for explicit downloads.
+   */
+  disposition?: "inline" | "attachment";
 };
 
 export type CreateViewUrlResult = {

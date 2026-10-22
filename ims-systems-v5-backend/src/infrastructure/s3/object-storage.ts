@@ -1,6 +1,7 @@
 import {
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadBucketCommand,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -32,6 +33,38 @@ export function createS3Client(options: CreateS3ClientOptions): S3Client {
   });
 }
 
+const CONTENT_TYPES_BY_EXTENSION: Record<string, string> = {
+  pdf: "application/pdf",
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  txt: "text/plain; charset=utf-8",
+  md: "text/plain; charset=utf-8",
+  log: "text/plain; charset=utf-8",
+  json: "application/json",
+  csv: "text/csv",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+};
+
+/**
+ * MIME type inferred from the storage key extension. Stored objects are
+ * not guaranteed to carry a useful Content-Type (e.g. octet-stream
+ * uploads), and browsers will download PDFs/images served without one
+ * even when the disposition is inline.
+ */
+function contentTypeForKey(key: string): string | undefined {
+  const ext = key.split(".").pop()?.toLowerCase() ?? "";
+  return CONTENT_TYPES_BY_EXTENSION[ext];
+}
+
 /**
  * AWS S3 adapter for File Handler signed URLs + delete.
  */
@@ -42,12 +75,20 @@ export function createS3ObjectStorageAdapter(options: {
   const { client, logger } = options;
 
   return {
+    async assertBucketExists(input) {
+      await client.send(new HeadBucketCommand({ Bucket: input.bucket }));
+    },
+
     async createUploadUrl(input) {
       const url = await getSignedUrl(
         client,
         new PutObjectCommand({
           Bucket: input.bucket,
           Key: input.key,
+          ...(input.contentType ? { ContentType: input.contentType } : {}),
+          ...(input.contentLength !== undefined
+            ? { ContentLength: input.contentLength }
+            : {}),
         }),
         { expiresIn: input.expiresInSeconds }
       );
@@ -59,15 +100,21 @@ export function createS3ObjectStorageAdapter(options: {
     },
 
     async createViewUrl(input) {
+      const disposition = input.disposition ?? "inline";
+      const fileName = input.downloadFileName?.replace(/"/g, "");
+      const contentType = contentTypeForKey(input.key);
       const url = await getSignedUrl(
         client,
         new GetObjectCommand({
           Bucket: input.bucket,
           Key: input.key,
-          ...(input.downloadFileName
-            ? {
-                ResponseContentDisposition: `attachment; filename="${input.downloadFileName.replace(/"/g, "")}"`,
-              }
+          // Inline by default: an "attachment" disposition makes the
+          // browser download instead of rendering previews (PDF iframe).
+          ResponseContentDisposition: fileName
+            ? `${disposition}; filename="${fileName}"`
+            : disposition,
+          ...(contentType
+            ? { ResponseContentType: contentType }
             : {}),
         }),
         { expiresIn: input.expiresInSeconds }
