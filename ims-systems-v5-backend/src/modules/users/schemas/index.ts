@@ -74,6 +74,7 @@ export const profileImageBodySchema = z.object({
   url: z.string().trim().url("Valid image URL is required"),
   fileName: z.string().trim().optional(),
   storageKey: z.string().trim().optional(),
+  bucket: z.string().trim().optional(),
 });
 
 export const signatureBodySchema = z

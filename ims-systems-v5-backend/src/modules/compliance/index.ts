@@ -18,6 +18,7 @@ export {
   createComplianceNotificationAdapter,
   createComplianceEvidenceLinkAdapter,
   createComplianceGoLiveProvisionAdapter,
+  createComplianceIamGrantAdapter,
   createOrganisationComplianceLicenceAdapter,
   createRiskComplianceLinkAdapter,
   createComplianceRiskMirrorAdapter,

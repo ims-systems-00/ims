@@ -12,6 +12,11 @@ export {
   AcceptAnyBusinessUnitAdapter,
   AcceptAnyCategoryAdapter,
 } from "./ports";
+export {
+  createAssetUserLookupAdapter,
+  createAssetBusinessUnitLookupAdapter,
+  createAssetCategoryLookupAdapter,
+} from "./adapters/lookups.adapter";
 export type {
   UserLookupPort,
   BusinessUnitLookupPort,

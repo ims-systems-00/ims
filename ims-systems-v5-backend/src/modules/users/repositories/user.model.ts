@@ -84,6 +84,7 @@ const userSchema = new Schema(
       },
       fileName: { type: String },
       storageKey: { type: String },
+      bucket: { type: String },
     },
     signatureInfo: {
       url: { type: String },

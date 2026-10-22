@@ -39,6 +39,8 @@ export type ProfileImage = {
   url: string;
   fileName?: string;
   storageKey?: string;
+  /** File Handler bucket for `storageKey`, so clients can mint fresh view URLs. */
+  bucket?: string;
 };
 
 export type SignatureInfo = {
@@ -159,6 +161,7 @@ export type UpdateProfileImageInput = {
   url: string;
   fileName?: string;
   storageKey?: string;
+  bucket?: string;
 };
 
 export type UpdateSignatureInput = {

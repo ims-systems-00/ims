@@ -34,3 +34,4 @@ export type {
   DashboardInitPort,
   InvitationPort,
 } from "./ports";
+export { createOrganisationGroupLicenceAdapter } from "./adapters/organisation-group-licence.adapter";

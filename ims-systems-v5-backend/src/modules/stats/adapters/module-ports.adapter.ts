@@ -19,6 +19,7 @@ import type { RiskService } from "../../risks";
 import type { SupplierService } from "../../suppliers";
 import type { UsersService } from "../../users";
 import type { ComplianceApplicationPort } from "../../compliance";
+import type { DocumentManagementApplicationPort } from "../../document-management";
 import type { StatsModulePorts } from "../ports";
 import {
   DevNoOrgTargetsAdapter,
@@ -38,12 +39,23 @@ export type StatsPortsFromModulesInput = {
   users: UsersService;
   customers: CustomerService;
   compliance?: ComplianceApplicationPort;
+  documents?: DocumentManagementApplicationPort;
 };
 
 export function createStatsPortsFromModules(
   input: StatsPortsFromModulesInput
 ): StatsModulePorts {
   return {
+    documents: {
+      async documentUtilisation(identity) {
+        if (!input.documents || !identity.organizationId) {
+          return { businessUnitIds: [], hasPublishedDocuments: false };
+        }
+        return input.documents.getDocumentUtilisation(
+          identity.organizationId
+        );
+      },
+    },
     risks: {
       stats: (identity) => input.risks.stats(identity),
       async listSample(identity, opts) {
