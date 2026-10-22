@@ -132,6 +132,9 @@ import {
 } from "../../../modules/users";
 import { createInvitationModule } from "../../../modules/invitations";
 import { createListScopePorts } from "../../../security/list-scope/create-list-scope.adapter";
+import { createInvoiceModule } from "../../../modules/invoices";
+import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
+import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
 import { createAuth0ManagementApiFromConfig } from "../../../security/auth0/auth0-management-api";
 import {
   createNotificationsModule,
@@ -377,6 +380,18 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     authorizer: security.authorizer,
     users: notificationsUsers,
   });
+
+  // CRM Invoices (spec: docs/module-specifications/invoice.md).
+  const invoices = createInvoiceModule({
+    authorizer: security.authorizer,
+    email,
+    notifications: createInvoiceNotificationAdapter(notifications.application),
+    issuerName: async (organizationId) => {
+      const org = await createOrganisationRepository().findById(organizationId);
+      return org?.name ?? "iMS Systems";
+    },
+  });
+  router.use("/invoices", invoices.router);
 
   const charts = createChartsModule({
     authorizer: security.authorizer,
