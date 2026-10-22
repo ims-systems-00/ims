@@ -1,8 +1,11 @@
+import { createHash } from "node:crypto";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import request from "supertest";
 import { createTestApp, type TestContext } from "./helpers/create-test-app";
 import {
+  getDocumentAccessTokenModel,
   getDocumentRepositoryModel,
+  getDocumentSignatureModel,
   getDocumentTreeModel,
 } from "../src/modules/document-management";
 import { DEV_STUB_IDENTITY, DEV_STUB_ORGANIZATION_ID } from "../src/security";
@@ -32,7 +35,25 @@ describe("Document Management HTTP", () => {
   beforeEach(async () => {
     await getDocumentTreeModel().deleteMany({});
     await getDocumentRepositoryModel().deleteMany({});
+    await getDocumentSignatureModel().deleteMany({});
+    await getDocumentAccessTokenModel().deleteMany({});
   });
+
+  async function createRepoWithDocument() {
+    const repo = await request(ctx!.app)
+      .post("/api/v1/document-repositories")
+      .send({
+        name: "Library",
+        privacy: "Organisational",
+        owners: [DEV_STUB_IDENTITY.subjectId],
+      });
+    const repoId = repo.body.data.id as string;
+    const files = await request(ctx!.app)
+      .post(`/api/v1/document-repositories/${repoId}/file-nodes`)
+      .send({ data: [{ storageInfo: fileMeta, purpose: "Policy" }] });
+    const nodeId = files.body.data.created[0].id as string;
+    return { repoId, nodeId };
+  }
 
   it("creates a repository and lists it", async () => {
     const created = await request(ctx!.app)
@@ -195,6 +216,157 @@ describe("Document Management HTTP", () => {
     );
     expect(restored.status).toBe(200);
     expect(restored.body.data.deletedAt).toBeNull();
+  });
+
+  it("lists the version family for a document node", async () => {
+    const { repoId, nodeId } = await createRepoWithDocument();
+
+    const version = await request(ctx!.app)
+      .post(`/api/v1/document-repositories/${repoId}/nodes/${nodeId}/new-version`)
+      .send({
+        data: {
+          storageInfo: {
+            ...fileMeta,
+            Key: "uuid-policy-v2.pdf",
+            key: "uuid-policy-v2.pdf",
+          },
+        },
+      });
+    expect(version.status).toBe(201);
+
+    const versions = await request(ctx!.app).get(
+      `/api/v1/document-repositories/${repoId}/nodes/${nodeId}/versions`
+    );
+    expect(versions.status).toBe(200);
+    expect(versions.body.data).toHaveLength(2);
+    expect(
+      versions.body.data.map(
+        (row: { documentData?: { dvID?: number } }) => row.documentData?.dvID
+      )
+    ).toEqual([1, 2]);
+  });
+
+  it("shares by email with validation and resolves share tokens", async () => {
+    const { repoId, nodeId } = await createRepoWithDocument();
+
+    const invalid = await request(ctx!.app)
+      .post(`/api/v1/document-repositories/${repoId}/nodes/${nodeId}/share`)
+      .send({ emails: ["not-an-email"] });
+    expect(invalid.status).toBe(400);
+
+    const shared = await request(ctx!.app)
+      .post(`/api/v1/document-repositories/${repoId}/nodes/${nodeId}/share`)
+      .send({ emails: ["Partner@Example.com"], message: "Please review" });
+    expect(shared.status).toBe(200);
+    expect(shared.body.data.sharedWith).toEqual(["partner@example.com"]);
+
+    const unknown = await request(ctx!.app).get(
+      `/api/v1/document-shares/${"a".repeat(64)}`
+    );
+    expect(unknown.status).toBe(404);
+
+    // Seed a share token directly (only its hash is stored).
+    const rawToken = "b".repeat(64);
+    await getDocumentAccessTokenModel().create({
+      organizationId: DEV_STUB_ORGANIZATION_ID,
+      documentNodeId: nodeId,
+      purpose: "share",
+      tokenHash: createHash("sha256").update(rawToken).digest("hex"),
+      recipientEmail: "partner@example.com",
+      createdBy: DEV_STUB_IDENTITY.subjectId,
+      expiresAt: new Date(Date.now() + 60_000),
+      invalidatedAt: null,
+      lastUsedAt: null,
+    });
+
+    const resolved = await request(ctx!.app).get(
+      `/api/v1/document-shares/${rawToken}`
+    );
+    expect(resolved.status).toBe(302);
+    expect(resolved.headers.location).toContain("memory://");
+  });
+
+  it("runs the signature invite → list → resend → remove flow", async () => {
+    const { repoId, nodeId } = await createRepoWithDocument();
+
+    const invited = await request(ctx!.app)
+      .post(`/api/v1/document-repositories/${repoId}/nodes/${nodeId}/signatures`)
+      .send({
+        internalUsers: [
+          {
+            userId: DEV_STUB_IDENTITY.subjectId,
+            displayName: "Dev Stub",
+            email: "dev@example.com",
+          },
+        ],
+        externalEmails: ["external@example.com"],
+        message: "Please sign",
+        signatureLocations: [{ page: 1, x: 0.1, y: 0.8 }],
+      });
+    expect(invited.status).toBe(201);
+    expect(invited.body.data).toHaveLength(2);
+
+    const listed = await request(ctx!.app).get(
+      `/api/v1/document-repositories/${repoId}/nodes/${nodeId}/signatures`
+    );
+    expect(listed.status).toBe(200);
+    expect(listed.body.data).toHaveLength(2);
+    expect(
+      listed.body.data.every(
+        (row: { status: string }) => row.status === "Pending"
+      )
+    ).toBe(true);
+
+    // Conformance is tracked (0 of 2 signed) rather than hidden (-1).
+    const node = await request(ctx!.app).get(
+      `/api/v1/document-repositories/${repoId}/nodes/${nodeId}`
+    );
+    expect(node.body.data.documentData.conformance).toBe(0);
+
+    const external = listed.body.data.find(
+      (row: { inviteeType: string }) => row.inviteeType === "email"
+    );
+    const resent = await request(ctx!.app).post(
+      `/api/v1/document-repositories/${repoId}/nodes/${nodeId}/signatures/${external.id}/resend`
+    );
+    expect(resent.status).toBe(200);
+
+    const removed = await request(ctx!.app).delete(
+      `/api/v1/document-repositories/${repoId}/nodes/${nodeId}/signatures/${external.id}`
+    );
+    expect(removed.status).toBe(200);
+
+    const afterRemove = await request(ctx!.app).get(
+      `/api/v1/document-repositories/${repoId}/nodes/${nodeId}/signatures`
+    );
+    expect(afterRemove.body.data).toHaveLength(1);
+
+    const requests = await request(ctx!.app).get(
+      "/api/v1/document-signatures/requests?mine=true"
+    );
+    expect(requests.status).toBe(200);
+    expect(requests.body.data).toHaveLength(1);
+
+    const publicUnknown = await request(ctx!.app).get(
+      `/api/v1/document-signatures/public/${"c".repeat(64)}`
+    );
+    expect(publicUnknown.status).toBe(404);
+  });
+
+  it("forbids cross-org copy sources for non-Super-Admins", async () => {
+    const sources = await request(ctx!.app).get(
+      "/api/v1/document-repositories/cross-org-copy-sources"
+    );
+    expect(sources.status).toBe(403);
+
+    const { repoId } = await createRepoWithDocument();
+    const copy = await request(ctx!.app)
+      .post(`/api/v1/document-repositories/${repoId}/copy-folder-structure`)
+      .send({
+        sourceRepoId: repoId,
+        sourceOrgId: "64a000000000000000000001",
+      });
+    expect(copy.status).toBe(403);
   });
 
   it("skips duplicate file names at the same location", async () => {

@@ -276,6 +276,45 @@ export function createDocumentTreeStore() {
       };
     },
 
+    /** All versions in a document family (same threadId), oldest first. */
+    async listByThread(
+      organizationId: string,
+      threadId: string
+    ): Promise<DocumentTreeNode[]> {
+      if (!threadId) return [];
+      const docs = await Model.find({
+        organizationId,
+        type: "document",
+        "documentData.threadId": threadId,
+      })
+        .sort({ "documentData.dvID": 1, createdOn: 1 })
+        .lean();
+      return docs.map((doc) => toDomain(doc as DocumentTreeDocument));
+    },
+
+    async updateDocumentData(
+      organizationId: string,
+      id: string,
+      patch: Partial<{
+        conformance: number;
+        reviewDate: Date | null;
+      }>
+    ): Promise<DocumentTreeNode | null> {
+      const set: Record<string, unknown> = {};
+      if (patch.conformance !== undefined) {
+        set["documentData.conformance"] = patch.conformance;
+      }
+      if (patch.reviewDate !== undefined) {
+        set["documentData.reviewDate"] = patch.reviewDate;
+      }
+      const doc = await Model.findOneAndUpdate(
+        { _id: id, organizationId, type: "document" },
+        { $set: set },
+        { new: true }
+      ).lean();
+      return doc ? toDomain(doc as DocumentTreeDocument) : null;
+    },
+
     async countSiblingNames(
       organizationId: string,
       repositoryId: string,

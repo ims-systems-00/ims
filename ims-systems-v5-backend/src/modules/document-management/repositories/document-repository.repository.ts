@@ -94,6 +94,16 @@ export function createDocumentRepositoryStore() {
       return doc ? toDomain(doc as DocumentRepositoryDocument) : null;
     },
 
+    /** All active repositories in an org (no privacy filter — internal use). */
+    async listAllActive(
+      organizationId: string
+    ): Promise<DocumentRepository[]> {
+      const docs = await Model.find({ organizationId, deletedAt: null })
+        .sort({ name: 1 })
+        .lean();
+      return docs.map((doc) => toDomain(doc as DocumentRepositoryDocument));
+    },
+
     async list(
       organizationId: string,
       query: ListDocumentRepositoriesQuery,

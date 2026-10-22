@@ -285,6 +285,20 @@ export type ChangeRepositoryInput = {
 
 export type CopyFolderStructureInput = {
   sourceRepoId: string;
+  /** Cross-org copy (Super Admin only): organisation that owns sourceRepoId. */
+  sourceOrgId?: string;
+};
+
+export type CrossOrgCopySource = {
+  organizationId: string;
+  repositories: Array<{ id: string; name: string; reference: string }>;
+};
+
+export type DocumentUtilisation = {
+  /** Business-unit ids that have at least one repository scoped to them. */
+  businessUnitIds: string[];
+  /** Whether the organisation has any published documents at all. */
+  hasPublishedDocuments: boolean;
 };
 
 export type DecideAuthorisationInput = {
@@ -311,6 +325,66 @@ export type ListPublishedDocumentsQuery = {
 export type NodePathItem = {
   nodeId: string;
   name: string;
+};
+
+export const SIGNATURE_STATUSES = ["Pending", "Reviewed", "Signed"] as const;
+export type SignatureStatus = (typeof SIGNATURE_STATUSES)[number];
+
+export type SignatureLocation = {
+  /** 1-based page number. */
+  page: number;
+  /** Relative X (0..1) from the left edge of the page. */
+  x: number;
+  /** Relative Y (0..1) from the top edge of the page. */
+  y: number;
+};
+
+export type SignatureSignedCopy = {
+  Name: string;
+  Key: string;
+  key: string;
+  Bucket: string;
+};
+
+export type DocumentSignature = {
+  id: string;
+  organizationId: string;
+  repositoryId: string;
+  documentNodeId: string;
+  inviteeType: "user" | "email";
+  userId?: string;
+  email?: string;
+  displayName: string;
+  message: string;
+  status: SignatureStatus;
+  signatureLocations: SignatureLocation[];
+  signatureName?: string;
+  signatureFont?: string;
+  jobTitle?: string;
+  organisation?: string;
+  signedCopy?: SignatureSignedCopy;
+  lastOpenedAt: Date | null;
+  signedAt: Date | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export type InviteSignaturesInput = {
+  internalUserIds?: string[];
+  internalUsers?: Array<{ userId: string; displayName: string; email?: string }>;
+  externalEmails?: string[];
+  message?: string;
+  signatureLocations: SignatureLocation[];
+};
+
+export type SignDocumentInput = {
+  name: string;
+  font?: string;
+  jobTitle?: string;
+  organisation?: string;
+  /** Required for external (token-based) signing. */
+  token?: string;
 };
 
 export const MAX_REPO_OWNERS = 3;

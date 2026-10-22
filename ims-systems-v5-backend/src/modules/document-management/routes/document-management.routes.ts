@@ -3,10 +3,13 @@ import type { Authorizer } from "../../../security";
 import { createDocumentManagementController } from "../controllers/document-management.controller";
 import {
   NoOpDocumentActivityAdapter,
+  NoOpDocumentEmailAdapter,
   NoOpDocumentFilesAdapter,
   NoOpDocumentNotificationAdapter,
   type DocumentActivityPort,
+  type DocumentEmailPort,
   type DocumentFilesPort,
+  type DocumentMembershipPort,
   type DocumentNotificationPort,
 } from "../ports";
 import { createDocumentRepositoryStore } from "../repositories/document-repository.repository";
@@ -26,6 +29,10 @@ export type DocumentManagementRouterDeps = {
   files?: DocumentFilesPort;
   activities?: DocumentActivityPort;
   notifications?: DocumentNotificationPort;
+  email?: DocumentEmailPort;
+  memberships?: DocumentMembershipPort;
+  /** Base URL for emailed access links (share / signature). */
+  accessLinkBaseUrl?: string;
 };
 
 /**
@@ -45,6 +52,8 @@ export function createDocumentManagementModule(
   managementRouter: Router;
   repositoriesRouter: Router;
   treesRouter: Router;
+  sharesRouter: Router;
+  signaturesRouter: Router;
 } {
   const repositories = createDocumentRepositoryStore();
   const trees = createDocumentTreeStore();
@@ -57,6 +66,9 @@ export function createDocumentManagementModule(
     files: deps.files ?? new NoOpDocumentFilesAdapter(),
     activities: deps.activities ?? new NoOpDocumentActivityAdapter(),
     notifications: notificationsPort,
+    email: deps.email ?? new NoOpDocumentEmailAdapter(),
+    memberships: deps.memberships,
+    accessLinkBaseUrl: deps.accessLinkBaseUrl,
   });
   const reviewReminders = createDocumentReviewReminderService({
     trees,
@@ -68,6 +80,11 @@ export function createDocumentManagementModule(
   managementRouter.get("/overview", controller.overview);
 
   const repositoriesRouter = Router();
+  // Static segment must be registered before "/:id".
+  repositoriesRouter.get(
+    "/cross-org-copy-sources",
+    controller.listCrossOrgCopySources
+  );
   repositoriesRouter.get("/", controller.listRepositories);
   repositoriesRouter.post("/", controller.createRepository);
   repositoriesRouter.get("/:id", controller.getRepository);
@@ -84,6 +101,10 @@ export function createDocumentManagementModule(
   repositoriesRouter.post("/:id/file-nodes", controller.createFiles);
   repositoriesRouter.get("/:id/nodes", controller.listNodes);
   repositoriesRouter.get("/:id/nodes/:nodeId", controller.getNode);
+  repositoriesRouter.get(
+    "/:id/nodes/:nodeId/versions",
+    controller.listNodeVersions
+  );
   repositoriesRouter.get("/:id/nodes/:nodeId/path", controller.getNodePath);
   repositoriesRouter.put(
     "/:id/folder-nodes/:nodeId",
@@ -117,6 +138,35 @@ export function createDocumentManagementModule(
   );
 
   repositoriesRouter.post(
+    "/:id/nodes/:nodeId/share",
+    controller.shareDocument
+  );
+  repositoriesRouter.post(
+    "/:id/nodes/:nodeId/signatures",
+    controller.inviteSignatures
+  );
+  repositoriesRouter.get(
+    "/:id/nodes/:nodeId/signatures",
+    controller.listSignatures
+  );
+  repositoriesRouter.get(
+    "/:id/nodes/:nodeId/preserved-reviewers",
+    controller.listPreservedReviewers
+  );
+  repositoriesRouter.post(
+    "/:id/nodes/:nodeId/signatures/:signatureId/resend",
+    controller.resendSignature
+  );
+  repositoriesRouter.delete(
+    "/:id/nodes/:nodeId/signatures/:signatureId",
+    controller.removeSignature
+  );
+  repositoriesRouter.put(
+    "/:id/nodes/:nodeId/signatures/:signatureId/sign",
+    controller.signDocument
+  );
+
+  repositoriesRouter.post(
     "/:id/nodes/:nodeId/authorisation",
     controller.addAuthoriser
   );
@@ -132,6 +182,16 @@ export function createDocumentManagementModule(
   const treesRouter = Router();
   treesRouter.get("/", controller.listPublished);
 
+  /** Public token-gated share links (no identity; token is the credential). */
+  const sharesRouter = Router();
+  sharesRouter.get("/:token", controller.resolveShare);
+
+  /** Signature requests list + public token-gated external signing. */
+  const signaturesRouter = Router();
+  signaturesRouter.get("/requests", controller.listSignatureRequests);
+  signaturesRouter.get("/public/:token", controller.getPublicSignature);
+  signaturesRouter.put("/public/:token/sign", controller.signDocumentPublic);
+
   return {
     service,
     application: {
@@ -139,10 +199,14 @@ export function createDocumentManagementModule(
         service.getPublishedDocumentForOrganization(organizationId, id),
       listPublished: (organizationId, query) =>
         service.listPublishedForOrganization(organizationId, query),
+      getDocumentUtilisation: (organizationId) =>
+        service.getDocumentUtilisation(organizationId),
     },
     reviewReminders,
     managementRouter,
     repositoriesRouter,
     treesRouter,
+    sharesRouter,
+    signaturesRouter,
   };
 }
