@@ -21,7 +21,13 @@ Use with [AUTH_ROLLOUT_TRACKER.md](./AUTH_ROLLOUT_TRACKER.md) and the phased run
 > buckets, list scopes, session revocation, invoice module). Local run of
 > `pnpm preflight:prod`: 14 pass / 3 warn / 2 fail — both FAILs are local-dev
 > config (`CLIENT_URL=http://localhost:3000`, `EMAIL_ENABLED=false`); all
-> connectivity probes green. **Execution on a real staging deploy is still
+> connectivity probes green. **Partial local smoke executed 2026-10-22**
+> against the local auth0-openfga stack: register 201 → org create 201
+> (bucket side effect logged) → org-scoped `/users` → foreign-org 403 →
+> `/search` 200 → CRM licence gate 403 → invoice route/service reachable
+> (details in DEV_STUB_PRODUCTION_CUTOVER.md, LIC-01). Stripe checkout,
+> email and Auth0-M2M steps were not executable locally.
+> **Full execution on a real staging deploy is still
 > pending user actions:** (1) deploy backend+frontend to staging with
 > `SECURITY_PROVIDER=auth0-openfga`, (2) create the Auth0 Management M2M app
 > and set `AUTH0_MGMT_CLIENT_ID/SECRET`, (3) `EMAIL_ENABLED=true` with a real
