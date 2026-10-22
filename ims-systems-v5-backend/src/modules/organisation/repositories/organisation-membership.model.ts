@@ -11,6 +11,8 @@ const organisationMembershipSchema = new Schema(
       required: true,
     },
     jobTitle: { type: String, default: "", trim: true },
+    /** Compliance toolkit names granted to this member (U-07/N-10). */
+    complianceToolkits: { type: [String], default: [] },
     createdOn: { type: Date, required: true },
   },
   { timestamps: true }

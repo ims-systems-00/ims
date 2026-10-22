@@ -34,6 +34,13 @@ export type OrganisationGoLiveSideEffectsPort = {
   }): Promise<GoLivePaymentSession | null>;
 
   /**
+   * Ensure the organisation's file-storage bucket exists (N-09).
+   * Best-effort: failures must be logged by the adapter, not thrown.
+   * Optional — adapters without file-storage concerns omit it.
+   */
+  ensureFileStorage?(input: { organizationId: string }): Promise<void>;
+
+  /**
    * Notify internal teams (invoice Go Live) and/or the activating user.
    */
   notifyGoLive(input: {
@@ -53,6 +60,10 @@ export type OrganisationGoLiveSideEffectsPort = {
 export class NoOpOrganisationGoLiveSideEffectsAdapter
   implements OrganisationGoLiveSideEffectsPort
 {
+  async ensureFileStorage(): Promise<void> {
+    return;
+  }
+
   async provisionComplianceToolkits(): Promise<void> {
     return;
   }

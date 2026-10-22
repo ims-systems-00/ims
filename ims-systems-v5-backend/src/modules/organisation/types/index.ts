@@ -108,6 +108,8 @@ export type Organisation = {
   documentReviewReminderOffsets: DocumentReviewReminderOffset[];
   referralSource: string | null;
   logoSrc: string | null;
+  /** File Handler location for the logo, so clients can mint fresh view URLs. */
+  logoStorage: OrganisationLogoStorage | null;
   /**
    * Auth0 Organization id (`org_…`). Optional until linked (auth rollout M2+).
    * Canonical tenant key remains `id` (IMS ObjectId / organizationId).
@@ -132,12 +134,25 @@ export type UpdateDocumentReviewRemindersInput = {
   documentReviewReminderOffsets: DocumentReviewReminderOffset[];
 };
 
+export type OrganisationLogoStorage = {
+  bucket: string;
+  key: string;
+  fileName?: string;
+};
+
+export type UpdateOrganisationLogoInput = {
+  logoSrc: string | null;
+  logoStorage?: OrganisationLogoStorage | null;
+};
+
 export type OrganisationMembership = {
   id: string;
   organizationId: string;
   userId: string;
   role: OrganisationRole;
   jobTitle: string;
+  /** Compliance toolkit names granted to this member (U-07/N-10). */
+  complianceToolkits: string[];
   createdOn: Date;
   createdAt: Date;
   updatedAt: Date;

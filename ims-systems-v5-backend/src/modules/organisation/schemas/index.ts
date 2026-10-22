@@ -81,6 +81,22 @@ export const requestOrganisationLicenceBodySchema = z
     "Request at least one licence seat, toolkit, or module"
   );
 
+export const updateOrganisationLogoBodySchema = z.object({
+  logoSrc: z
+    .union([z.string().trim().url().max(2000), z.null()])
+    .optional()
+    .default(null),
+  logoStorage: z
+    .object({
+      bucket: z.string().trim().min(1).max(255),
+      key: z.string().trim().min(1).max(1024),
+      fileName: z.string().trim().max(255).optional(),
+    })
+    .nullable()
+    .optional()
+    .default(null),
+});
+
 export const updateDocumentReviewRemindersBodySchema = z.object({
   documentReviewReminderOffsets: z
     .array(z.enum(DOCUMENT_REVIEW_REMINDER_OFFSETS))

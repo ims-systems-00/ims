@@ -4,6 +4,7 @@ import type {
   GoLiveOrganisationInput,
   Organisation,
   OrganisationLicences,
+  OrganisationLogoStorage,
   OrganisationPaymentStatus,
   OrganisationPaymentType,
 } from "../types";
@@ -130,6 +131,13 @@ function toDomain(doc: OrganisationDocument): Organisation {
     ),
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
+    logoStorage: doc.logoStorage?.bucket
+      ? {
+          bucket: doc.logoStorage.bucket,
+          key: doc.logoStorage.key,
+          fileName: doc.logoStorage.fileName ?? undefined,
+        }
+      : null,
     auth0OrganizationId: doc.auth0OrganizationId?.trim()
       ? doc.auth0OrganizationId.trim()
       : null,
@@ -424,6 +432,13 @@ export function createOrganisationRepository() {
       );
     },
 
+    async incrementGroupsUsed(id: string, by = 1): Promise<void> {
+      await Model.updateOne(
+        { _id: id },
+        { $inc: { "licences.groups.used": by } }
+      );
+    },
+
     /**
      * Upsert the fixed development-stub organisation document.
      * Used when GET /current runs before seed:demo has been executed.
@@ -500,6 +515,19 @@ export function createOrganisationRepository() {
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       ).lean();
       return toDomain(doc as OrganisationDocument);
+    },
+
+    async updateLogo(
+      id: string,
+      logoSrc: string | null,
+      logoStorage: OrganisationLogoStorage | null
+    ): Promise<Organisation | null> {
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { logoSrc, logoStorage } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
     async updateDocumentReviewReminders(

@@ -38,6 +38,7 @@ import {
   type OrganisationProfile,
   type RequestOrganisationLicenceInput,
   type UpdateDocumentReviewRemindersInput,
+  type UpdateOrganisationLogoInput,
 } from "../types";
 
 function requireIdentity(identity: SecurityIdentity | null | undefined): {
@@ -162,6 +163,15 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         });
       }
 
+      // N-09: provision the org's file bucket up-front (best-effort).
+      try {
+        await goLiveSideEffects.ensureFileStorage?.({
+          organizationId: organisation.id,
+        });
+      } catch {
+        // Adapters log; never fail org creation on storage provisioning.
+      }
+
       await organisations.incrementSuperUserUsed(organisation.id, 1);
       const refreshed = await organisations.findById(organisation.id);
 
@@ -242,6 +252,13 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         throw new ConflictError(
           "This organisation already has an iMS setup. If card payment is still pending, use Organisation → Licenses → Card payment."
         );
+      }
+
+      // N-09: ensure the org's file bucket exists (idempotent, best-effort).
+      try {
+        await goLiveSideEffects.ensureFileStorage?.({ organizationId });
+      } catch {
+        // Adapters log; never fail Go Live on storage provisioning.
       }
 
       const toolkitNames = input.complianceTools ?? [];
@@ -515,6 +532,33 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
       }
 
       return requireBilling().createBillingPortalSession(organizationId);
+    },
+
+    async updateLogo(
+      identity: SecurityIdentity | null | undefined,
+      input: UpdateOrganisationLogoInput
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+
+      const updated = await organisations.updateLogo(
+        authed.organizationId,
+        input.logoSrc ?? null,
+        input.logoStorage ?? null
+      );
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        updated.id
+      );
+      return { ...updated, membership };
     },
 
     async updateDocumentReviewReminders(

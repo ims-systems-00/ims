@@ -90,6 +90,14 @@ const organisationSchema = new Schema(
     },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },
+    logoStorage: {
+      type: {
+        bucket: { type: String, required: true },
+        key: { type: String, required: true },
+        fileName: { type: String },
+      },
+      default: null,
+    },
     /** Auth0 Organization id (`org_…`); omit until linked. */
     auth0OrganizationId: { type: String, default: null, trim: true },
     createdBy: { type: String, required: true },

@@ -5,6 +5,7 @@ import {
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
   updateDocumentReviewRemindersBodySchema,
+  updateOrganisationLogoBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
 
@@ -17,6 +18,7 @@ export type OrganisationController = {
   createCardPaymentSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
+  updateLogo: RequestHandler;
 };
 
 export function createOrganisationController(
@@ -95,6 +97,16 @@ export function createOrganisationController(
     }
   };
 
+  const updateLogo: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(updateOrganisationLogoBodySchema, req.body);
+      const data = await service.updateLogo(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const updateDocumentReviewReminders: RequestHandler = async (
     req,
     res,
@@ -124,5 +136,6 @@ export function createOrganisationController(
     createCardPaymentSession,
     createBillingPortalSession,
     updateDocumentReviewReminders,
+    updateLogo,
   };
 }
