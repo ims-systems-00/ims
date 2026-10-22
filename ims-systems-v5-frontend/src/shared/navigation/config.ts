@@ -20,6 +20,7 @@ import {
   MapPin,
   Network,
   Package,
+  PenLine,
   ShieldAlert,
   ShieldCheck,
   Tags,
@@ -226,9 +227,23 @@ export function buildNavigationSections(
       {
         id: "documents",
         label: "Documents",
-        href: "/documents",
         icon: FolderOpen,
-        requiredPermission: "document-management:read",
+        children: [
+          {
+            id: "documents-overview",
+            label: "Overview",
+            href: "/documents",
+            icon: FolderOpen,
+            requiredPermission: "document-management:read",
+          },
+          {
+            id: "documents-signatures",
+            label: "Signature requests",
+            href: "/documents/signatures",
+            icon: PenLine,
+            requiredPermission: "document-management:read",
+          },
+        ],
       },
       {
         id: "ofi",

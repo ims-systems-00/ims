@@ -88,18 +88,29 @@ describe("navigation utils", () => {
     expect(isNavBranchActive("/risks", organisation)).toBe(false);
   });
 
-  it("includes Documents as a top-level navigation item", () => {
+  it("includes Documents as a top-level navigation branch", () => {
     const documents = navigationSections[0]!.items.find(
       (item) => item.id === "documents"
     )!;
-    expect(documents.href).toBe("/documents");
-    expect(isNavItemActive("/documents", documents.href)).toBe(true);
+    const overview = documents.children?.find(
+      (item) => item.id === "documents-overview"
+    );
+    const signatures = documents.children?.find(
+      (item) => item.id === "documents-signatures"
+    );
+    expect(overview?.href).toBe("/documents");
+    expect(signatures?.href).toBe("/documents/signatures");
+    expect(isNavItemActive("/documents", overview?.href)).toBe(true);
     expect(
-      isNavItemActive("/documents/repositories/abc", documents.href)
+      isNavItemActive("/documents/repositories/abc", overview?.href)
     ).toBe(true);
-    expect(breadcrumbsForPath("/documents", navigationSections)).toEqual([
+    expect(isNavBranchActive("/documents/signatures", documents)).toBe(
+      true
+    );
+    expect(breadcrumbsForPath("/documents/signatures", navigationSections)).toEqual([
       { label: "Dashboard", href: "/" },
-      { label: "Documents", href: "/documents" },
+      { label: "Documents", href: undefined },
+      { label: "Signature requests", href: "/documents/signatures" },
     ]);
   });
 

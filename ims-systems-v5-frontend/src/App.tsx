@@ -23,8 +23,11 @@ import { KpiObjectivesPage } from "@/modules/kpi-objectives";
 import { TagsAndCategoriesPage } from "@/modules/tags-and-categories";
 import {
   DocumentDetailPage,
+  DocumentPurposePage,
   DocumentsPage,
+  PublicSignPage,
   RepositoryDetailPage,
+  SignatureRequestsPage,
 } from "@/modules/document-management";
 import { ComplianceToolkitPage } from "@/modules/compliance";
 import { OfisListPage } from "@/modules/ofi";
@@ -54,6 +57,7 @@ import {
 } from "@/modules/partnership";
 import { ReportBugPage } from "@/modules/report-bug";
 import { MyProfilePage, UsersListPage } from "@/modules/users";
+import { AcceptInvitationPage } from "@/modules/invitations";
 import { OnboardingShell } from "@/shared/layout";
 import { RequireAuth } from "@/security";
 
@@ -67,11 +71,19 @@ export function App() {
       <Route path="login" element={<LoginPage />} />
       <Route path="register" element={<RegisterPage />} />
       <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      {/* Public, token-gated external e-signing (no login). */}
+      <Route path="documents/sign/:token" element={<PublicSignPage />} />
 
       <Route element={<RequireAuth />}>
         <Route
           path="auth/preparation-screen"
           element={<PreparationScreenPage />}
+        />
+        {/* Emailed invitation acceptance: authenticated, but outside the
+            membership gate — invitees may have no membership yet. */}
+        <Route
+          path="auth/onboard/accept-invitation/:token"
+          element={<AcceptInvitationPage />}
         />
         <Route element={<PostLoginMembershipGate />}>
           <Route path="onboard" element={<OnboardingShell />}>
@@ -131,8 +143,20 @@ export function App() {
             />
             <Route path="documents" element={<DocumentsPage />} />
             <Route
+              path="documents/overview/:purpose"
+              element={<DocumentPurposePage />}
+            />
+            <Route
               path="documents/repositories/:id"
               element={<RepositoryDetailPage />}
+            />
+            <Route
+              path="documents/repositories/:id/nodes/:nodeId"
+              element={<DocumentDetailPage />}
+            />
+            <Route
+              path="documents/signatures"
+              element={<SignatureRequestsPage />}
             />
             <Route path="ofi" element={<OfisListPage />} />
             <Route
