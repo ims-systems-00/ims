@@ -7,3 +7,6 @@ coverage/
 *.log
 .DS_Store
 .local-files/
+
+# Local File Handler test artifacts
+.local-files-test/
