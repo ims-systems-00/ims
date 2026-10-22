@@ -8,6 +8,7 @@ import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
 import { notify } from "@/shared/lib/toast";
 import { DocumentManagementRemindersPanel } from "../components/document-management-reminders-panel";
+import { IncidentResolutionTargetsPanel } from "../components/incident-resolution-targets-panel";
 import { OrganisationLicencesPanel } from "../components/organisation-licences-panel";
 import {
   useCurrentOrganisationQuery,
@@ -366,6 +367,11 @@ export function MyOrganisationPage() {
         offsets={normalizeReminderOffsets(
           organisation.documentReviewReminderOffsets
         )}
+      />
+
+      <IncidentResolutionTargetsPanel
+        targets={organisation.incidentResolutionTargets}
+        canManage={organisation.membership?.role === "Super Admin"}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import type {
   CreateOrganisationInput,
   DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
+  IncidentResolutionTargets,
   Organisation,
   OrganisationLicences,
   OrganisationLogoStorage,
@@ -29,6 +30,15 @@ function normalizeReminderOffsets(
   return DOCUMENT_REVIEW_REMINDER_OFFSETS.filter((offset) =>
     unique.has(offset)
   );
+}
+
+export function normalizeIncidentResolutionTargets(
+  value: unknown
+): IncidentResolutionTargets {
+  const raw = (value ?? {}) as Record<string, unknown>;
+  const pick = (v: unknown): number | null =>
+    typeof v === "number" && Number.isFinite(v) && v > 0 ? v : null;
+  return { P1: pick(raw.P1), P2: pick(raw.P2), P3: pick(raw.P3), P4: pick(raw.P4) };
 }
 
 function toDomain(doc: OrganisationDocument): Organisation {
@@ -128,6 +138,9 @@ function toDomain(doc: OrganisationDocument): Organisation {
     documentReviewReminderOffsets: normalizeReminderOffsets(
       (doc as { documentReviewReminderOffsets?: unknown })
         .documentReviewReminderOffsets
+    ),
+    incidentResolutionTargets: normalizeIncidentResolutionTargets(
+      (doc as { incidentResolutionTargets?: unknown }).incidentResolutionTargets
     ),
     referralSource: doc.referralSource ?? null,
     logoSrc: doc.logoSrc ?? null,
@@ -525,6 +538,18 @@ export function createOrganisationRepository() {
       const doc = await Model.findByIdAndUpdate(
         id,
         { $set: { logoSrc, logoStorage } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async updateIncidentResolutionTargets(
+      id: string,
+      targets: IncidentResolutionTargets
+    ): Promise<Organisation | null> {
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { incidentResolutionTargets: normalizeIncidentResolutionTargets(targets) } },
         { returnDocument: "after" }
       ).lean();
       return doc ? toDomain(doc as OrganisationDocument) : null;

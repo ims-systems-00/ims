@@ -88,6 +88,12 @@ const organisationSchema = new Schema(
       type: [String],
       default: [],
     },
+    incidentResolutionTargets: {
+      P1: { type: Number, default: null },
+      P2: { type: Number, default: null },
+      P3: { type: Number, default: null },
+      P4: { type: Number, default: null },
+    },
     referralSource: { type: String, default: null },
     logoSrc: { type: String, default: null },
     logoStorage: {

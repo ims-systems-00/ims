@@ -11,12 +11,14 @@ import {
   listMyOrganisations,
   requestOrganisationLicence,
   updateDocumentReviewReminders,
+  updateIncidentResolutionTargets,
   updateOrganisationLogo,
 } from "../api/organisations";
 import type {
   CreateOrganisationInput,
   DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
+  IncidentResolutionTargets,
   Organisation,
   RequestOrganisationLicenceInput,
 } from "../types";
@@ -152,6 +154,17 @@ export function useUpdateOrganisationLogoMutation() {
   return useMutation({
     mutationFn: (body: Parameters<typeof updateOrganisationLogo>[0]) =>
       updateOrganisationLogo(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useUpdateIncidentResolutionTargetsMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (targets: IncidentResolutionTargets) =>
+      updateIncidentResolutionTargets(targets),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },

@@ -97,6 +97,17 @@ export const updateOrganisationLogoBodySchema = z.object({
     .default(null),
 });
 
+const targetHoursSchema = z.number().positive().max(24 * 365).nullable();
+
+export const updateIncidentResolutionTargetsBodySchema = z.object({
+  incidentResolutionTargets: z.object({
+    P1: targetHoursSchema,
+    P2: targetHoursSchema,
+    P3: targetHoursSchema,
+    P4: targetHoursSchema,
+  }),
+});
+
 export const updateDocumentReviewRemindersBodySchema = z.object({
   documentReviewReminderOffsets: z
     .array(z.enum(DOCUMENT_REVIEW_REMINDER_OFFSETS))

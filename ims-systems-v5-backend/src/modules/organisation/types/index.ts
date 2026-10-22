@@ -106,6 +106,7 @@ export type Organisation = {
   paymentSystem: OrganisationPaymentSystem;
   systemDate: OrganisationSystemDate;
   documentReviewReminderOffsets: DocumentReviewReminderOffset[];
+  incidentResolutionTargets: IncidentResolutionTargets;
   referralSource: string | null;
   logoSrc: string | null;
   /** File Handler location for the logo, so clients can mint fresh view URLs. */
@@ -128,6 +129,15 @@ export type RequestOrganisationLicenceInput = {
   complianceTools?: string[];
   additionalModules?: string[];
   message?: string;
+};
+
+export type IncidentResolutionTargets = Record<
+  "P1" | "P2" | "P3" | "P4",
+  number | null
+>;
+
+export type UpdateIncidentResolutionTargetsInput = {
+  incidentResolutionTargets: IncidentResolutionTargets;
 };
 
 export type UpdateDocumentReviewRemindersInput = {

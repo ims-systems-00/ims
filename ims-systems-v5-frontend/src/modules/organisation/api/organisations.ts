@@ -8,6 +8,7 @@ import type {
   GoLiveOrganisationResult,
   Organisation,
   OrganisationPaymentSession,
+  IncidentResolutionTargets,
   OrganisationProfile,
   PaginatedLicenceRequests,
   RequestOrganisationLicenceInput,
@@ -93,6 +94,18 @@ export function updateOrganisationLogo(body: {
     method: "PUT",
     body,
   });
+}
+
+export function updateIncidentResolutionTargets(
+  incidentResolutionTargets: IncidentResolutionTargets
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    "/organisations/current/incident-resolution-targets",
+    {
+      method: "PUT",
+      body: { incidentResolutionTargets },
+    }
+  );
 }
 
 export function updateDocumentReviewReminders(

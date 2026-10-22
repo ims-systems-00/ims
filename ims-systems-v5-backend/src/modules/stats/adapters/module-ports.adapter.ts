@@ -22,10 +22,10 @@ import type { ComplianceApplicationPort } from "../../compliance";
 import type { DocumentManagementApplicationPort } from "../../document-management";
 import type { StatsModulePorts } from "../ports";
 import {
-  DevNoOrgTargetsAdapter,
   UnavailableComplianceAdapter,
   UnavailableInvoicesAdapter,
 } from "../ports";
+import { createOrganisationTargetsAdapter } from "./organisation-targets.adapter";
 
 export type StatsPortsFromModulesInput = {
   risks: RiskService;
@@ -233,6 +233,7 @@ export function createStatsPortsFromModules(
           },
         }
       : new UnavailableComplianceAdapter(),
-    organisation: new DevNoOrgTargetsAdapter(),
+    // N-17: real incident-resolution targets from the org record.
+    organisation: createOrganisationTargetsAdapter(),
   };
 }

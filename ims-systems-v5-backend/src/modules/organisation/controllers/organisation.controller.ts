@@ -5,6 +5,7 @@ import {
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
   updateDocumentReviewRemindersBodySchema,
+  updateIncidentResolutionTargetsBodySchema,
   updateOrganisationLogoBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
@@ -18,6 +19,7 @@ export type OrganisationController = {
   createCardPaymentSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
+  updateIncidentResolutionTargets: RequestHandler;
   updateLogo: RequestHandler;
 };
 
@@ -127,6 +129,26 @@ export function createOrganisationController(
     }
   };
 
+  const updateIncidentResolutionTargets: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const body = parseWithSchema(
+        updateIncidentResolutionTargetsBodySchema,
+        req.body
+      );
+      const data = await service.updateIncidentResolutionTargets(
+        req.identity,
+        body
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   return {
     create,
     goLive,
@@ -136,6 +158,7 @@ export function createOrganisationController(
     createCardPaymentSession,
     createBillingPortalSession,
     updateDocumentReviewReminders,
+    updateIncidentResolutionTargets,
     updateLogo,
   };
 }

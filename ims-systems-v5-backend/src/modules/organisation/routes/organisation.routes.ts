@@ -53,6 +53,10 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     "/current/document-review-reminders",
     controller.updateDocumentReviewReminders
   );
+  router.put(
+    "/current/incident-resolution-targets",
+    controller.updateIncidentResolutionTargets
+  );
   router.post("/:id/go-live", controller.goLive);
   router.get("/:id/card-payment-session", controller.createCardPaymentSession);
   router.get("/:id/billing-session", controller.createBillingPortalSession);

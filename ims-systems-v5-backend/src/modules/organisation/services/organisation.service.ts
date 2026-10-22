@@ -38,6 +38,7 @@ import {
   type OrganisationProfile,
   type RequestOrganisationLicenceInput,
   type UpdateDocumentReviewRemindersInput,
+  UpdateIncidentResolutionTargetsInput,
   type UpdateOrganisationLogoInput,
 } from "../types";
 
@@ -563,6 +564,32 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         authed.organizationId,
         input.logoSrc ?? null,
         input.logoStorage ?? null
+      );
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        updated.id
+      );
+      return { ...updated, membership };
+    },
+
+    async updateIncidentResolutionTargets(
+      identity: SecurityIdentity | null | undefined,
+      input: UpdateIncidentResolutionTargetsInput
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+
+      const updated = await organisations.updateIncidentResolutionTargets(
+        authed.organizationId,
+        input.incidentResolutionTargets
       );
       if (!updated) {
         throw new NotFoundError("Organisation not found");
