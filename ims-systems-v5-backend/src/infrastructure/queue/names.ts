@@ -5,6 +5,7 @@
 export const QUEUE_NAMES = {
   emailTransactional: "email-transactional",
   emailBulk: "email-bulk",
+  complianceAutomation: "compliance-automation",
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];

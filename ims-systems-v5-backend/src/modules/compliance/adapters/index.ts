@@ -5,6 +5,7 @@
 export { createOrganisationComplianceLicenceAdapter } from "./organisation-licence.adapter";
 export { createComplianceGoLiveProvisionAdapter } from "./go-live-provision.adapter";
 export { createComplianceIamGrantAdapter } from "./iam-grant.adapter";
+export { createComplianceAutomationAdapter } from "./automation.adapter";
 
 import type { ActivitiesApplicationPort } from "../../activities";
 import { createDocumentTreeStore } from "../../document-management/repositories/document-tree.repository";

@@ -9,12 +9,21 @@ export {
 } from "./routes/compliance.routes";
 export type { ComplianceRouterDeps } from "./routes/compliance.routes";
 export { createComplianceService } from "./services/compliance.service";
+export {
+  createComplianceAutomationRunner,
+  type ComplianceAutomationRunner,
+} from "./services/automation-runner.service";
+export {
+  createAutomationRunRepository,
+  type AutomationRunRepository,
+} from "./repositories/automation-run.model";
 export type {
   ComplianceService,
   ComplianceApplicationPort,
 } from "./services/compliance.service";
 export {
   createComplianceActivityAdapter,
+  createComplianceAutomationAdapter,
   createComplianceNotificationAdapter,
   createComplianceEvidenceLinkAdapter,
   createComplianceGoLiveProvisionAdapter,

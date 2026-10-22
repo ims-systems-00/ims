@@ -137,6 +137,7 @@ import { createInvoiceModule } from "../../../modules/invoices";
 import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
 import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
 import { createAuth0ManagementApiFromConfig } from "../../../security/auth0/auth0-management-api";
+import { createComplianceAutomationQueue } from "../../../infrastructure/queue/automation-queue";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -157,6 +158,9 @@ import {
   createComplianceActivityAdapter,
   createComplianceEvidenceLinkAdapter,
   createComplianceIamGrantAdapter,
+  createAutomationRunRepository,
+  createComplianceAutomationAdapter,
+  createComplianceAutomationRunner,
   createComplianceIncidentMirrorAdapter,
   createComplianceNotificationAdapter,
   createComplianceGoLiveProvisionAdapter,
@@ -660,8 +664,53 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       ? createOrganisationComplianceLicenceAdapter()
       : undefined;
 
+  // N-11 automation runner + optional BullMQ queue (Redis via email queue flag).
+  const automationRunner = createComplianceAutomationRunner({
+    runs: createAutomationRunRepository(),
+    notify: async ({ organizationId, actorId, toolkitName, modulesWithRecords }) => {
+      await notifications.application.createForRecipients({
+        organizationId,
+        createdBy: actorId,
+        recipients: [
+          {
+            recipientUserId: actorId,
+            title: "Compliance automation scan complete",
+            message: modulesWithRecords.length
+              ? `${toolkitName}: existing records found in ${modulesWithRecords.join(", ")} — review controls for auto-compliance.`
+              : `${toolkitName}: no existing module records found yet.`,
+            referenceType: "compliance",
+            referenceModuleId: organizationId,
+            screenIdentifier: "compliance",
+            params: { id: organizationId },
+          },
+        ],
+      });
+    },
+  });
+  const automationQueue =
+    config?.EMAIL_QUEUE_ENABLED && config
+      ? (() => {
+          const q = createComplianceAutomationQueue({
+            config,
+            logger: logger ?? createLogger({ level: "silent", name: "automation" }),
+            handler: async (job) => {
+              await automationRunner.runScan(job);
+            },
+          });
+          q.startWorker();
+          return q;
+        })()
+      : null;
+
   const compliance = createComplianceModule({
     authorizer: security.authorizer,
+    // N-11: post-provision automation scan — BullMQ queue when the
+    // email queue (Redis) is enabled, otherwise inline. Never throws.
+    automation: createComplianceAutomationAdapter({
+      runner: automationRunner,
+      queue: automationQueue,
+      logger,
+    }),
     // N-10: provisioning a toolkit grants it to the provisioning member.
     iamGrant: createComplianceIamGrantAdapter(),
     ...(complianceLicenceLookup
