@@ -17,6 +17,16 @@ Use with [AUTH_ROLLOUT_TRACKER.md](./AUTH_ROLLOUT_TRACKER.md) and the phased run
 
 ## Staging smoke runbook (LIC-01)
 
+> **Status 2026-10-22:** Code prerequisites complete (preflight gate, per-org
+> buckets, list scopes, session revocation, invoice module). Local run of
+> `pnpm preflight:prod`: 14 pass / 3 warn / 2 fail — both FAILs are local-dev
+> config (`CLIENT_URL=http://localhost:3000`, `EMAIL_ENABLED=false`); all
+> connectivity probes green. **Execution on a real staging deploy is still
+> pending user actions:** (1) deploy backend+frontend to staging with
+> `SECURITY_PROVIDER=auth0-openfga`, (2) create the Auth0 Management M2M app
+> and set `AUTH0_MGMT_CLIENT_ID/SECRET`, (3) `EMAIL_ENABLED=true` with a real
+> provider, (4) Stripe test-mode webhook endpoint/forward.
+
 Run after every staging deploy, before inviting real users. Backend must be
 on `SECURITY_PROVIDER=auth0-openfga` with **test-mode** Stripe/Auth0.
 
