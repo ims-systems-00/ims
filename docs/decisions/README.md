@@ -42,6 +42,7 @@ This folder stores formalized decisions for the V5 rebuild.
 | D-22 | Feature branches and pull requests | Accepted | [0022-feature-branches-and-prs.md](./0022-feature-branches-and-prs.md) |
 | D-23 | ESLint and Prettier | Accepted | [0023-eslint-prettier.md](./0023-eslint-prettier.md) |
 | D-24 | Vite + React + TypeScript frontend | Accepted | [D-24-vite-react-frontend.md](./D-24-vite-react-frontend.md) |
+| D-25 | Document Management deferred-item decisions | Accepted | [0025-document-management-deferred-decisions.md](./0025-document-management-deferred-decisions.md) |
 
 ---
 
