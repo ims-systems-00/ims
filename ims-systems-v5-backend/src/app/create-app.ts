@@ -7,6 +7,7 @@ import { createEmailSystem, type EmailSystem } from "../infrastructure/queue";
 import { createStripeClient } from "../infrastructure/stripe/create-stripe-client";
 import {
   composeGoLiveSideEffects,
+  createFilesBucketSideEffectsAdapter,
   createGoLiveNotifySideEffectsAdapter,
   type OrganisationGoLiveSideEffectsPort,
 } from "../modules/organisation";
@@ -67,10 +68,15 @@ function composeBillingAndGoLive(deps: {
     supportEmails: deps.config.REPORT_BUG_SUPPORT_EMAILS,
     logger: deps.logger,
   });
+  // N-09: per-org file bucket provisioning (no-op unless FILES s3).
+  const fileBuckets = createFilesBucketSideEffectsAdapter({
+    config: deps.config,
+    logger: deps.logger,
+  });
 
   if (deps.stripePayments === null) {
     return {
-      goLiveSideEffects: composeGoLiveSideEffects([notify]),
+      goLiveSideEffects: composeGoLiveSideEffects([notify, fileBuckets]),
     };
   }
 
@@ -83,14 +89,14 @@ function composeBillingAndGoLive(deps: {
     });
     return {
       billing: deps.stripePayments,
-      goLiveSideEffects: composeGoLiveSideEffects([stripeGoLive, notify]),
+      goLiveSideEffects: composeGoLiveSideEffects([stripeGoLive, notify, fileBuckets]),
       stripePayments: deps.stripePayments,
     };
   }
 
   if (!deps.config.STRIPE_ENABLED) {
     return {
-      goLiveSideEffects: composeGoLiveSideEffects([notify]),
+      goLiveSideEffects: composeGoLiveSideEffects([notify, fileBuckets]),
     };
   }
 
@@ -109,7 +115,7 @@ function composeBillingAndGoLive(deps: {
   });
   return {
     billing: payments,
-    goLiveSideEffects: composeGoLiveSideEffects([stripeGoLive, notify]),
+    goLiveSideEffects: composeGoLiveSideEffects([stripeGoLive, notify, fileBuckets]),
     stripePayments: payments,
   };
 }

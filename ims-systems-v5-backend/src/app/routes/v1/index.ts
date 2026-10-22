@@ -15,6 +15,8 @@ import {
   createDocumentActivityAdapter,
   createDocumentFilesAdapter,
   createDocumentNotificationAdapter,
+  createDocumentEmailAdapter,
+  createDocumentMembershipAdapter,
   startDocumentReviewReminderSchedule,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
@@ -30,10 +32,16 @@ import {
 } from "../../../modules/licence-requests";
 import { createPartnershipModule } from "../../../modules/partnerships";
 import type { OrganisationBillingPort } from "../../../modules/payments";
-import { createAssetsModule } from "../../../modules/assets";
+import {
+  createAssetsModule,
+  createAssetBusinessUnitLookupAdapter,
+  createAssetCategoryLookupAdapter,
+  createAssetUserLookupAdapter,
+} from "../../../modules/assets";
 import {
   createAuditModule,
   createAuditNotificationAdapter,
+  createAuditReportAdapter,
   type AuditCipPromotionPort,
   type AuditIncidentPromotionPort,
   type AuditRiskPromotionPort,
@@ -57,7 +65,10 @@ import {
   createStatsModule,
   createStatsPortsFromModules,
 } from "../../../modules/stats";
-import { createFunctionalUnitModule } from "../../../modules/functional-units";
+import {
+  createFunctionalUnitModule,
+  createOrganisationGroupLicenceAdapter,
+} from "../../../modules/functional-units";
 import {
   createIncidentModule,
   createIncidentNotificationAdapter,
@@ -88,6 +99,7 @@ import {
 } from "../../../modules/suppliers";
 import {
   createCustomerModule,
+  createCustomerInteractionStatsAdapter,
   createCustomerNotificationAdapter,
   createOrganisationCrmLicenceAdapter,
   CUSTOMERS_SOURCE_MODULE,
@@ -111,9 +123,13 @@ import {
   createTasksSourceCleanupAdapter,
 } from "../../../modules/tasks";
 import {
+  createComplianceToolkitAdapter,
   createOrganisationMembershipLookupAdapter,
+  createOwnershipIntegrityAdapter,
+  createUserNotificationAdapter,
   createUsersModule,
 } from "../../../modules/users";
+import { createInvitationModule } from "../../../modules/invitations";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -133,6 +149,7 @@ import {
   createComplianceModule,
   createComplianceActivityAdapter,
   createComplianceEvidenceLinkAdapter,
+  createComplianceIamGrantAdapter,
   createComplianceIncidentMirrorAdapter,
   createComplianceNotificationAdapter,
   createComplianceGoLiveProvisionAdapter,
@@ -222,6 +239,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         uploadUrlTtlSeconds: config.FILES_UPLOAD_URL_TTL_SECONDS,
         viewUrlTtlSeconds: config.FILES_VIEW_URL_TTL_SECONDS,
         allowedPaths: config.ALLOWED_FILE_PATHS,
+        maxUploadBytes: config.FILES_MAX_UPLOAD_BYTES,
       },
     });
     router.use("/files", files.router);
@@ -283,20 +301,52 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const functionalUnits = createFunctionalUnitModule({
     authorizer: security.authorizer,
     dashboardInit: createLiveDashboardInitAdapter(),
+    // FU-01: enforce group licences in auth0-openfga only.
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { groupLicence: createOrganisationGroupLicenceAdapter() }
+      : {}),
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),
   });
-  const assets = createAssetsModule({ authorizer: security.authorizer });
+  // A-01: real org-scoped lookups in auth0-openfga; AcceptAny stays
+  // for development-stub (same pattern as membership lookup above).
+  const assets =
+    config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? createAssetsModule({
+          authorizer: security.authorizer,
+          users: createAssetUserLookupAdapter(),
+          businessUnits: createAssetBusinessUnitLookupAdapter(),
+          categories: createAssetCategoryLookupAdapter(),
+        })
+      : createAssetsModule({ authorizer: security.authorizer });
   const businessPremises = createBusinessPremiseModule({
     authorizer: security.authorizer,
   });
   const users = createUsersModule({
     authorizer: security.authorizer,
+    // N-12: account lifecycle emails via EmailSystem (NoOp only if absent).
+    notifications: createUserNotificationAdapter(email),
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),
+    // U-07: real per-member toolkit assignment in auth0-openfga only.
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { toolkits: createComplianceToolkitAdapter() }
+      : {}),
+    // U-06: real cross-module ownership check/transfer in auth0-openfga.
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { ownership: createOwnershipIntegrityAdapter() }
+      : {}),
   });
+
+  const invitations = createInvitationModule({
+    authorizer: security.authorizer,
+    email,
+    membershipProjection: security.membershipProjection,
+    clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
+  });
+  router.use("/invitations", invitations.router);
 
   const notificationsUsers = createNotificationsUsersAdapter(users.service);
 
@@ -550,10 +600,15 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       : undefined,
     activities: createDocumentActivityAdapter(activities.application),
     notifications: createDocumentNotificationAdapter(notifications.application),
+    email: createDocumentEmailAdapter(email),
+    memberships: createDocumentMembershipAdapter(),
+    accessLinkBaseUrl: config?.CLIENT_URL,
   });
   router.use("/document-management", documentManagement.managementRouter);
   router.use("/document-repositories", documentManagement.repositoriesRouter);
   router.use("/document-trees", documentManagement.treesRouter);
+  router.use("/document-shares", documentManagement.sharesRouter);
+  router.use("/document-signatures", documentManagement.signaturesRouter);
 
   const complianceLicenceLookup =
     config?.SECURITY_PROVIDER === "auth0-openfga"
@@ -562,6 +617,8 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const compliance = createComplianceModule({
     authorizer: security.authorizer,
+    // N-10: provisioning a toolkit grants it to the provisioning member.
+    iamGrant: createComplianceIamGrantAdapter(),
     ...(complianceLicenceLookup
       ? { licences: complianceLicenceLookup }
       : {}),
@@ -612,6 +669,8 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     authorizer: security.authorizer,
     tasks: customerTasksAdapter,
     incidents: customerIncidentStatsAdapter,
+    // N-16: interaction analytics from the Activities timeline.
+    interactions: createCustomerInteractionStatsAdapter(),
     campaigns: createCustomerCampaignStatsAdapter(emailCampaigns.service),
     notifications: createCustomerNotificationAdapter(
       notifications.application
@@ -675,6 +734,8 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     cips: auditCipPromotion,
     calendar: createAuditCalendarAdapter(calendar.service),
     notifications: createAuditNotificationAdapter(notifications.application),
+    // N-14: extract reports generated + emailed via EmailSystem.
+    reports: createAuditReportAdapter(email),
   });
 
   const managementReviews = createManagementReviewModule({
@@ -717,6 +778,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       users: users.service,
       customers: customers.service,
       compliance: compliance.application,
+      documents: documentManagement.application,
     }),
   });
 

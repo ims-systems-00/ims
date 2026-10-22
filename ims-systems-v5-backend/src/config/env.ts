@@ -218,6 +218,28 @@ const envSchema = z
       .positive()
       .default(43_200),
 
+    /** Max single-file upload size in bytes (default 25 MiB). */
+    FILES_MAX_UPLOAD_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(26_214_400),
+
+    /**
+     * Comma-separated browser origins allowed by S3 CORS (used by the
+     * bucket provisioning script; presigned browser PUT/GET needs this).
+     */
+    FILES_CORS_ORIGINS: z
+      .string()
+      .default("http://localhost:3000,http://localhost:7864")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      )
+      .pipe(z.array(z.string().url()).min(1)),
+
     /** Local disk provider: directory for stored objects (demo / dev without AWS). */
     FILES_LOCAL_ROOT: z.string().default(".local-files"),
     /**
