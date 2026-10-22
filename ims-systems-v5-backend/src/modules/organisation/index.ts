@@ -19,6 +19,7 @@ export {
   createFilesBucketSideEffectsAdapter,
   resolveProvisioningBucket,
 } from "./adapters/files-bucket.adapter";
+export { createAuth0OrganisationSideEffectsAdapter } from "./adapters/auth0-organisation.adapter";
 export {
   ORGANISATION_PAYMENT_STATUSES,
   ORGANISATION_PAYMENT_TYPES,

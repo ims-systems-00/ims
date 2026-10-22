@@ -124,6 +124,7 @@ import {
 } from "../../../modules/tasks";
 import {
   createComplianceToolkitAdapter,
+  createAuth0SessionAdapter,
   createOrganisationMembershipLookupAdapter,
   createOwnershipIntegrityAdapter,
   createUserNotificationAdapter,
@@ -131,6 +132,7 @@ import {
 } from "../../../modules/users";
 import { createInvitationModule } from "../../../modules/invitations";
 import { createListScopePorts } from "../../../security/list-scope/create-list-scope.adapter";
+import { createAuth0ManagementApiFromConfig } from "../../../security/auth0/auth0-management-api";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -258,6 +260,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       ? createListScopePorts()
       : undefined;
 
+  // Auth0 Management API (N-13/N-09) — null until the M2M app is configured.
+  const auth0Mgmt = config ? createAuth0ManagementApiFromConfig(config) : null;
+
   // Compliance is composed after Organisations, so Go Live toolkit
   // provisioning goes through a late-bound holder (set below once the
   // compliance service exists).
@@ -335,6 +340,16 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     authorizer: security.authorizer,
     // N-12: account lifecycle emails via EmailSystem (NoOp only if absent).
     notifications: createUserNotificationAdapter(email),
+    // N-13: revoke Auth0 grants/sessions on access revoke/delete when
+    // the Management API M2M app is configured (else NoOp + preflight warn).
+    ...(auth0Mgmt
+      ? {
+          sessions: createAuth0SessionAdapter({
+            mgmt: auth0Mgmt,
+            logger,
+          }),
+        }
+      : {}),
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),

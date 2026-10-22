@@ -29,6 +29,7 @@ export { createOrganisationMembershipLookupAdapter } from "./adapters/organisati
 export { createComplianceToolkitAdapter } from "./adapters/compliance-toolkit.adapter";
 export { createOwnershipIntegrityAdapter } from "./adapters/ownership-integrity.adapter";
 export { createUserNotificationAdapter } from "./adapters/user-notification.adapter";
+export { createAuth0SessionAdapter } from "./adapters/session.adapter";
 export type {
   FunctionalUnitUsersPort,
   UnitMemberView,

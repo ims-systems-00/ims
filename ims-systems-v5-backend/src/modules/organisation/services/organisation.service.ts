@@ -171,6 +171,14 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
       } catch {
         // Adapters log; never fail org creation on storage provisioning.
       }
+      // N-09: link the Auth0 Organization (best-effort, when configured).
+      try {
+        await goLiveSideEffects.ensureAuth0Organisation?.({
+          organizationId: organisation.id,
+        });
+      } catch {
+        // Adapters log; never fail org creation on Auth0 provisioning.
+      }
 
       await organisations.incrementSuperUserUsed(organisation.id, 1);
       const refreshed = await organisations.findById(organisation.id);
@@ -259,6 +267,12 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         await goLiveSideEffects.ensureFileStorage?.({ organizationId });
       } catch {
         // Adapters log; never fail Go Live on storage provisioning.
+      }
+      // N-09: ensure the Auth0 Organization link (idempotent, best-effort).
+      try {
+        await goLiveSideEffects.ensureAuth0Organisation?.({ organizationId });
+      } catch {
+        // Adapters log; never fail Go Live on Auth0 provisioning.
       }
 
       const toolkitNames = input.complianceTools ?? [];

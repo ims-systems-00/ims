@@ -42,5 +42,11 @@ export function composeGoLiveSideEffects(
         await adapter.ensureFileStorage?.(input);
       }
     },
+
+    async ensureAuth0Organisation(input) {
+      for (const adapter of adapters) {
+        await adapter.ensureAuth0Organisation?.(input);
+      }
+    },
   };
 }

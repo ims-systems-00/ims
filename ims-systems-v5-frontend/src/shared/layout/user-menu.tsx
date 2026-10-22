@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Building2,
@@ -25,6 +26,8 @@ import {
   useAuthClient,
 } from "@/security";
 import { loadPublicEnv } from "@/shared/lib/env";
+import { ConfirmDialog } from "@/shared/components/confirm-dialog";
+import { notify } from "@/shared/lib/toast";
 
 /**
  * Navbar account menu — profile / organisation / logout (Auth0 when enabled).
@@ -33,10 +36,29 @@ export function UserMenu() {
   const authClient = useAuthClient();
   const navigate = useNavigate();
   const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
+  const [changePasswordPending, setChangePasswordPending] = useState(false);
 
   async function handleLogout() {
     await authClient.logout();
     navigate("/login", { replace: true });
+  }
+
+  // F-06: reuse the Auth0 dbconnections change-password email flow
+  // (same path as forgot-password). Not available in development-stub.
+  async function handleChangePassword() {
+    const email = user?.email;
+    if (!email) return;
+    setChangePasswordPending(true);
+    try {
+      await authClient.requestPasswordReset({ email });
+      notify.success(`Password change link sent to ${email}`);
+      setChangePasswordOpen(false);
+    } catch (error) {
+      notify.fromError(error, "Unable to start password change. Try again.");
+    } finally {
+      setChangePasswordPending(false);
+    }
   }
   const stubProfileId =
     provider === "development-stub"
@@ -102,7 +124,19 @@ export function UserMenu() {
           </Link>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled title="Coming soon">
+        <DropdownMenuItem
+          disabled={provider === "development-stub" || !user?.email}
+          title={
+            provider === "development-stub"
+              ? "Password change requires Auth0 (VITE_SECURITY_PROVIDER=auth0-openfga)"
+              : undefined
+          }
+          onSelect={(event) => {
+            event.preventDefault();
+            if (provider === "development-stub" || !user?.email) return;
+            setChangePasswordOpen(true);
+          }}
+        >
           <KeyRound />
           Change Password
         </DropdownMenuItem>
@@ -125,6 +159,16 @@ export function UserMenu() {
           Logout
         </DropdownMenuItem>
       </DropdownMenuContent>
+      <ConfirmDialog
+        open={changePasswordOpen}
+        onOpenChange={setChangePasswordOpen}
+        title="Change password"
+        description={`We will email a secure password-change link to ${user?.email ?? "your email address"}. Your current password stays active until you complete the change.`}
+        confirmLabel="Send link"
+        destructive={false}
+        pending={changePasswordPending}
+        onConfirm={handleChangePassword}
+      />
     </DropdownMenu>
   );
 }
