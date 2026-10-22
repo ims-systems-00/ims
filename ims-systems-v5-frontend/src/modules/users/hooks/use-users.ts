@@ -3,8 +3,11 @@ import {
   getCurrentUser,
   getUser,
   listUsers,
+  updateProfileImage,
   updateUserProfile,
+  type UpdateProfileImageInput,
 } from "../api/users";
+import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
 import type { ListUsersParams, UpdateUserProfileInput } from "../types";
 import { loadPublicEnv } from "@/shared/lib/env";
 
@@ -43,6 +46,69 @@ export function useUserQuery(userId: string | undefined, enabled = true) {
     queryKey: userKeys.detail(userId ?? ""),
     queryFn: () => getUser(userId!),
     enabled: Boolean(userId) && enabled,
+  });
+}
+
+/**
+ * Fresh signed view URL for a user's profile picture when the File
+ * Handler bucket/key are known; falls back to the stored URL.
+ */
+export function useProfileImageUrl(
+  user:
+    | {
+        profileImage?: {
+          url?: string;
+          storageKey?: string;
+          bucket?: string;
+          fileName?: string;
+        };
+      }
+    | null
+    | undefined
+): string | undefined {
+  const image = user?.profileImage;
+  const meta =
+    image?.bucket && image?.storageKey
+      ? {
+          Bucket: image.bucket,
+          Key: image.storageKey,
+          key: image.storageKey,
+          Name: image.fileName ?? "profile",
+        }
+      : null;
+  const view = useFileViewUrlQuery(meta, Boolean(meta));
+  if (view.data?.url) return view.data.url;
+  const stored = image?.url?.trim();
+  if (stored && !stored.includes("avatar-placeholder")) return stored;
+  return undefined;
+}
+
+export function useUpdateProfileImageMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateProfileImageInput) =>
+      updateProfileImage(userId, body),
+    onSuccess: async (user) => {
+      await queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      await queryClient.invalidateQueries({
+        queryKey: userKeys.detail(userId),
+      });
+      await queryClient.invalidateQueries({ queryKey: userKeys.me() });
+      queryClient.setQueryData(userKeys.detail(userId), (current: unknown) => {
+        if (
+          current &&
+          typeof current === "object" &&
+          "user" in current &&
+          "membership" in current
+        ) {
+          return {
+            ...(current as { user: typeof user; membership: unknown }),
+            user,
+          };
+        }
+        return current;
+      });
+    },
   });
 }
 

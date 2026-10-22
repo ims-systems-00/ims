@@ -7,6 +7,7 @@ import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useAssetsQuery } from "@/modules/assets/hooks/use-assets";
 import type { AnyAsset, AssetCategory } from "@/modules/assets/types";
 import { CategorySelectField } from "@/modules/tags-and-categories";
+import { FileDropZone, type FileMetaInfo } from "@/modules/files";
 import {
   createRiskFormSchema,
   updateRiskFormSchema,
@@ -18,6 +19,7 @@ import {
   RISK_TYPES,
   type CreateRiskInput,
   type Risk,
+  type RiskAttachmentInput,
   type RiskType,
   type UpdateRiskInput,
 } from "../types";
@@ -98,6 +100,28 @@ export function RiskForm({
     Boolean(initialRisk?.accepted.status)
   );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const [stagedAttachments, setStagedAttachments] = useState<
+    RiskAttachmentInput[]
+  >([]);
+
+  function handleAttachmentUploaded(meta: FileMetaInfo, file: File) {
+    setStagedAttachments((current) => [
+      ...current,
+      {
+        fileName: meta.Name,
+        mimeType: file.type || undefined,
+        sizeBytes: file.size,
+        storageKey: meta.Key || meta.key,
+        bucket: meta.Bucket,
+      },
+    ]);
+  }
+
+  function handleAttachmentRemoved(meta: FileMetaInfo) {
+    setStagedAttachments((current) =>
+      current.filter((item) => item.storageKey !== (meta.Key || meta.key))
+    );
+  }
 
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
   const unitsQuery = useFunctionalUnitsQuery({ page: 1, pageSize: 100 });
@@ -176,6 +200,8 @@ export function RiskForm({
           categoryId: data.categoryId,
           likelihood: data.likelihood,
           consequence: data.consequence,
+          attachments:
+            stagedAttachments.length > 0 ? stagedAttachments : undefined,
         });
       } catch (error) {
         notify.fromError(error, "Unable to raise risk");
@@ -238,6 +264,8 @@ export function RiskForm({
         decisionMaker: data.decisionMaker || null,
         mitigated: data.mitigated,
         accepted: data.accepted,
+        attachments:
+          stagedAttachments.length > 0 ? stagedAttachments : undefined,
       });
     } catch (error) {
       notify.fromError(error, "Unable to update risk");
@@ -371,6 +399,22 @@ export function RiskForm({
           consequenceError={fieldErrors.consequence}
           onLikelihoodChange={setLikelihood}
           onConsequenceChange={setConsequence}
+        />
+      </FormSection>
+
+      <FormSection
+        title="Attachments"
+        description={
+          mode === "edit"
+            ? "New files are added to the existing attachments on save. Existing attachments are managed from the risk details."
+            : "Files upload immediately; they are linked to the risk when you save."
+        }
+      >
+        <FileDropZone
+          path="risks"
+          disabled={pending}
+          onUploaded={handleAttachmentUploaded}
+          onRemoved={handleAttachmentRemoved}
         />
       </FormSection>
 

@@ -50,9 +50,20 @@ export type RiskAttachment = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  /** Storage bucket from File Handler metadata (Name/Key/Bucket). */
+  bucket?: string;
   url?: string;
   uploadedBy: string;
   uploadedAt: string;
+};
+
+export type RiskAttachmentInput = {
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  storageKey?: string;
+  bucket?: string;
+  url?: string;
 };
 
 export type ComplianceLink = {
@@ -118,6 +129,7 @@ export type CreateRiskInput = {
   ownerId?: string;
   likelihood: number;
   consequence: number;
+  attachments?: RiskAttachmentInput[];
 };
 
 export type UpdateRiskInput = {
@@ -134,6 +146,8 @@ export type UpdateRiskInput = {
   decisionMaker?: string | null;
   mitigated?: boolean;
   accepted?: boolean;
+  /** New attachments only — appended to existing ones on update. */
+  attachments?: RiskAttachmentInput[];
 };
 
 export type ListRisksParams = {

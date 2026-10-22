@@ -81,6 +81,20 @@ export function createBillingPortalSession(
   );
 }
 
+export function updateOrganisationLogo(body: {
+  logoSrc: string | null;
+  logoStorage?: {
+    bucket: string;
+    key: string;
+    fileName?: string;
+  } | null;
+}): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>("/organisations/current/logo", {
+    method: "PUT",
+    body,
+  });
+}
+
 export function updateDocumentReviewReminders(
   documentReviewReminderOffsets: DocumentReviewReminderOffset[]
 ): Promise<OrganisationProfile> {

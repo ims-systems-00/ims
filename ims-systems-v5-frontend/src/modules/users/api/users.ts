@@ -49,3 +49,24 @@ export function updateUserProfile(
     body,
   });
 }
+
+export type UpdateProfileImageInput = {
+  url: string;
+  fileName?: string;
+  storageKey?: string;
+  bucket?: string;
+};
+
+/**
+ * Persist an uploaded profile picture (File Handler meta + view URL).
+ * PUT /users/:id/profile-image — self only.
+ */
+export function updateProfileImage(
+  id: string,
+  body: UpdateProfileImageInput
+): Promise<User> {
+  return apiRequest<User>(`/users/${id}/profile-image`, {
+    method: "PUT",
+    body,
+  });
+}

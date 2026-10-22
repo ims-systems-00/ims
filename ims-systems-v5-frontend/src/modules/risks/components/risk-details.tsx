@@ -1,9 +1,12 @@
 import { Button } from "@/shared/components/ui/button";
+import { AttachmentRow, deleteStoredFile } from "@/modules/files";
+import { notify } from "@/shared/lib/toast";
 import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { CategoryLabel } from "@/modules/tags-and-categories";
 import { useState, type ReactNode } from "react";
+import { useRemoveRiskAttachmentMutation } from "../hooks/use-risks";
 import { RiskScoreAssessment } from "./risk-score-assessment";
 import { RiskScoreBadge, RiskStatusBadge } from "./risk-badges";
 import type { Risk } from "../types";
@@ -63,6 +66,26 @@ function BusinessUnitLabel({ id }: { id?: string }) {
 
 export function RiskDetails({ risk }: { risk: Risk }) {
   const [ownerSheetId, setOwnerSheetId] = useState<string | null>(null);
+  const removeAttachment = useRemoveRiskAttachmentMutation(risk.id);
+
+  async function handleDeleteAttachment(attachmentId: string) {
+    const attachment = risk.attachments.find((file) => file.id === attachmentId);
+    // Parent record first (source of truth), then best-effort storage cleanup.
+    await removeAttachment.mutateAsync(attachmentId);
+    if (attachment?.storageKey && attachment.bucket) {
+      try {
+        await deleteStoredFile({
+          key: attachment.storageKey,
+          bucket: attachment.bucket,
+        });
+      } catch {
+        notify.error(
+          "Attachment removed, but stored file cleanup failed"
+        );
+      }
+    }
+    notify.success("Attachment removed");
+  }
 
   return (
     <div className="space-y-6">
@@ -185,11 +208,32 @@ export function RiskDetails({ risk }: { risk: Risk }) {
           <h3 className="ims-text-section border-b border-border-subtle pb-2">
             Attachments
           </h3>
-          <ul className="space-y-1 text-sm">
-            {risk.attachments.map((file) => (
-              <li key={file.id}>{file.fileName}</li>
-            ))}
-          </ul>
+          <div className="space-y-2">
+            {risk.attachments.map((file) =>
+              file.storageKey && file.bucket ? (
+                <AttachmentRow
+                  key={file.id}
+                  file={{
+                    Name: file.fileName,
+                    Key: file.storageKey,
+                    key: file.storageKey,
+                    Bucket: file.bucket,
+                  }}
+                  sizeBytes={file.sizeBytes}
+                  metaLine={
+                    file.uploadedAt
+                      ? `Uploaded on ${formatDate(file.uploadedAt)}`
+                      : undefined
+                  }
+                  onDelete={() => handleDeleteAttachment(file.id)}
+                />
+              ) : (
+                <p key={file.id} className="text-sm">
+                  {file.fileName}
+                </p>
+              )
+            )}
+          </div>
         </section>
       ) : null}
 

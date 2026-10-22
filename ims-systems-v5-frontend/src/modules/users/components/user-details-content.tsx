@@ -4,7 +4,13 @@ import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { useSessionProfileUserId } from "@/security";
-import { useUserQuery } from "../hooks/use-users";
+import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
+import { notify } from "@/shared/lib/toast";
+import {
+  useProfileImageUrl,
+  useUpdateProfileImageMutation,
+  useUserQuery,
+} from "../hooks/use-users";
 import type { OrgMembershipView, User } from "../types";
 import { EditProfileSheet } from "./edit-profile-sheet";
 import { UserAvatar } from "./user-avatar";
@@ -133,17 +139,38 @@ export function UserDetailsView({
 }) {
   const [editOpen, setEditOpen] = useState(false);
   const groupIds = membership?.groupIds ?? [];
+  const profileImageUrl = useProfileImageUrl(user);
+  const profileImageMutation = useUpdateProfileImageMutation(user.id);
 
   return (
     <div className="space-y-4">
       <section className="ims-panel overflow-hidden">
         <div className="flex flex-wrap items-start gap-4 px-4 py-5">
-          <UserAvatar
-            name={user.name}
-            imageUrl={user.profileImage?.url}
-            size="lg"
-            className="size-14 text-sm"
-          />
+          {canEditProfile ? (
+            <ImageUploadControl
+              imageUrl={profileImageUrl}
+              alt={`${user.name} profile picture`}
+              fallbackLabel={user.name.slice(0, 2).toUpperCase()}
+              uploadLabel="Upload photo"
+              changeLabel="Change photo"
+              onUploaded={async (meta, viewUrl) => {
+                await profileImageMutation.mutateAsync({
+                  url: viewUrl,
+                  fileName: meta.Name,
+                  storageKey: meta.Key || meta.key,
+                  bucket: meta.Bucket,
+                });
+                notify.success("Profile picture updated");
+              }}
+            />
+          ) : (
+            <UserAvatar
+              name={user.name}
+              imageUrl={profileImageUrl}
+              size="lg"
+              className="size-14 text-sm"
+            />
+          )}
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[1.125rem] font-semibold tracking-[-0.015em] text-foreground">

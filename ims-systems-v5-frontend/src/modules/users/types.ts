@@ -73,6 +73,8 @@ export type User = {
     url: string;
     fileName?: string;
     storageKey?: string;
+    /** File Handler bucket for `storageKey` (fresh view URLs). */
+    bucket?: string;
   };
   signatureInfo: {
     url?: string;

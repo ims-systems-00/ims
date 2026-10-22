@@ -11,13 +11,16 @@ import {
   listMyOrganisations,
   requestOrganisationLicence,
   updateDocumentReviewReminders,
+  updateOrganisationLogo,
 } from "../api/organisations";
 import type {
   CreateOrganisationInput,
   DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
+  Organisation,
   RequestOrganisationLicenceInput,
 } from "../types";
+import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
 
 export const organisationKeys = {
   all: ["organisations"] as const,
@@ -115,6 +118,43 @@ export function useBillingPortalSessionMutation() {
   return useMutation({
     mutationFn: (organizationId: string) =>
       createBillingPortalSession(organizationId),
+  });
+}
+
+/**
+ * Display URL for an organisation logo: a fresh File Handler view URL
+ * when bucket/key are known, otherwise the stored `logoSrc`.
+ */
+export function useOrganisationLogoUrl(
+  organisation:
+    | Pick<Organisation, "logoSrc" | "logoStorage">
+    | null
+    | undefined
+): string | null {
+  const storage = organisation?.logoStorage ?? null;
+  const view = useFileViewUrlQuery(
+    storage
+      ? {
+          Bucket: storage.bucket,
+          Key: storage.key,
+          key: storage.key,
+          Name: storage.fileName ?? "logo",
+        }
+      : null,
+    Boolean(storage)
+  );
+  if (view.data?.url) return view.data.url;
+  return organisation?.logoSrc ?? null;
+}
+
+export function useUpdateOrganisationLogoMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: Parameters<typeof updateOrganisationLogo>[0]) =>
+      updateOrganisationLogo(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
   });
 }
 

@@ -1,5 +1,4 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -8,13 +7,20 @@ import {
   type NavigationLicenceFilter,
 } from "@/shared/navigation";
 import { Button } from "@/shared/components/ui/button";
-import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
+import {
+  useCurrentOrganisationQuery,
+  useOrganisationLogoUrl,
+} from "@/modules/organisation/hooks/use-organisations";
+import { SidebarBrand } from "./sidebar-brand";
 import {
   permissionAllowed,
   useSecurityCapabilitiesQuery,
 } from "@/modules/security/hooks/use-security-capabilities";
 import { UserAvatar } from "@/modules/users/components/user-avatar";
-import { useSessionUserQuery } from "@/modules/users/hooks/use-users";
+import {
+  useProfileImageUrl,
+  useSessionUserQuery,
+} from "@/modules/users/hooks/use-users";
 import {
   DEV_STUB_IDENTITY,
   resolveProfileUserId,
@@ -46,6 +52,7 @@ export function AppSidebar({
       : undefined;
   const userQuery = useSessionUserQuery(stubProfileId);
   const user = userQuery.data?.user;
+  const profileImageUrl = useProfileImageUrl(user);
   const displayName =
     user?.name ??
     (provider === "auth0-openfga" ? "Signed in" : "Dev user");
@@ -60,6 +67,11 @@ export function AppSidebar({
   const orgQuery = useCurrentOrganisationQuery(
     provider === "auth0-openfga"
   );
+  // Sidebar branding always needs the current org (logo + name), in
+  // both security modes; same query key as above, so no duplicate fetch
+  // when the licence query is already enabled.
+  const brandOrgQuery = useCurrentOrganisationQuery();
+  const orgLogoUrl = useOrganisationLogoUrl(brandOrgQuery.data);
   const licenceFilter = useMemo<NavigationLicenceFilter>(() => {
     if (provider !== "auth0-openfga") {
       return { licensedToolkits: null, crmLicensed: null };
@@ -116,23 +128,11 @@ export function AppSidebar({
           )}
         >
           {!collapsed ? (
-            <Link
-              to="/"
-              className="flex min-w-0 items-center gap-2.5 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sidebar-primary"
-              onClick={() => onMobileOpenChange(false)}
-            >
-              <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-sidebar-primary text-[0.625rem] font-semibold tracking-wide text-sidebar">
-                iMS
-              </span>
-              <span className="min-w-0">
-                <span className="block truncate text-[0.8125rem] font-semibold tracking-[-0.01em]">
-                  IMS Systems
-                </span>
-                <span className="block truncate text-[0.6875rem] text-sidebar-muted">
-                  Platform V5
-                </span>
-              </span>
-            </Link>
+            <SidebarBrand
+              logoUrl={orgLogoUrl}
+              organisationName={brandOrgQuery.data?.name}
+              onNavigate={() => onMobileOpenChange(false)}
+            />
           ) : null}
           <Button
             type="button"
@@ -195,7 +195,7 @@ export function AppSidebar({
           >
             <UserAvatar
               name={displayName}
-              imageUrl={user?.profileImage?.url}
+              imageUrl={profileImageUrl}
               size="sm"
               className="size-7 rounded-sm"
             />

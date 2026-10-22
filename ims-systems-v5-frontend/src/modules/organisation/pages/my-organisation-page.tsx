@@ -5,9 +5,15 @@ import { PageHeader } from "@/shared/layout";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
+import { notify } from "@/shared/lib/toast";
 import { DocumentManagementRemindersPanel } from "../components/document-management-reminders-panel";
 import { OrganisationLicencesPanel } from "../components/organisation-licences-panel";
-import { useCurrentOrganisationQuery } from "../hooks/use-organisations";
+import {
+  useCurrentOrganisationQuery,
+  useOrganisationLogoUrl,
+  useUpdateOrganisationLogoMutation,
+} from "../hooks/use-organisations";
 import {
   DOCUMENT_REVIEW_REMINDER_OPTIONS,
   normalizeOrganisationLicences,
@@ -82,6 +88,8 @@ function formatAddress(address: OrganisationProfile["address"]): string {
 export function MyOrganisationPage() {
   const orgQuery = useCurrentOrganisationQuery();
   const membersQuery = useUsersQuery({ page: 1, pageSize: 1 });
+  const logoMutation = useUpdateOrganisationLogoMutation();
+  const resolvedLogoUrl = useOrganisationLogoUrl(orgQuery.data);
 
   if (orgQuery.isLoading) {
     return (
@@ -118,6 +126,10 @@ export function MyOrganisationPage() {
 
   const organisation = orgQuery.data;
   const addressLine = formatAddress(organisation.address);
+  const logoUrl = resolvedLogoUrl;
+  const canManageLogo =
+    organisation.membership?.role === "Super Admin" ||
+    organisation.membership?.role === "Head of Service";
 
   return (
     <div className="mx-auto max-w-8xl space-y-5">
@@ -133,12 +145,49 @@ export function MyOrganisationPage() {
 
       <section className="ims-panel overflow-hidden">
         <div className="flex flex-wrap items-start gap-4 px-4 py-5">
-          <span
-            aria-hidden
-            className="inline-flex size-14 shrink-0 items-center justify-center rounded-md border border-border bg-surface-muted text-muted-foreground"
-          >
-            <Building2 className="size-6" />
-          </span>
+          {canManageLogo ? (
+            <ImageUploadControl
+              shape="rounded"
+              tileClassName="size-14 text-base"
+              imageUrl={logoUrl}
+              alt={`${organisation.name} logo`}
+              fallbackLabel={organisation.name.slice(0, 2).toUpperCase()}
+              uploadPath="general"
+              uploadLabel="Upload logo"
+              changeLabel="Change logo"
+              onUploaded={async (meta, viewUrl) => {
+                await logoMutation.mutateAsync({
+                  logoSrc: viewUrl,
+                  logoStorage: {
+                    bucket: meta.Bucket,
+                    key: meta.Key || meta.key,
+                    fileName: meta.Name,
+                  },
+                });
+                notify.success("Organisation logo updated");
+              }}
+              onRemove={async () => {
+                await logoMutation.mutateAsync({
+                  logoSrc: null,
+                  logoStorage: null,
+                });
+                notify.success("Organisation logo removed");
+              }}
+            />
+          ) : logoUrl ? (
+            <img
+              src={logoUrl}
+              alt={`${organisation.name} logo`}
+              className="size-14 shrink-0 rounded-md border border-border object-cover"
+            />
+          ) : (
+            <span
+              aria-hidden
+              className="inline-flex size-14 shrink-0 items-center justify-center rounded-md border border-border bg-surface-muted text-muted-foreground"
+            >
+              <Building2 className="size-6" />
+            </span>
+          )}
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[1.125rem] font-semibold tracking-[-0.015em] text-foreground">

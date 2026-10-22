@@ -162,6 +162,12 @@ export type Organisation = {
   systemDate?: OrganisationSystemDate;
   referralSource: string | null;
   logoSrc: string | null;
+  /** File Handler location for the logo (fresh view URLs). */
+  logoStorage?: {
+    bucket: string;
+    key: string;
+    fileName?: string;
+  } | null;
   /** Auth0 Organization id when linked; null until auth rollout links it. */
   auth0OrganizationId?: string | null;
   createdBy: string;

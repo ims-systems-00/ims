@@ -10,6 +10,7 @@ import {
   listRisks,
   mitigateRisk,
   nudgeRisk,
+  removeRiskAttachment,
   setRiskComplianceLinks,
   updateRisk,
 } from "../api/risks";
@@ -148,6 +149,18 @@ export function useAcceptRiskMutation() {
     onSuccess: async (risk) => {
       await invalidateRiskQueries(queryClient, risk.id);
       queryClient.setQueryData(riskKeys.detail(risk.id), risk);
+    },
+  });
+}
+
+export function useRemoveRiskAttachmentMutation(riskId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachmentId: string) =>
+      removeRiskAttachment(riskId, attachmentId),
+    onSuccess: async (risk) => {
+      await invalidateRiskQueries(queryClient, riskId);
+      queryClient.setQueryData(riskKeys.detail(riskId), risk);
     },
   });
 }

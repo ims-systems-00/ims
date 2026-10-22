@@ -13,6 +13,8 @@ export {
   useCurrentOrganisationQuery,
   useGoLiveOrganisationMutation,
   useMyOrganisationsQuery,
+  useOrganisationLogoUrl,
+  useUpdateOrganisationLogoMutation,
 } from "./hooks/use-organisations";
 export type {
   CreateOrganisationInput,

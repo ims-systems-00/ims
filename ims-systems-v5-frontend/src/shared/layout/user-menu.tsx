@@ -15,7 +15,10 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/components/ui/dropdown-menu";
 import { UserAvatar } from "@/modules/users/components/user-avatar";
-import { useSessionUserQuery } from "@/modules/users/hooks/use-users";
+import {
+  useProfileImageUrl,
+  useSessionUserQuery,
+} from "@/modules/users/hooks/use-users";
 import {
   DEV_STUB_IDENTITY,
   resolveProfileUserId,
@@ -41,6 +44,7 @@ export function UserMenu() {
       : undefined;
   const userQuery = useSessionUserQuery(stubProfileId);
   const user = userQuery.data?.user;
+  const profileImageUrl = useProfileImageUrl(user);
   const displayName = user?.name ?? (provider === "auth0-openfga" ? "Signed in" : "Dev user");
   const displayEmail =
     user?.email ??
@@ -60,7 +64,7 @@ export function UserMenu() {
         >
           <UserAvatar
             name={displayName}
-            imageUrl={user?.profileImage?.url}
+            imageUrl={profileImageUrl}
             size="sm"
             className="size-7 rounded-sm"
           />
@@ -71,7 +75,7 @@ export function UserMenu() {
           <div className="flex items-center gap-2.5 py-0.5">
             <UserAvatar
               name={displayName}
-              imageUrl={user?.profileImage?.url}
+              imageUrl={profileImageUrl}
               size="sm"
             />
             <div className="min-w-0">
