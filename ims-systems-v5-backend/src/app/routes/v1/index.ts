@@ -100,6 +100,7 @@ import {
 import {
   createCustomerModule,
   createCustomerInteractionStatsAdapter,
+  createCustomerInvoiceStatsAdapter,
   createCustomerNotificationAdapter,
   createOrganisationCrmLicenceAdapter,
   CUSTOMERS_SOURCE_MODULE,
@@ -717,6 +718,8 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     incidents: customerIncidentStatsAdapter,
     // N-16: interaction analytics from the Activities timeline.
     interactions: createCustomerInteractionStatsAdapter(),
+    // N-15: real invoice aggregates from the Invoice module.
+    invoices: createCustomerInvoiceStatsAdapter(),
     campaigns: createCustomerCampaignStatsAdapter(emailCampaigns.service),
     notifications: createCustomerNotificationAdapter(
       notifications.application

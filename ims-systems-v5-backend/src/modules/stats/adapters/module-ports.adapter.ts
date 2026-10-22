@@ -21,11 +21,9 @@ import type { UsersService } from "../../users";
 import type { ComplianceApplicationPort } from "../../compliance";
 import type { DocumentManagementApplicationPort } from "../../document-management";
 import type { StatsModulePorts } from "../ports";
-import {
-  UnavailableComplianceAdapter,
-  UnavailableInvoicesAdapter,
-} from "../ports";
+import { UnavailableComplianceAdapter } from "../ports";
 import { createOrganisationTargetsAdapter } from "./organisation-targets.adapter";
+import { createStatsInvoicesAdapter } from "./invoices.adapter";
 
 export type StatsPortsFromModulesInput = {
   risks: RiskService;
@@ -222,7 +220,8 @@ export function createStatsPortsFromModules(
         }));
       },
     },
-    invoices: new UnavailableInvoicesAdapter(),
+    // N-17: real monthly Sent invoice aggregates from the Invoice module.
+    invoices: createStatsInvoicesAdapter(),
     compliance: input.compliance
       ? {
           async frameworkPercentages(identity) {

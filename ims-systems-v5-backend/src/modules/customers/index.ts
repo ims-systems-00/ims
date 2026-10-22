@@ -10,6 +10,7 @@ export {
 export type { CustomerRouterDeps } from "./routes/customer.routes";
 export { createOrganisationCrmLicenceAdapter } from "./adapters/organisation-licence.adapter";
 export { createCustomerInteractionStatsAdapter } from "./adapters/interaction-stats.adapter";
+export { createCustomerInvoiceStatsAdapter } from "./adapters/invoice-stats.adapter";
 export type { CrmLicencePort } from "./ports";
 export { createCustomerService } from "./services/customer.service";
 export type { CustomerService } from "./services/customer.service";
