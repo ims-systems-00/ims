@@ -1,3 +1,4 @@
+import { formatDate } from "@/shared/lib/format-date";
 import type { Notification } from "../types";
 
 /**
@@ -86,6 +87,10 @@ export function resolveNotificationLink(
       : "/customers";
   }
 
+  if (screen.includes("leave") || type === "leaves") {
+    return id ? `/leaves?leave=${encodeURIComponent(id)}` : "/leaves";
+  }
+
   if (screen.includes("user") || type === "users") {
     return id ? `/users?user=${encodeURIComponent(id)}` : "/users";
   }
@@ -113,9 +118,5 @@ export function formatNotificationTime(iso: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return date.toLocaleDateString(undefined, {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  return formatDate(date);
 }

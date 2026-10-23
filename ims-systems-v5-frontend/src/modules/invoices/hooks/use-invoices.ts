@@ -3,21 +3,42 @@ import {
   createInvoice,
   deleteInvoice,
   downloadInvoice,
+  getInvoice,
   listInvoices,
   markInvoicePaid,
   sendInvoice,
 } from "../api/invoices";
-import type { CreateInvoiceInput } from "../types";
+import type { CreateInvoiceInput, ListInvoicesParams } from "../types";
 
 export const invoiceKeys = {
   all: ["invoices"] as const,
-  list: (customerId?: string) => ["invoices", "list", customerId ?? "all"] as const,
+  lists: () => [...invoiceKeys.all, "list"] as const,
+  list: (params: ListInvoicesParams = {}) =>
+    [...invoiceKeys.lists(), params] as const,
+  details: () => [...invoiceKeys.all, "detail"] as const,
+  detail: (id: string) => [...invoiceKeys.details(), id] as const,
 };
 
-export function useInvoicesQuery(customerId?: string) {
+export function useInvoicesQuery(params: ListInvoicesParams | string = {}) {
+  // Back-compat: customer panel passed customerId as a string.
+  const normalized: ListInvoicesParams =
+    typeof params === "string" ? { customerId: params, pageSize: 50 } : params;
+
   return useQuery({
-    queryKey: invoiceKeys.list(customerId),
-    queryFn: () => listInvoices({ customerId, pageSize: 50 }),
+    queryKey: invoiceKeys.list(normalized),
+    queryFn: () =>
+      listInvoices({
+        pageSize: 50,
+        ...normalized,
+      }),
+  });
+}
+
+export function useInvoiceQuery(id: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: invoiceKeys.detail(id ?? ""),
+    queryFn: () => getInvoice(id!),
+    enabled: Boolean(id) && enabled,
   });
 }
 

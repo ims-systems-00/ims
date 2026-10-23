@@ -1,3 +1,4 @@
+import { formatDateTime } from "@/shared/lib/format-date";
 import type { OrganisationalState } from "../types";
 
 export function formatInteger(value: number): string {
@@ -24,10 +25,7 @@ export function formatHours(value: number | null): string {
 export function formatAccurateAs(iso: string): string {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return iso;
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return formatDateTime(date);
 }
 
 export function organisationalStateTone(

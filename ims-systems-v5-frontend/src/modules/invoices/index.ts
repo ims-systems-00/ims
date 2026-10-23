@@ -3,8 +3,10 @@
  */
 
 export { CustomerInvoicesPanel } from "./components/customer-invoices-panel";
+export { InvoicesListPage } from "./pages/invoices-list-page";
 export {
   useInvoicesQuery,
+  useInvoiceQuery,
   useCreateInvoiceMutation,
   useSendInvoiceMutation,
   useMarkInvoicePaidMutation,
@@ -18,4 +20,5 @@ export type {
   InvoiceEntry,
   PaginatedInvoices,
   CreateInvoiceInput,
+  ListInvoicesParams,
 } from "./types";

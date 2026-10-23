@@ -4,6 +4,7 @@ import { Badge } from "@/shared/components/ui/badge";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
+import { formatDate } from "@/shared/lib/format-date";
 import {
   useCreateInvoiceMutation,
   useDeleteInvoiceMutation,
@@ -110,7 +111,7 @@ export function CustomerInvoicesPanel({ customerId }: { customerId: string }) {
               <span className="text-sm font-medium">{inv.reference}</span>
               <Badge variant={STATUS_VARIANT[inv.status]}>{inv.status}</Badge>
               <span className="text-sm text-muted-foreground">
-                {gbp(inv.calculations.total)} · due {new Date(inv.dueDate).toLocaleDateString("en-GB")}
+                {gbp(inv.calculations.total)} · due {formatDate(inv.dueDate)}
               </span>
               <span className="ml-auto flex gap-1">
                 {inv.status === "Draft" ? (

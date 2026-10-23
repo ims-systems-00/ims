@@ -105,9 +105,24 @@ export type User = {
   updatedAt: string;
 };
 
+export type MembershipDayHoursView = {
+  start: string;
+  end: string;
+} | null;
+
+export type MembershipWorkShiftView = {
+  timezone: string;
+  monday: MembershipDayHoursView;
+  tuesday: MembershipDayHoursView;
+  wednesday: MembershipDayHoursView;
+  thursday: MembershipDayHoursView;
+  friday: MembershipDayHoursView;
+  saturday: MembershipDayHoursView;
+  sunday: MembershipDayHoursView;
+};
+
 /**
  * Organisation membership projection from Users detail APIs.
- * Salary is intentionally not rendered in the UI (sensitive).
  */
 export type OrgMembershipView = {
   userId: string;
@@ -116,10 +131,12 @@ export type OrgMembershipView = {
   salary?: number | null;
   workLocationType?: string | null;
   country?: string | null;
+  countryCode?: string | null;
   leaveDaysEntitled?: number | null;
   toilBalance?: number | null;
   lineManagerIds?: string[];
   groupIds?: string[];
+  workShift?: MembershipWorkShiftView | null;
 };
 
 export type UserWithMembership = {
@@ -130,4 +147,15 @@ export type UserWithMembership = {
 export type UpdateUserProfileInput = {
   firstName?: string;
   lastName?: string;
+};
+
+export type UpdateEmploymentInput = {
+  jobTitle: string;
+  workLocationType: "On-site" | "Remote";
+  salary?: number;
+  countryName: string;
+  countryCode: string;
+  leaveDaysEntitled?: number;
+  lineManagerIds?: string[];
+  workShift?: MembershipWorkShiftView;
 };

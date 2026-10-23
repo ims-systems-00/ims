@@ -1,23 +1,11 @@
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { IncidentStatusBadge } from "./incident-badges";
 import type { Incident, LifecycleFlag } from "../types";
+import { formatDateTime } from "@/shared/lib/format-date";
 
 type IncidentLifecyclePanelProps = {
   incident: Incident;
 };
-
-function formatDateTime(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
 
 function ActorLabel({ userId }: { userId?: string | null }) {
   const query = useUserQuery(userId ?? undefined, Boolean(userId));

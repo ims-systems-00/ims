@@ -39,6 +39,7 @@ import {
   type RiskDisplayStatus,
   type RiskType,
 } from "../types";
+import { formatDate } from "@/shared/lib/format-date";
 
 type PendingDelete = { id: string; label: string };
 
@@ -50,16 +51,6 @@ function OwnerCell({ ownerId }: { ownerId?: string }) {
       {query.data?.user.name ?? ownerId.slice(0, 8)}
     </span>
   );
-}
-
-function formatRaised(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 /**
@@ -388,7 +379,7 @@ export function RisksListPage() {
                     <RiskStatusBadge status={risk.displayStatus} />
                   </td>
                   <td className="text-muted-foreground whitespace-nowrap">
-                    {formatRaised(risk.raisedOn)}
+                    {formatDate(risk.raisedOn)}
                   </td>
                   <td className="max-w-[10rem]">
                     <OwnerCell ownerId={risk.ownerId} />

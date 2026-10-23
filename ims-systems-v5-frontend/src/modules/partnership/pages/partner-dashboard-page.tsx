@@ -22,6 +22,7 @@ import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
 import { usePartnerDashboardQuery } from "../hooks/use-partnerships";
+import { formatDate } from "@/shared/lib/format-date";
 
 type StatDefinition = {
   label: string;
@@ -30,16 +31,6 @@ type StatDefinition = {
   icon: ReactNode;
   iconClass: string;
 };
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString(undefined, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function initials(name: string): string {
   return name

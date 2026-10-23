@@ -8,16 +8,7 @@ import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { cn } from "@/shared/lib/utils";
 import { updateKpiObjectiveFormSchema } from "../schemas";
 import type { KpiObjective } from "../types";
-
-function formatCreatedOn(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatDate } from "@/shared/lib/format-date";
 
 type KpiCardProps = {
   kpi: KpiObjective;
@@ -82,7 +73,7 @@ export function KpiCard({
             ) : null}
           </div>
           <p className="text-[0.75rem] text-muted-foreground">
-            {creatorName} · {formatCreatedOn(kpi.createdOn)}
+            {creatorName} · {formatDate(kpi.createdOn)}
           </p>
         </div>
         {canManage && !editing ? (

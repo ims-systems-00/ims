@@ -42,6 +42,8 @@ import {
   EmailCampaignDetailPage,
   EmailCampaignsListPage,
 } from "@/modules/email-campaign";
+import { InvoicesListPage } from "@/modules/invoices";
+import { LeavesListPage } from "@/modules/leaves";
 import { CalendarPage } from "@/modules/calendar";
 import { SuppliersListPage } from "@/modules/suppliers";
 import { TasksListPage } from "@/modules/tasks";
@@ -56,8 +58,11 @@ import {
   PartnerDashboardPage,
 } from "@/modules/partnership";
 import { ReportBugPage } from "@/modules/report-bug";
+import { DataImportPage } from "@/modules/data-import";
 import { MyProfilePage, UsersListPage } from "@/modules/users";
 import { AcceptInvitationPage } from "@/modules/invitations";
+import { ContactImsPage } from "@/modules/contact-ims";
+import { RegisterPublicInterestPage } from "@/modules/register-public-interest";
 import { OnboardingShell } from "@/shared/layout";
 import { RequireAuth } from "@/security";
 
@@ -73,6 +78,12 @@ export function App() {
       <Route path="forgot-password" element={<ForgotPasswordPage />} />
       {/* Public, token-gated external e-signing (no login). */}
       <Route path="documents/sign/:token" element={<PublicSignPage />} />
+      {/* Public marketing surfaces (no login, not in sidebar nav). */}
+      <Route path="contact" element={<ContactImsPage />} />
+      <Route
+        path="register-interest"
+        element={<RegisterPublicInterestPage />}
+      />
 
       <Route element={<RequireAuth />}>
         <Route
@@ -181,6 +192,8 @@ export function App() {
                 path="email-campaigns/:id"
                 element={<EmailCampaignDetailPage />}
               />
+              <Route path="invoices" element={<InvoicesListPage />} />
+              <Route path="leaves" element={<LeavesListPage />} />
             </Route>
             <Route
               path="partner/dashboard"
@@ -188,6 +201,7 @@ export function App() {
             />
             <Route path="suppliers" element={<SuppliersListPage />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="data-import" element={<DataImportPage />} />
             <Route path="report-bug" element={<ReportBugPage />} />
             <Route
               path="assets"

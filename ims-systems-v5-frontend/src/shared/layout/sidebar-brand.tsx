@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import imsDefaultLogo from "@/assets/images/iMS-OS_horizontal_white.png";
 
 type SidebarBrandProps = {
   /** Resolved organisation logo URL (fresh view URL or stored src). */
@@ -12,7 +13,7 @@ type SidebarBrandProps = {
  * Sidebar header branding. When the current organisation has uploaded
  * a logo, only that logo is shown (no name / "Platform V5" text).
  * Otherwise — or if the logo fails to load — it falls back to the
- * default iMS Systems mark.
+ * default iMS-OS white horizontal mark.
  */
 export function SidebarBrand({
   logoUrl,
@@ -43,19 +44,11 @@ export function SidebarBrand({
           onError={() => setLogoBroken(true)}
         />
       ) : (
-        <>
-          <span className="flex size-7 shrink-0 items-center justify-center rounded-sm bg-sidebar-primary text-[0.625rem] font-semibold tracking-wide text-sidebar">
-            iMS
-          </span>
-          <span className="min-w-0">
-            <span className="block truncate text-[0.8125rem] font-semibold tracking-[-0.01em]">
-              IMS Systems
-            </span>
-            <span className="block truncate text-[0.6875rem] text-sidebar-muted">
-              Platform V5
-            </span>
-          </span>
-        </>
+        <img
+          src={imsDefaultLogo}
+          alt="iMS Systems"
+          className="h-8 w-auto max-w-48 shrink-0 object-contain"
+        />
       )}
     </Link>
   );

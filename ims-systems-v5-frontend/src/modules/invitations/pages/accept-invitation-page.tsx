@@ -9,18 +9,7 @@ import {
   useAcceptInvitationMutation,
   useInvitationPreviewQuery,
 } from "../hooks/use-invitations";
-
-function formatExpiry(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "";
-  return date.toLocaleString(undefined, {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+import { formatDateTime } from "@/shared/lib/format-date";
 
 /**
  * Accept-invitation landing (emailed link target). The route sits behind
@@ -115,7 +104,7 @@ export function AcceptInvitationPage() {
             </p>
             <p className="text-muted-foreground">
               Invitation for {preview.email} · Expires{" "}
-              {formatExpiry(preview.expiresAt)}
+              {formatDateTime(preview.expiresAt)}
             </p>
           </div>
         </div>

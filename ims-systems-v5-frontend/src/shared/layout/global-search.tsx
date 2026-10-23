@@ -18,8 +18,8 @@ type SearchItem = {
 type SearchResults = { query: string; items: SearchItem[] };
 
 /**
- * Navbar global search (F-07) — debounced query to GET /search,
- * grouped dropdown, click or Enter navigates to the module list.
+ * Navbar global search (F-07) — debounced query to GET /search.
+ * Results deep-link into module sheets/detail routes (e.g. `/risks?risk=`).
  */
 export function GlobalSearch() {
   const navigate = useNavigate();

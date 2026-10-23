@@ -7,17 +7,7 @@ import {
 } from "../hooks/use-email-campaigns";
 import type { EmailCampaign } from "../types";
 import { CampaignStatusBadge } from "./campaign-badges";
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatDate } from "@/shared/lib/format-date";
 
 export function CampaignDetailsLoading() {
   return (

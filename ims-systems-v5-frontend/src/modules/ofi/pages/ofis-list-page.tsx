@@ -21,6 +21,7 @@ import {
   useOfisQuery,
 } from "../hooks/use-ofi";
 import { OFI_STATUS_OPTIONS, type OfiDisplayStatus } from "../types";
+import { formatDate } from "@/shared/lib/format-date";
 
 type PendingDelete = { id: string; label: string };
 
@@ -39,16 +40,6 @@ function UnitCell({ unitId }: { unitId?: string }) {
   if (!unitId) return <span className="text-muted-foreground">—</span>;
   const name = unitsQuery.data?.items.find((u) => u.id === unitId)?.name;
   return <span className="truncate">{name ?? unitId.slice(0, 8)}</span>;
-}
-
-function formatRaised(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 /**
@@ -318,7 +309,7 @@ export function OfisListPage() {
                     <OfiStatusBadge status={ofi.displayStatus} />
                   </td>
                   <td className="text-muted-foreground whitespace-nowrap">
-                    {formatRaised(ofi.createdOn)}
+                    {formatDate(ofi.createdOn)}
                   </td>
                   <td className="max-w-[10rem]">
                     <OwnerCell ownerId={ofi.ownerId} />

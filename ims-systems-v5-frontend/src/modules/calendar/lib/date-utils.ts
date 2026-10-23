@@ -3,6 +3,7 @@
  * API boundary uses ISO-8601 strings; grids use local calendar days.
  */
 
+import { formatDateTime, formatTime } from "@/shared/lib/format-date";
 import type { CalendarView } from "../types";
 
 export function startOfDay(date: Date): Date {
@@ -112,21 +113,11 @@ export function formatWeekTitle(date: Date): string {
 }
 
 export function formatEventTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
+  return formatTime(iso);
 }
 
 export function formatEventDateTime(iso: string): string {
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "—";
-  return new Intl.DateTimeFormat(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(date);
+  return formatDateTime(iso);
 }
 
 /** datetime-local value in the user's local timezone. */

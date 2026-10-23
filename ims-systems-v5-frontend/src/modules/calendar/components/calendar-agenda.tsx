@@ -1,3 +1,4 @@
+import { formatDate } from "@/shared/lib/format-date";
 import {
   formatEventDateTime,
   formatEventTime,
@@ -43,9 +44,8 @@ export function CalendarAgenda({ events, onSelectEvent }: CalendarAgendaProps) {
                 <div className="bg-muted/40 px-4 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
                   {new Date(event.start).toLocaleDateString(undefined, {
                     weekday: "long",
-                    month: "short",
-                    day: "numeric",
-                  })}
+                  })}{" "}
+                  {formatDate(event.start)}
                 </div>
               ) : null}
               <button

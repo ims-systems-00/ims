@@ -5,6 +5,7 @@ import {
   Building2,
   Calendar,
   CalendarCheck,
+  CalendarOff,
   ClipboardCheck,
   Contact,
   Cpu,
@@ -13,6 +14,7 @@ import {
   FolderOpen,
   Handshake,
   HardDrive,
+  Import,
   Landmark,
   LayoutDashboard,
   Lightbulb,
@@ -27,6 +29,7 @@ import {
   Target,
   Truck,
   Users,
+  Wallet,
 } from "lucide-react";
 import {
   COMPLIANCE_TOOLKIT_NAMES,
@@ -291,9 +294,37 @@ export function buildNavigationSections(
                   icon: Mail,
                   requiredPermission: "customers:read",
                 },
+                {
+                  id: "invoices",
+                  label: "Invoices",
+                  href: "/invoices",
+                  icon: FileText,
+                  requiredPermission: "customers:read",
+                },
               ],
             },
           ]),
+      {
+        id: "ihr",
+        label: "iHR",
+        icon: Users,
+        children: [
+          {
+            id: "my-wallet",
+            label: "My Wallet",
+            icon: Wallet,
+            children: [
+              {
+                id: "leaves",
+                label: "Leaves",
+                href: "/leaves",
+                icon: CalendarOff,
+                requiredPermission: "leaves:read",
+              },
+            ],
+          },
+        ],
+      },
       {
         id: "suppliers",
         label: "Suppliers",
@@ -314,6 +345,13 @@ export function buildNavigationSections(
         href: "/calendar",
         icon: Calendar,
         requiredPermission: "calendar:read",
+      },
+      {
+        id: "data-import",
+        label: "Data Import",
+        href: "/data-import",
+        icon: Import,
+        requiredPermission: "users:read",
       },
       {
         id: "report-bug",

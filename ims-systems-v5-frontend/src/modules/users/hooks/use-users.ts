@@ -3,12 +3,18 @@ import {
   getCurrentUser,
   getUser,
   listUsers,
+  setUserLineManagers,
   updateProfileImage,
+  updateUserEmployment,
   updateUserProfile,
   type UpdateProfileImageInput,
 } from "../api/users";
 import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
-import type { ListUsersParams, UpdateUserProfileInput } from "../types";
+import type {
+  ListUsersParams,
+  UpdateEmploymentInput,
+  UpdateUserProfileInput,
+} from "../types";
 import { loadPublicEnv } from "@/shared/lib/env";
 
 export const userKeys = {
@@ -136,6 +142,37 @@ export function useUpdateUserProfileMutation(userId: string) {
         }
         return current;
       });
+    },
+  });
+}
+
+export function useSetUserLineManagersMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (lineManagerIds: string[]) =>
+      setUserLineManagers(userId, lineManagerIds),
+    onSuccess: async (payload) => {
+      await queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      await queryClient.invalidateQueries({
+        queryKey: userKeys.detail(userId),
+      });
+      queryClient.setQueryData(userKeys.detail(userId), payload);
+    },
+  });
+}
+
+export function useUpdateUserEmploymentMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateEmploymentInput) =>
+      updateUserEmployment(userId, body),
+    onSuccess: async (payload) => {
+      await queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      await queryClient.invalidateQueries({
+        queryKey: userKeys.detail(userId),
+      });
+      await queryClient.invalidateQueries({ queryKey: userKeys.me() });
+      queryClient.setQueryData(userKeys.detail(userId), payload);
     },
   });
 }

@@ -10,6 +10,7 @@ import { useRemoveRiskAttachmentMutation } from "../hooks/use-risks";
 import { RiskScoreAssessment } from "./risk-score-assessment";
 import { RiskScoreBadge, RiskStatusBadge } from "./risk-badges";
 import type { Risk } from "../types";
+import { formatDate } from "@/shared/lib/format-date";
 
 function Item({
   label,
@@ -24,17 +25,6 @@ function Item({
       <dd className="ims-detail-value break-words">{value ?? "—"}</dd>
     </>
   );
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function OwnerLabel({

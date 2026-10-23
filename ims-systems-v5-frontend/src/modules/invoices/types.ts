@@ -34,6 +34,14 @@ export type PaginatedInvoices = {
   total: number;
 };
 
+export type ListInvoicesParams = {
+  customerId?: string;
+  page?: number;
+  pageSize?: number;
+  search?: string;
+  status?: InvoiceStatus;
+};
+
 export type CreateInvoiceInput = {
   customerId: string;
   dueDate: string;
@@ -41,3 +49,5 @@ export type CreateInvoiceInput = {
   discount?: number;
   send?: boolean;
 };
+
+export const INVOICE_STATUSES: InvoiceStatus[] = ["Draft", "Sent", "Paid"];

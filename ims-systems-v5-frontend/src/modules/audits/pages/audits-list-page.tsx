@@ -28,6 +28,7 @@ import {
   type AuditDisplayStatus,
   type AuditType,
 } from "../types";
+import { formatDate } from "@/shared/lib/format-date";
 
 type PendingDelete = { id: string; label: string };
 
@@ -46,16 +47,6 @@ function UnitCell({ unitId }: { unitId?: string }) {
   if (!unitId) return <span className="text-muted-foreground">—</span>;
   const name = unitsQuery.data?.items.find((u) => u.id === unitId)?.name;
   return <span className="truncate">{name ?? unitId.slice(0, 8)}</span>;
-}
-
-function formatSchedule(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 type AuditsListPageProps = {
@@ -351,7 +342,7 @@ export function AuditsListPage({ auditType }: AuditsListPageProps) {
                     <AuditStatusBadge status={audit.displayStatus} />
                   </td>
                   <td className="text-muted-foreground whitespace-nowrap">
-                    {formatSchedule(audit.startDate)}
+                    {formatDate(audit.startDate)}
                   </td>
                   <td>
                     <AuditIntervalBadge interval={audit.interval} />
