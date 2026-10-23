@@ -12,6 +12,7 @@ export const IMPORTABLE_MODULES = [
   "peopleassets",
   "premiseassets",
   "softwareassets",
+  "kpiobjectives",
 ] as const;
 
 export type ImportableModule = (typeof IMPORTABLE_MODULES)[number];

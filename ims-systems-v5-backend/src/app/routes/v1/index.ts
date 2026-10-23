@@ -142,6 +142,13 @@ import {
   createLeavesMembershipAdapter,
   createLeavesNotificationAdapter,
 } from "../../../modules/leaves";
+import {
+  createAiModule,
+  createAiActivityAdapter,
+  createAiActorDirectoryAdapter,
+  createOpenAiGptAdapter,
+  NoOpAiGptAdapter,
+} from "../../../modules/ai";
 import { createInvoiceModule } from "../../../modules/invoices";
 import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
 import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
@@ -679,6 +686,14 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     },
   });
 
+  const aiGpt =
+    config?.OPEN_AI_API_KEY?.trim()
+      ? createOpenAiGptAdapter({
+          apiKey: config.OPEN_AI_API_KEY.trim(),
+          model: config.OPEN_AI_MODEL,
+        })
+      : new NoOpAiGptAdapter();
+
   const activities = createActivitiesModule({
     authorizer: security.authorizer,
     ...(listScopes ? { listScope: listScopes.groups() } : {}),
@@ -686,6 +701,13 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       markInProgressIfPending: (organizationId, ofiId) =>
         ofis.service.markInProgressIfPending(organizationId, ofiId),
     }),
+  });
+
+  const ai = createAiModule({
+    authorizer: security.authorizer,
+    gpt: aiGpt,
+    activities: createAiActivityAdapter(activities.application),
+    actors: createAiActorDirectoryAdapter(),
   });
 
   const documentManagement = createDocumentManagementModule({
@@ -827,7 +849,8 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   });
 
   // Data Import — schema / validate / queue migration into CRM, risks,
-  // incidents, and inventory (spec: docs/module-specifications/data-import.md).
+  // incidents, inventory, and KPI objectives
+  // (spec: docs/module-specifications/data-import.md).
   const dataImportNotifications = createDataImportNotificationAdapter(
     notifications.application
   );
@@ -836,6 +859,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     risks: risks.service,
     incidents: incidents.service,
     assets: assets.service,
+    kpiObjectives: kpiObjectives.service,
   });
   const dataImportMigrator = createDataImportMigrator({
     writer: dataImportWriter,
@@ -988,6 +1012,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/management-reviews", managementReviews.router);
   router.use("/ofi", ofis.router);
   router.use("/activities", activities.router);
+  router.use("/ai", ai.router);
   router.use("/compliance", compliance.router);
   router.use("/suppliers", suppliers.router);
   router.use("/customers", customers.router);

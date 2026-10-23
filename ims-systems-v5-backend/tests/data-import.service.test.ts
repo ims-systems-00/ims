@@ -38,6 +38,47 @@ describe("data-import validation", () => {
     );
   });
 
+  it("exposes KPI objective fields including value", () => {
+    const schema = getImportableFields("kpiobjectives");
+    const paths = schema.map((field) => field.path);
+    expect(paths).toEqual(
+      expect.arrayContaining([
+        "value",
+        "targetValue",
+        "currentValue",
+        "unit",
+        "privacy",
+        "businessUnitId",
+      ])
+    );
+    expect(schema.find((f) => f.path === "value")?.isRequired).toBe(true);
+  });
+
+  it("passes a valid KPI objective sheet", () => {
+    const outcome = validateDataSet({
+      module: "kpiobjectives",
+      dateFormat: "DD/MM/YYYY",
+      dataMap: {
+        value: "KPI Col",
+        targetValue: "Target Col",
+        currentValue: "Current Col",
+        unit: "Unit Col",
+        privacy: "Privacy Col",
+      },
+      dataSet: [
+        {
+          "KPI Col": "Reduce incidents by 20%",
+          "Target Col": "100",
+          "Current Col": "25",
+          "Unit Col": "%",
+          "Privacy Col": "Organisational",
+        },
+      ],
+    });
+    expect(outcome.success).toBe(true);
+    expect(outcome.result.every((row) => row.totalError === 0)).toBe(true);
+  });
+
   it("fails when a required cell is empty", () => {
     const outcome = validateDataSet({
       module: "risks",

@@ -25,6 +25,11 @@ type TaskFormProps = {
   pending?: boolean;
   hideActions?: boolean;
   initialTask?: Task;
+  /** Prefill create mode (e.g. Alice list-item → task). */
+  createDefaults?: {
+    name?: string;
+    description?: string;
+  };
   /** When false, assignment fields (priority, due, team, assignees) are read-only. */
   canEditAssignment?: boolean;
   onSubmit: (
@@ -51,14 +56,17 @@ export function TaskForm({
   pending = false,
   hideActions = false,
   initialTask,
+  createDefaults,
   canEditAssignment = true,
   onSubmit,
   onCancel,
   submitLabel,
 }: TaskFormProps) {
-  const [name, setName] = useState(initialTask?.name ?? "");
+  const [name, setName] = useState(
+    initialTask?.name ?? createDefaults?.name ?? ""
+  );
   const [description, setDescription] = useState(
-    initialTask?.description ?? ""
+    initialTask?.description ?? createDefaults?.description ?? ""
   );
   const [dueDate, setDueDate] = useState(
     toDateInputValue(initialTask?.dueDate) ||

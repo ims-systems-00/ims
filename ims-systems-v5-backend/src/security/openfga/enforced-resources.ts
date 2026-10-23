@@ -28,6 +28,7 @@ export const ENFORCED_RESOURCE_TYPES: ReadonlySet<string> = new Set([
   "dashboard",
   "stats",
   "leaves",
+  "ai",
 ]);
 
 /** @deprecated Use ENFORCED_RESOURCE_TYPES (M7). Kept for import compatibility. */

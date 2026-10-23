@@ -1,10 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import { SheetPanelTabs } from "@/modules/activities";
+import {
+  AnalyticalAssistantSheet,
+  buildAuditAssistantContext,
+} from "@/modules/ai";
+import { useCurrentOrganisationQuery } from "@/modules/organisation";
 import {
   useAuditQuery,
   useCompleteAuditMutation,
@@ -58,14 +64,20 @@ export function AuditSheet({
     string | null
   >(null);
   const [panelTab, setPanelTab] = useState("details");
+  const [aliceOpen, setAliceOpen] = useState(false);
 
   useEffect(() => {
     if (!open || mode !== "view") setPanelTab("details");
   }, [open, mode, auditId]);
 
+  useEffect(() => {
+    if (!open) setAliceOpen(false);
+  }, [open]);
+
   const auditQuery = useAuditQuery(
     mode === "create" ? undefined : (auditId ?? undefined)
   );
+  const orgQuery = useCurrentOrganisationQuery(open && mode === "view");
   const createMutation = useCreateAuditMutation();
   const updateMutation = useUpdateAuditMutation(auditId ?? "");
   const deleteMutation = useDeleteAuditMutation();
@@ -75,6 +87,16 @@ export function AuditSheet({
   );
 
   const audit = auditQuery.data;
+  const aliceContext = useMemo(
+    () =>
+      audit
+        ? buildAuditAssistantContext(
+            audit,
+            orgQuery.data?.name ?? "Organisation"
+          )
+        : null,
+    [audit, orgQuery.data?.name]
+  );
   const pending =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -203,6 +225,15 @@ export function AuditSheet({
               </Button>
               {!completed ? (
                 <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => setAliceOpen(true)}
+                  >
+                    <Sparkles className="size-4" />
+                    Assist & Verification
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -335,6 +366,12 @@ export function AuditSheet({
         confirmLabel="Mark completed"
         pending={completeMutation.isPending}
         onConfirm={() => void confirmComplete()}
+      />
+
+      <AnalyticalAssistantSheet
+        open={aliceOpen}
+        onOpenChange={setAliceOpen}
+        context={aliceContext}
       />
     </>
   );

@@ -5,7 +5,6 @@ import {
   Building2,
   Calendar,
   CalendarCheck,
-  CalendarOff,
   ClipboardCheck,
   Contact,
   Cpu,
@@ -29,7 +28,6 @@ import {
   Target,
   Truck,
   Users,
-  Wallet,
 } from "lucide-react";
 import {
   COMPLIANCE_TOOLKIT_NAMES,
@@ -304,27 +302,6 @@ export function buildNavigationSections(
               ],
             },
           ]),
-      {
-        id: "ihr",
-        label: "iHR",
-        icon: Users,
-        children: [
-          {
-            id: "my-wallet",
-            label: "My Wallet",
-            icon: Wallet,
-            children: [
-              {
-                id: "leaves",
-                label: "Leaves",
-                href: "/leaves",
-                icon: CalendarOff,
-                requiredPermission: "leaves:read",
-              },
-            ],
-          },
-        ],
-      },
       {
         id: "suppliers",
         label: "Suppliers",

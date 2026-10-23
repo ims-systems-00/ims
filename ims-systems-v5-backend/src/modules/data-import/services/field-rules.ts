@@ -5,6 +5,7 @@
 import { z, type ZodTypeAny } from "zod";
 import { CUSTOMER_STAGES } from "../../customers/types";
 import { INCIDENT_PRIORITIES } from "../../incidents/types";
+import { KPI_PRIVACY } from "../../kpi-objectives/types";
 import { RISK_TYPES } from "../../risks/types";
 import type { ImportableModule } from "../types";
 
@@ -101,6 +102,14 @@ const RULES: Record<ImportableModule, Record<string, ZodTypeAny>> = {
     licenceCount: z.coerce.number().int().nonnegative(),
     installCount: z.coerce.number().int().nonnegative(),
     cost: z.coerce.number(),
+  },
+  kpiobjectives: {
+    value: z.string().trim().min(1),
+    targetValue: z.coerce.number().min(0),
+    currentValue: z.coerce.number().min(0),
+    unit: z.string().trim().max(100).optional(),
+    privacy: z.enum(KPI_PRIVACY),
+    businessUnitId: objectId,
   },
 };
 

@@ -1,5 +1,5 @@
 /**
- * Importable field catalogs for the eight wizard modules.
+ * Importable field catalogs for wizard modules.
  * V5 paths (businessUnitId / ownerId) replace V4 group/owner aliases so
  * mapped values line up with Create*Input shapes on the target services.
  */
@@ -608,6 +608,58 @@ const SOFTWARE: ImportableFieldSchema[] = [
   }),
 ];
 
+/** Ported from V4 kpiobjectives import validation + V5 CreateKpiObjectiveInput. */
+const KPI_OBJECTIVES: ImportableFieldSchema[] = [
+  field({
+    alias: "KPI Objective",
+    path: "value",
+    type: "string",
+    isRequired: true,
+    isBusinessUnitController: false,
+    isOwnerShipControler: false,
+  }),
+  field({
+    alias: "Target value",
+    path: "targetValue",
+    type: "number",
+    isRequired: false,
+    isBusinessUnitController: false,
+    isOwnerShipControler: false,
+  }),
+  field({
+    alias: "Current value",
+    path: "currentValue",
+    type: "number",
+    isRequired: false,
+    isBusinessUnitController: false,
+    isOwnerShipControler: false,
+  }),
+  field({
+    alias: "Unit",
+    path: "unit",
+    type: "string",
+    isRequired: false,
+    isBusinessUnitController: false,
+    isOwnerShipControler: false,
+  }),
+  field({
+    alias: "Privacy",
+    path: "privacy",
+    type: "string",
+    isRequired: false,
+    isBusinessUnitController: false,
+    isOwnerShipControler: false,
+  }),
+  field({
+    alias: "Business function",
+    path: "businessUnitId",
+    type: "string",
+    isRequired: false,
+    isBusinessUnitController: true,
+    isOwnerShipControler: false,
+  }),
+];
+
 const CATALOGS: Record<ImportableModule, ImportableFieldSchema[]> = {
   customers: CUSTOMERS,
   risks: RISKS,
@@ -617,6 +669,7 @@ const CATALOGS: Record<ImportableModule, ImportableFieldSchema[]> = {
   peopleassets: PEOPLE,
   premiseassets: PREMISE,
   softwareassets: SOFTWARE,
+  kpiobjectives: KPI_OBJECTIVES,
 };
 
 export const MODULE_OPTIONS: ModuleOption[] = [
@@ -628,6 +681,7 @@ export const MODULE_OPTIONS: ModuleOption[] = [
   { module: "peopleassets", label: "Inventory — People" },
   { module: "premiseassets", label: "Inventory — Premise" },
   { module: "softwareassets", label: "Inventory — Software" },
+  { module: "kpiobjectives", label: "KPI / Objectives" },
 ];
 
 export function getImportableFields(

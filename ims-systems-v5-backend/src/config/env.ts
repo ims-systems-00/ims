@@ -307,6 +307,15 @@ const envSchema = z
     STRIPE_SUPPORT_PRICE: z.string().default(""),
     /** FE origin for Checkout success/cancel and Billing Portal return. */
     CLIENT_URL: z.string().default("http://localhost:3000"),
+
+    /**
+     * OpenAI API key for Alice (Analytical Assistant).
+     * Empty → GPT endpoints use NoOp adapter (clear placeholder text).
+     * Env name matches V4: OPEN_AI_API_KEY.
+     */
+    OPEN_AI_API_KEY: z.string().default(""),
+    /** Chat model for Alice (V4 default was gpt-3.5-turbo). */
+    OPEN_AI_MODEL: z.string().default("gpt-3.5-turbo"),
   })
   .superRefine((value, ctx) => {
     if (

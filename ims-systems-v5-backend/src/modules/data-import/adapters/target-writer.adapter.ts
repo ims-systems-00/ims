@@ -5,9 +5,14 @@
 import type { AssetsService } from "../../assets";
 import type { CustomerService } from "../../customers";
 import type { IncidentService } from "../../incidents";
+import type { KpiObjectivesService } from "../../kpi-objectives";
 import type { RiskService } from "../../risks";
 import type { CreateCustomerInput } from "../../customers/types";
 import type { CreateIncidentInput } from "../../incidents/types";
+import type {
+  CreateKpiObjectiveInput,
+  KpiPrivacy,
+} from "../../kpi-objectives/types";
 import type { CreateRiskInput, RiskType } from "../../risks/types";
 import type {
   CreateHardwareInput,
@@ -25,6 +30,7 @@ export type DataImportTargetServices = {
   risks: RiskService;
   incidents: IncidentService;
   assets: AssetsService;
+  kpiObjectives: KpiObjectivesService;
 };
 
 function asString(value: unknown): string | undefined {
@@ -186,6 +192,24 @@ export function createDataImportTargetWriterAdapter(
             cost: asNumber(row.cost),
           };
           await services.assets.createInformation(identity, input);
+          return;
+        }
+        case "kpiobjectives": {
+          const input: CreateKpiObjectiveInput = {
+            value: requireString(row, "value"),
+            privacy: (asString(row.privacy) as KpiPrivacy | undefined) ??
+              "Organisational",
+            businessUnitId: asString(row.businessUnitId) ?? null,
+            targetValue: asNumber(row.targetValue),
+            unit: asString(row.unit),
+          };
+          const created = await services.kpiObjectives.create(identity, input);
+          const currentValue = asNumber(row.currentValue);
+          if (currentValue !== undefined) {
+            await services.kpiObjectives.update(identity, created.id, {
+              currentValue,
+            });
+          }
           return;
         }
         default: {
