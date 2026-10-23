@@ -125,41 +125,63 @@ export function createGlobalSearchService(deps: {
       };
 
       await Promise.all([
-        run("risk", "risks", m.risks!, { $or: [{ title: pattern }, { reference: pattern }] }, (d) => ({
-          type: "Risk",
-          id: String(d._id),
-          title: String(d.title ?? d.reference ?? "Risk"),
-          subtitle: (d.reference as string) ?? null,
-          route: "/risks",
-        })),
-        run("incident", "incidents", m.incidents!, { $or: [{ title: pattern }, { reference: pattern }] }, (d) => ({
-          type: "Incident",
-          id: String(d._id),
-          title: String(d.title ?? d.reference ?? "Incident"),
-          subtitle: (d.reference as string) ?? null,
-          route: "/incidents",
-        })),
-        run("audit", "audits", m.audits!, { $or: [{ title: pattern }, { reference: pattern }] }, (d) => ({
-          type: "Audit",
-          id: String(d._id),
-          title: String(d.title ?? d.reference ?? "Audit"),
-          subtitle: (d.reference as string) ?? null,
-          route: "/audits",
-        })),
-        run("supplier", "suppliers", m.suppliers!, { $or: [{ name: pattern }, { reference: pattern }] }, (d) => ({
-          type: "Supplier",
-          id: String(d._id),
-          title: String(d.name ?? "Supplier"),
-          subtitle: (d.reference as string) ?? null,
-          route: "/suppliers",
-        })),
-        run("document", "document-management", m.documents!, { name: pattern }, (d) => ({
-          type: "Document",
-          id: String(d._id),
-          title: String(d.name ?? "Document"),
-          subtitle: (d.reference as string) ?? null,
-          route: "/documents",
-        }), false),
+        run("risk", "risks", m.risks!, { $or: [{ title: pattern }, { reference: pattern }] }, (d) => {
+          const id = String(d._id);
+          return {
+            type: "Risk",
+            id,
+            title: String(d.title ?? d.reference ?? "Risk"),
+            subtitle: (d.reference as string) ?? null,
+            route: `/risks?risk=${encodeURIComponent(id)}`,
+          };
+        }),
+        run("incident", "incidents", m.incidents!, { $or: [{ title: pattern }, { reference: pattern }] }, (d) => {
+          const id = String(d._id);
+          return {
+            type: "Incident",
+            id,
+            title: String(d.title ?? d.reference ?? "Incident"),
+            subtitle: (d.reference as string) ?? null,
+            route: `/incidents?incident=${encodeURIComponent(id)}`,
+          };
+        }),
+        run("audit", "audits", m.audits!, { $or: [{ title: pattern }, { reference: pattern }] }, (d) => {
+          const id = String(d._id);
+          const auditType =
+            String(d.type ?? "").toLowerCase() === "external"
+              ? "external"
+              : "internal";
+          return {
+            type: "Audit",
+            id,
+            title: String(d.title ?? d.reference ?? "Audit"),
+            subtitle: (d.reference as string) ?? null,
+            route: `/audits/${auditType}?audit=${encodeURIComponent(id)}`,
+          };
+        }),
+        run("supplier", "suppliers", m.suppliers!, { $or: [{ name: pattern }, { reference: pattern }] }, (d) => {
+          const id = String(d._id);
+          return {
+            type: "Supplier",
+            id,
+            title: String(d.name ?? "Supplier"),
+            subtitle: (d.reference as string) ?? null,
+            route: `/suppliers?supplier=${encodeURIComponent(id)}`,
+          };
+        }),
+        run("document", "document-management", m.documents!, { name: pattern }, (d) => {
+          const id = String(d._id);
+          const repositoryId = d.repositoryId ? String(d.repositoryId) : null;
+          return {
+            type: "Document",
+            id,
+            title: String(d.name ?? "Document"),
+            subtitle: (d.reference as string) ?? null,
+            route: repositoryId
+              ? `/documents/repositories/${encodeURIComponent(repositoryId)}/nodes/${encodeURIComponent(id)}`
+              : "/documents",
+          };
+        }, false),
       ]);
 
       // Customers via repository text search (its list already applies scope).
@@ -173,7 +195,7 @@ export function createGlobalSearchService(deps: {
             id: c.id,
             title: c.name,
             subtitle: c.reference ?? null,
-            route: "/customers",
+            route: `/customers?customer=${encodeURIComponent(c.id)}`,
           });
         }
       }
@@ -196,12 +218,13 @@ export function createGlobalSearchService(deps: {
             .lean()
             .catch(() => []);
           for (const d of docs) {
+            const id = String(d._id);
             items.push({
               type: "User",
-              id: String(d._id),
+              id,
               title: `${String(d.firstName ?? "")} ${String(d.lastName ?? "")}`.trim() || String(d.email ?? "User"),
               subtitle: (d.email as string) ?? null,
-              route: "/users",
+              route: `/users?user=${encodeURIComponent(id)}`,
             });
           }
         }

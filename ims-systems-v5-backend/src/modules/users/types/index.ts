@@ -109,17 +109,47 @@ export type User = {
 /** Public list/detail projection — never includes password or tokens. */
 export type UserPublic = User;
 
+export type MembershipDayHoursView = {
+  start: string;
+  end: string;
+} | null;
+
+export type MembershipWorkShiftView = {
+  timezone: string;
+  monday: MembershipDayHoursView;
+  tuesday: MembershipDayHoursView;
+  wednesday: MembershipDayHoursView;
+  thursday: MembershipDayHoursView;
+  friday: MembershipDayHoursView;
+  saturday: MembershipDayHoursView;
+  sunday: MembershipDayHoursView;
+};
+
 export type OrgMembershipView = {
   userId: string;
   role: string;
   jobTitle?: string | null;
   salary?: number | null;
   workLocationType?: string | null;
+  /** Display label (country name). */
   country?: string | null;
+  countryCode?: string | null;
   leaveDaysEntitled?: number | null;
   toilBalance?: number | null;
   lineManagerIds?: string[];
   groupIds?: string[];
+  workShift?: MembershipWorkShiftView | null;
+};
+
+export type UpdateEmploymentInput = {
+  jobTitle: string;
+  workLocationType: "On-site" | "Remote";
+  salary?: number;
+  countryName: string;
+  countryCode: string;
+  leaveDaysEntitled?: number;
+  lineManagerIds?: string[];
+  workShift?: MembershipWorkShiftView;
 };
 
 export type UserWithMembership = {

@@ -6,6 +6,7 @@
 import type {
   OrgMembershipView,
   OwnershipCheckResult,
+  UpdateEmploymentInput,
   User,
 } from "./types";
 
@@ -16,6 +17,18 @@ export interface MembershipLookupPort {
   findByOrganizationAndUser(
     organizationId: string,
     userId: string
+  ): Promise<OrgMembershipView | null>;
+  /** Optional — Leaves line-manager assignment (auth0-openfga adapter). */
+  setLineManagerIds?(
+    organizationId: string,
+    userId: string,
+    lineManagerIds: string[]
+  ): Promise<OrgMembershipView | null>;
+  /** Optional — V4 MembershipForm employment update. */
+  updateEmployment?(
+    organizationId: string,
+    userId: string,
+    input: UpdateEmploymentInput
   ): Promise<OrgMembershipView | null>;
 }
 
@@ -38,7 +51,13 @@ const DEMO_UNITS = {
 
 const DEMO_MEMBERSHIP_META: Record<
   string,
-  { role: string; jobTitle: string; groupIds: string[] }
+  {
+    role: string;
+    jobTitle: string;
+    groupIds: string[];
+    /** Line managers for Leaves approval (demo graph). */
+    lineManagerIds?: string[];
+  }
 > = {
   "100000000000000000000001": {
     role: "Super User",
@@ -49,16 +68,19 @@ const DEMO_MEMBERSHIP_META: Record<
     role: "Basic User",
     jobTitle: "Operations Analyst",
     groupIds: [DEMO_UNITS.operations, DEMO_UNITS.partners],
+    lineManagerIds: ["100000000000000000000001"],
   },
   "100000000000000000000003": {
     role: "Hos User",
     jobTitle: "Delivery Lead",
     groupIds: [DEMO_UNITS.operations, DEMO_UNITS.externalAudit],
+    lineManagerIds: ["100000000000000000000001"],
   },
   "100000000000000000000004": {
     role: "Auditor User",
     jobTitle: "Compliance Manager",
     groupIds: [DEMO_UNITS.compliance],
+    lineManagerIds: ["100000000000000000000001"],
   },
   "100000000000000000000005": {
     role: "Super User",
@@ -69,12 +91,19 @@ const DEMO_MEMBERSHIP_META: Record<
     role: "Basic User",
     jobTitle: "Software Engineer",
     groupIds: [DEMO_UNITS.it],
+    lineManagerIds: ["100000000000000000000005"],
   },
 };
+
+type EmploymentOverride = Partial<
+  Omit<OrgMembershipView, "userId" | "role" | "groupIds">
+>;
 
 export class DevAllActiveUsersMembershipAdapter
   implements MembershipLookupPort
 {
+  private readonly overrides = new Map<string, EmploymentOverride>();
+
   constructor(
     private readonly listActiveUsers: () => Promise<
       Array<Pick<User, "id">>
@@ -85,7 +114,7 @@ export class DevAllActiveUsersMembershipAdapter
     _organizationId: string
   ): Promise<OrgMembershipView[]> {
     const users = await this.listActiveUsers();
-    return users.map((user) => membershipFor(user.id));
+    return users.map((user) => this.membershipFor(user.id));
   }
 
   async findByOrganizationAndUser(
@@ -95,20 +124,79 @@ export class DevAllActiveUsersMembershipAdapter
     const users = await this.listActiveUsers();
     const found = users.find((user) => user.id === userId);
     if (!found) return null;
-    return membershipFor(userId);
+    return this.membershipFor(userId);
   }
-}
 
-function membershipFor(userId: string): OrgMembershipView {
-  const meta = DEMO_MEMBERSHIP_META[userId];
-  return {
-    userId,
-    role: meta?.role ?? "Basic User",
-    jobTitle: meta?.jobTitle ?? null,
-    salary: null,
-    groupIds: meta?.groupIds ?? [],
-    lineManagerIds: [],
-  };
+  async setLineManagerIds(
+    _organizationId: string,
+    userId: string,
+    lineManagerIds: string[]
+  ): Promise<OrgMembershipView | null> {
+    const users = await this.listActiveUsers();
+    if (!users.some((user) => user.id === userId)) return null;
+    const prev = this.overrides.get(userId) ?? {};
+    this.overrides.set(userId, {
+      ...prev,
+      lineManagerIds: [...new Set(lineManagerIds.filter(Boolean))],
+    });
+    return this.membershipFor(userId);
+  }
+
+  async updateEmployment(
+    _organizationId: string,
+    userId: string,
+    input: UpdateEmploymentInput
+  ): Promise<OrgMembershipView | null> {
+    const users = await this.listActiveUsers();
+    if (!users.some((user) => user.id === userId)) return null;
+    const prev = this.overrides.get(userId) ?? {};
+    this.overrides.set(userId, {
+      ...prev,
+      jobTitle: input.jobTitle,
+      workLocationType: input.workLocationType,
+      salary: input.salary ?? 0,
+      country: input.countryName,
+      countryCode: input.countryCode,
+      leaveDaysEntitled: input.leaveDaysEntitled ?? 0,
+      lineManagerIds: input.lineManagerIds
+        ? [...new Set(input.lineManagerIds.filter(Boolean))]
+        : prev.lineManagerIds,
+      workShift: input.workShift ?? prev.workShift ?? null,
+    });
+    return this.membershipFor(userId);
+  }
+
+  private membershipFor(userId: string): OrgMembershipView {
+    const meta = DEMO_MEMBERSHIP_META[userId];
+    const overridden = this.overrides.get(userId);
+    return {
+      userId,
+      role: meta?.role ?? "Basic User",
+      jobTitle: overridden?.jobTitle ?? meta?.jobTitle ?? "Not set",
+      salary: overridden?.salary ?? 0,
+      workLocationType: overridden?.workLocationType ?? "On-site",
+      country: overridden?.country ?? "United Kingdom",
+      countryCode: overridden?.countryCode ?? "GB",
+      leaveDaysEntitled: overridden?.leaveDaysEntitled ?? 0,
+      toilBalance: overridden?.toilBalance ?? 0,
+      groupIds: meta?.groupIds ?? [],
+      lineManagerIds: overridden?.lineManagerIds
+        ? [...overridden.lineManagerIds]
+        : meta?.lineManagerIds
+          ? [...meta.lineManagerIds]
+          : [],
+      workShift: overridden?.workShift ?? {
+        timezone: "UTC",
+        monday: { start: "09:00", end: "17:00" },
+        tuesday: { start: "09:00", end: "17:00" },
+        wednesday: { start: "09:00", end: "17:00" },
+        thursday: { start: "09:00", end: "17:00" },
+        friday: { start: "09:00", end: "17:00" },
+        saturday: null,
+        sunday: null,
+      },
+    };
+  }
 }
 
 export interface SessionPort {

@@ -155,17 +155,51 @@ export type UpdateOrganisationLogoInput = {
   logoStorage?: OrganisationLogoStorage | null;
 };
 
+export type MembershipDayHours = {
+  start: string;
+  end: string;
+} | null;
+
+export type MembershipWorkShift = {
+  timezone: string;
+  monday: MembershipDayHours;
+  tuesday: MembershipDayHours;
+  wednesday: MembershipDayHours;
+  thursday: MembershipDayHours;
+  friday: MembershipDayHours;
+  saturday: MembershipDayHours;
+  sunday: MembershipDayHours;
+};
+
 export type OrganisationMembership = {
   id: string;
   organizationId: string;
   userId: string;
   role: OrganisationRole;
   jobTitle: string;
+  workLocationType: "On-site" | "Remote";
+  salary: number;
+  country: { name: string; code: string };
+  leaveDaysEntitled: number;
+  toilBalance: number;
+  workShift: MembershipWorkShift;
   /** Compliance toolkit names granted to this member (U-07/N-10). */
   complianceToolkits: string[];
+  /** User ids that approve this member's leave requests. */
+  lineManagerIds: string[];
   createdOn: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type UpdateMembershipEmploymentInput = {
+  jobTitle?: string;
+  workLocationType?: "On-site" | "Remote";
+  salary?: number;
+  country?: { name: string; code: string };
+  leaveDaysEntitled?: number;
+  lineManagerIds?: string[];
+  workShift?: MembershipWorkShift;
 };
 
 export type CreateOrganisationInput = {

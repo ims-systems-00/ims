@@ -160,6 +160,21 @@ const envSchema = z
       .pipe(z.array(z.string().email()).min(1)),
 
     /**
+     * Comma-separated internal inboxes for Contact IMS enquiries
+     * (demo booking + get started). Empty disables submissions.
+     */
+    CONTACT_IMS_SUPPORT_EMAILS: z
+      .string()
+      .default("support@imssystems.tech")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      )
+      .pipe(z.array(z.string().email())),
+
+    /**
      * When true, mail is enqueued on BullMQ (requires Redis).
      * When false, mail is handed to the transport immediately in-process.
      */

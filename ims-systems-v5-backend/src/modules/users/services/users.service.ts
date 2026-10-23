@@ -32,6 +32,7 @@ import {
   type UpdateProfileImageInput,
   type UpdateSignatureInput,
   type UpdateSystemAccessInput,
+  type UpdateEmploymentInput,
   type UpdateUserProfileInput,
   type User,
   type UserWithMembership,
@@ -595,6 +596,70 @@ export function createUsersService(deps: UsersServiceDeps) {
       });
       await sessions.clearSessionsForUser(id);
       return user;
+    },
+
+    async setLineManagers(
+      identity: SecurityIdentity | null | undefined,
+      id: string,
+      lineManagerIds: string[]
+    ): Promise<UserWithMembership> {
+      const actor = requireOrgIdentity(identity);
+      await assertAllowed(actor.identity, "update", id);
+      await requireOrgMember(actor.organizationId, id);
+
+      if (!memberships.setLineManagerIds) {
+        throw new ValidationAppError(
+          "Line manager assignment is not available in this environment"
+        );
+      }
+
+      const membership = await memberships.setLineManagerIds(
+        actor.organizationId,
+        id,
+        lineManagerIds
+      );
+      if (!membership) {
+        throw new NotFoundError("User not found in organisation");
+      }
+
+      const user = await repository.findById(id);
+      if (!user) {
+        throw new NotFoundError("User not found");
+      }
+      return { user, membership };
+    },
+
+    async updateEmployment(
+      identity: SecurityIdentity | null | undefined,
+      id: string,
+      input: UpdateEmploymentInput
+    ): Promise<UserWithMembership> {
+      const actor = requireOrgIdentity(identity);
+      await assertAllowed(actor.identity, "update", id);
+      await requireOrgMember(actor.organizationId, id);
+
+      const managers = input.lineManagerIds ?? [];
+
+      if (!memberships.updateEmployment) {
+        throw new ValidationAppError(
+          "Employment details cannot be updated in this environment"
+        );
+      }
+
+      const membership = await memberships.updateEmployment(
+        actor.organizationId,
+        id,
+        { ...input, lineManagerIds: managers }
+      );
+      if (!membership) {
+        throw new NotFoundError("User not found in organisation");
+      }
+
+      const user = await repository.findById(id);
+      if (!user) {
+        throw new NotFoundError("User not found");
+      }
+      return { user, membership };
     },
 
     async resendVerification(

@@ -20,6 +20,8 @@ import {
   startDocumentReviewReminderSchedule,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
+import { createContactImsModule } from "../../../modules/contact-ims";
+import { createRegisterPublicInterestModule } from "../../../modules/register-public-interest";
 import {
   composeGoLiveSideEffects,
   createOrganisationModule,
@@ -52,6 +54,7 @@ import {
   createCalendarModule,
   createAuditCalendarAdapter,
   createIncidentCalendarAdapter,
+  createLeaveCalendarAdapter,
   createManagementReviewCalendarAdapter,
   createSupplierCalendarAdapter,
   createTaskCalendarAdapter,
@@ -134,11 +137,24 @@ import {
 import { createInvitationModule } from "../../../modules/invitations";
 import { createSearchModule } from "../../../modules/search";
 import { createListScopePorts } from "../../../security/list-scope/create-list-scope.adapter";
+import {
+  createLeavesModule,
+  createLeavesMembershipAdapter,
+  createLeavesNotificationAdapter,
+} from "../../../modules/leaves";
 import { createInvoiceModule } from "../../../modules/invoices";
 import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
 import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
 import { createAuth0ManagementApiFromConfig } from "../../../security/auth0/auth0-management-api";
 import { createComplianceAutomationQueue } from "../../../infrastructure/queue/automation-queue";
+import { createDataImportQueue } from "../../../infrastructure/queue/data-import-queue";
+import {
+  createDataImportModule,
+  createDataImportMigrator,
+  createDataImportNotificationAdapter,
+  createDataImportTargetWriterAdapter,
+  InlineDataImportQueueAdapter,
+} from "../../../modules/data-import";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -229,6 +245,20 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     confirmationDelayMs: config?.NODE_ENV === "test" ? 0 : 1_200,
   });
   router.use("/report-bug", reportBug.router);
+
+  // Public marketing endpoints (no authorizer): email-only enquiries and
+  // persisted product-interest registrations.
+  const contactIms = createContactImsModule({
+    email,
+    supportEmails: config?.CONTACT_IMS_SUPPORT_EMAILS ?? [
+      "support@imssystems.tech",
+    ],
+    confirmationDelayMs: config?.NODE_ENV === "test" ? 0 : 1_200,
+  });
+  router.use("/contact-ims", contactIms.router);
+
+  const registerPublicInterest = createRegisterPublicInterestModule({ email });
+  router.use("/register-public-interest", registerPublicInterest.router);
 
   // N-06: wire object storage whenever config is present (silent logger fallback).
   let objectStorage: ObjectStoragePort | undefined;
@@ -445,6 +475,14 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),
+  });
+  const leaves = createLeavesModule({
+    authorizer: security.authorizer,
+    notifications: createLeavesNotificationAdapter(notifications.application),
+    calendar: createLeaveCalendarAdapter(calendar.service),
+    memberships: createLeavesMembershipAdapter({
+      membershipLookup: users.memberships,
+    }),
   });
   const tasksCleanup = createTasksSourceCleanupAdapter(tasks.service);
 
@@ -788,6 +826,55 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       : {}),
   });
 
+  // Data Import — schema / validate / queue migration into CRM, risks,
+  // incidents, and inventory (spec: docs/module-specifications/data-import.md).
+  const dataImportNotifications = createDataImportNotificationAdapter(
+    notifications.application
+  );
+  const dataImportWriter = createDataImportTargetWriterAdapter({
+    customers: customers.service,
+    risks: risks.service,
+    incidents: incidents.service,
+    assets: assets.service,
+  });
+  const dataImportMigrator = createDataImportMigrator({
+    writer: dataImportWriter,
+    notifications: dataImportNotifications,
+    logger,
+  });
+  const dataImportQueue =
+    config?.EMAIL_QUEUE_ENABLED && config
+      ? (() => {
+          const q = createDataImportQueue({
+            config,
+            logger:
+              logger ?? createLogger({ level: "silent", name: "data-import" }),
+            handler: async (job) => {
+              await dataImportMigrator.run(job);
+            },
+          });
+          q.startWorker();
+          return q;
+        })()
+      : new InlineDataImportQueueAdapter(
+          (job) => dataImportMigrator.run(job),
+          (error) => {
+            logger?.error(
+              {
+                err: error instanceof Error ? error.message : String(error),
+              },
+              "Data import inline migration failed"
+            );
+          }
+        );
+  const dataImport = createDataImportModule({
+    authorizer: security.authorizer,
+    notifications: dataImportNotifications,
+    writer: dataImportWriter,
+    queue: dataImportQueue,
+  });
+  router.use("/data-import", dataImport.router);
+
   const auditIncidentPromotion: AuditIncidentPromotionPort = {
     async promoteNonConformity(input) {
       const created = await incidents.service.create(input.identity, {
@@ -906,6 +993,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/customers", customers.router);
   router.use("/email-campaigns", emailCampaigns.router);
   router.use("/tasks", tasks.router);
+  router.use("/leaves", leaves.router);
 
   return {
     router,

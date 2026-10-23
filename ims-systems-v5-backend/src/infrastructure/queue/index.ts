@@ -12,3 +12,7 @@ export {
 } from "./create-email-system";
 export { createEmailWorkers, type EmailWorkers } from "./email.worker";
 export { createRedisClient, createRedisConnectionOptions } from "./redis-connection";
+export {
+  createDataImportQueue,
+  type DataImportQueue,
+} from "./data-import-queue";

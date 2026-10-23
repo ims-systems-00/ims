@@ -5,6 +5,7 @@
 
 import type { AuditCalendarPort } from "../../audits/ports";
 import type { IncidentCalendarPort } from "../../incidents/ports";
+import type { LeavesCalendarPort } from "../../leaves/ports";
 import type { ManagementReviewCalendarPort } from "../../management-reviews/ports";
 import type { SupplierCalendarPort } from "../../suppliers/ports";
 import type { TaskCalendarPort } from "../../tasks/ports";
@@ -170,6 +171,28 @@ export function createManagementReviewCalendarAdapter(
         organizationId: input.organizationId,
         systemEventId: input.reviewId,
         eventReference: "managementreview",
+      });
+    },
+  };
+}
+
+export function createLeaveCalendarAdapter(
+  calendar: CalendarService
+): LeavesCalendarPort {
+  return {
+    async upsertLeaveEvent(input) {
+      await calendar.upsertSystemEvent({
+        organizationId: input.organizationId,
+        systemEventId: input.leaveId,
+        eventReference: "leave",
+        title: `${input.type} (${input.reference})`,
+        description: `Approved ${input.type.toLowerCase()} ${input.reference}`,
+        start: input.startDate,
+        end: input.endDate,
+        color: "purple",
+        attendeeIds: [input.requesterId],
+        groupIds: [],
+        actorId: "system:leaves",
       });
     },
   };

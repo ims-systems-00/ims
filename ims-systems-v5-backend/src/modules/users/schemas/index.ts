@@ -103,6 +103,44 @@ export const assignToolkitsBodySchema = z.object({
   toolkitIds: z.array(z.string().trim().min(1)).default([]),
 });
 
+export const lineManagersBodySchema = z.object({
+  lineManagerIds: z.array(objectIdSchema).default([]),
+});
+
+const dayHoursSchema = z
+  .object({
+    start: z.string().trim().min(1),
+    end: z.string().trim().min(1),
+  })
+  .nullable();
+
+export const updateEmploymentBodySchema = z.object({
+  jobTitle: z.string().trim().min(1, "Job title is required"),
+  workLocationType: z.enum(["On-site", "Remote"]),
+  salary: z.coerce.number().min(0).optional().default(0),
+  countryName: z.string().trim().min(1).default("United Kingdom"),
+  countryCode: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((value) => value.toUpperCase())
+    .default("GB"),
+  leaveDaysEntitled: z.coerce.number().min(0).optional().default(0),
+  lineManagerIds: z.array(objectIdSchema).optional().default([]),
+  workShift: z
+    .object({
+      timezone: z.string().trim().min(1).default("UTC"),
+      monday: dayHoursSchema,
+      tuesday: dayHoursSchema,
+      wednesday: dayHoursSchema,
+      thursday: dayHoursSchema,
+      friday: dayHoursSchema,
+      saturday: dayHoursSchema,
+      sunday: dayHoursSchema,
+    })
+    .optional(),
+});
+
 export const ownershipTransferBodySchema = z.object({
   destinationUserId: objectIdSchema,
 });

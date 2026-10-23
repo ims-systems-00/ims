@@ -27,6 +27,7 @@ export const ENFORCED_RESOURCE_TYPES: ReadonlySet<string> = new Set([
   "charts",
   "dashboard",
   "stats",
+  "leaves",
 ]);
 
 /** @deprecated Use ENFORCED_RESOURCE_TYPES (M7). Kept for import compatibility. */
@@ -52,4 +53,5 @@ export const NAV_CAPABILITY_RESOURCE_TYPES: readonly string[] = [
   "suppliers",
   "tasks",
   "calendar",
+  "leaves",
 ];

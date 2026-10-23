@@ -25,6 +25,7 @@ export const NOTIFICATION_REFERENCE_TYPES = [
   "documents",
   "calendar",
   "compliance",
+  "leaves",
 ] as const;
 export type NotificationReferenceType =
   (typeof NOTIFICATION_REFERENCE_TYPES)[number];

@@ -20,6 +20,7 @@ export {
   createIncidentCalendarAdapter,
   createSupplierCalendarAdapter,
   createManagementReviewCalendarAdapter,
+  createLeaveCalendarAdapter,
 } from "./adapters/calendar-ports.adapter";
 export type {
   CalendarEvent,
