@@ -34,6 +34,20 @@ export type OrganisationGoLiveSideEffectsPort = {
   }): Promise<GoLivePaymentSession | null>;
 
   /**
+   * Ensure the organisation's file-storage bucket exists (N-09).
+   * Best-effort: failures must be logged by the adapter, not thrown.
+   * Optional — adapters without file-storage concerns omit it.
+   */
+  ensureFileStorage?(input: { organizationId: string }): Promise<void>;
+
+  /**
+   * Create/link the organisation's Auth0 Organization (N-09 remainder).
+   * Best-effort: failures must be logged by the adapter, not thrown.
+   * Optional — omitted until the Management API M2M app is configured.
+   */
+  ensureAuth0Organisation?(input: { organizationId: string }): Promise<void>;
+
+  /**
    * Notify internal teams (invoice Go Live) and/or the activating user.
    */
   notifyGoLive(input: {
@@ -53,6 +67,14 @@ export type OrganisationGoLiveSideEffectsPort = {
 export class NoOpOrganisationGoLiveSideEffectsAdapter
   implements OrganisationGoLiveSideEffectsPort
 {
+  async ensureFileStorage(): Promise<void> {
+    return;
+  }
+
+  async ensureAuth0Organisation(): Promise<void> {
+    return;
+  }
+
   async provisionComplianceToolkits(): Promise<void> {
     return;
   }

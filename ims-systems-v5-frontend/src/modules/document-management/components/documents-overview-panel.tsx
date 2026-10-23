@@ -9,6 +9,7 @@ import {
   Shuffle,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -59,6 +60,7 @@ const PURPOSE_META: Record<
 export function DocumentsOverviewPanel() {
   const overviewQuery = useDocumentOverviewQuery();
   const setTab = useDocumentsUiStore((state) => state.setTab);
+  const navigate = useNavigate();
 
   if (overviewQuery.isLoading) {
     return (
@@ -126,7 +128,7 @@ export function DocumentsOverviewPanel() {
               By purpose
             </h2>
             <p className="text-[0.75rem] text-muted-foreground">
-              Click a card to jump into repositories.
+              Click a card to see published documents with that purpose.
             </p>
           </div>
         </div>
@@ -142,7 +144,9 @@ export function DocumentsOverviewPanel() {
               <button
                 key={purpose}
                 type="button"
-                onClick={() => setTab("repositories")}
+                onClick={() =>
+                  navigate(`/documents/overview/${encodeURIComponent(purpose)}`)
+                }
                 className={cn(
                   "group relative overflow-hidden rounded-xl border border-border-subtle bg-card p-4 text-left",
                   "transition-[border-color,box-shadow,transform] duration-150",

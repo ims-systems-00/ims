@@ -4,6 +4,7 @@
  *
  * KPI/Objectives are out of scope (separate kpi-objective.md).
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -271,7 +272,15 @@ export function createManagementReviewService(
     ): Promise<ManagementReview> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireReview(actor.organizationId, id);
+      const review = await requireReview(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, review.businessUnitId)) {
+        throw new NotFoundError("Management review not found");
+      }
+      return review;
     },
 
     async stats(

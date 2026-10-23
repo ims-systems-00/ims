@@ -31,6 +31,7 @@ const attachmentSchema = new Schema(
     mimeType: { type: String, trim: true },
     sizeBytes: { type: Number },
     storageKey: { type: String, trim: true },
+    bucket: { type: String, trim: true },
     url: { type: String, trim: true },
     uploadedBy: { type: String, required: true },
     uploadedAt: { type: Date, required: true },

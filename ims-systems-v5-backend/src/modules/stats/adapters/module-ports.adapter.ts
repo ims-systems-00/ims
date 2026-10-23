@@ -19,12 +19,11 @@ import type { RiskService } from "../../risks";
 import type { SupplierService } from "../../suppliers";
 import type { UsersService } from "../../users";
 import type { ComplianceApplicationPort } from "../../compliance";
+import type { DocumentManagementApplicationPort } from "../../document-management";
 import type { StatsModulePorts } from "../ports";
-import {
-  DevNoOrgTargetsAdapter,
-  UnavailableComplianceAdapter,
-  UnavailableInvoicesAdapter,
-} from "../ports";
+import { UnavailableComplianceAdapter } from "../ports";
+import { createOrganisationTargetsAdapter } from "./organisation-targets.adapter";
+import { createStatsInvoicesAdapter } from "./invoices.adapter";
 
 export type StatsPortsFromModulesInput = {
   risks: RiskService;
@@ -38,12 +37,23 @@ export type StatsPortsFromModulesInput = {
   users: UsersService;
   customers: CustomerService;
   compliance?: ComplianceApplicationPort;
+  documents?: DocumentManagementApplicationPort;
 };
 
 export function createStatsPortsFromModules(
   input: StatsPortsFromModulesInput
 ): StatsModulePorts {
   return {
+    documents: {
+      async documentUtilisation(identity) {
+        if (!input.documents || !identity.organizationId) {
+          return { businessUnitIds: [], hasPublishedDocuments: false };
+        }
+        return input.documents.getDocumentUtilisation(
+          identity.organizationId
+        );
+      },
+    },
     risks: {
       stats: (identity) => input.risks.stats(identity),
       async listSample(identity, opts) {
@@ -210,7 +220,8 @@ export function createStatsPortsFromModules(
         }));
       },
     },
-    invoices: new UnavailableInvoicesAdapter(),
+    // N-17: real monthly Sent invoice aggregates from the Invoice module.
+    invoices: createStatsInvoicesAdapter(),
     compliance: input.compliance
       ? {
           async frameworkPercentages(identity) {
@@ -221,6 +232,7 @@ export function createStatsPortsFromModules(
           },
         }
       : new UnavailableComplianceAdapter(),
-    organisation: new DevNoOrgTargetsAdapter(),
+    // N-17: real incident-resolution targets from the org record.
+    organisation: createOrganisationTargetsAdapter(),
   };
 }

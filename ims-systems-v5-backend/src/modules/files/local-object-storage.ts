@@ -70,6 +70,7 @@ function buildSignedUrl(
     expiresInSeconds: number;
     purpose: LocalPurpose;
     downloadFileName?: string;
+    disposition?: "inline" | "attachment";
   }
 ): string {
   const exp =
@@ -90,6 +91,9 @@ function buildSignedUrl(
   if (input.downloadFileName?.trim()) {
     params.set("name", input.downloadFileName.trim());
   }
+  if (input.disposition === "attachment") {
+    params.set("disp", "attachment");
+  }
   return `${endpoint}?${params.toString()}`;
 }
 
@@ -108,10 +112,16 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
     this.signingSecret = options.signingSecret;
   }
 
+  async assertBucketExists(): Promise<void> {
+    // Buckets are folders under rootDir, created on first write.
+  }
+
   async createUploadUrl(input: {
     bucket: string;
     key: string;
     expiresInSeconds: number;
+    contentType?: string;
+    contentLength?: number;
   }): Promise<string> {
     return buildSignedUrl(this.objectEndpointUrl, this.signingSecret, {
       bucket: input.bucket,
@@ -126,6 +136,7 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
     key: string;
     expiresInSeconds: number;
     downloadFileName?: string;
+    disposition?: "inline" | "attachment";
   }): Promise<string> {
     return buildSignedUrl(this.objectEndpointUrl, this.signingSecret, {
       bucket: input.bucket,
@@ -133,6 +144,7 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
       expiresInSeconds: input.expiresInSeconds,
       purpose: "view",
       downloadFileName: input.downloadFileName,
+      disposition: input.disposition,
     });
   }
 
@@ -145,6 +157,7 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
     bucket: string;
     key: string;
     downloadFileName?: string;
+    disposition?: "inline" | "attachment";
   } {
     const bucket = String(query.bucket ?? "");
     const key = String(query.key ?? "");
@@ -162,7 +175,12 @@ export class LocalObjectStorageAdapter implements ObjectStoragePort {
       throw new Error("Invalid or expired signed URL");
     }
     const name = query.name ? String(query.name) : undefined;
-    return { bucket, key, downloadFileName: name };
+    return {
+      bucket,
+      key,
+      downloadFileName: name,
+      disposition: query.disp === "attachment" ? "attachment" : "inline",
+    };
   }
 
   async writeObject(input: {

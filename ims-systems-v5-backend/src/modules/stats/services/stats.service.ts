@@ -204,7 +204,7 @@ export function createStatsService(deps: StatsServiceDeps) {
         (unit) => unit.accessType === "Internal business function"
       );
 
-      const [risks, incidents, ofis, audits, suppliers, inventory] =
+      const [risks, incidents, ofis, audits, suppliers, inventory, documents] =
         await Promise.all([
           ports.risks.listSample(actor, { pageSize: 100 }),
           ports.incidents.listSample(actor, { pageSize: 100 }),
@@ -212,6 +212,7 @@ export function createStatsService(deps: StatsServiceDeps) {
           ports.audits.listSample(actor, { pageSize: 100 }),
           ports.suppliers.stats(actor),
           ports.inventory.stats(actor),
+          ports.documents.documentUtilisation(actor),
         ]);
 
       const businessUnitMaturity = internal.map((unit) => {
@@ -223,12 +224,18 @@ export function createStatsService(deps: StatsServiceDeps) {
         const hasAudit = audits.some((a) => a.businessUnitId === unit.id);
         const hasSupplier = suppliers.supplierCompliance.compliant > 0;
         const hasInventory = inventory.totalCount > 0;
-        // Document Management not implemented — utilisation stays 0.
+        // Document Management utilisation (stats.md): a BU uses DM when a
+        // repository is scoped to it, or when the org publishes documents
+        // at all (org-wide repositories serve every BU, mirroring the
+        // supplier/inventory org-level flags above).
+        const hasDocument =
+          documents.hasPublishedDocuments ||
+          documents.businessUnitIds.includes(unit.id);
         const flags: Record<string, boolean> = {
           risk: hasRisk,
           incident: hasIncident,
           supplier: hasSupplier,
-          document: false,
+          document: hasDocument,
           cip: hasCip,
           audit: hasAudit,
           inventory: hasInventory,

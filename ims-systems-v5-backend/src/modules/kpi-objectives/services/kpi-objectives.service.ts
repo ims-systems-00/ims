@@ -5,6 +5,7 @@
  * Hard-delete CRUD registry. Creator owns update/delete.
  * Measurement fields exist but are optional (not UI-driven).
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -234,6 +235,13 @@ export function createKpiObjectivesService(deps: KpiObjectivesServiceDeps) {
       await assertAllowed(actor, "read");
       const kpi = await repository.findById(organizationId, id);
       if (!kpi) throw new NotFoundError("Kpi Objectives not found with given id");
+      const scope = await listScope.resolveScope({
+        organizationId,
+        subjectId: actor.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, kpi.businessUnitId)) {
+        throw new NotFoundError("Kpi Objectives not found with given id");
+      }
       return kpi;
     },
 

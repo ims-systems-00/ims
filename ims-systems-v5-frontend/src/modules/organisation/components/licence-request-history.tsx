@@ -1,4 +1,5 @@
 import { cn } from "@/shared/lib/utils";
+import { formatDate } from "@/shared/lib/format-date";
 import { useLicenceRequestsQuery } from "../hooks/use-organisations";
 import type { LicenceRequest, LicenceRequestStatus } from "../types";
 
@@ -52,7 +53,7 @@ export function LicenceRequestHistory() {
                 {requestSummary(request)}
               </span>
               <span className="text-[0.75rem] tabular-nums text-muted-foreground">
-                {new Date(request.createdAt).toLocaleDateString()}
+                {formatDate(request.createdAt)}
               </span>
               <span
                 className={cn(

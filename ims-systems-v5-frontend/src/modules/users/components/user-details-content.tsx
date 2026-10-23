@@ -4,28 +4,19 @@ import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { useSessionProfileUserId } from "@/security";
-import { useUserQuery } from "../hooks/use-users";
+import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
+import { notify } from "@/shared/lib/toast";
+import {
+  useProfileImageUrl,
+  useUpdateProfileImageMutation,
+  useUserQuery,
+} from "../hooks/use-users";
 import type { OrgMembershipView, User } from "../types";
 import { EditProfileSheet } from "./edit-profile-sheet";
+import { ManageEmploymentSheet } from "./manage-employment-sheet";
 import { UserAvatar } from "./user-avatar";
 import { UserBusinessUnitsCard } from "./user-business-units-card";
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleString(undefined, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
-function formatDateOnly(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString(undefined, { dateStyle: "medium" });
-}
+import { formatDate, formatDateTime } from "@/shared/lib/format-date";
 
 function accessTone(
   status: string
@@ -132,18 +123,56 @@ export function UserDetailsView({
   canEditProfile?: boolean;
 }) {
   const [editOpen, setEditOpen] = useState(false);
+  const [employmentOpen, setEmploymentOpen] = useState(false);
   const groupIds = membership?.groupIds ?? [];
+  const profileImageUrl = useProfileImageUrl(user);
+  const profileImageMutation = useUpdateProfileImageMutation(user.id);
+
+  const workingDays = membership?.workShift
+    ? (
+        [
+          "monday",
+          "tuesday",
+          "wednesday",
+          "thursday",
+          "friday",
+          "saturday",
+          "sunday",
+        ] as const
+      ).filter((day) => membership.workShift?.[day]).length
+    : 0;
 
   return (
     <div className="space-y-4">
       <section className="ims-panel overflow-hidden">
         <div className="flex flex-wrap items-start gap-4 px-4 py-5">
-          <UserAvatar
-            name={user.name}
-            imageUrl={user.profileImage?.url}
-            size="lg"
-            className="size-14 text-sm"
-          />
+          {canEditProfile ? (
+            <ImageUploadControl
+              imageUrl={profileImageUrl}
+              alt={`${user.name} profile picture`}
+              fallbackLabel={(user.name || user.email || "U")
+                .slice(0, 2)
+                .toUpperCase()}
+              uploadLabel="Upload photo"
+              changeLabel="Change photo"
+              onUploaded={async (meta, viewUrl) => {
+                await profileImageMutation.mutateAsync({
+                  url: viewUrl,
+                  fileName: meta.Name,
+                  storageKey: meta.Key || meta.key,
+                  bucket: meta.Bucket,
+                });
+                notify.success("Profile picture updated");
+              }}
+            />
+          ) : (
+            <UserAvatar
+              name={user.name}
+              imageUrl={profileImageUrl}
+              size="lg"
+              className="size-14 text-sm"
+            />
+          )}
           <div className="min-w-0 flex-1 space-y-1.5">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-[1.125rem] font-semibold tracking-[-0.015em] text-foreground">
@@ -200,7 +229,7 @@ export function UserDetailsView({
                   </StatusBadge>
                   {user.emailVerified.on ? (
                     <span className="text-xs text-muted-foreground">
-                      {formatDateOnly(user.emailVerified.on)}
+                      {formatDate(user.emailVerified.on)}
                     </span>
                   ) : null}
                 </span>
@@ -218,28 +247,48 @@ export function UserDetailsView({
           </dl>
         </ProfileCard>
 
-        <ProfileCard title="Employment">
+        <ProfileCard
+          title="Employment"
+          action={
+            membership ? (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setEmploymentOpen(true)}
+              >
+                Manage
+              </Button>
+            ) : null
+          }
+        >
           {membership ? (
             <dl className="ims-detail-grid">
               <DetailItem label="Role" value={membership.role || "—"} />
               <DetailItem
                 label="Job title"
-                value={membership.jobTitle || "—"}
+                value={membership.jobTitle || "Not set"}
               />
               <DetailItem
-                label="Work location type"
-                value={membership.workLocationType || "—"}
+                label="Working place"
+                value={membership.workLocationType || "On-site"}
               />
               <DetailItem
-                label="Employment country"
-                value={membership.country || "—"}
+                label="Salary"
+                value={
+                  membership.salary != null ? String(membership.salary) : "0"
+                }
               />
               <DetailItem
-                label="Leave days entitled"
+                label="Country"
+                value={membership.country || "United Kingdom"}
+              />
+              <DetailItem
+                label="Annual leave entitlement"
                 value={
                   membership.leaveDaysEntitled != null
                     ? String(membership.leaveDaysEntitled)
-                    : "—"
+                    : "0"
                 }
               />
               <DetailItem
@@ -247,7 +296,7 @@ export function UserDetailsView({
                 value={
                   membership.toilBalance != null
                     ? String(membership.toilBalance)
-                    : "—"
+                    : "0"
                 }
               />
               <DetailItem
@@ -257,6 +306,14 @@ export function UserDetailsView({
                   membership.lineManagerIds.length > 0
                     ? `${membership.lineManagerIds.length} assigned`
                     : "None assigned"
+                }
+              />
+              <DetailItem
+                label="Operating hours"
+                value={
+                  workingDays > 0
+                    ? `${workingDays} day${workingDays === 1 ? "" : "s"} set`
+                    : "Not set"
                 }
               />
             </dl>
@@ -277,18 +334,18 @@ export function UserDetailsView({
             />
             <DetailItem
               label="Access expires"
-              value={formatDateOnly(user.systemAccess.expires)}
+              value={formatDate(user.systemAccess.expires)}
             />
             <DetailItem
               label="Last logged in"
-              value={formatDate(user.loggedIn.on)}
+              value={formatDateTime(user.loggedIn.on)}
             />
-            <DetailItem label="Created" value={formatDate(user.createdAt)} />
-            <DetailItem label="Updated" value={formatDate(user.updatedAt)} />
+            <DetailItem label="Created" value={formatDateTime(user.createdAt)} />
+            <DetailItem label="Updated" value={formatDateTime(user.updatedAt)} />
             <DetailItem
               label="Access policies"
               value={
-                user.accessPolicies.length > 0
+                (user.accessPolicies?.length ?? 0) > 0
                   ? `${user.accessPolicies.length} polic${user.accessPolicies.length === 1 ? "y" : "ies"}`
                   : "None"
               }
@@ -302,6 +359,14 @@ export function UserDetailsView({
           open={editOpen}
           user={user}
           onOpenChange={setEditOpen}
+        />
+      ) : null}
+      {membership && employmentOpen ? (
+        <ManageEmploymentSheet
+          open={employmentOpen}
+          userId={user.id}
+          membership={membership}
+          onOpenChange={setEmploymentOpen}
         />
       ) : null}
     </div>

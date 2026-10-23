@@ -1,30 +1,17 @@
+import { formatDate } from "@/shared/lib/format-date";
 import type { DocumentReviewInterval } from "../types";
 
 export function formatDocumentDate(
   value: string | Date | null | undefined
 ): string {
-  if (!value) return "—";
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  return formatDate(value);
 }
 
-/** Short numeric date (e.g. 09/09/2024) for upload captions. */
+/** Short numeric date (dd-mm-yyyy) for upload captions. */
 export function formatDocumentDateShort(
   value: string | Date | null | undefined
 ): string {
-  if (!value) return "—";
-  const date = typeof value === "string" ? new Date(value) : value;
-  if (Number.isNaN(date.getTime())) return "—";
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
+  return formatDate(value);
 }
 
 /** Approximate next review from created date + interval (display helper). */

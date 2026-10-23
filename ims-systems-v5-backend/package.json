@@ -15,7 +15,10 @@
     "test:watch": "vitest",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "seed:compliance-catalogues": "tsx scripts/seed-compliance-catalogues.ts",
-    "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts"
+    "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts",
+    "provision:files-buckets": "tsx scripts/ensure-files-bucket.ts",
+    "preflight:prod": "tsx scripts/preflight-prod.ts",
+    "smoke:files-s3": "tsx scripts/smoke-files-s3.ts"
   },
   "engines": {
     "node": ">=20"
@@ -26,12 +29,15 @@
     "@openfga/sdk": "^0.9.7",
     "@sendgrid/mail": "^8.1.6",
     "bullmq": "^6.3.11",
+    "date-holidays": "^3.37.0",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "ioredis": "^6.0.0",
     "jose": "^6.2.12",
     "mongoose": "^9.9.5",
     "nodemailer": "^10.0.15",
+    "openai": "^4.104.0",
+    "pdf-lib": "^1.17.1",
     "pino": "^10.3.1",
     "stripe": "^23.0.0",
     "zod": "^4.5.4"

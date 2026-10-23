@@ -23,8 +23,11 @@ import { KpiObjectivesPage } from "@/modules/kpi-objectives";
 import { TagsAndCategoriesPage } from "@/modules/tags-and-categories";
 import {
   DocumentDetailPage,
+  DocumentPurposePage,
   DocumentsPage,
+  PublicSignPage,
   RepositoryDetailPage,
+  SignatureRequestsPage,
 } from "@/modules/document-management";
 import { ComplianceToolkitPage } from "@/modules/compliance";
 import { OfisListPage } from "@/modules/ofi";
@@ -39,6 +42,8 @@ import {
   EmailCampaignDetailPage,
   EmailCampaignsListPage,
 } from "@/modules/email-campaign";
+import { InvoicesListPage } from "@/modules/invoices";
+import { LeavesListPage } from "@/modules/leaves";
 import { CalendarPage } from "@/modules/calendar";
 import { SuppliersListPage } from "@/modules/suppliers";
 import { TasksListPage } from "@/modules/tasks";
@@ -53,7 +58,11 @@ import {
   PartnerDashboardPage,
 } from "@/modules/partnership";
 import { ReportBugPage } from "@/modules/report-bug";
+import { DataImportPage } from "@/modules/data-import";
 import { MyProfilePage, UsersListPage } from "@/modules/users";
+import { AcceptInvitationPage } from "@/modules/invitations";
+import { ContactImsPage } from "@/modules/contact-ims";
+import { RegisterPublicInterestPage } from "@/modules/register-public-interest";
 import { OnboardingShell } from "@/shared/layout";
 import { RequireAuth } from "@/security";
 
@@ -67,11 +76,25 @@ export function App() {
       <Route path="login" element={<LoginPage />} />
       <Route path="register" element={<RegisterPage />} />
       <Route path="forgot-password" element={<ForgotPasswordPage />} />
+      {/* Public, token-gated external e-signing (no login). */}
+      <Route path="documents/sign/:token" element={<PublicSignPage />} />
+      {/* Public marketing surfaces (no login, not in sidebar nav). */}
+      <Route path="contact" element={<ContactImsPage />} />
+      <Route
+        path="register-interest"
+        element={<RegisterPublicInterestPage />}
+      />
 
       <Route element={<RequireAuth />}>
         <Route
           path="auth/preparation-screen"
           element={<PreparationScreenPage />}
+        />
+        {/* Emailed invitation acceptance: authenticated, but outside the
+            membership gate — invitees may have no membership yet. */}
+        <Route
+          path="auth/onboard/accept-invitation/:token"
+          element={<AcceptInvitationPage />}
         />
         <Route element={<PostLoginMembershipGate />}>
           <Route path="onboard" element={<OnboardingShell />}>
@@ -131,8 +154,20 @@ export function App() {
             />
             <Route path="documents" element={<DocumentsPage />} />
             <Route
+              path="documents/overview/:purpose"
+              element={<DocumentPurposePage />}
+            />
+            <Route
               path="documents/repositories/:id"
               element={<RepositoryDetailPage />}
+            />
+            <Route
+              path="documents/repositories/:id/nodes/:nodeId"
+              element={<DocumentDetailPage />}
+            />
+            <Route
+              path="documents/signatures"
+              element={<SignatureRequestsPage />}
             />
             <Route path="ofi" element={<OfisListPage />} />
             <Route
@@ -157,6 +192,8 @@ export function App() {
                 path="email-campaigns/:id"
                 element={<EmailCampaignDetailPage />}
               />
+              <Route path="invoices" element={<InvoicesListPage />} />
+              <Route path="leaves" element={<LeavesListPage />} />
             </Route>
             <Route
               path="partner/dashboard"
@@ -164,6 +201,7 @@ export function App() {
             />
             <Route path="suppliers" element={<SuppliersListPage />} />
             <Route path="calendar" element={<CalendarPage />} />
+            <Route path="data-import" element={<DataImportPage />} />
             <Route path="report-bug" element={<ReportBugPage />} />
             <Route
               path="assets"

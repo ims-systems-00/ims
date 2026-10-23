@@ -21,6 +21,8 @@ export {
   createDocumentFilesAdapter,
   createDocumentActivityAdapter,
   createDocumentNotificationAdapter,
+  createDocumentEmailAdapter,
+  createDocumentMembershipAdapter,
 } from "./adapters";
 
 export {
@@ -33,9 +35,12 @@ export {
   NoOpDocumentFilesAdapter,
   NoOpDocumentActivityAdapter,
   NoOpDocumentNotificationAdapter,
+  NoOpDocumentEmailAdapter,
   type DocumentFilesPort,
   type DocumentActivityPort,
   type DocumentNotificationPort,
+  type DocumentEmailPort,
+  type DocumentMembershipPort,
 } from "./ports";
 
 export {
@@ -55,3 +60,5 @@ export {
 /** Test helpers — prefer application port from createDocumentManagementModule. */
 export { getDocumentRepositoryModel } from "./repositories/document-repository.model";
 export { getDocumentTreeModel } from "./repositories/document-tree.model";
+export { getDocumentAccessTokenModel } from "./repositories/document-access-token.model";
+export { getDocumentSignatureModel } from "./repositories/document-signature.model";

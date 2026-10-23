@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Sparkles } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
@@ -8,6 +9,11 @@ import {
   ActivityTimeline,
   SheetPanelTabs,
 } from "@/modules/activities";
+import {
+  AnalyticalAssistantSheet,
+  buildRiskAssistantContext,
+} from "@/modules/ai";
+import { useCurrentOrganisationQuery } from "@/modules/organisation";
 import {
   useCreateRiskMutation,
   useDeleteRiskMutation,
@@ -48,12 +54,18 @@ export function RiskSheet({
 }: RiskSheetProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [panelTab, setPanelTab] = useState("details");
+  const [aliceOpen, setAliceOpen] = useState(false);
 
   useEffect(() => {
     if (!open || mode !== "view") setPanelTab("details");
   }, [open, mode, riskId]);
 
+  useEffect(() => {
+    if (!open) setAliceOpen(false);
+  }, [open]);
+
   const riskQuery = useRiskQuery(mode === "create" ? undefined : (riskId ?? undefined));
+  const orgQuery = useCurrentOrganisationQuery(open && mode === "view");
   const createMutation = useCreateRiskMutation();
   const updateMutation = useUpdateRiskMutation(riskId ?? "");
   const deleteMutation = useDeleteRiskMutation();
@@ -61,6 +73,16 @@ export function RiskSheet({
   const nudgeMutation = useNudgeRiskMutation();
 
   const risk = riskQuery.data;
+  const aliceContext = useMemo(
+    () =>
+      risk
+        ? buildRiskAssistantContext(
+            risk,
+            orgQuery.data?.name ?? "Organisation"
+          )
+        : null,
+    [risk, orgQuery.data?.name]
+  );
   const pending =
     createMutation.isPending ||
     updateMutation.isPending ||
@@ -184,6 +206,15 @@ export function RiskSheet({
               </Button>
               {!mitigated ? (
                 <>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => setAliceOpen(true)}
+                  >
+                    <Sparkles className="size-4" />
+                    Analyse
+                  </Button>
                   <Button
                     type="button"
                     variant="outline"
@@ -316,6 +347,12 @@ export function RiskSheet({
         confirmLabel="Delete risk"
         pending={deleteMutation.isPending}
         onConfirm={() => void confirmDelete()}
+      />
+
+      <AnalyticalAssistantSheet
+        open={aliceOpen}
+        onOpenChange={setAliceOpen}
+        context={aliceContext}
       />
     </>
   );

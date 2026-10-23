@@ -10,16 +10,28 @@ import {
   getDocumentOverview,
   getDocumentRepository,
   getNodePath,
+  getNodeVersions,
   getRepoNode,
   hardDeleteDocumentRepository,
   hardDeleteNode,
+  listCrossOrgCopySources,
   listDocumentRepositories,
   listPublishedDocuments,
   listRepoNodes,
+  getPublicSignature,
+  inviteSignatures,
+  listPreservedReviewers,
+  listSignatureRequests,
+  listSignatures,
   moveRepoNode,
+  removeSignature,
+  resendSignature,
   restoreDocumentRepository,
   restoreNode,
   revisePendingDocument,
+  shareDocument,
+  signDocument,
+  signDocumentPublic,
   softDeleteDocumentRepository,
   softDeleteNode,
   updateDocumentNode,
@@ -30,8 +42,11 @@ import type {
   DocumentApplicableModule,
   DocumentFileMeta,
   DocumentPurpose,
+  InviteSignaturesInput,
   ListRepoNodesParams,
   ListRepositoriesParams,
+  SignDocumentInput,
+  SignatureStatus,
   UpdateDocumentRepositoryInput,
 } from "../types";
 
@@ -51,8 +66,16 @@ export const documentManagementKeys = {
     [...documentManagementKeys.nodes(repositoryId), "detail", nodeId] as const,
   nodePath: (repositoryId: string, nodeId: string) =>
     [...documentManagementKeys.nodes(repositoryId), "path", nodeId] as const,
+  nodeVersions: (repositoryId: string, nodeId: string) =>
+    [...documentManagementKeys.nodes(repositoryId), "versions", nodeId] as const,
   published: (params: Record<string, unknown>) =>
     [...documentManagementKeys.all, "published", params] as const,
+  signatures: (repositoryId: string, nodeId: string) =>
+    [...documentManagementKeys.nodes(repositoryId), "signatures", nodeId] as const,
+  signatureRequests: (params: Record<string, unknown>) =>
+    [...documentManagementKeys.all, "signature-requests", params] as const,
+  publicSignature: (token: string) =>
+    [...documentManagementKeys.all, "public-signature", token] as const,
 };
 
 async function invalidateDocumentQueries(
@@ -123,6 +146,21 @@ export function useRepoNodeQuery(
     ),
     queryFn: () => getRepoNode(repositoryId!, nodeId!),
     enabled: Boolean(repositoryId && nodeId),
+  });
+}
+
+export function useNodeVersionsQuery(
+  repositoryId: string | undefined,
+  nodeId: string | undefined,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: documentManagementKeys.nodeVersions(
+      repositoryId ?? "",
+      nodeId ?? ""
+    ),
+    queryFn: () => getNodeVersions(repositoryId!, nodeId!),
+    enabled: enabled && Boolean(repositoryId && nodeId),
   });
 }
 
@@ -361,11 +399,141 @@ export function useChangeNodeRepositoryMutation(repositoryId: string) {
 export function useCopyFolderStructureMutation(repositoryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (sourceRepoId: string) =>
-      copyFolderStructure(repositoryId, sourceRepoId),
+    mutationFn: (input: { sourceRepoId: string; sourceOrgId?: string }) =>
+      copyFolderStructure(repositoryId, input.sourceRepoId, input.sourceOrgId),
     onSuccess: async () => {
       await invalidateDocumentQueries(queryClient, repositoryId);
     },
+  });
+}
+
+/** Cross-org copy sources — 403s for non-Super-Admins, so stay silent. */
+export function useCrossOrgCopySourcesQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: [...documentManagementKeys.all, "cross-org-copy-sources"],
+    queryFn: listCrossOrgCopySources,
+    enabled,
+    retry: false,
+  });
+}
+
+export function useShareDocumentMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      nodeId: string;
+      emails: string[];
+      message?: string;
+    }) =>
+      shareDocument(repositoryId, input.nodeId, {
+        emails: input.emails,
+        message: input.message,
+      }),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useSignaturesQuery(
+  repositoryId: string | undefined,
+  nodeId: string | undefined
+) {
+  return useQuery({
+    queryKey: documentManagementKeys.signatures(
+      repositoryId ?? "",
+      nodeId ?? ""
+    ),
+    queryFn: () => listSignatures(repositoryId!, nodeId!),
+    enabled: Boolean(repositoryId && nodeId),
+  });
+}
+
+export function usePreservedReviewersQuery(
+  repositoryId: string | undefined,
+  nodeId: string | undefined,
+  enabled = true
+) {
+  return useQuery({
+    queryKey: [
+      ...documentManagementKeys.signatures(repositoryId ?? "", nodeId ?? ""),
+      "preserved-reviewers",
+    ] as const,
+    queryFn: () => listPreservedReviewers(repositoryId!, nodeId!),
+    enabled: enabled && Boolean(repositoryId && nodeId),
+  });
+}
+
+export function useInviteSignaturesMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nodeId: string; body: InviteSignaturesInput }) =>
+      inviteSignatures(repositoryId, input.nodeId, input.body),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useResendSignatureMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nodeId: string; signatureId: string }) =>
+      resendSignature(repositoryId, input.nodeId, input.signatureId),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useRemoveSignatureMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { nodeId: string; signatureId: string }) =>
+      removeSignature(repositoryId, input.nodeId, input.signatureId),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useSignDocumentMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      nodeId: string;
+      signatureId: string;
+      body: SignDocumentInput;
+    }) => signDocument(repositoryId, input.nodeId, input.signatureId, input.body),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useSignatureRequestsQuery(params: {
+  mine?: boolean;
+  status?: SignatureStatus;
+}) {
+  return useQuery({
+    queryKey: documentManagementKeys.signatureRequests(params),
+    queryFn: () => listSignatureRequests(params),
+  });
+}
+
+export function usePublicSignatureQuery(token: string | undefined) {
+  return useQuery({
+    queryKey: documentManagementKeys.publicSignature(token ?? ""),
+    queryFn: () => getPublicSignature(token!),
+    enabled: Boolean(token),
+    retry: false,
+  });
+}
+
+export function useSignDocumentPublicMutation() {
+  return useMutation({
+    mutationFn: (input: { token: string; body: SignDocumentInput }) =>
+      signDocumentPublic(input.token, input.body),
   });
 }
 

@@ -2,6 +2,7 @@ import { apiRequest } from "@/shared/lib/http";
 import type {
   ListUsersParams,
   PaginatedUsers,
+  UpdateEmploymentInput,
   UpdateUserProfileInput,
   User,
   UserWithMembership,
@@ -46,6 +47,55 @@ export function updateUserProfile(
 ): Promise<User> {
   return apiRequest<User>(`/users/${id}`, {
     method: "PATCH",
+    body,
+  });
+}
+
+/**
+ * Replace line managers on organisation membership (Leaves approval routing).
+ * PUT /users/:id/line-managers
+ */
+export function setUserLineManagers(
+  id: string,
+  lineManagerIds: string[]
+): Promise<UserWithMembership> {
+  return apiRequest<UserWithMembership>(`/users/${id}/line-managers`, {
+    method: "PUT",
+    body: { lineManagerIds },
+  });
+}
+
+/**
+ * Update employment details (V4 MembershipForm parity).
+ * PUT /users/:id/employment
+ */
+export function updateUserEmployment(
+  id: string,
+  body: UpdateEmploymentInput
+): Promise<UserWithMembership> {
+  return apiRequest<UserWithMembership>(`/users/${id}/employment`, {
+    method: "PUT",
+    body,
+  });
+}
+
+export type UpdateProfileImageInput = {
+  url: string;
+  fileName?: string;
+  storageKey?: string;
+  bucket?: string;
+};
+
+/**
+ * Persist an uploaded profile picture (File Handler meta + view URL).
+ * PUT /users/:id/profile-image — self only.
+ */
+export function updateProfileImage(
+  id: string,
+  body: UpdateProfileImageInput
+): Promise<User> {
+  return apiRequest<User>(`/users/${id}/profile-image`, {
+    method: "PUT",
     body,
   });
 }

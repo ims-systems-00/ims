@@ -36,5 +36,17 @@ export function composeGoLiveSideEffects(
         await adapter.notifyGoLive(input);
       }
     },
+
+    async ensureFileStorage(input) {
+      for (const adapter of adapters) {
+        await adapter.ensureFileStorage?.(input);
+      }
+    },
+
+    async ensureAuth0Organisation(input) {
+      for (const adapter of adapters) {
+        await adapter.ensureAuth0Organisation?.(input);
+      }
+    },
   };
 }

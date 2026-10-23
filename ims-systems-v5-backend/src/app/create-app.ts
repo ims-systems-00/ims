@@ -7,9 +7,12 @@ import { createEmailSystem, type EmailSystem } from "../infrastructure/queue";
 import { createStripeClient } from "../infrastructure/stripe/create-stripe-client";
 import {
   composeGoLiveSideEffects,
+  createAuth0OrganisationSideEffectsAdapter,
+  createFilesBucketSideEffectsAdapter,
   createGoLiveNotifySideEffectsAdapter,
   type OrganisationGoLiveSideEffectsPort,
 } from "../modules/organisation";
+import { createAuth0ManagementApiFromConfig } from "../security/auth0/auth0-management-api";
 import { createOrganisationRepository } from "../modules/organisation/repositories/organisation.repository";
 import {
   createStripeGoLiveSideEffectsAdapter,
@@ -67,10 +70,23 @@ function composeBillingAndGoLive(deps: {
     supportEmails: deps.config.REPORT_BUG_SUPPORT_EMAILS,
     logger: deps.logger,
   });
+  // N-09: per-org file bucket provisioning (no-op unless FILES s3).
+  const fileBuckets = createFilesBucketSideEffectsAdapter({
+    config: deps.config,
+    logger: deps.logger,
+  });
+  // N-09 remainder: Auth0 Organization provisioning (only when the
+  // Management API M2M app is configured).
+  const mgmt = createAuth0ManagementApiFromConfig(deps.config);
+  const auth0Org = mgmt
+    ? createAuth0OrganisationSideEffectsAdapter({ mgmt, logger: deps.logger })
+    : undefined;
+  const withAuth0 = (parts: Array<OrganisationGoLiveSideEffectsPort | undefined>) =>
+    composeGoLiveSideEffects([...parts, auth0Org]);
 
   if (deps.stripePayments === null) {
     return {
-      goLiveSideEffects: composeGoLiveSideEffects([notify]),
+      goLiveSideEffects: withAuth0([notify, fileBuckets]),
     };
   }
 
@@ -83,14 +99,14 @@ function composeBillingAndGoLive(deps: {
     });
     return {
       billing: deps.stripePayments,
-      goLiveSideEffects: composeGoLiveSideEffects([stripeGoLive, notify]),
+      goLiveSideEffects: withAuth0([stripeGoLive, notify, fileBuckets]),
       stripePayments: deps.stripePayments,
     };
   }
 
   if (!deps.config.STRIPE_ENABLED) {
     return {
-      goLiveSideEffects: composeGoLiveSideEffects([notify]),
+      goLiveSideEffects: withAuth0([notify, fileBuckets]),
     };
   }
 
@@ -109,7 +125,7 @@ function composeBillingAndGoLive(deps: {
   });
   return {
     billing: payments,
-    goLiveSideEffects: composeGoLiveSideEffects([stripeGoLive, notify]),
+    goLiveSideEffects: withAuth0([stripeGoLive, notify, fileBuckets]),
     stripePayments: payments,
   };
 }

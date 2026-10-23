@@ -71,6 +71,8 @@ export type RiskAttachment = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  /** Storage bucket from File Handler metadata (Name/Key/Bucket). */
+  bucket?: string;
   url?: string;
   uploadedBy: string;
   uploadedAt: Date;
@@ -145,6 +147,7 @@ export type CreateRiskInput = {
     mimeType?: string;
     sizeBytes?: number;
     storageKey?: string;
+    bucket?: string;
     url?: string;
   }>;
   source?: RiskSource;
@@ -170,6 +173,7 @@ export type UpdateRiskInput = {
     mimeType?: string;
     sizeBytes?: number;
     storageKey?: string;
+    bucket?: string;
     url?: string;
   }>;
 };

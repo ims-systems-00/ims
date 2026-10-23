@@ -1,0 +1,9 @@
+Risk title,Risk category,Description,Likelihood,Consequence,Controls and mitigation,Acceptance rationale,Decision maker
+Kitchen fire risk,Organisational,"Unattended cooking equipment in the staff kitchen could cause fire and evacuation.",3,4,"Fire blankets installed; monthly extinguisher checks; clear kitchen policy posted.",,
+Laptop theft from shared desks,Hardware,"Portable devices left unattended overnight increase theft and data-loss risk.",4,3,"Cable locks issued; end-of-day clear-desk reminder; encrypted disks enforced.",,
+Outdated antivirus signatures,Software,"Delayed AV updates may leave endpoints exposed to known malware.",2,4,"Centralised patch window every Tuesday; SOC alert on signature lag > 48h.",,
+Staff fatigue during peak season,People,"Extended overtime during audit season may increase human error in clinical recording.",3,3,"Rotas capped at contracted hours; buddy checks on critical entries.",,
+Flooding in archive store,Premise,"Ground-floor archive is below flood datum; water ingress could destroy paper records.",2,5,"Records elevated on racking; dehumidifier monitored; digital scan backlog prioritised.",,
+Missed clinical handover notes,Clinical,"Incomplete shift handovers may delay escalation of deteriorating patients.",3,5,"Structured SBAR checklist mandatory; random sample audit weekly.",,
+Supplier contract expiry unnoticed,Organisational,"Critical vendor contracts may lapse without renewal, leading to service interruption.",2,3,"Contract calendar with 90/60/30 day reminders; dual owner on renewals.","Accepted residual risk while calendar is rolled out org-wide",Head of Operations
+Shared admin password on wifi router,Software,"Default or shared credentials on office wifi increase unauthorised access risk.",4,4,"Unique admin password rotated quarterly; guest network segregated.",,

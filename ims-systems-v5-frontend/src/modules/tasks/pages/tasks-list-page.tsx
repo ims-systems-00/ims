@@ -36,6 +36,7 @@ import {
   type ListStatusPreset,
   type TaskPriority,
 } from "../types";
+import { formatDate } from "@/shared/lib/format-date";
 
 type PendingDelete = { id: string; label: string };
 type PendingComplete = { id: string; label: string };
@@ -65,16 +66,6 @@ function AssigneeName({ userId }: { userId: string }) {
       {query.data?.user.name ?? userId.slice(0, 8)}
     </span>
   );
-}
-
-function formatDue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 /**
@@ -380,7 +371,7 @@ export function TasksListPage() {
                       <TaskStatusBadge status={task.status} />
                     </td>
                     <td className="text-muted-foreground whitespace-nowrap">
-                      {formatDue(task.dueDate)}
+                      {formatDate(task.dueDate)}
                     </td>
                     <td className="max-w-[10rem]">
                       <AssigneeSummary assignees={task.assignees} />

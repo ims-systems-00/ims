@@ -5,6 +5,9 @@
 export { DocumentsPage } from "./pages/documents-page";
 export { RepositoryDetailPage } from "./pages/repository-detail-page";
 export { DocumentDetailPage } from "./pages/document-detail-page";
+export { DocumentPurposePage } from "./pages/document-purpose-page";
+export { SignatureRequestsPage } from "./pages/signature-requests-page";
+export { PublicSignPage } from "./pages/public-sign-page";
 export {
   DocumentsTabs,
 } from "./components/documents-tabs";
@@ -27,6 +30,8 @@ export type {
   DocumentPurpose,
   DocumentPrivacy,
   DocumentsTabId,
+  DocumentSignature,
+  SignatureStatus,
 } from "./types";
 export {
   DOCUMENT_PURPOSES,

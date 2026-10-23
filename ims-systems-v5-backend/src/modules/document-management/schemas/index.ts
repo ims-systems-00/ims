@@ -206,6 +206,7 @@ export const changeRepositoryBodySchema = z.object({
 
 export const copyFolderStructureBodySchema = z.object({
   sourceRepoId: objectIdSchema,
+  sourceOrgId: objectIdSchema.optional(),
 });
 
 export const addAuthoriserBodySchema = z.object({
@@ -216,6 +217,64 @@ export const addAuthoriserBodySchema = z.object({
 export const decideAuthorisationBodySchema = z.object({
   status: z.enum(["Approved", "Rejected"]),
   message: z.string().trim().max(2000).optional(),
+});
+
+export const shareDocumentBodySchema = z.object({
+  emails: z
+    .array(z.string().trim().email())
+    .min(1, "At least one recipient email is required")
+    .max(50),
+  message: z.string().trim().max(2000).optional(),
+});
+
+export const accessTokenParamSchema = z.object({
+  token: z.string().trim().min(16),
+});
+
+const signatureLocationSchema = z.object({
+  page: z.coerce.number().int().min(1),
+  x: z.coerce.number().min(0).max(1),
+  y: z.coerce.number().min(0).max(1),
+});
+
+export const inviteSignaturesBodySchema = z.object({
+  internalUsers: z
+    .array(
+      z.object({
+        userId: z.string().trim().min(1),
+        displayName: z.string().trim().min(1),
+        email: z.string().trim().email().optional(),
+      })
+    )
+    .max(50)
+    .optional(),
+  externalEmails: z.array(z.string().trim().email()).max(50).optional(),
+  message: z.string().trim().max(2000).optional(),
+  signatureLocations: z
+    .array(signatureLocationSchema)
+    .min(1, "At least one signature location is required")
+    .max(20),
+});
+
+export const signDocumentBodySchema = z.object({
+  name: z.string().trim().min(1, "Signature name is required").max(200),
+  font: z.string().trim().max(100).optional(),
+  jobTitle: z.string().trim().max(200).optional(),
+  organisation: z.string().trim().max(200).optional(),
+});
+
+export const signatureParamsSchema = z.object({
+  id: objectIdSchema,
+  nodeId: objectIdSchema,
+  signatureId: z.string().trim().min(1),
+});
+
+export const listSignatureRequestsQuerySchema = z.object({
+  mine: z
+    .union([z.literal("true"), z.literal("false")])
+    .optional()
+    .transform((v) => v === "true"),
+  status: z.enum(["Pending", "Reviewed", "Signed"]).optional(),
 });
 
 export const listPublishedDocumentsQuerySchema = z.object({

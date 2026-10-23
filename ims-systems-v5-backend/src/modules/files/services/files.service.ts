@@ -28,7 +28,17 @@ export type FilesServiceConfig = {
   uploadUrlTtlSeconds: number;
   viewUrlTtlSeconds: number;
   allowedPaths: string[];
+  /** Max upload size in bytes. Defaults to 25 MiB when unset. */
+  maxUploadBytes?: number;
 };
+
+export const DEFAULT_MAX_UPLOAD_BYTES = 26_214_400; // 25 MiB
+
+/** Keys issued by createUploadUrl: `<uuid>[.<ext>]` — flat, no segments. */
+const STORAGE_KEY_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}(\.[A-Za-z0-9]{1,16})?$/i;
+
+const CONTENT_TYPE_PATTERN = /^[\w.+-]+\/[\w.+-]+$/;
 
 export type FilesServiceDeps = {
   storage: ObjectStoragePort;
@@ -168,6 +178,85 @@ function assertAllowedPath(
   }
 }
 
+/**
+ * Buckets a caller may view/delete from: their own organisation bucket
+ * (per-org in production, shared/private otherwise) plus the configured
+ * public bucket. Arbitrary client-supplied buckets are rejected so a
+ * signed URL can never be minted for another organisation's storage.
+ */
+function assertAllowedBucket(
+  config: FilesServiceConfig,
+  organizationId: string,
+  bucket: string
+): void {
+  const allowed = new Set<string>();
+  try {
+    allowed.add(resolvePrivateBucket(config, organizationId));
+  } catch {
+    // Private bucket unconfigured — only the public bucket can be allowed.
+  }
+  if (config.publicBucket.trim()) allowed.add(config.publicBucket.trim());
+  if (!allowed.has(bucket)) {
+    throw new ForbiddenError(
+      "File bucket does not belong to your organisation"
+    );
+  }
+}
+
+function assertValidStorageKey(key: string): void {
+  if (!STORAGE_KEY_PATTERN.test(key)) {
+    throw new ValidationAppError(
+      "Invalid file key. Keys must be issued by the upload endpoint."
+    );
+  }
+}
+
+function sanitizeContentType(
+  contentType: string | undefined
+): string | undefined {
+  if (!contentType) return undefined;
+  const trimmed = decodeHeader(contentType).trim().toLowerCase();
+  if (!trimmed) return undefined;
+  if (!CONTENT_TYPE_PATTERN.test(trimmed)) {
+    throw new ValidationAppError("Invalid file content type");
+  }
+  return trimmed;
+}
+
+function assertValidFileSize(
+  config: FilesServiceConfig,
+  fileSize: number | undefined
+): number | undefined {
+  if (fileSize === undefined || fileSize === null) return undefined;
+  if (!Number.isInteger(fileSize) || fileSize <= 0) {
+    throw new ValidationAppError("File size must be a positive integer");
+  }
+  const max = config.maxUploadBytes ?? DEFAULT_MAX_UPLOAD_BYTES;
+  if (fileSize > max) {
+    throw new ValidationAppError(
+      `File exceeds the maximum upload size of ${max} bytes`
+    );
+  }
+  return fileSize;
+}
+
+async function assertBucketAvailable(
+  storage: ObjectStoragePort,
+  bucket: string
+): Promise<void> {
+  if (!storage.assertBucketExists) return;
+  try {
+    await storage.assertBucketExists({ bucket });
+  } catch (error) {
+    throw new AppError({
+      message: `File storage bucket "${bucket}" is not available. Ensure it has been provisioned (see docs/development/FILE_HANDLER_AWS.md).`,
+      statusCode: 503,
+      code: "FILES_BUCKET_UNAVAILABLE",
+      cause: error,
+    });
+  }
+}
+
 export function createFilesService(deps: FilesServiceDeps): FilesService {
   const { storage, config } = deps;
 
@@ -198,11 +287,17 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
       );
       const key = buildStorageKey(originalName);
       const expiresInSeconds = config.uploadUrlTtlSeconds;
+      const contentType = sanitizeContentType(input.contentType);
+      const contentLength = assertValidFileSize(config, input.fileSize);
+
+      await assertBucketAvailable(storage, bucket);
 
       const url = await storage.createUploadUrl({
         bucket,
         key,
         expiresInSeconds,
+        contentType,
+        contentLength,
       });
 
       return {
@@ -219,7 +314,7 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
 
     async createViewUrl(identity, input) {
       assertFilesAvailable(config);
-      requireIdentity(identity);
+      const { organizationId } = requireIdentity(identity);
 
       const bucket = decodeHeader(input.bucket ?? "").trim();
       const key = decodeHeader(input.key ?? "").trim();
@@ -228,6 +323,8 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
           "Bucket and key are required (x-file-bucket, x-file-key)"
         );
       }
+      assertAllowedBucket(config, organizationId, bucket);
+      assertValidStorageKey(key);
 
       const fileName = input.fileName
         ? basename(decodeHeader(input.fileName))
@@ -239,6 +336,9 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
         key,
         expiresInSeconds,
         downloadFileName: fileName,
+        // Inline unless a download was explicitly requested — an
+        // attachment disposition forces downloads on every preview.
+        disposition: input.disposition === "attachment" ? "attachment" : "inline",
       });
 
       return { url, expiresInSeconds };
@@ -255,9 +355,11 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
         );
       }
 
+      assertValidStorageKey(key);
       const bucket = input.bucket?.trim()
         ? decodeHeader(input.bucket).trim()
         : resolvePrivateBucket(config, organizationId);
+      assertAllowedBucket(config, organizationId, bucket);
 
       await storage.deleteObject({ bucket, key });
       return { Bucket: bucket, Key: key };

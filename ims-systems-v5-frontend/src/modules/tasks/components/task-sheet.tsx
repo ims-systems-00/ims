@@ -46,6 +46,11 @@ type TaskSheetProps = {
   createSource?: TaskSource;
   /** Optional default business unit when creating from another module. */
   createBusinessUnitId?: string;
+  /** Prefill create form fields (e.g. Alice suggestion text). */
+  createDefaults?: {
+    name?: string;
+    description?: string;
+  };
 };
 
 function isCreator(task: Task, subjectId: string): boolean {
@@ -85,6 +90,7 @@ export function TaskSheet({
   subjectId: subjectIdProp,
   createSource,
   createBusinessUnitId,
+  createDefaults,
 }: TaskSheetProps) {
   const sessionSubjectId = useSessionSubjectId();
   const subjectId = subjectIdProp ?? sessionSubjectId ?? "";
@@ -355,6 +361,7 @@ export function TaskSheet({
             formId={formId}
             pending={pending}
             hideActions
+            createDefaults={createDefaults}
             submitLabel="Create task"
             onSubmit={handleCreate}
           />

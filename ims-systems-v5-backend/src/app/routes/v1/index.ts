@@ -15,9 +15,13 @@ import {
   createDocumentActivityAdapter,
   createDocumentFilesAdapter,
   createDocumentNotificationAdapter,
+  createDocumentEmailAdapter,
+  createDocumentMembershipAdapter,
   startDocumentReviewReminderSchedule,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
+import { createContactImsModule } from "../../../modules/contact-ims";
+import { createRegisterPublicInterestModule } from "../../../modules/register-public-interest";
 import {
   composeGoLiveSideEffects,
   createOrganisationModule,
@@ -30,10 +34,16 @@ import {
 } from "../../../modules/licence-requests";
 import { createPartnershipModule } from "../../../modules/partnerships";
 import type { OrganisationBillingPort } from "../../../modules/payments";
-import { createAssetsModule } from "../../../modules/assets";
+import {
+  createAssetsModule,
+  createAssetBusinessUnitLookupAdapter,
+  createAssetCategoryLookupAdapter,
+  createAssetUserLookupAdapter,
+} from "../../../modules/assets";
 import {
   createAuditModule,
   createAuditNotificationAdapter,
+  createAuditReportAdapter,
   type AuditCipPromotionPort,
   type AuditIncidentPromotionPort,
   type AuditRiskPromotionPort,
@@ -44,6 +54,7 @@ import {
   createCalendarModule,
   createAuditCalendarAdapter,
   createIncidentCalendarAdapter,
+  createLeaveCalendarAdapter,
   createManagementReviewCalendarAdapter,
   createSupplierCalendarAdapter,
   createTaskCalendarAdapter,
@@ -57,7 +68,10 @@ import {
   createStatsModule,
   createStatsPortsFromModules,
 } from "../../../modules/stats";
-import { createFunctionalUnitModule } from "../../../modules/functional-units";
+import {
+  createFunctionalUnitModule,
+  createOrganisationGroupLicenceAdapter,
+} from "../../../modules/functional-units";
 import {
   createIncidentModule,
   createIncidentNotificationAdapter,
@@ -88,6 +102,8 @@ import {
 } from "../../../modules/suppliers";
 import {
   createCustomerModule,
+  createCustomerInteractionStatsAdapter,
+  createCustomerInvoiceStatsAdapter,
   createCustomerNotificationAdapter,
   createOrganisationCrmLicenceAdapter,
   CUSTOMERS_SOURCE_MODULE,
@@ -111,9 +127,41 @@ import {
   createTasksSourceCleanupAdapter,
 } from "../../../modules/tasks";
 import {
+  createComplianceToolkitAdapter,
+  createAuth0SessionAdapter,
   createOrganisationMembershipLookupAdapter,
+  createOwnershipIntegrityAdapter,
+  createUserNotificationAdapter,
   createUsersModule,
 } from "../../../modules/users";
+import { createInvitationModule } from "../../../modules/invitations";
+import { createSearchModule } from "../../../modules/search";
+import { createListScopePorts } from "../../../security/list-scope/create-list-scope.adapter";
+import {
+  createLeavesModule,
+  createLeavesMembershipAdapter,
+  createLeavesNotificationAdapter,
+} from "../../../modules/leaves";
+import {
+  createAiModule,
+  createAiActivityAdapter,
+  createAiActorDirectoryAdapter,
+  createOpenAiGptAdapter,
+  NoOpAiGptAdapter,
+} from "../../../modules/ai";
+import { createInvoiceModule } from "../../../modules/invoices";
+import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
+import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
+import { createAuth0ManagementApiFromConfig } from "../../../security/auth0/auth0-management-api";
+import { createComplianceAutomationQueue } from "../../../infrastructure/queue/automation-queue";
+import { createDataImportQueue } from "../../../infrastructure/queue/data-import-queue";
+import {
+  createDataImportModule,
+  createDataImportMigrator,
+  createDataImportNotificationAdapter,
+  createDataImportTargetWriterAdapter,
+  InlineDataImportQueueAdapter,
+} from "../../../modules/data-import";
 import {
   createNotificationsModule,
   createNotificationsUsersAdapter,
@@ -133,6 +181,10 @@ import {
   createComplianceModule,
   createComplianceActivityAdapter,
   createComplianceEvidenceLinkAdapter,
+  createComplianceIamGrantAdapter,
+  createAutomationRunRepository,
+  createComplianceAutomationAdapter,
+  createComplianceAutomationRunner,
   createComplianceIncidentMirrorAdapter,
   createComplianceNotificationAdapter,
   createComplianceGoLiveProvisionAdapter,
@@ -201,6 +253,20 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   });
   router.use("/report-bug", reportBug.router);
 
+  // Public marketing endpoints (no authorizer): email-only enquiries and
+  // persisted product-interest registrations.
+  const contactIms = createContactImsModule({
+    email,
+    supportEmails: config?.CONTACT_IMS_SUPPORT_EMAILS ?? [
+      "support@imssystems.tech",
+    ],
+    confirmationDelayMs: config?.NODE_ENV === "test" ? 0 : 1_200,
+  });
+  router.use("/contact-ims", contactIms.router);
+
+  const registerPublicInterest = createRegisterPublicInterestModule({ email });
+  router.use("/register-public-interest", registerPublicInterest.router);
+
   // N-06: wire object storage whenever config is present (silent logger fallback).
   let objectStorage: ObjectStoragePort | undefined;
   if (config) {
@@ -222,6 +288,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         uploadUrlTtlSeconds: config.FILES_UPLOAD_URL_TTL_SECONDS,
         viewUrlTtlSeconds: config.FILES_VIEW_URL_TTL_SECONDS,
         allowedPaths: config.ALLOWED_FILE_PATHS,
+        maxUploadBytes: config.FILES_MAX_UPLOAD_BYTES,
       },
     });
     router.use("/files", files.router);
@@ -231,6 +298,16 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     config?.SECURITY_PROVIDER === "auth0-openfga"
       ? createOrganisationMembershipLookupAdapter()
       : undefined;
+
+  // L-01…L-10: real role/BU list scopes in auth0-openfga mode;
+  // development-stub keeps the DevAll route defaults.
+  const listScopes =
+    config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? createListScopePorts()
+      : undefined;
+
+  // Auth0 Management API (N-13/N-09) — null until the M2M app is configured.
+  const auth0Mgmt = config ? createAuth0ManagementApiFromConfig(config) : null;
 
   // Compliance is composed after Organisations, so Go Live toolkit
   // provisioning goes through a late-bound holder (set below once the
@@ -283,20 +360,69 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const functionalUnits = createFunctionalUnitModule({
     authorizer: security.authorizer,
     dashboardInit: createLiveDashboardInitAdapter(),
+    // FU-01: enforce group licences in auth0-openfga only.
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { groupLicence: createOrganisationGroupLicenceAdapter() }
+      : {}),
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),
   });
-  const assets = createAssetsModule({ authorizer: security.authorizer });
+  // A-01: real org-scoped lookups in auth0-openfga; AcceptAny stays
+  // for development-stub (same pattern as membership lookup above).
+  const assets =
+    config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? createAssetsModule({
+          authorizer: security.authorizer,
+          users: createAssetUserLookupAdapter(),
+          businessUnits: createAssetBusinessUnitLookupAdapter(),
+          categories: createAssetCategoryLookupAdapter(),
+        })
+      : createAssetsModule({ authorizer: security.authorizer });
   const businessPremises = createBusinessPremiseModule({
     authorizer: security.authorizer,
   });
   const users = createUsersModule({
     authorizer: security.authorizer,
+    // N-12: account lifecycle emails via EmailSystem (NoOp only if absent).
+    notifications: createUserNotificationAdapter(email),
+    // N-13: revoke Auth0 grants/sessions on access revoke/delete when
+    // the Management API M2M app is configured (else NoOp + preflight warn).
+    ...(auth0Mgmt
+      ? {
+          sessions: createAuth0SessionAdapter({
+            mgmt: auth0Mgmt,
+            logger,
+          }),
+        }
+      : {}),
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),
+    // U-07: real per-member toolkit assignment in auth0-openfga only.
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { toolkits: createComplianceToolkitAdapter() }
+      : {}),
+    // U-06: real cross-module ownership check/transfer in auth0-openfga.
+    ...(config?.SECURITY_PROVIDER === "auth0-openfga"
+      ? { ownership: createOwnershipIntegrityAdapter() }
+      : {}),
   });
+
+  const invitations = createInvitationModule({
+    authorizer: security.authorizer,
+    email,
+    membershipProjection: security.membershipProjection,
+    clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
+  });
+  router.use("/invitations", invitations.router);
+
+  // F-07: global search (org-scoped, authorizer-checked per resource).
+  const search = createSearchModule({
+    authorizer: security.authorizer,
+    useScopedVisibility: config?.SECURITY_PROVIDER === "auth0-openfga",
+  });
+  router.use("/search", search.router);
 
   const notificationsUsers = createNotificationsUsersAdapter(users.service);
 
@@ -305,12 +431,25 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     users: notificationsUsers,
   });
 
+  // CRM Invoices (spec: docs/module-specifications/invoice.md).
+  const invoices = createInvoiceModule({
+    authorizer: security.authorizer,
+    email,
+    notifications: createInvoiceNotificationAdapter(notifications.application),
+    issuerName: async (organizationId) => {
+      const org = await createOrganisationRepository().findById(organizationId);
+      return org?.name ?? "iMS Systems";
+    },
+  });
+  router.use("/invoices", invoices.router);
+
   const charts = createChartsModule({
     authorizer: security.authorizer,
   });
 
   const kpiObjectives = createKpiObjectivesModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.withOrganisational() } : {}),
     businessUnits: createKpiBusinessUnitAdapter(functionalUnits.service),
     notifications: createKpiObjectiveNotificationAdapter({
       notifications: notifications.application,
@@ -333,6 +472,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const calendar = createCalendarModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
   });
 
   const tasks = createTaskModule({
@@ -342,6 +482,14 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     ...(organisationMembershipLookup
       ? { memberships: organisationMembershipLookup }
       : {}),
+  });
+  const leaves = createLeavesModule({
+    authorizer: security.authorizer,
+    notifications: createLeavesNotificationAdapter(notifications.application),
+    calendar: createLeaveCalendarAdapter(calendar.service),
+    memberships: createLeavesMembershipAdapter({
+      membershipLookup: users.memberships,
+    }),
   });
   const tasksCleanup = createTasksSourceCleanupAdapter(tasks.service);
 
@@ -427,6 +575,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const risks = createRiskModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsWithUnassigned() } : {}),
     tasks: riskTasksAdapter,
     notifications: createRiskNotificationAdapter({
       notifications: notifications.application,
@@ -442,6 +591,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const incidents = createIncidentModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsWithUnassigned() } : {}),
     tasks: incidentTasksAdapter,
     calendar: createIncidentCalendarAdapter(calendar.service),
     notifications: createIncidentNotificationAdapter({
@@ -522,6 +672,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const ofis = createOfiModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
     tasks: ofiTasksAdapter,
     notifications: createOfiNotificationAdapter({
       notifications: notifications.application,
@@ -535,12 +686,28 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     },
   });
 
+  const aiGpt =
+    config?.OPEN_AI_API_KEY?.trim()
+      ? createOpenAiGptAdapter({
+          apiKey: config.OPEN_AI_API_KEY.trim(),
+          model: config.OPEN_AI_MODEL,
+        })
+      : new NoOpAiGptAdapter();
+
   const activities = createActivitiesModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.groups() } : {}),
     ofiFollowUp: createActivityOfiFollowUpAdapter({
       markInProgressIfPending: (organizationId, ofiId) =>
         ofis.service.markInProgressIfPending(organizationId, ofiId),
     }),
+  });
+
+  const ai = createAiModule({
+    authorizer: security.authorizer,
+    gpt: aiGpt,
+    activities: createAiActivityAdapter(activities.application),
+    actors: createAiActorDirectoryAdapter(),
   });
 
   const documentManagement = createDocumentManagementModule({
@@ -550,18 +717,72 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       : undefined,
     activities: createDocumentActivityAdapter(activities.application),
     notifications: createDocumentNotificationAdapter(notifications.application),
+    email: createDocumentEmailAdapter(email),
+    memberships: createDocumentMembershipAdapter(),
+    accessLinkBaseUrl: config?.CLIENT_URL,
   });
   router.use("/document-management", documentManagement.managementRouter);
   router.use("/document-repositories", documentManagement.repositoriesRouter);
   router.use("/document-trees", documentManagement.treesRouter);
+  router.use("/document-shares", documentManagement.sharesRouter);
+  router.use("/document-signatures", documentManagement.signaturesRouter);
 
   const complianceLicenceLookup =
     config?.SECURITY_PROVIDER === "auth0-openfga"
       ? createOrganisationComplianceLicenceAdapter()
       : undefined;
 
+  // N-11 automation runner + optional BullMQ queue (Redis via email queue flag).
+  const automationRunner = createComplianceAutomationRunner({
+    runs: createAutomationRunRepository(),
+    notify: async ({ organizationId, actorId, toolkitName, modulesWithRecords }) => {
+      await notifications.application.createForRecipients({
+        organizationId,
+        createdBy: actorId,
+        recipients: [
+          {
+            recipientUserId: actorId,
+            title: "Compliance automation scan complete",
+            message: modulesWithRecords.length
+              ? `${toolkitName}: existing records found in ${modulesWithRecords.join(", ")} — review controls for auto-compliance.`
+              : `${toolkitName}: no existing module records found yet.`,
+            referenceType: "compliance",
+            referenceModuleId: organizationId,
+            screenIdentifier: "compliance",
+            params: { id: organizationId },
+          },
+        ],
+      });
+    },
+  });
+  const automationQueue =
+    config?.EMAIL_QUEUE_ENABLED && config
+      ? (() => {
+          const q = createComplianceAutomationQueue({
+            config,
+            logger: logger ?? createLogger({ level: "silent", name: "automation" }),
+            handler: async (job) => {
+              await automationRunner.runScan(
+                job as Parameters<typeof automationRunner.runScan>[0],
+              );
+            },
+          });
+          q.startWorker();
+          return q;
+        })()
+      : null;
+
   const compliance = createComplianceModule({
     authorizer: security.authorizer,
+    // N-11: post-provision automation scan — BullMQ queue when the
+    // email queue (Redis) is enabled, otherwise inline. Never throws.
+    automation: createComplianceAutomationAdapter({
+      runner: automationRunner,
+      queue: automationQueue,
+      logger,
+    }),
+    // N-10: provisioning a toolkit grants it to the provisioning member.
+    iamGrant: createComplianceIamGrantAdapter(),
     ...(complianceLicenceLookup
       ? { licences: complianceLicenceLookup }
       : {}),
@@ -594,6 +815,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const suppliers = createSupplierModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
     tasks: supplierTasksAdapter,
     incidentStats: supplierIncidentStatsAdapter,
     calendar: createSupplierCalendarAdapter(calendar.service),
@@ -610,8 +832,13 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const customers = createCustomerModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.customers() } : {}),
     tasks: customerTasksAdapter,
     incidents: customerIncidentStatsAdapter,
+    // N-16: interaction analytics from the Activities timeline.
+    interactions: createCustomerInteractionStatsAdapter(),
+    // N-15: real invoice aggregates from the Invoice module.
+    invoices: createCustomerInvoiceStatsAdapter(),
     campaigns: createCustomerCampaignStatsAdapter(emailCampaigns.service),
     notifications: createCustomerNotificationAdapter(
       notifications.application
@@ -620,6 +847,57 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       ? { licences: createOrganisationCrmLicenceAdapter() }
       : {}),
   });
+
+  // Data Import — schema / validate / queue migration into CRM, risks,
+  // incidents, inventory, and KPI objectives
+  // (spec: docs/module-specifications/data-import.md).
+  const dataImportNotifications = createDataImportNotificationAdapter(
+    notifications.application
+  );
+  const dataImportWriter = createDataImportTargetWriterAdapter({
+    customers: customers.service,
+    risks: risks.service,
+    incidents: incidents.service,
+    assets: assets.service,
+    kpiObjectives: kpiObjectives.service,
+  });
+  const dataImportMigrator = createDataImportMigrator({
+    writer: dataImportWriter,
+    notifications: dataImportNotifications,
+    logger,
+  });
+  const dataImportQueue =
+    config?.EMAIL_QUEUE_ENABLED && config
+      ? (() => {
+          const q = createDataImportQueue({
+            config,
+            logger:
+              logger ?? createLogger({ level: "silent", name: "data-import" }),
+            handler: async (job) => {
+              await dataImportMigrator.run(job);
+            },
+          });
+          q.startWorker();
+          return q;
+        })()
+      : new InlineDataImportQueueAdapter(
+          (job) => dataImportMigrator.run(job),
+          (error) => {
+            logger?.error(
+              {
+                err: error instanceof Error ? error.message : String(error),
+              },
+              "Data import inline migration failed"
+            );
+          }
+        );
+  const dataImport = createDataImportModule({
+    authorizer: security.authorizer,
+    notifications: dataImportNotifications,
+    writer: dataImportWriter,
+    queue: dataImportQueue,
+  });
+  router.use("/data-import", dataImport.router);
 
   const auditIncidentPromotion: AuditIncidentPromotionPort = {
     async promoteNonConformity(input) {
@@ -669,16 +947,20 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   const audits = createAuditModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.businessUnitsWithUnassigned() } : {}),
     tasks: auditTasksAdapter,
     incidents: auditIncidentPromotion,
     risks: auditRiskPromotion,
     cips: auditCipPromotion,
     calendar: createAuditCalendarAdapter(calendar.service),
     notifications: createAuditNotificationAdapter(notifications.application),
+    // N-14: extract reports generated + emailed via EmailSystem.
+    reports: createAuditReportAdapter(email),
   });
 
   const managementReviews = createManagementReviewModule({
     authorizer: security.authorizer,
+    ...(listScopes ? { listScope: listScopes.withOrganisational() } : {}),
     tasks: managementReviewTasksAdapter,
     calendar: createManagementReviewCalendarAdapter(calendar.service),
     notifications: createManagementReviewNotificationAdapter(
@@ -717,6 +999,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       users: users.service,
       customers: customers.service,
       compliance: compliance.application,
+      documents: documentManagement.application,
     }),
   });
 
@@ -729,11 +1012,13 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/management-reviews", managementReviews.router);
   router.use("/ofi", ofis.router);
   router.use("/activities", activities.router);
+  router.use("/ai", ai.router);
   router.use("/compliance", compliance.router);
   router.use("/suppliers", suppliers.router);
   router.use("/customers", customers.router);
   router.use("/email-campaigns", emailCampaigns.router);
   router.use("/tasks", tasks.router);
+  router.use("/leaves", leaves.router);
 
   return {
     router,

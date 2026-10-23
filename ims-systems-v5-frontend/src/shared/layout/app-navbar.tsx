@@ -1,13 +1,16 @@
 import { Link } from "react-router-dom";
 import { Menu } from "lucide-react";
+import aliceIcon from "@/assets/images/Type=Icon Dark BG.png";
 import { Button } from "@/shared/components/ui/button";
-import { SearchInput } from "@/shared/components/search-input";
 import { cn } from "@/shared/lib/utils";
+import { GlobalSearch } from "./global-search";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { NotificationBell } from "@/modules/notifications";
 import { OrganisationSwitcher } from "./organisation-switcher";
 import { ThemeSelector } from "./theme-selector";
 import { UserMenu } from "./user-menu";
+
+const ALICE_EXTERNAL_URL = "https://alice.imssystems.tech/";
 
 type AppNavbarProps = {
   breadcrumbs: BreadcrumbItem[];
@@ -69,13 +72,23 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
       </nav>
 
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <SearchInput
-          disabled
-          placeholder="Search"
-          aria-label="Search (coming soon)"
-          containerClassName="hidden sm:block"
-          className="w-44 bg-surface-muted/50"
-        />
+        <a
+          href={ALICE_EXTERNAL_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-offset-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Open Alice AI (opens in a new tab)"
+          title="Alice AI"
+        >
+          <img
+            src={aliceIcon}
+            alt=""
+            className="size-8 object-cover"
+            width={32}
+            height={32}
+          />
+        </a>
+        <GlobalSearch />
         <OrganisationSwitcher />
         <ThemeSelector />
         <NotificationBell />

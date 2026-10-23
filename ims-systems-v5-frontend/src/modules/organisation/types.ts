@@ -60,6 +60,11 @@ export const DOCUMENT_REVIEW_REMINDER_OPTIONS = [
   { value: "1_day", label: "1 Day" },
 ] as const;
 
+export type IncidentResolutionTargets = Record<
+  "P1" | "P2" | "P3" | "P4",
+  number | null
+>;
+
 export type DocumentReviewReminderOffset =
   (typeof DOCUMENT_REVIEW_REMINDER_OPTIONS)[number]["value"];
 
@@ -160,8 +165,16 @@ export type Organisation = {
   licences: OrganisationLicences;
   paymentSystem?: OrganisationPaymentSystem;
   systemDate?: OrganisationSystemDate;
+  documentReviewReminderOffsets?: DocumentReviewReminderOffset[];
   referralSource: string | null;
   logoSrc: string | null;
+  /** File Handler location for the logo (fresh view URLs). */
+  incidentResolutionTargets?: IncidentResolutionTargets;
+  logoStorage?: {
+    bucket: string;
+    key: string;
+    fileName?: string;
+  } | null;
   /** Auth0 Organization id when linked; null until auth rollout links it. */
   auth0OrganizationId?: string | null;
   createdBy: string;

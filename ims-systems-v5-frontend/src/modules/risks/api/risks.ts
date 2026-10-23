@@ -61,6 +61,15 @@ export function deleteRisk(id: string): Promise<{ message: string }> {
   return apiRequest<{ message: string }>(`/risks/${id}`, { method: "DELETE" });
 }
 
+export function removeRiskAttachment(
+  id: string,
+  attachmentId: string
+): Promise<Risk> {
+  return apiRequest<Risk>(`/risks/${id}/attachments/${attachmentId}`, {
+    method: "DELETE",
+  });
+}
+
 export function escalateRisk(id: string): Promise<Risk> {
   return apiRequest<Risk>(`/risks/${id}/escalate`, { method: "POST" });
 }

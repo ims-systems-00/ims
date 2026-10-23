@@ -2,6 +2,7 @@
  * Supplier Management application service.
  * Spec: docs/module-specifications/suppliers.md
  */
+import { scopeAllowsUnit } from "../../../security/list-scope/create-list-scope.adapter";
 
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
@@ -277,7 +278,15 @@ export function createSupplierService(deps: SupplierServiceDeps) {
     ): Promise<Supplier> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read", id);
-      return requireSupplier(actor.organizationId, id);
+      const supplier = await requireSupplier(actor.organizationId, id);
+      const scope = await listScope.resolveScope({
+        organizationId: actor.organizationId,
+        subjectId: actor.identity.subjectId,
+      });
+      if (!scopeAllowsUnit(scope, supplier.businessUnitId)) {
+        throw new NotFoundError("Supplier not found");
+      }
+      return supplier;
     },
 
     async stats(

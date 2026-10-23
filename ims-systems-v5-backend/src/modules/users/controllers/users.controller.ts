@@ -4,6 +4,8 @@ import {
   addLocationBodySchema,
   assignToolkitsBodySchema,
   changePasswordBodySchema,
+  lineManagersBodySchema,
+  updateEmploymentBodySchema,
   createUserBodySchema,
   expiredUsersBodySchema,
   idParamSchema,
@@ -37,6 +39,8 @@ export type UsersController = {
   remove: RequestHandler;
   blockExpired: RequestHandler;
   assignToolkits: RequestHandler;
+  setLineManagers: RequestHandler;
+  updateEmployment: RequestHandler;
   resendVerification: RequestHandler;
   checkOwnership: RequestHandler;
   transferOwnership: RequestHandler;
@@ -260,6 +264,32 @@ export function createUsersController(
     }
   };
 
+  const setLineManagers: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const body = parseWithSchema(lineManagersBodySchema, req.body);
+      const data = await service.setLineManagers(
+        req.identity,
+        id,
+        body.lineManagerIds
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const updateEmployment: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const body = parseWithSchema(updateEmploymentBodySchema, req.body);
+      const data = await service.updateEmployment(req.identity, id, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const resendVerification: RequestHandler = async (req, res, next) => {
     try {
       const { id } = parseWithSchema(idParamSchema, req.params);
@@ -324,6 +354,8 @@ export function createUsersController(
     remove,
     blockExpired,
     assignToolkits,
+    setLineManagers,
+    updateEmployment,
     resendVerification,
     checkOwnership,
     transferOwnership,

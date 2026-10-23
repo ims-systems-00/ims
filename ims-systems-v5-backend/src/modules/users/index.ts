@@ -26,6 +26,10 @@ export type {
 export { createFunctionalUnitUsersAdapter } from "./adapters/functional-unit-users.adapter";
 export type { CreateFunctionalUnitUsersAdapterDeps } from "./adapters/functional-unit-users.adapter";
 export { createOrganisationMembershipLookupAdapter } from "./adapters/organisation-membership-lookup.adapter";
+export { createComplianceToolkitAdapter } from "./adapters/compliance-toolkit.adapter";
+export { createOwnershipIntegrityAdapter } from "./adapters/ownership-integrity.adapter";
+export { createUserNotificationAdapter } from "./adapters/user-notification.adapter";
+export { createAuth0SessionAdapter } from "./adapters/session.adapter";
 export type {
   FunctionalUnitUsersPort,
   UnitMemberView,

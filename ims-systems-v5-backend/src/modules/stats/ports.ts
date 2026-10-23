@@ -140,7 +140,15 @@ export type StatsOrganisationPort = {
   ): Promise<Record<"P1" | "P2" | "P3" | "P4", number | null>>;
 };
 
+export type StatsDocumentsPort = {
+  documentUtilisation(identity: SecurityIdentity): Promise<{
+    businessUnitIds: string[];
+    hasPublishedDocuments: boolean;
+  }>;
+};
+
 export type StatsModulePorts = {
+  documents: StatsDocumentsPort;
   risks: StatsRisksPort;
   incidents: StatsIncidentsPort;
   audits: StatsAuditsPort;
@@ -178,6 +186,11 @@ export class DevNoOrgTargetsAdapter implements StatsOrganisationPort {
 
 /** Development stubs — zeros / empty stats for unit tests without HTTP wiring. */
 export class DevZeroStatsPorts implements StatsModulePorts {
+  documents: StatsDocumentsPort = {
+    async documentUtilisation() {
+      return { businessUnitIds: [], hasPublishedDocuments: false };
+    },
+  };
   risks: StatsRisksPort = {
     async stats() {
       return {

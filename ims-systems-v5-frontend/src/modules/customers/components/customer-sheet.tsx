@@ -8,6 +8,7 @@ import {
   ActivityTimeline,
   SheetPanelTabs,
 } from "@/modules/activities";
+import { CustomerInvoicesPanel } from "@/modules/invoices/components/customer-invoices-panel";
 import {
   useCreateCustomerMutation,
   useCustomerQuery,
@@ -241,6 +242,7 @@ export function CustomerSheet({
               tabs={[
                 { id: "details", label: "Details" },
                 { id: "interactions", label: "Interactions" },
+                { id: "invoices", label: "Invoices" },
               ]}
               value={panelTab}
               onChange={setPanelTab}
@@ -257,6 +259,9 @@ export function CustomerSheet({
                 emptyTitle="No interactions found"
                 emptyDescription="Customer interaction notes will appear here."
               />
+            ) : null}
+            {panelTab === "invoices" ? (
+              <CustomerInvoicesPanel customerId={customer.id} />
             ) : null}
           </>
         ) : null}

@@ -34,6 +34,7 @@ export type UsersRouterDeps = {
 export function createUsersModule(deps: UsersRouterDeps): {
   service: UsersService;
   router: Router;
+  memberships: MembershipLookupPort;
 } {
   const repository = createUserRepository();
   const memberships =
@@ -73,6 +74,8 @@ export function createUsersModule(deps: UsersRouterDeps): {
   router.post("/:id/locations", controller.addLocation);
   router.delete("/:id/locations/:locationId", controller.removeLocation);
   router.put("/:id/compliance-tools", controller.assignToolkits);
+  router.put("/:id/line-managers", controller.setLineManagers);
+  router.put("/:id/employment", controller.updateEmployment);
   router.post("/:id/resend-verification", controller.resendVerification);
   router.post("/:id/ownership-checks", controller.checkOwnership);
   router.post("/:id/ownership-transfer", controller.transferOwnership);
@@ -82,7 +85,7 @@ export function createUsersModule(deps: UsersRouterDeps): {
   router.delete("/:id", controller.remove);
   router.get("/:id", controller.getClassified);
 
-  return { service, router };
+  return { service, router, memberships };
 }
 
 /**

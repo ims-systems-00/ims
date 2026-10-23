@@ -16,6 +16,11 @@ export {
 export { composeGoLiveSideEffects } from "./adapters/compose-go-live-side-effects";
 export { createGoLiveNotifySideEffectsAdapter } from "./adapters/go-live-notify.adapter";
 export {
+  createFilesBucketSideEffectsAdapter,
+  resolveProvisioningBucket,
+} from "./adapters/files-bucket.adapter";
+export { createAuth0OrganisationSideEffectsAdapter } from "./adapters/auth0-organisation.adapter";
+export {
   ORGANISATION_PAYMENT_STATUSES,
   ORGANISATION_PAYMENT_TYPES,
   ORGANISATION_RESOURCE,

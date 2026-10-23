@@ -18,6 +18,7 @@ const attachmentInputSchema = z.object({
   mimeType: z.string().trim().optional(),
   sizeBytes: z.number().int().nonnegative().optional(),
   storageKey: z.string().trim().optional(),
+  bucket: z.string().trim().optional(),
   url: z.string().trim().url().optional().or(z.literal("")),
 });
 

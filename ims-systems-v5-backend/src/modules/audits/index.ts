@@ -29,6 +29,10 @@ export {
 } from "./types";
 export { createAuditNotificationAdapter } from "./adapters/notification.adapter";
 export {
+  buildAuditReportHtml,
+  createAuditReportAdapter,
+} from "./adapters/report.adapter";
+export {
   NoOpAuditNotificationAdapter,
   NoOpAuditCalendarAdapter,
   NoOpAuditTaskAdapter,

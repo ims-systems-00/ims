@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { CategoryLabel } from "@/modules/tags-and-categories";
+import { formatDate, formatDateTime } from "@/shared/lib/format-date";
 import type {
   AnyAsset,
   AssetCategory,
@@ -46,7 +47,7 @@ export function AssetDetails({
       <Item label="Cost" value={asset.cost} />
       <Item
         label="Created"
-        value={new Date(asset.createdAt).toLocaleString()}
+        value={formatDateTime(asset.createdAt)}
       />
 
       {category === "hardware" ? (
@@ -78,7 +79,7 @@ function HardwareDetails({ asset }: { asset: HardwareAsset }) {
         label="Assigned"
         value={
           asset.assignedDate
-            ? new Date(asset.assignedDate).toLocaleDateString()
+            ? formatDate(asset.assignedDate)
             : undefined
         }
       />
@@ -86,7 +87,7 @@ function HardwareDetails({ asset }: { asset: HardwareAsset }) {
         label="Returned"
         value={
           asset.returnDate
-            ? new Date(asset.returnDate).toLocaleDateString()
+            ? formatDate(asset.returnDate)
             : undefined
         }
       />
@@ -94,7 +95,7 @@ function HardwareDetails({ asset }: { asset: HardwareAsset }) {
         label="Destroyed"
         value={
           asset.destructionDate
-            ? new Date(asset.destructionDate).toLocaleDateString()
+            ? formatDate(asset.destructionDate)
             : undefined
         }
       />

@@ -17,6 +17,7 @@ export const ACTIVITY_MODULE_TYPES = [
   "incidents",
   "tasks",
   "risks",
+  "audits",
   "cips",
   "customers",
   "controlstatuses",

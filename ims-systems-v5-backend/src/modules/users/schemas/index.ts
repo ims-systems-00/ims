@@ -74,6 +74,7 @@ export const profileImageBodySchema = z.object({
   url: z.string().trim().url("Valid image URL is required"),
   fileName: z.string().trim().optional(),
   storageKey: z.string().trim().optional(),
+  bucket: z.string().trim().optional(),
 });
 
 export const signatureBodySchema = z
@@ -100,6 +101,44 @@ export const expiredUsersBodySchema = z.object({
 
 export const assignToolkitsBodySchema = z.object({
   toolkitIds: z.array(z.string().trim().min(1)).default([]),
+});
+
+export const lineManagersBodySchema = z.object({
+  lineManagerIds: z.array(objectIdSchema).default([]),
+});
+
+const dayHoursSchema = z
+  .object({
+    start: z.string().trim().min(1),
+    end: z.string().trim().min(1),
+  })
+  .nullable();
+
+export const updateEmploymentBodySchema = z.object({
+  jobTitle: z.string().trim().min(1, "Job title is required"),
+  workLocationType: z.enum(["On-site", "Remote"]),
+  salary: z.coerce.number().min(0).optional().default(0),
+  countryName: z.string().trim().min(1).default("United Kingdom"),
+  countryCode: z
+    .string()
+    .trim()
+    .length(2)
+    .transform((value) => value.toUpperCase())
+    .default("GB"),
+  leaveDaysEntitled: z.coerce.number().min(0).optional().default(0),
+  lineManagerIds: z.array(objectIdSchema).optional().default([]),
+  workShift: z
+    .object({
+      timezone: z.string().trim().min(1).default("UTC"),
+      monday: dayHoursSchema,
+      tuesday: dayHoursSchema,
+      wednesday: dayHoursSchema,
+      thursday: dayHoursSchema,
+      friday: dayHoursSchema,
+      saturday: dayHoursSchema,
+      sunday: dayHoursSchema,
+    })
+    .optional(),
 });
 
 export const ownershipTransferBodySchema = z.object({

@@ -15,6 +15,7 @@ import {
 } from "../hooks/use-activities";
 import { createActivityFormSchema } from "../schemas";
 import type { Activity, ActivityModuleType } from "../types";
+import { formatDate, formatDateTime } from "@/shared/lib/format-date";
 
 type ActivityTimelineProps = {
   moduleType: ActivityModuleType;
@@ -41,23 +42,7 @@ function formatRelative(value: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.round(hours / 24);
   if (days < 14) return `${days}d ago`;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function formatDateTime(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatDate(value);
 }
 
 function AuthorLabel({ userId }: { userId: string }) {

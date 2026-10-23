@@ -94,6 +94,15 @@ const envSchema = z
     AUTH0_ROPG_CLIENT_ID: z.string().default(""),
     AUTH0_ROPG_CLIENT_SECRET: z.string().default(""),
 
+    /**
+     * Machine-to-Machine app authorized for the Auth0 Management API.
+     * Unlocks session revocation (N-13) and Auth0 Organization
+     * provisioning at Go Live (N-09). Optional until configured;
+     * preflight warns when absent under auth0-openfga.
+     */
+    AUTH0_MGMT_CLIENT_ID: z.string().default(""),
+    AUTH0_MGMT_CLIENT_SECRET: z.string().default(""),
+
     /** OpenFGA store (required when SECURITY_PROVIDER=auth0-openfga). */
     OPENFGA_API_URL: z.string().default(""),
     OPENFGA_STORE_ID: z.string().default(""),
@@ -149,6 +158,21 @@ const envSchema = z
           .filter(Boolean)
       )
       .pipe(z.array(z.string().email()).min(1)),
+
+    /**
+     * Comma-separated internal inboxes for Contact IMS enquiries
+     * (demo booking + get started). Empty disables submissions.
+     */
+    CONTACT_IMS_SUPPORT_EMAILS: z
+      .string()
+      .default("support@imssystems.tech")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      )
+      .pipe(z.array(z.string().email())),
 
     /**
      * When true, mail is enqueued on BullMQ (requires Redis).
@@ -218,6 +242,28 @@ const envSchema = z
       .positive()
       .default(43_200),
 
+    /** Max single-file upload size in bytes (default 25 MiB). */
+    FILES_MAX_UPLOAD_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(26_214_400),
+
+    /**
+     * Comma-separated browser origins allowed by S3 CORS (used by the
+     * bucket provisioning script; presigned browser PUT/GET needs this).
+     */
+    FILES_CORS_ORIGINS: z
+      .string()
+      .default("http://localhost:3000,http://localhost:7864")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      )
+      .pipe(z.array(z.string().url()).min(1)),
+
     /** Local disk provider: directory for stored objects (demo / dev without AWS). */
     FILES_LOCAL_ROOT: z.string().default(".local-files"),
     /**
@@ -261,6 +307,15 @@ const envSchema = z
     STRIPE_SUPPORT_PRICE: z.string().default(""),
     /** FE origin for Checkout success/cancel and Billing Portal return. */
     CLIENT_URL: z.string().default("http://localhost:3000"),
+
+    /**
+     * OpenAI API key for Alice (Analytical Assistant).
+     * Empty → GPT endpoints use NoOp adapter (clear placeholder text).
+     * Env name matches V4: OPEN_AI_API_KEY.
+     */
+    OPEN_AI_API_KEY: z.string().default(""),
+    /** Chat model for Alice (V4 default was gpt-3.5-turbo). */
+    OPEN_AI_MODEL: z.string().default("gpt-3.5-turbo"),
   })
   .superRefine((value, ctx) => {
     if (

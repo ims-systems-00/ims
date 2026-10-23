@@ -22,6 +22,7 @@ import {
 import type { Task } from "@/modules/tasks/types";
 import { dashboardKeys } from "../hooks/use-dashboard";
 import { DashboardEmptyState } from "./dashboard-panel";
+import { formatDate } from "@/shared/lib/format-date";
 
 const TODO_LIST_PARAMS = {
   statusPreset: "incomplete" as const,
@@ -30,16 +31,6 @@ const TODO_LIST_PARAMS = {
   sort: "dueDate" as const,
   sortDir: "asc" as const,
 };
-
-function formatDue(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
 
 function isOverdue(task: Task): boolean {
   if (task.status === "Complete") return false;
@@ -189,7 +180,7 @@ export function DashboardTodoList() {
                           overdue && "font-medium text-destructive"
                         )}
                       >
-                        Due {formatDue(task.dueDate)}
+                        Due {formatDate(task.dueDate)}
                         {overdue ? " · Overdue" : ""}
                       </span>
                     </span>

@@ -15,11 +15,24 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
-import type {
-  DocumentActivityPort,
-  DocumentFilesPort,
-  DocumentNotificationPort,
+import {
+  NoOpDocumentMembershipAdapter,
+  type DocumentActivityPort,
+  type DocumentEmailPort,
+  type DocumentFilesPort,
+  type DocumentMembershipPort,
+  type DocumentNotificationPort,
 } from "../ports";
+import {
+  createDocumentAccessTokenStore,
+  generateAccessToken,
+  type DocumentAccessTokenStore,
+} from "../repositories/document-access-token.repository";
+import {
+  createDocumentSignatureStore,
+  type DocumentSignatureStore,
+} from "../repositories/document-signature.repository";
+import { stampSignaturePdf } from "./document-signature-stamp";
 import type { DocumentRepositoryStore } from "../repositories/document-repository.repository";
 import type { DocumentTreeStore } from "../repositories/document-tree.repository";
 import { normalizeFileMeta } from "../schemas";
@@ -34,11 +47,16 @@ import {
   type ChangeRepositoryInput,
   type CopyFolderStructureInput,
   type CreateDocumentRepositoryInput,
+  type CrossOrgCopySource,
+  type DocumentUtilisation,
   type CreateFileNodesInput,
   type CreateFileNodesResult,
   type CreateFolderNodeInput,
   type DecideAuthorisationInput,
   type DocumentOverviewCounts,
+  type DocumentSignature,
+  type InviteSignaturesInput,
+  type SignDocumentInput,
   type DocumentRepository,
   type DocumentTreeNode,
   type ListDocumentRepositoriesQuery,
@@ -96,6 +114,12 @@ export type DocumentManagementServiceDeps = {
   files: DocumentFilesPort;
   activities: DocumentActivityPort;
   notifications: DocumentNotificationPort;
+  email?: DocumentEmailPort;
+  memberships?: DocumentMembershipPort;
+  accessTokens?: DocumentAccessTokenStore;
+  signatures?: DocumentSignatureStore;
+  /** Base URL used in emailed links, e.g. https://app.example.com */
+  accessLinkBaseUrl?: string;
 };
 
 export type DocumentManagementService = ReturnType<
@@ -111,6 +135,9 @@ export type DocumentManagementApplicationPort = {
     organizationId: string,
     query: ListPublishedDocumentsQuery
   ): Promise<PaginatedDocumentNodes>;
+  getDocumentUtilisation(
+    organizationId: string
+  ): Promise<DocumentUtilisation>;
 };
 
 export function createDocumentManagementService(
@@ -118,6 +145,11 @@ export function createDocumentManagementService(
 ) {
   const { repositories, trees, authorizer, files, activities, notifications } =
     deps;
+  const memberships = deps.memberships ?? new NoOpDocumentMembershipAdapter();
+  const accessTokens =
+    deps.accessTokens ?? createDocumentAccessTokenStore();
+  const signatures = deps.signatures ?? createDocumentSignatureStore();
+  const accessLinkBaseUrl = (deps.accessLinkBaseUrl ?? "").replace(/\/+$/, "");
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -246,25 +278,42 @@ export function createDocumentManagementService(
     }
   }
 
+  async function assertSuperAdmin(
+    subjectId: string,
+    organizationId: string
+  ): Promise<void> {
+    const role = await memberships.getRole(subjectId, organizationId);
+    if (role !== "Super Admin") {
+      throw new ForbiddenError(
+        "Cross-organisation folder copy requires Super Admin membership in both organisations"
+      );
+    }
+  }
+
   async function copyFoldersRecursive(
-    organizationId: string,
+    sourceOrganizationId: string,
+    targetOrganizationId: string,
     sourceRepoId: string,
     targetRepoId: string,
     subjectId: string,
     sourceParentId: string | null,
     targetParentId: string | null
   ): Promise<void> {
-    const children = await trees.listChildren(organizationId, sourceRepoId, {
-      page: 1,
-      pageSize: 200,
-      parentNodeId: sourceParentId,
-      type: "folder",
-      sort: "name",
-      sortDir: "asc",
-    });
+    const children = await trees.listChildren(
+      sourceOrganizationId,
+      sourceRepoId,
+      {
+        page: 1,
+        pageSize: 200,
+        parentNodeId: sourceParentId,
+        type: "folder",
+        sort: "name",
+        sortDir: "asc",
+      }
+    );
 
     for (const folder of children.items) {
-      const created = await trees.createFolder(organizationId, {
+      const created = await trees.createFolder(targetOrganizationId, {
         reference: nextReference("DOC"),
         repositoryId: targetRepoId,
         name: folder.name,
@@ -274,7 +323,8 @@ export function createDocumentManagementService(
         createdOn: new Date(),
       });
       await copyFoldersRecursive(
-        organizationId,
+        sourceOrganizationId,
+        targetOrganizationId,
         sourceRepoId,
         targetRepoId,
         subjectId,
@@ -348,6 +398,7 @@ export function createDocumentManagementService(
           input.copyFolderStructureFromId
         );
         await copyFoldersRecursive(
+          organizationId,
           organizationId,
           input.copyFolderStructureFromId,
           repo.id,
@@ -530,8 +581,16 @@ export function createDocumentManagementService(
         requireOrgIdentity(identity);
       await assertAllowed(actor, "create");
       await requireRepository(organizationId, repositoryId);
-      await requireRepository(organizationId, input.sourceRepoId);
+
+      const sourceOrgId = input.sourceOrgId ?? organizationId;
+      if (sourceOrgId !== organizationId) {
+        // Cross-org copy (spec §10): Super Admin in BOTH organisations.
+        await assertSuperAdmin(subjectId, organizationId);
+        await assertSuperAdmin(subjectId, sourceOrgId);
+      }
+      await requireRepository(sourceOrgId, input.sourceRepoId);
       await copyFoldersRecursive(
+        sourceOrgId,
         organizationId,
         input.sourceRepoId,
         repositoryId,
@@ -540,6 +599,57 @@ export function createDocumentManagementService(
         null
       );
       return { copied: true };
+    },
+
+    /**
+     * Organisations (other than the current one) where the caller is a
+     * Super Admin, with their repositories — cross-org copy sources.
+     */
+    async listCrossOrgCopySources(
+      identity: SecurityIdentity | null | undefined
+    ): Promise<CrossOrgCopySource[]> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      await assertSuperAdmin(subjectId, organizationId);
+
+      const orgIds = await memberships.listOrganizationIdsForUser(subjectId);
+      const sources: CrossOrgCopySource[] = [];
+      for (const orgId of orgIds) {
+        if (orgId === organizationId) continue;
+        const role = await memberships.getRole(subjectId, orgId);
+        if (role !== "Super Admin") continue;
+        const repos = await repositories.listAllActive(orgId);
+        sources.push({
+          organizationId: orgId,
+          repositories: repos.map((repo) => ({
+            id: repo.id,
+            name: repo.name,
+            reference: repo.reference,
+          })),
+        });
+      }
+      return sources;
+    },
+
+    /** Document utilisation for Stats digital-maturity (stats.md §5). */
+    async getDocumentUtilisation(
+      organizationId: string
+    ): Promise<DocumentUtilisation> {
+      const [repos, counts] = await Promise.all([
+        repositories.listAllActive(organizationId),
+        trees.overviewCounts(organizationId),
+      ]);
+      return {
+        businessUnitIds: [
+          ...new Set(
+            repos
+              .map((repo) => repo.businessUnitId)
+              .filter((id): id is string => Boolean(id))
+          ),
+        ],
+        hasPublishedDocuments: counts.total > 0,
+      };
     },
 
     async createFolder(
@@ -711,6 +821,27 @@ export function createDocumentManagementService(
         throw new NotFoundError("Document node not found");
       }
       return node;
+    },
+
+    /** Version family of a document node (all statuses, oldest first). */
+    async listNodeVersions(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<DocumentTreeNode[]> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId, {
+        includeDeleted: true,
+      });
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new NotFoundError("Document node not found");
+      }
+      const threadId = node.documentData?.threadId;
+      if (!threadId) return [node];
+      const family = await trees.listByThread(organizationId, threadId);
+      return family.length > 0 ? family : [node];
     },
 
     async getNodePath(
@@ -1433,5 +1564,532 @@ export function createDocumentManagementService(
     ): Promise<PaginatedDocumentNodes> {
       return trees.listPublished(organizationId, query);
     },
+
+    /**
+     * Share a document by email (spec §2): creates a 2-day limited-access
+     * token per recipient; the emailed link resolves (via
+     * resolveShareToken) to a fresh signed view URL.
+     */
+    async shareDocument(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      input: { emails: string[]; message?: string }
+    ): Promise<{ sharedWith: string[]; expiresAt: Date }> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new NotFoundError("Document node not found");
+      }
+      if (!node.documentData?.storageInfo) {
+        throw new ValidationAppError("Document has no stored file to share");
+      }
+
+      const emails = [...new Set(input.emails.map((e) => e.toLowerCase()))];
+      const expiresAt = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000);
+
+      for (const email of emails) {
+        const rawToken = generateAccessToken();
+        await accessTokens.create({
+          organizationId,
+          documentNodeId: node.id,
+          purpose: "share",
+          rawToken,
+          recipientEmail: email,
+          createdBy: subjectId,
+          expiresAt,
+        });
+        const link = `${accessLinkBaseUrl}/api/v1/document-shares/${rawToken}`;
+        if (deps.email) {
+          try {
+            await deps.email.sendDocumentEmail({
+              to: [email],
+              subject: `Document shared with you: ${node.name}`,
+              text: [
+                `A document has been shared with you: ${node.name}`,
+                input.message ? `\n${input.message}` : "",
+                `\nOpen it here (link valid until ${expiresAt.toISOString()}): ${link}`,
+              ].join("\n"),
+              html: `<p>A document has been shared with you: <strong>${node.name}</strong></p>${
+                input.message ? `<p>${input.message}</p>` : ""
+              }<p><a href="${link}">Open document</a> (link valid until ${expiresAt.toISOString()})</p>`,
+              organizationId,
+            });
+          } catch {
+            // Non-fatal — token exists; sender can share the link again.
+          }
+        }
+      }
+
+      await recordActivity(
+        organizationId,
+        node.id,
+        `Document shared via email with ${emails.join(", ")}`,
+        subjectId,
+        node.documentData?.threadId
+      );
+      return { sharedWith: emails, expiresAt };
+    },
+
+    /** Public: resolve a share token to a fresh signed view URL. */
+    async resolveShareToken(rawToken: string): Promise<string> {
+      const record = await accessTokens.findByRawToken(rawToken);
+      if (
+        !record ||
+        record.purpose !== "share" ||
+        record.invalidatedAt ||
+        record.expiresAt.getTime() < Date.now()
+      ) {
+        throw new NotFoundError("Share link is invalid or has expired");
+      }
+      const node = await trees.findById(
+        record.organizationId,
+        record.documentNodeId,
+        { includeDeleted: true }
+      );
+      if (!node?.documentData?.storageInfo || node.deletedAt) {
+        throw new NotFoundError("Shared document is no longer available");
+      }
+      await accessTokens.markUsed(record.id);
+      return files.createViewUrl(node.documentData.storageInfo);
+    },
+
+    // -----------------------------------------------------------------
+    // Electronic signatures (spec §2/§10, full parity epic)
+    // -----------------------------------------------------------------
+
+    async inviteSignatures(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      input: InviteSignaturesInput
+    ): Promise<DocumentSignature[]> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new NotFoundError("Document node not found");
+      }
+      if (node.status !== "Published") {
+        throw new ValidationAppError(
+          "Only published documents can be sent for signature"
+        );
+      }
+      if (!input.signatureLocations?.length) {
+        throw new ValidationAppError(
+          "At least one signature location is required"
+        );
+      }
+
+      const created: DocumentSignature[] = [];
+      const internalUsers = input.internalUsers ?? [];
+      for (const user of internalUsers) {
+        const record = await signatures.create({
+          organizationId,
+          repositoryId,
+          documentNodeId: node.id,
+          inviteeType: "user",
+          userId: user.userId,
+          email: user.email,
+          displayName: user.displayName,
+          message: input.message ?? "",
+          status: "Pending",
+          signatureLocations: input.signatureLocations,
+          lastOpenedAt: null,
+          signedAt: null,
+          createdBy: subjectId,
+        });
+        created.push(record);
+        await notifyUsers(
+          organizationId,
+          subjectId,
+          [user.userId],
+          "Signature requested",
+          `You have been invited to sign "${node.name}".`,
+          node.id
+        );
+        if (user.email && deps.email) {
+          try {
+            await deps.email.sendDocumentEmail({
+              to: [user.email],
+              subject: `Signature requested: ${node.name}`,
+              text: `You have been invited to sign "${node.name}". Sign in to iMS to review and sign it.`,
+              html: `<p>You have been invited to sign <strong>${node.name}</strong>.</p><p>Sign in to iMS to review and sign it.</p>`,
+              organizationId,
+            });
+          } catch {
+            // Non-fatal.
+          }
+        }
+      }
+
+      for (const email of input.externalEmails ?? []) {
+        const record = await signatures.create({
+          organizationId,
+          repositoryId,
+          documentNodeId: node.id,
+          inviteeType: "email",
+          email,
+          displayName: email,
+          message: input.message ?? "",
+          status: "Pending",
+          signatureLocations: input.signatureLocations,
+          lastOpenedAt: null,
+          signedAt: null,
+          createdBy: subjectId,
+        });
+        created.push(record);
+        await sendExternalInviteEmail(record, node.name, node.id);
+      }
+
+      if (created.length === 0) {
+        throw new ValidationAppError(
+          "Select at least one internal user or external email"
+        );
+      }
+
+      await recomputeConformance(organizationId, node);
+      await recordActivity(
+        organizationId,
+        node.id,
+        `Signature requested for ${node.name} (${created.length} invitee(s))`,
+        subjectId,
+        node.documentData?.threadId
+      );
+      return created;
+    },
+
+    async listSignatures(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<DocumentSignature[]> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId) {
+        throw new NotFoundError("Document node not found");
+      }
+      return signatures.listByNode(organizationId, nodeId);
+    },
+
+    async resendSignature(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      signatureId: string
+    ): Promise<DocumentSignature> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const record = await signatures.findById(organizationId, signatureId);
+      if (!record || record.documentNodeId !== nodeId) {
+        throw new NotFoundError("Signature request not found");
+      }
+      const node = await requireNode(organizationId, nodeId);
+      if (record.inviteeType === "email" && record.email) {
+        await accessTokens.invalidateForSignature(record.id);
+        await sendExternalInviteEmail(record, node.name, node.id);
+      } else if (record.userId) {
+        await notifyUsers(
+          organizationId,
+          subjectId,
+          [record.userId],
+          "Signature requested (resent)",
+          `Reminder: you have been invited to sign "${node.name}".`,
+          node.id
+        );
+      }
+      return record;
+    },
+
+    async removeSignature(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      signatureId: string
+    ): Promise<{ id: string; deleted: true }> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const record = await signatures.findById(organizationId, signatureId);
+      if (!record || record.documentNodeId !== nodeId) {
+        throw new NotFoundError("Signature request not found");
+      }
+      await accessTokens.invalidateForSignature(record.id);
+      await signatures.deleteById(organizationId, record.id);
+      const node = await trees.findById(organizationId, nodeId, {
+        includeDeleted: true,
+      });
+      if (node) await recomputeConformance(organizationId, node);
+      return { id: signatureId, deleted: true };
+    },
+
+    async listPreservedReviewers(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<Array<{ inviteeType: "user" | "email"; userId?: string; email?: string; displayName: string }>> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      await requireRepository(organizationId, repositoryId);
+      const all = await signatures.listByNode(organizationId, nodeId);
+      const seen = new Map<string, { inviteeType: "user" | "email"; userId?: string; email?: string; displayName: string }>();
+      for (const row of all) {
+        const key = row.inviteeType === "user" ? `user:${row.userId}` : `email:${row.email}`;
+        if (!seen.has(key)) {
+          seen.set(key, {
+            inviteeType: row.inviteeType,
+            userId: row.userId,
+            email: row.email,
+            displayName: row.displayName,
+          });
+        }
+      }
+      return [...seen.values()];
+    },
+
+    async listSignatureRequests(
+      identity: SecurityIdentity | null | undefined,
+      query: { mine?: boolean; status?: DocumentSignature["status"] }
+    ): Promise<DocumentSignature[]> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      return signatures.listForOrganization(organizationId, {
+        userId: query.mine ? subjectId : undefined,
+        status: query.status,
+      });
+    },
+
+    /** Internal signing (invitee must be the logged-in user). */
+    async signDocument(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      signatureId: string,
+      input: SignDocumentInput
+    ): Promise<DocumentSignature> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const record = await signatures.findById(organizationId, signatureId);
+      if (!record || record.documentNodeId !== nodeId) {
+        throw new NotFoundError("Signature request not found");
+      }
+      if (record.inviteeType !== "user" || record.userId !== subjectId) {
+        throw new ForbiddenError(
+          "Only the invited user can sign this request"
+        );
+      }
+      return applySignature(record, input);
+    },
+
+    /** Public: context for an external signing link (marks opened). */
+    async getPublicSignatureContext(rawToken: string): Promise<{
+      signature: DocumentSignature;
+      documentName: string;
+      repositoryId: string;
+    }> {
+      const { record, signature } = await requireSignatureToken(rawToken);
+      await signatures.update(signature.organizationId, signature.id, {
+        lastOpenedAt: new Date(),
+      });
+      const node = await trees.findById(
+        record.organizationId,
+        record.documentNodeId,
+        { includeDeleted: true }
+      );
+      if (!node || node.deletedAt) {
+        throw new NotFoundError("Document is no longer available");
+      }
+      return {
+        signature,
+        documentName: node.name,
+        repositoryId: node.repositoryId,
+      };
+    },
+
+    /** Public: external signing via token; token invalidated after use. */
+    async signDocumentPublic(
+      rawToken: string,
+      input: SignDocumentInput
+    ): Promise<DocumentSignature> {
+      const { record, signature } = await requireSignatureToken(rawToken);
+      const updated = await applySignature(signature, input);
+      await accessTokens.invalidate(record.id);
+      return updated;
+    },
   };
+
+  async function sendExternalInviteEmail(
+    record: DocumentSignature,
+    documentName: string,
+    _nodeId: string
+  ): Promise<void> {
+    if (!deps.email || !record.email) return;
+    const rawToken = generateAccessToken();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+    await accessTokens.create({
+      organizationId: record.organizationId,
+      documentNodeId: record.documentNodeId,
+      signatureId: record.id,
+      purpose: "signature",
+      rawToken,
+      recipientEmail: record.email,
+      createdBy: record.createdBy,
+      expiresAt,
+    });
+    const link = `${accessLinkBaseUrl}/documents/sign/${rawToken}`;
+    try {
+      await deps.email.sendDocumentEmail({
+        to: [record.email],
+        subject: `Signature requested: ${documentName}`,
+        text: `You have been invited to sign "${documentName}".\n${record.message ? `${record.message}\n` : ""}Sign here (link valid until ${expiresAt.toISOString()}): ${link}`,
+        html: `<p>You have been invited to sign <strong>${documentName}</strong>.</p>${record.message ? `<p>${record.message}</p>` : ""}<p><a href="${link}">Review and sign</a> (link valid until ${expiresAt.toISOString()})</p>`,
+        organizationId: record.organizationId,
+      });
+    } catch {
+      // Non-fatal — resend can issue a fresh link.
+    }
+  }
+
+  async function requireSignatureToken(rawToken: string): Promise<{
+    record: Awaited<ReturnType<DocumentAccessTokenStore["findByRawToken"]>> & object;
+    signature: DocumentSignature;
+  }> {
+    const record = await accessTokens.findByRawToken(rawToken);
+    if (
+      !record ||
+      record.purpose !== "signature" ||
+      !record.signatureId ||
+      record.invalidatedAt ||
+      record.expiresAt.getTime() < Date.now()
+    ) {
+      throw new NotFoundError("Signature link is invalid or has expired");
+    }
+    const signature = await signatures.findByIdAnyOrg(record.signatureId);
+    if (!signature || signature.organizationId !== record.organizationId) {
+      throw new NotFoundError("Signature request not found");
+    }
+    if (signature.status === "Signed") {
+      throw new ValidationAppError("This document has already been signed");
+    }
+    return { record, signature };
+  }
+
+  async function recomputeConformance(
+    organizationId: string,
+    node: DocumentTreeNode
+  ): Promise<void> {
+    const all = await signatures.listByNode(organizationId, node.id);
+    const conformance =
+      all.length === 0
+        ? -1
+        : Math.floor(
+            (all.filter((s) => s.status === "Signed").length / all.length) *
+              100
+          );
+    await trees.updateDocumentData(organizationId, node.id, { conformance });
+    if (conformance === 100) {
+      await recordActivity(
+        organizationId,
+        node.id,
+        `Document ${node.name} reached full signature conformance`,
+        node.createdBy,
+        node.documentData?.threadId
+      );
+      await notifyUsers(
+        organizationId,
+        node.createdBy,
+        node.documentData?.owners ?? [],
+        "Document fully signed",
+        `"${node.name}" has been signed by all invitees (100% conformance).`,
+        node.id
+      );
+    }
+  }
+
+  async function applySignature(
+    record: DocumentSignature,
+    input: SignDocumentInput
+  ): Promise<DocumentSignature> {
+    if (record.status === "Signed") {
+      throw new ValidationAppError("This document has already been signed");
+    }
+    const node = await trees.findById(record.organizationId, record.documentNodeId, {
+      includeDeleted: true,
+    });
+    if (!node?.documentData?.storageInfo || node.deletedAt) {
+      throw new NotFoundError("Document is no longer available");
+    }
+    const signedAt = new Date();
+    const original = await files.readStoredFile(
+      node.documentData.storageInfo
+    );
+    const stamped = await stampSignaturePdf(original, {
+      name: input.name,
+      jobTitle: input.jobTitle,
+      organisation: input.organisation,
+      locations: record.signatureLocations,
+      signedAt,
+    });
+    const signedCopy = await files.writeStoredFile({
+      fileName: node.name.replace(/\.pdf$/i, "") + "-signed.pdf",
+      bucket: node.documentData.storageInfo.Bucket,
+      contentType: "application/pdf",
+      body: stamped,
+    });
+
+    const updated = await signatures.update(record.organizationId, record.id, {
+      status: "Signed",
+      signatureName: input.name,
+      signatureFont: input.font ?? "cursive",
+      jobTitle: input.jobTitle,
+      organisation: input.organisation,
+      signedCopy,
+      signedAt,
+      lastOpenedAt: new Date(),
+    });
+    if (!updated) throw new NotFoundError("Signature request not found");
+
+    await recomputeConformance(record.organizationId, node);
+    await recordActivity(
+      record.organizationId,
+      node.id,
+      `Document ${node.name} signed by ${record.displayName}`,
+      record.createdBy,
+      node.documentData?.threadId
+    );
+    await notifyUsers(
+      record.organizationId,
+      record.createdBy,
+      node.documentData?.owners ?? [],
+      "Document signed",
+      `"${node.name}" was signed by ${record.displayName}.`,
+      node.id
+    );
+
+    // Signed-copy email to the signee when we have an address.
+    if (deps.email && record.email) {
+      try {
+        const viewUrl = await files.createViewUrl(signedCopy);
+        await deps.email.sendDocumentEmail({
+          to: [record.email],
+          subject: `Signed copy: ${node.name}`,
+          text: `You signed "${node.name}". Download your signed copy: ${viewUrl}`,
+          html: `<p>You signed <strong>${node.name}</strong>.</p><p><a href="${viewUrl}">Download your signed copy</a></p>`,
+          organizationId: record.organizationId,
+        });
+      } catch {
+        // Non-fatal.
+      }
+    }
+    return updated;
+  }
 }

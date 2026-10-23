@@ -8,6 +8,7 @@ import type {
   GoLiveOrganisationResult,
   Organisation,
   OrganisationPaymentSession,
+  IncidentResolutionTargets,
   OrganisationProfile,
   PaginatedLicenceRequests,
   RequestOrganisationLicenceInput,
@@ -78,6 +79,32 @@ export function createBillingPortalSession(
 ): Promise<OrganisationPaymentSession> {
   return apiRequest<OrganisationPaymentSession>(
     `/organisations/${organizationId}/billing-session`
+  );
+}
+
+export function updateOrganisationLogo(body: {
+  logoSrc: string | null;
+  logoStorage?: {
+    bucket: string;
+    key: string;
+    fileName?: string;
+  } | null;
+}): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>("/organisations/current/logo", {
+    method: "PUT",
+    body,
+  });
+}
+
+export function updateIncidentResolutionTargets(
+  incidentResolutionTargets: IncidentResolutionTargets
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    "/organisations/current/incident-resolution-targets",
+    {
+      method: "PUT",
+      body: { incidentResolutionTargets },
+    }
   );
 }
 

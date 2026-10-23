@@ -32,19 +32,9 @@ import {
 } from "../components/control-badges";
 import { ControlSheet } from "../components/control-sheet";
 import { ToolkitOverviewPanel } from "../components/toolkit-overview-panel";
+import { formatDate } from "@/shared/lib/format-date";
 
 type TabId = "overview" | "toolkit";
-
-function formatUpdated(value: string | null): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
 
 function UpdatedByCell({ userId }: { userId?: string | null }) {
   const query = useUserQuery(userId ?? undefined, Boolean(userId));
@@ -397,7 +387,7 @@ export function ComplianceToolkitPage() {
                               />
                             </td>
                             <td className="whitespace-nowrap text-muted-foreground">
-                              {formatUpdated(control.updatedOn)}
+                              {formatDate(control.updatedOn)}
                             </td>
                             <td className="max-w-[8rem]">
                               <UpdatedByCell userId={control.updatedBy} />

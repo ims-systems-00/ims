@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { parseWithSchema, sendSuccess, ValidationAppError } from "../../../shared";
 import {
+  accessTokenParamSchema,
   addAuthoriserBodySchema,
   addRevisionBodySchema,
   addVersionBodySchema,
@@ -18,6 +19,11 @@ import {
   moveNodeBodySchema,
   normalizeFileMeta,
   repoNodeParamsSchema,
+  shareDocumentBodySchema,
+  inviteSignaturesBodySchema,
+  listSignatureRequestsQuerySchema,
+  signDocumentBodySchema,
+  signatureParamsSchema,
   updateDocumentBodySchema,
   updateFolderBodySchema,
   updateRepositoryBodySchema,
@@ -34,10 +40,12 @@ export type DocumentManagementController = {
   restoreRepository: RequestHandler;
   hardDeleteRepository: RequestHandler;
   copyFolderStructure: RequestHandler;
+  listCrossOrgCopySources: RequestHandler;
   createFolder: RequestHandler;
   createFiles: RequestHandler;
   listNodes: RequestHandler;
   getNode: RequestHandler;
+  listNodeVersions: RequestHandler;
   getNodePath: RequestHandler;
   updateFolder: RequestHandler;
   updateDocument: RequestHandler;
@@ -51,6 +59,17 @@ export type DocumentManagementController = {
   addAuthoriser: RequestHandler;
   decideAuthorisation: RequestHandler;
   removeAuthoriser: RequestHandler;
+  shareDocument: RequestHandler;
+  resolveShare: RequestHandler;
+  inviteSignatures: RequestHandler;
+  listSignatures: RequestHandler;
+  resendSignature: RequestHandler;
+  removeSignature: RequestHandler;
+  listPreservedReviewers: RequestHandler;
+  listSignatureRequests: RequestHandler;
+  signDocument: RequestHandler;
+  getPublicSignature: RequestHandler;
+  signDocumentPublic: RequestHandler;
   listPublished: RequestHandler;
 };
 
@@ -157,6 +176,15 @@ export function createDocumentManagementController(
     }
   };
 
+  const listCrossOrgCopySources: RequestHandler = async (req, res, next) => {
+    try {
+      const data = await service.listCrossOrgCopySources(req.identity);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const createFolder: RequestHandler = async (req, res, next) => {
     try {
       const { id } = parseWithSchema(idParamSchema, req.params);
@@ -204,6 +232,16 @@ export function createDocumentManagementController(
     try {
       const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
       const data = await service.getNode(req.identity, id, nodeId);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const listNodeVersions: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const data = await service.listNodeVersions(req.identity, id, nodeId);
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -386,6 +424,155 @@ export function createDocumentManagementController(
     }
   };
 
+  const shareDocument: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const body = parseWithSchema(shareDocumentBodySchema, req.body);
+      const data = await service.shareDocument(req.identity, id, nodeId, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** Public share-link resolution — no identity required (token-gated). */
+  const resolveShare: RequestHandler = async (req, res, next) => {
+    try {
+      const { token } = parseWithSchema(accessTokenParamSchema, req.params);
+      const url = await service.resolveShareToken(token);
+      res.redirect(302, url);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const inviteSignatures: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const body = parseWithSchema(inviteSignaturesBodySchema, req.body);
+      const data = await service.inviteSignatures(req.identity, id, nodeId, body);
+      sendSuccess(res, data, 201, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const listSignatures: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const data = await service.listSignatures(req.identity, id, nodeId);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const resendSignature: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId, signatureId } = parseWithSchema(
+        signatureParamsSchema,
+        req.params
+      );
+      const data = await service.resendSignature(
+        req.identity,
+        id,
+        nodeId,
+        signatureId
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const removeSignature: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId, signatureId } = parseWithSchema(
+        signatureParamsSchema,
+        req.params
+      );
+      const data = await service.removeSignature(
+        req.identity,
+        id,
+        nodeId,
+        signatureId
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const listPreservedReviewers: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const data = await service.listPreservedReviewers(
+        req.identity,
+        id,
+        nodeId
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const listSignatureRequests: RequestHandler = async (req, res, next) => {
+    try {
+      const query = parseWithSchema(
+        listSignatureRequestsQuerySchema,
+        req.query
+      );
+      const data = await service.listSignatureRequests(req.identity, query);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const signDocument: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId, signatureId } = parseWithSchema(
+        signatureParamsSchema,
+        req.params
+      );
+      const body = parseWithSchema(signDocumentBodySchema, req.body);
+      const data = await service.signDocument(
+        req.identity,
+        id,
+        nodeId,
+        signatureId,
+        body
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** Public external-signing context — token-gated, no identity. */
+  const getPublicSignature: RequestHandler = async (req, res, next) => {
+    try {
+      const { token } = parseWithSchema(accessTokenParamSchema, req.params);
+      const data = await service.getPublicSignatureContext(token);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /** Public external signing — token-gated, no identity. */
+  const signDocumentPublic: RequestHandler = async (req, res, next) => {
+    try {
+      const { token } = parseWithSchema(accessTokenParamSchema, req.params);
+      const body = parseWithSchema(signDocumentBodySchema, req.body);
+      const data = await service.signDocumentPublic(token, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const listPublished: RequestHandler = async (req, res, next) => {
     try {
       const query = parseWithSchema(
@@ -409,10 +596,12 @@ export function createDocumentManagementController(
     restoreRepository,
     hardDeleteRepository,
     copyFolderStructure,
+    listCrossOrgCopySources,
     createFolder,
     createFiles,
     listNodes,
     getNode,
+    listNodeVersions,
     getNodePath,
     updateFolder,
     updateDocument,
@@ -426,6 +615,17 @@ export function createDocumentManagementController(
     addAuthoriser,
     decideAuthorisation,
     removeAuthoriser,
+    shareDocument,
+    resolveShare,
+    inviteSignatures,
+    listSignatures,
+    resendSignature,
+    removeSignature,
+    listPreservedReviewers,
+    listSignatureRequests,
+    signDocument,
+    getPublicSignature,
+    signDocumentPublic,
     listPublished,
   };
 }

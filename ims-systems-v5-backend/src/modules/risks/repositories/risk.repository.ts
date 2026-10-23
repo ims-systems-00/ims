@@ -76,6 +76,7 @@ function toDomain(doc: RiskDocument): Risk {
       mimeType: a.mimeType,
       sizeBytes: a.sizeBytes,
       storageKey: a.storageKey,
+      bucket: a.bucket,
       url: a.url,
       uploadedBy: a.uploadedBy,
       uploadedAt: a.uploadedAt,

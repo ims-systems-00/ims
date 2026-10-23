@@ -14,6 +14,7 @@ export type { StatsRouterDeps } from "./routes/stats.routes";
 export { createStatsService } from "./services/stats.service";
 export type { StatsService } from "./services/stats.service";
 export { createStatsPortsFromModules } from "./adapters/module-ports.adapter";
+export { createOrganisationTargetsAdapter } from "./adapters/organisation-targets.adapter";
 export type { StatsPortsFromModulesInput } from "./adapters/module-ports.adapter";
 export {
   DevZeroStatsPorts,

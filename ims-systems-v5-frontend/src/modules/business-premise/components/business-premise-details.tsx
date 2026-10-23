@@ -3,17 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import type { BusinessPremise } from "../types";
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
+import { formatDate } from "@/shared/lib/format-date";
 
 function Item({
   label,

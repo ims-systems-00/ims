@@ -58,6 +58,7 @@ function toDomain(doc: UserDocument): User {
         "https://assets.imssystems.tech/images/system/avatar-placeholder.jpg",
       fileName: doc.profileImage?.fileName ?? undefined,
       storageKey: doc.profileImage?.storageKey ?? undefined,
+      bucket: doc.profileImage?.bucket ?? undefined,
     },
     signatureInfo: {
       url: doc.signatureInfo?.url ?? undefined,
@@ -379,6 +380,7 @@ export function createUserRepository(): UserRepository {
         url: input.url,
         fileName: input.fileName,
         storageKey: input.storageKey,
+        bucket: input.bucket,
       };
       const doc = await model
         .findOneAndUpdate(

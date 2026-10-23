@@ -106,8 +106,11 @@ export type Organisation = {
   paymentSystem: OrganisationPaymentSystem;
   systemDate: OrganisationSystemDate;
   documentReviewReminderOffsets: DocumentReviewReminderOffset[];
+  incidentResolutionTargets: IncidentResolutionTargets;
   referralSource: string | null;
   logoSrc: string | null;
+  /** File Handler location for the logo, so clients can mint fresh view URLs. */
+  logoStorage: OrganisationLogoStorage | null;
   /**
    * Auth0 Organization id (`org_…`). Optional until linked (auth rollout M2+).
    * Canonical tenant key remains `id` (IMS ObjectId / organizationId).
@@ -128,8 +131,44 @@ export type RequestOrganisationLicenceInput = {
   message?: string;
 };
 
+export type IncidentResolutionTargets = Record<
+  "P1" | "P2" | "P3" | "P4",
+  number | null
+>;
+
+export type UpdateIncidentResolutionTargetsInput = {
+  incidentResolutionTargets: IncidentResolutionTargets;
+};
+
 export type UpdateDocumentReviewRemindersInput = {
   documentReviewReminderOffsets: DocumentReviewReminderOffset[];
+};
+
+export type OrganisationLogoStorage = {
+  bucket: string;
+  key: string;
+  fileName?: string;
+};
+
+export type UpdateOrganisationLogoInput = {
+  logoSrc: string | null;
+  logoStorage?: OrganisationLogoStorage | null;
+};
+
+export type MembershipDayHours = {
+  start: string;
+  end: string;
+} | null;
+
+export type MembershipWorkShift = {
+  timezone: string;
+  monday: MembershipDayHours;
+  tuesday: MembershipDayHours;
+  wednesday: MembershipDayHours;
+  thursday: MembershipDayHours;
+  friday: MembershipDayHours;
+  saturday: MembershipDayHours;
+  sunday: MembershipDayHours;
 };
 
 export type OrganisationMembership = {
@@ -138,9 +177,29 @@ export type OrganisationMembership = {
   userId: string;
   role: OrganisationRole;
   jobTitle: string;
+  workLocationType: "On-site" | "Remote";
+  salary: number;
+  country: { name: string; code: string };
+  leaveDaysEntitled: number;
+  toilBalance: number;
+  workShift: MembershipWorkShift;
+  /** Compliance toolkit names granted to this member (U-07/N-10). */
+  complianceToolkits: string[];
+  /** User ids that approve this member's leave requests. */
+  lineManagerIds: string[];
   createdOn: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+export type UpdateMembershipEmploymentInput = {
+  jobTitle?: string;
+  workLocationType?: "On-site" | "Remote";
+  salary?: number;
+  country?: { name: string; code: string };
+  leaveDaysEntitled?: number;
+  lineManagerIds?: string[];
+  workShift?: MembershipWorkShift;
 };
 
 export type CreateOrganisationInput = {

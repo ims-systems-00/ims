@@ -19,6 +19,7 @@ import {
 } from "./customer-badges";
 import { CustomerRelatedIncidents } from "./customer-related-incidents";
 import { CustomerRelatedTasks } from "./customer-related-tasks";
+import { formatDate } from "@/shared/lib/format-date";
 
 function Item({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -27,17 +28,6 @@ function Item({ label, value }: { label: string; value: ReactNode }) {
       <dd className="ims-detail-value break-words">{value ?? "—"}</dd>
     </>
   );
-}
-
-function formatDate(value: string | null | undefined): string {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
 }
 
 function formatCurrency(value: number): string {

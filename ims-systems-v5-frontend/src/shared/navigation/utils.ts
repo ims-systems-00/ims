@@ -72,7 +72,12 @@ function findActiveTrail(
   pathname: string
 ): BreadcrumbItem[] | null {
   if (item.children?.length) {
-    for (const child of item.children) {
+    // Longest href first so a specific child (e.g. /documents/signatures)
+    // wins over a prefix sibling (e.g. /documents).
+    const ordered = [...item.children].sort(
+      (a, b) => (b.href?.length ?? 0) - (a.href?.length ?? 0)
+    );
+    for (const child of ordered) {
       const nested = findActiveTrail(child, pathname);
       if (nested) {
         return [

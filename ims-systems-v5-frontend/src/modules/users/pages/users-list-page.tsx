@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Loader2, Users } from "lucide-react";
+import { Eye, Loader2, UserPlus, Users } from "lucide-react";
+import { InviteUserDialog, InvitationsPanel } from "@/modules/invitations";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
@@ -8,18 +9,29 @@ import { RowActionsMenu } from "@/shared/components/row-actions-menu";
 import { SearchInput } from "@/shared/components/search-input";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { PageHeader } from "@/shared/layout";
+import { cn } from "@/shared/lib/utils";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { UserAvatar } from "../components/user-avatar";
 import { UserDetailsSheet } from "../components/user-details-sheet";
 import { useUsersQuery } from "../hooks/use-users";
 
+type UsersTab = "members" | "invitations";
+
+const USER_TABS: Array<{ id: UsersTab; label: string }> = [
+  { id: "members", label: "All Users" },
+  { id: "invitations", label: "Invitations" },
+];
+
 /**
  * Organisation Users directory — Active members of the current organisation.
  * Row click / Details action opens the shared User Details sheet.
- * Invitation and admin mutations arrive in later Users frontend tasks.
+ * "Add user" invites by email (Invitations module); the Invitations tab
+ * manages pending invites (resend / remove).
  */
 export function UsersListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const [tab, setTab] = useState<UsersTab>("members");
+  const [inviteOpen, setInviteOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -54,8 +66,48 @@ export function UsersListPage() {
       <PageHeader
         title="Users"
         description="Organisation directory of people with Active system access."
+        actions={
+          <Button type="button" onClick={() => setInviteOpen(true)}>
+            <UserPlus className="size-4" />
+            Add user
+          </Button>
+        }
       />
 
+      <div
+        className="flex flex-wrap gap-1 border-b border-border-subtle"
+        role="tablist"
+        aria-label="Users views"
+      >
+        {USER_TABS.map((item) => {
+          const selected = tab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              className={cn(
+                "relative px-3.5 py-2.5 text-sm font-medium transition-colors",
+                selected
+                  ? "text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+              onClick={() => setTab(item.id)}
+            >
+              {item.label}
+              {selected ? (
+                <span className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary" />
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "invitations" ? <InvitationsPanel /> : null}
+
+      {tab === "members" ? (
+        <>
       <div className="ims-toolbar">
         <SearchInput
           placeholder="Search by name or email"
@@ -183,6 +235,14 @@ export function UsersListPage() {
           </Button>
         </div>
       ) : null}
+        </>
+      ) : null}
+
+      <InviteUserDialog
+        open={inviteOpen}
+        onOpenChange={setInviteOpen}
+        onInvited={() => setTab("invitations")}
+      />
 
       <UserDetailsSheet
         open={sheetOpen}

@@ -102,6 +102,29 @@ export function DocumentInfoPanel({
           <p className="font-medium">{versionLabel}</p>
         </Section>
 
+        {data.conformance >= 0 ? (
+          <Section title="Signature conformance">
+            <div className="space-y-1.5">
+              <div
+                className="h-2 overflow-hidden rounded-full bg-muted"
+                role="progressbar"
+                aria-valuenow={data.conformance}
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-label="Signature conformance"
+              >
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${data.conformance}%` }}
+                />
+              </div>
+              <p className="text-[0.75rem] text-muted-foreground">
+                {data.conformance}% of invited signers have signed
+              </p>
+            </div>
+          </Section>
+        ) : null}
+
         <Section title="Status">
           <StatusBadge
             tone={

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
-import imsLogo from "@/assets/images/ims-logo.svg";
+import imsLogo from "@/assets/images/iMS-OS_horizontal_blue.png";
 import { AuthShowcaseSlider } from "./auth-showcase-slider";
 
 type AuthEntryLayoutProps = {
@@ -28,7 +28,7 @@ export function AuthEntryLayout({
             <img
               src={imsLogo}
               alt="iMS Systems"
-              className="h-8 w-auto"
+              className="h-10 w-auto"
             />
           </Link>
 
