@@ -54,6 +54,15 @@ const documentDataSchema = new Schema(
       type: [{ type: String, enum: [...DOCUMENT_COMPLIANCE_TOOLS] }],
       default: [],
     },
+    complianceLinks: {
+      type: [
+        {
+          toolkitId: { type: String, required: true },
+          clauseIds: { type: [String], default: [] },
+        },
+      ],
+      default: [],
+    },
     authorisation: { type: [authorisationSchema], default: [] },
     classification: { type: String, default: "" },
     dvID: { type: Number, default: 0 },

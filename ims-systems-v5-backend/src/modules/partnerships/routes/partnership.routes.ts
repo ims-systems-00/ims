@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { EmailBranding } from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { Logger } from "../../../infrastructure/logging/logger";
 import {
@@ -16,6 +17,7 @@ export type PartnershipRouterDeps = {
   email?: EmailSystem;
   clientUrl: string;
   logger?: Logger;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 /**
@@ -34,6 +36,7 @@ export function createPartnershipModule(deps: PartnershipRouterDeps): {
     email: deps.email,
     clientUrl: deps.clientUrl,
     logger: deps.logger,
+    resolveEmailBranding: deps.resolveEmailBranding,
   });
   const controller = createPartnershipController(service);
   const router = Router();

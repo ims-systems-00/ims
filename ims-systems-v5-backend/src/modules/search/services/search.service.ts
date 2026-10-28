@@ -8,12 +8,15 @@
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import { ForbiddenError } from "../../../shared";
 import { getAuditModel } from "../../audits/repositories/audit.model";
+import { getControlStatusModel } from "../../compliance/repositories/control-status.model";
 import { createCustomerRepository } from "../../customers/repositories/customer.repository";
 import { getDocumentTreeModel } from "../../document-management/repositories/document-tree.model";
 import { getIncidentModel } from "../../incidents/repositories/incident.model";
+import { getOfiModel } from "../../ofi/repositories/ofi.model";
 import { createOrganisationMembershipRepository } from "../../organisation/repositories/organisation-membership.repository";
 import { getRiskModel } from "../../risks/repositories/risk.model";
 import { getSupplierModel } from "../../suppliers/repositories/supplier.model";
+import { getTaskModel } from "../../tasks/repositories/task.model";
 import { getUserModel } from "../../users/repositories/user.model";
 import {
   resolveCanonicalListScope,
@@ -54,6 +57,9 @@ export function createGlobalSearchService(deps: {
       audits: getAuditModel() as unknown as Counter,
       suppliers: getSupplierModel() as unknown as Counter,
       documents: getDocumentTreeModel() as unknown as Counter,
+      ofi: getOfiModel() as unknown as Counter,
+      compliance: getControlStatusModel() as unknown as Counter,
+      tasks: getTaskModel() as unknown as Counter,
       users: getUserModel() as unknown as Counter,
     };
 
@@ -110,11 +116,12 @@ export function createGlobalSearchService(deps: {
       const run = async (
         type: string,
         resourceType: string,
-        model: Counter,
+        model: Counter | undefined,
         filter: Record<string, unknown>,
         map: (doc: Record<string, unknown>) => SearchResultItem,
         scoped = true,
       ) => {
+        if (!model) return;
         if (!(await canRead(identity, resourceType))) return;
         const docs = await model
           .find({ organizationId: org, deletedAt: null, ...filter, ...(scoped ? sf : {}) })
@@ -182,6 +189,60 @@ export function createGlobalSearchService(deps: {
               : "/documents",
           };
         }, false),
+        run(
+          "ofi",
+          "ofi",
+          m.ofi!,
+          { $or: [{ title: pattern }, { reference: pattern }] },
+          (d) => {
+            const id = String(d._id);
+            return {
+              type: "OFI",
+              id,
+              title: String(d.title ?? d.reference ?? "OFI"),
+              subtitle: (d.reference as string) ?? null,
+              route: `/ofi?ofi=${encodeURIComponent(id)}`,
+            };
+          }
+        ),
+        run(
+          "compliance",
+          "compliance",
+          m.compliance!,
+          {
+            isLocked: false,
+            $or: [{ title: pattern }, { clause: pattern }, { name: pattern }],
+          },
+          (d) => {
+            const id = String(d._id);
+            const toolkit = String(d.name ?? "compliance");
+            const clause = d.clause ? String(d.clause) : null;
+            return {
+              type: "Compliance",
+              id,
+              title: String(d.title ?? clause ?? "Control"),
+              subtitle: clause,
+              route: `/compliance/${encodeURIComponent(toolkit)}?control=${encodeURIComponent(id)}`,
+            };
+          },
+          false
+        ),
+        run(
+          "task",
+          "tasks",
+          m.tasks!,
+          { $or: [{ name: pattern }, { reference: pattern }] },
+          (d) => {
+            const id = String(d._id);
+            return {
+              type: "Task",
+              id,
+              title: String(d.name ?? d.reference ?? "Task"),
+              subtitle: (d.reference as string) ?? null,
+              route: `/tasks?task=${encodeURIComponent(id)}`,
+            };
+          }
+        ),
       ]);
 
       // Customers via repository text search (its list already applies scope).

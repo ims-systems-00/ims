@@ -12,6 +12,10 @@ import { useIncidentsQuery } from "@/modules/incidents/hooks/use-incidents";
 import { useOfisQuery } from "@/modules/ofi/hooks/use-ofi";
 import { useRisksQuery } from "@/modules/risks/hooks/use-risks";
 import {
+  useDocumentTreeNodeQuery,
+  usePublishedDocumentsQuery,
+} from "@/modules/document-management/hooks/use-document-management";
+import {
   useCreateControlEvidenceMutation,
   useRemoveControlEvidenceMutation,
 } from "../hooks/use-compliance";
@@ -28,18 +32,13 @@ import type {
 const EVIDENCE_TYPE_OPTIONS: Array<{
   value: ControlEvidenceType;
   label: string;
-  disabled?: boolean;
 }> = [
   { value: "risk-management", label: "Risk" },
   { value: "incident-management", label: "Incident" },
   { value: "cip", label: "OFI / CIP" },
+  { value: "document-management", label: "Document" },
   { value: "text-content", label: "Text note" },
   { value: "raw-file", label: "File metadata" },
-  {
-    value: "document-management",
-    label: "Document (unavailable)",
-    disabled: true,
-  },
 ];
 
 type ControlEvidencePanelProps = {
@@ -81,6 +80,46 @@ function evidenceHref(item: ControlEvidence): string | null {
   return null;
 }
 
+/** Resolves repositoryId so document evidence can deep-link to the doc page. */
+function DocumentEvidenceLink({
+  documentId,
+  fallbackLabel,
+}: {
+  documentId: string;
+  fallbackLabel: string;
+}) {
+  const query = useDocumentTreeNodeQuery(documentId);
+  const node = query.data;
+
+  if (query.isLoading) {
+    return (
+      <span className="mt-0.5 flex items-center gap-1.5 truncate text-sm text-muted-foreground">
+        <Loader2 className="size-3.5 animate-spin" aria-hidden />
+        Loading document…
+      </span>
+    );
+  }
+
+  if (node) {
+    const label =
+      [node.reference, node.name].filter(Boolean).join(" — ") || fallbackLabel;
+    return (
+      <Link
+        to={`/documents/repositories/${node.repositoryId}/nodes/${node.id}`}
+        className="mt-0.5 block truncate text-sm text-primary hover:underline"
+      >
+        {label}
+      </Link>
+    );
+  }
+
+  return (
+    <p className="mt-0.5 truncate text-sm text-foreground" title={documentId}>
+      {fallbackLabel}
+    </p>
+  );
+}
+
 /**
  * Structured control evidence: list, link, unlink.
  */
@@ -100,6 +139,7 @@ export function ControlEvidencePanel({
   const [relatedRiskId, setRelatedRiskId] = useState("");
   const [relatedIncidentId, setRelatedIncidentId] = useState("");
   const [relatedCipId, setRelatedCipId] = useState("");
+  const [relatedDocumentId, setRelatedDocumentId] = useState("");
   const [textContent, setTextContent] = useState("");
   const [fileName, setFileName] = useState("");
   const [fileUrl, setFileUrl] = useState("");
@@ -117,6 +157,11 @@ export function ControlEvidencePanel({
     search: pickerSearch || undefined,
   });
   const ofisQuery = useOfisQuery({
+    page: 1,
+    pageSize: 20,
+    search: pickerSearch || undefined,
+  });
+  const documentsQuery = usePublishedDocumentsQuery({
     page: 1,
     pageSize: 20,
     search: pickerSearch || undefined,
@@ -141,8 +186,20 @@ export function ControlEvidencePanel({
         label: `${row.reference} — ${row.title}`,
       }));
     }
+    if (evidenceType === "document-management") {
+      return (documentsQuery.data?.items ?? []).map((row) => ({
+        id: row.id,
+        label: `${row.reference} — ${row.name}`,
+      }));
+    }
     return [];
-  }, [evidenceType, risksQuery.data, incidentsQuery.data, ofisQuery.data]);
+  }, [
+    evidenceType,
+    risksQuery.data,
+    incidentsQuery.data,
+    ofisQuery.data,
+    documentsQuery.data,
+  ]);
 
   async function handleAdd(event: React.FormEvent) {
     event.preventDefault();
@@ -151,6 +208,7 @@ export function ControlEvidencePanel({
       relatedRiskId,
       relatedIncidentId,
       relatedCipId,
+      relatedDocumentId,
       textContent,
       fileName,
       fileUrl,
@@ -174,6 +232,9 @@ export function ControlEvidencePanel({
     if (parsed.data.evidenceType === "cip") {
       body.relatedCipId = parsed.data.relatedCipId;
     }
+    if (parsed.data.evidenceType === "document-management") {
+      body.relatedDocumentId = parsed.data.relatedDocumentId;
+    }
     if (parsed.data.evidenceType === "text-content") {
       body.textContent = parsed.data.textContent;
     }
@@ -190,6 +251,7 @@ export function ControlEvidencePanel({
       setRelatedRiskId("");
       setRelatedIncidentId("");
       setRelatedCipId("");
+      setRelatedDocumentId("");
       setTextContent("");
       setFileName("");
       setFileUrl("");
@@ -231,12 +293,13 @@ export function ControlEvidencePanel({
         {items.length === 0 ? (
           <EmptyState
             title="No evidence linked"
-            description="Link risks, incidents, OFIs, notes, or file metadata to this control."
+            description="Link risks, incidents, OFIs, documents, notes, or file metadata to this control."
           />
         ) : (
           <ul className="divide-y divide-border-subtle rounded-md border border-border">
             {items.map((item) => {
               const href = evidenceHref(item);
+              const label = evidenceLabel(item);
               return (
                 <li
                   key={item.id}
@@ -246,16 +309,22 @@ export function ControlEvidencePanel({
                     <p className="text-xs font-medium uppercase tracking-[0.04em] text-muted-foreground">
                       {item.evidenceType}
                     </p>
-                    {href ? (
+                    {item.evidenceType === "document-management" &&
+                    item.relatedDocumentId ? (
+                      <DocumentEvidenceLink
+                        documentId={item.relatedDocumentId}
+                        fallbackLabel={label}
+                      />
+                    ) : href ? (
                       <Link
                         to={href}
                         className="mt-0.5 block truncate text-sm text-primary hover:underline"
                       >
-                        {evidenceLabel(item)}
+                        {label}
                       </Link>
                     ) : (
                       <p className="mt-0.5 truncate text-sm text-foreground">
-                        {evidenceLabel(item)}
+                        {label}
                       </p>
                     )}
                   </div>
@@ -287,11 +356,7 @@ export function ControlEvidencePanel({
             }
           >
             {EVIDENCE_TYPE_OPTIONS.map((option) => (
-              <option
-                key={option.value}
-                value={option.value}
-                disabled={option.disabled}
-              >
+              <option key={option.value} value={option.value}>
                 {option.label}
               </option>
             ))}
@@ -300,14 +365,19 @@ export function ControlEvidencePanel({
 
         {evidenceType === "risk-management" ||
         evidenceType === "incident-management" ||
-        evidenceType === "cip" ? (
+        evidenceType === "cip" ||
+        evidenceType === "document-management" ? (
           <>
             <FormField label="Search records" htmlFor="evidence-search">
               <Input
                 id="evidence-search"
                 value={pickerSearch}
                 onChange={(event) => setPickerSearch(event.target.value)}
-                placeholder="Search by title or reference"
+                placeholder={
+                  evidenceType === "document-management"
+                    ? "Search by document name or reference"
+                    : "Search by title or reference"
+                }
               />
             </FormField>
             <FormField
@@ -324,7 +394,9 @@ export function ControlEvidencePanel({
                     ? relatedRiskId
                     : evidenceType === "incident-management"
                       ? relatedIncidentId
-                      : relatedCipId
+                      : evidenceType === "cip"
+                        ? relatedCipId
+                        : relatedDocumentId
                 }
                 onChange={(event) => {
                   const value = event.target.value;
@@ -333,6 +405,9 @@ export function ControlEvidencePanel({
                     setRelatedIncidentId(value);
                   }
                   if (evidenceType === "cip") setRelatedCipId(value);
+                  if (evidenceType === "document-management") {
+                    setRelatedDocumentId(value);
+                  }
                 }}
               >
                 <option value="">Select…</option>

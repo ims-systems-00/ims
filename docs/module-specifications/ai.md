@@ -2,16 +2,18 @@
 
 ## 1. Module Overview
 
-The **AI** module provides **embedded analytical assistance** within operational modules in iMS. It is branded in the UI as **Alice** (marked **Beta**) and helps users generate structured, multi-section expert analysis for individual business records.
+The **AI** module provides **Alice** (marked **Beta**) in two complementary surfaces:
 
-The module is **not** a standalone chatbot, AI dashboard, or general-purpose text generator. Its primary business purpose is to support **record-level decision-making** — for example assessing a risk’s impact and mitigations, analysing an incident’s root cause and communications, or preparing audit guidance — by producing **Markdown-formatted advisory content** that users review, optionally save, and optionally turn into follow-up tasks.
+1. **Analytical Assistant** — embedded multi-section report generator on risk, incident, and audit record sheets.
+2. **Floating chatbot** — org-wide grounded Q&A from the app shell (bottom-right FAB + navbar Alice icon), using live IMS records via server-side retrieval (search + get-by-id context cards). It is **not** a generic ChatGPT bubble: answers must cite organisation records and deep-link to them.
 
-AI capabilities are exposed through two backend areas under `/ai`:
+Primary business purpose remains **record-level decision-making** — assessing risks, analysing incidents, preparing audits, finding documents/controls — with Markdown advisory content users review. AI does **not** silently change parent record status (including compliance Selected/Implemented).
 
-1. **GPT generation** — stream or return a single AI text response from a prompt and system instructions.
-2. **Saved AI analyses** — persist, list, view, update, and delete structured analysis reports linked to a source business record.
+AI capabilities under `/ai`:
 
-Users **do not** manage AI through a dedicated navigation entry. The **Analytical Assistant** drawer appears inside **Risk Management**, **Incident Management**, **Audits**, and **Continual Improvement Plan (CIP/OFI)** record detail toolbars. AI output is **advisory by default** — it does **not** automatically change risk scores, incident status, audit completion, or other parent record fields. Users must **explicitly save** an analysis to persist it, and **manually create tasks** if they want to act on suggested content.
+1. **GPT generation** — stream or return a single AI text response (`/gpt-stream`, `/gpt-normal`).
+2. **Saved AI analyses** — persist structured Analytical Assistant reports (`/responses`).
+3. **Grounded chat** — retrieve-then-answer streaming chat with citations and persisted threads (`/chat/stream`, `/chat/threads`).
 
 Primary users are **authenticated organisation members** with appropriate module permissions who open a record and choose **Analyse** (or **Assist & Verification** on audits).
 

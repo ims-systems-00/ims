@@ -12,6 +12,12 @@ import type {
   StreamGptHandlers,
   UpdateAiResponseInput,
 } from "../types";
+import type {
+  AiChatThread,
+  AiChatThreadSummary,
+  StreamChatHandlers,
+  StreamChatInput,
+} from "../types-chat";
 
 const ALICE_SYSTEM_PROMPT = {
   role: "system" as const,
@@ -128,10 +134,26 @@ export async function streamGptResponse(
   }
 
   if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    let code = mapStatusToCode(response.status);
+    try {
+      const payload = (await response.json()) as {
+        message?: string;
+        error?: { message?: string; code?: string };
+        code?: string;
+      };
+      message =
+        payload.error?.message ??
+        payload.message ??
+        message;
+      code = payload.error?.code ?? payload.code ?? code;
+    } catch {
+      // Non-JSON error body — keep status-based message.
+    }
     throw new ApiClientError({
-      message: `Request failed with status ${response.status}`,
+      message,
       status: response.status,
-      code: mapStatusToCode(response.status),
+      code,
       correlationId: response.headers.get("x-correlation-id") ?? correlationId,
     });
   }
@@ -159,4 +181,139 @@ export async function streamGptResponse(
   }
 
   return fullText;
+}
+
+export function listAiChatThreads(): Promise<AiChatThreadSummary[]> {
+  return apiRequest<AiChatThreadSummary[]>("/ai/chat/threads");
+}
+
+export function getAiChatThread(id: string): Promise<AiChatThread> {
+  return apiRequest<AiChatThread>(`/ai/chat/threads/${encodeURIComponent(id)}`);
+}
+
+export function createAiChatThread(body?: {
+  title?: string;
+  pinnedRecords?: Array<{ module: string; id: string }>;
+}): Promise<AiChatThread> {
+  return apiRequest<AiChatThread>("/ai/chat/threads", {
+    method: "POST",
+    body: body ?? {},
+  });
+}
+
+export function deleteAiChatThread(id: string): Promise<{ id: string }> {
+  return apiRequest<{ id: string }>(
+    `/ai/chat/threads/${encodeURIComponent(id)}`,
+    { method: "DELETE" }
+  );
+}
+
+/**
+ * Stream grounded Alice chat events (NDJSON).
+ */
+export async function streamAliceChat(
+  input: StreamChatInput,
+  handlers: StreamChatHandlers
+): Promise<void> {
+  const env = loadPublicEnv();
+  const url = `${env.VITE_API_BASE_URL}/ai/chat/stream`;
+  const correlationId =
+    typeof crypto !== "undefined" && "randomUUID" in crypto
+      ? crypto.randomUUID()
+      : `fe-alice-chat-${Date.now()}`;
+
+  const headers: Record<string, string> = {
+    Accept: "application/x-ndjson",
+    "Content-Type": "application/json",
+    "x-correlation-id": correlationId,
+  };
+
+  const activeOrgId = getActiveOrganisationId();
+  if (activeOrgId) headers["x-org-id"] = activeOrgId;
+
+  const authClient = getActiveAuthClient();
+  if (authClient) {
+    const token = await authClient.getAccessToken();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(input),
+      signal: handlers.signal,
+    });
+  } catch (error) {
+    if (handlers.signal?.aborted) return;
+    throw new ApiClientError({
+      message: "Network request failed",
+      status: 0,
+      code: "NETWORK_ERROR",
+      details: error instanceof Error ? error.message : undefined,
+      correlationId,
+    });
+  }
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    let code = mapStatusToCode(response.status);
+    try {
+      const payload = (await response.json()) as {
+        message?: string;
+        error?: { message?: string; code?: string };
+        code?: string;
+      };
+      message = payload.error?.message ?? payload.message ?? message;
+      code = payload.error?.code ?? payload.code ?? code;
+    } catch {
+      // keep status message
+    }
+    throw new ApiClientError({
+      message,
+      status: response.status,
+      code,
+      correlationId: response.headers.get("x-correlation-id") ?? correlationId,
+    });
+  }
+
+  if (!response.body) {
+    throw new ApiClientError({
+      message: "Empty chat stream from API",
+      status: response.status,
+      code: "UNKNOWN_ERROR",
+      correlationId,
+    });
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split("\n");
+    buffer = lines.pop() ?? "";
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (!trimmed) continue;
+      try {
+        handlers.onEvent(JSON.parse(trimmed));
+      } catch {
+        // skip malformed lines
+      }
+    }
+  }
+
+  const tail = buffer.trim();
+  if (tail) {
+    try {
+      handlers.onEvent(JSON.parse(tail));
+    } catch {
+      // ignore
+    }
+  }
 }

@@ -32,6 +32,9 @@ import {
   shareDocument,
   signDocument,
   signDocumentPublic,
+  applyDocumentComplianceClauses,
+  clearDocumentComplianceLinks,
+  getDocumentTreeNode,
   softDeleteDocumentRepository,
   softDeleteNode,
   updateDocumentNode,
@@ -70,6 +73,8 @@ export const documentManagementKeys = {
     [...documentManagementKeys.nodes(repositoryId), "versions", nodeId] as const,
   published: (params: Record<string, unknown>) =>
     [...documentManagementKeys.all, "published", params] as const,
+  treeNode: (nodeId: string) =>
+    [...documentManagementKeys.all, "tree-node", nodeId] as const,
   signatures: (repositoryId: string, nodeId: string) =>
     [...documentManagementKeys.nodes(repositoryId), "signatures", nodeId] as const,
   signatureRequests: (params: Record<string, unknown>) =>
@@ -188,6 +193,15 @@ export function usePublishedDocumentsQuery(params: {
   return useQuery({
     queryKey: documentManagementKeys.published(params),
     queryFn: () => listPublishedDocuments(params),
+  });
+}
+
+export function useDocumentTreeNodeQuery(nodeId: string | undefined) {
+  return useQuery({
+    queryKey: documentManagementKeys.treeNode(nodeId ?? ""),
+    queryFn: () => getDocumentTreeNode(nodeId!),
+    enabled: Boolean(nodeId),
+    retry: false,
   });
 }
 
@@ -554,6 +568,49 @@ export function useDecideAuthorisationMutation(repositoryId: string) {
       ),
     onSuccess: async () => {
       await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useApplyDocumentComplianceMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: {
+      nodeId: string;
+      toolkitId: string;
+      clauseIds: string[];
+    }) =>
+      applyDocumentComplianceClauses(repositoryId, input.nodeId, {
+        toolkitId: input.toolkitId,
+        clauseIds: input.clauseIds,
+      }),
+    onSuccess: async (_data, variables) => {
+      await Promise.all([
+        invalidateDocumentQueries(queryClient, repositoryId),
+        queryClient.invalidateQueries({ queryKey: ["compliance"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["compliance", "overview", variables.toolkitId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["compliance", "controls", variables.toolkitId],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["stats"] }),
+      ]);
+    },
+  });
+}
+
+export function useClearDocumentComplianceMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (nodeId: string) =>
+      clearDocumentComplianceLinks(repositoryId, nodeId),
+    onSuccess: async () => {
+      await Promise.all([
+        invalidateDocumentQueries(queryClient, repositoryId),
+        queryClient.invalidateQueries({ queryKey: ["compliance"] }),
+        queryClient.invalidateQueries({ queryKey: ["stats"] }),
+      ]);
     },
   });
 }

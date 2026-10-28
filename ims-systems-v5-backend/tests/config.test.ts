@@ -46,6 +46,28 @@ describe("loadConfig", () => {
     ).toThrow(/development-stub is not allowed when NODE_ENV=production/);
   });
 
+  it("rejects groq AI provider in production", () => {
+    expect(() =>
+      loadConfig({
+        ...valid,
+        NODE_ENV: "production",
+        SECURITY_PROVIDER: "auth0-openfga",
+        AI_PROVIDER: "groq",
+        AUTH0_DOMAIN: "example.auth0.com",
+        AUTH0_AUDIENCE: "https://api.example",
+        OPENFGA_API_URL: "http://127.0.0.1:8080",
+        OPENFGA_STORE_ID: "store",
+        OPENFGA_MODEL_ID: "model",
+      })
+    ).toThrow(/AI_PROVIDER=groq is not allowed when NODE_ENV=production/);
+  });
+
+  it("defaults AI provider to openai", () => {
+    const config = loadConfig(valid);
+    expect(config.AI_PROVIDER).toBe("openai");
+    expect(config.GROQ_MODEL).toBe("openai/gpt-oss-120b");
+  });
+
   it("fails on invalid PORT", () => {
     expect(() =>
       loadConfig({

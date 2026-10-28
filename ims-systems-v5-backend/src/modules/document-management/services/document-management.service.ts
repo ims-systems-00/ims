@@ -7,6 +7,11 @@
  */
 
 import { randomUUID } from "node:crypto";
+import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  renderEmail,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
   ConflictError,
@@ -16,8 +21,10 @@ import {
   ValidationAppError,
 } from "../../../shared";
 import {
+  NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentMembershipAdapter,
   type DocumentActivityPort,
+  type DocumentComplianceLinkPort,
   type DocumentEmailPort,
   type DocumentFilesPort,
   type DocumentMembershipPort,
@@ -118,8 +125,11 @@ export type DocumentManagementServiceDeps = {
   memberships?: DocumentMembershipPort;
   accessTokens?: DocumentAccessTokenStore;
   signatures?: DocumentSignatureStore;
+  complianceLinks?: DocumentComplianceLinkPort;
   /** Base URL used in emailed links, e.g. https://app.example.com */
   accessLinkBaseUrl?: string;
+  /** Resolves org logo/theme for transactional document emails. */
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 export type DocumentManagementService = ReturnType<
@@ -149,7 +159,20 @@ export function createDocumentManagementService(
   const accessTokens =
     deps.accessTokens ?? createDocumentAccessTokenStore();
   const signatures = deps.signatures ?? createDocumentSignatureStore();
+  const complianceLinks =
+    deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter();
   const accessLinkBaseUrl = (deps.accessLinkBaseUrl ?? "").replace(/\/+$/, "");
+
+  async function brandingFor(
+    organizationId: string
+  ): Promise<EmailBranding> {
+    if (!deps.resolveEmailBranding) return DEFAULT_IMS_EMAIL_BRANDING;
+    try {
+      return await deps.resolveEmailBranding(organizationId);
+    } catch {
+      return DEFAULT_IMS_EMAIL_BRANDING;
+    }
+  }
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -748,6 +771,7 @@ export function createDocumentManagementService(
             owners,
             applicableModules: [...new Set(item.applicableModules ?? [])],
             complianceTools: [...new Set(item.complianceTools ?? [])],
+            complianceLinks: [],
             authorisation: authoriserIds.map((userId) => ({
               userId,
               status: "Pending" as const,
@@ -958,6 +982,139 @@ export function createDocumentManagementService(
       return updated;
     },
 
+    /**
+     * Compliance Settings: link clause(s)/section to this document, select +
+     * implement (including descendants for sections), and attach evidence.
+     * Only one toolkit may be linked per document.
+     */
+    async applyComplianceClauses(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      input: { toolkitId: string; clauseIds: string[] }
+    ): Promise<DocumentTreeNode> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "update");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new ValidationAppError(
+          "Node is not a document in this repository"
+        );
+      }
+      if (!node.documentData) {
+        throw new ValidationAppError("Document metadata is missing");
+      }
+
+      const toolkitId = input.toolkitId.trim();
+      const clauseIds = [
+        ...new Set(
+          input.clauseIds.map((clause) => clause.trim()).filter(Boolean)
+        ),
+      ];
+      if (!toolkitId) {
+        throw new ValidationAppError("Toolkit is required");
+      }
+      if (clauseIds.length === 0) {
+        throw new ValidationAppError("Select at least one clause or section");
+      }
+
+      const previousLinks = node.documentData.complianceLinks ?? [];
+      if (
+        previousLinks.length > 0 &&
+        previousLinks.some((link) => link.toolkitId !== toolkitId)
+      ) {
+        throw new ValidationAppError(
+          "This document is already linked to another compliance toolkit. Remove that link before selecting a different toolkit."
+        );
+      }
+
+      const applied = await complianceLinks.applyClauses({
+        organizationId,
+        actorId: subjectId,
+        documentId: node.id,
+        toolkitId,
+        clauseIds,
+      });
+
+      const existing =
+        previousLinks.find((link) => link.toolkitId === toolkitId)?.clauseIds ??
+        [];
+      const nextClauseIds = [
+        ...new Set([...existing, ...clauseIds, ...applied.appliedClauseIds]),
+      ];
+      const nextLinks = [{ toolkitId, clauseIds: nextClauseIds }];
+
+      const updated = await trees.updateDocumentData(organizationId, nodeId, {
+        complianceLinks: nextLinks,
+      });
+      if (!updated) throw new NotFoundError("Document node not found");
+
+      try {
+        await complianceLinks.syncLinks({
+          organizationId,
+          actorId: subjectId,
+          documentId: node.id,
+          previousLinks,
+          nextLinks,
+        });
+      } catch {
+        // Evidence sync is best-effort after apply already attached rows.
+      }
+
+      await activities.record({
+        organizationId,
+        moduleId: node.id,
+        value: `Compliance linked: ${toolkitId} (${clauseIds.join(", ")})`,
+        createdBy: subjectId,
+        threadId: node.documentData.threadId || undefined,
+      });
+
+      return updated;
+    },
+
+    async clearComplianceLinks(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<DocumentTreeNode> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "update");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new ValidationAppError(
+          "Node is not a document in this repository"
+        );
+      }
+
+      const previousLinks = node.documentData?.complianceLinks ?? [];
+      const updated = await trees.updateDocumentData(organizationId, nodeId, {
+        complianceLinks: [],
+      });
+      if (!updated) throw new NotFoundError("Document node not found");
+
+      try {
+        await complianceLinks.clearLinks({
+          organizationId,
+          documentId: node.id,
+        });
+        await complianceLinks.syncLinks({
+          organizationId,
+          actorId: subjectId,
+          documentId: node.id,
+          previousLinks,
+          nextLinks: [],
+        });
+      } catch {
+        // Best-effort evidence cleanup.
+      }
+
+      return updated;
+    },
+
     async addVersion(
       identity: SecurityIdentity | null | undefined,
       repositoryId: string,
@@ -1018,6 +1175,7 @@ export function createDocumentManagementService(
           owners,
           applicableModules: [...base.applicableModules],
           complianceTools: [...base.complianceTools],
+          complianceLinks: [...(base.complianceLinks ?? [])],
           authorisation: authoriserIds.map((userId) => ({
             userId,
             status: "Pending" as const,
@@ -1558,6 +1716,23 @@ export function createDocumentManagementService(
       return node;
     },
 
+    /**
+     * Resolve a document tree node by id (any status) for deep-links from
+     * compliance evidence and similar cross-module references.
+     */
+    async getDocumentTreeNode(
+      identity: SecurityIdentity | null | undefined,
+      id: string
+    ): Promise<DocumentTreeNode> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const node = await trees.findById(organizationId, id);
+      if (!node || node.type !== "document") {
+        throw new NotFoundError("Document not found");
+      }
+      return node;
+    },
+
     async listPublishedForOrganization(
       organizationId: string,
       query: ListPublishedDocumentsQuery
@@ -1605,17 +1780,20 @@ export function createDocumentManagementService(
         const link = `${accessLinkBaseUrl}/api/v1/document-shares/${rawToken}`;
         if (deps.email) {
           try {
+            const rendered = renderEmail(
+              "document-shared",
+              {
+                documentName: node.name,
+                ...(input.message ? { message: input.message } : {}),
+                viewUrl: link,
+              },
+              { branding: await brandingFor(organizationId) }
+            );
             await deps.email.sendDocumentEmail({
               to: [email],
-              subject: `Document shared with you: ${node.name}`,
-              text: [
-                `A document has been shared with you: ${node.name}`,
-                input.message ? `\n${input.message}` : "",
-                `\nOpen it here (link valid until ${expiresAt.toISOString()}): ${link}`,
-              ].join("\n"),
-              html: `<p>A document has been shared with you: <strong>${node.name}</strong></p>${
-                input.message ? `<p>${input.message}</p>` : ""
-              }<p><a href="${link}">Open document</a> (link valid until ${expiresAt.toISOString()})</p>`,
+              subject: rendered.subject,
+              text: rendered.text,
+              html: rendered.html,
               organizationId,
             });
           } catch {
@@ -1715,11 +1893,16 @@ export function createDocumentManagementService(
         );
         if (user.email && deps.email) {
           try {
+            const rendered = renderEmail(
+              "document-signature-requested",
+              { documentName: node.name },
+              { branding: await brandingFor(organizationId) }
+            );
             await deps.email.sendDocumentEmail({
               to: [user.email],
-              subject: `Signature requested: ${node.name}`,
-              text: `You have been invited to sign "${node.name}". Sign in to iMS to review and sign it.`,
-              html: `<p>You have been invited to sign <strong>${node.name}</strong>.</p><p>Sign in to iMS to review and sign it.</p>`,
+              subject: rendered.subject,
+              text: rendered.text,
+              html: rendered.html,
               organizationId,
             });
           } catch {
@@ -1947,11 +2130,21 @@ export function createDocumentManagementService(
     });
     const link = `${accessLinkBaseUrl}/documents/sign/${rawToken}`;
     try {
+      const rendered = renderEmail(
+        "document-signature-requested",
+        {
+          documentName,
+          ...(record.message ? { message: record.message } : {}),
+          signUrl: link,
+          expiresAt,
+        },
+        { branding: await brandingFor(record.organizationId) }
+      );
       await deps.email.sendDocumentEmail({
         to: [record.email],
-        subject: `Signature requested: ${documentName}`,
-        text: `You have been invited to sign "${documentName}".\n${record.message ? `${record.message}\n` : ""}Sign here (link valid until ${expiresAt.toISOString()}): ${link}`,
-        html: `<p>You have been invited to sign <strong>${documentName}</strong>.</p>${record.message ? `<p>${record.message}</p>` : ""}<p><a href="${link}">Review and sign</a> (link valid until ${expiresAt.toISOString()})</p>`,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
         organizationId: record.organizationId,
       });
     } catch {
@@ -2079,11 +2272,19 @@ export function createDocumentManagementService(
     if (deps.email && record.email) {
       try {
         const viewUrl = await files.createViewUrl(signedCopy);
+        const rendered = renderEmail(
+          "document-signed-copy",
+          {
+            documentName: node.name,
+            viewUrl,
+          },
+          { branding: await brandingFor(record.organizationId) }
+        );
         await deps.email.sendDocumentEmail({
           to: [record.email],
-          subject: `Signed copy: ${node.name}`,
-          text: `You signed "${node.name}". Download your signed copy: ${viewUrl}`,
-          html: `<p>You signed <strong>${node.name}</strong>.</p><p><a href="${viewUrl}">Download your signed copy</a></p>`,
+          subject: rendered.subject,
+          text: rendered.text,
+          html: rendered.html,
           organizationId: record.organizationId,
         });
       } catch {

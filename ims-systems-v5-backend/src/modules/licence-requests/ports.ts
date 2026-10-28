@@ -3,6 +3,7 @@
  * Spec: docs/module-specifications/license-request.md
  */
 
+import type { EmailBranding } from "../../infrastructure/email/templates";
 import type { SecurityIdentity } from "../../security";
 import type { OrganisationProfile } from "../organisation/types";
 import type { CreateLicenceRequestInput } from "./types";
@@ -24,4 +25,6 @@ export type LicenceRequestRecipientsPort = {
   /** Emails of the organisation's Super Admins. */
   listSuperAdminEmails(organizationId: string): Promise<string[]>;
   getOrganisationName(organizationId: string): Promise<string | null>;
+  /** Optional org email branding (logo + theme). */
+  getEmailBranding?(organizationId: string): Promise<EmailBranding>;
 };

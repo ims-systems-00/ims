@@ -142,12 +142,20 @@ export type DocumentTreeNode = {
   updatedAt: Date;
 };
 
+/** Compliance toolkit ↔ clause links stored on a document (single toolkit). */
+export type DocumentComplianceLink = {
+  toolkitId: string;
+  clauseIds: string[];
+};
+
 export type DocumentNodeData = {
   storageInfo: DocumentFileMeta;
   purpose: DocumentPurpose;
   owners: string[];
   applicableModules: DocumentApplicableModule[];
   complianceTools: DocumentComplianceTool[];
+  /** Linked compliance clauses (at most one toolkit). */
+  complianceLinks: DocumentComplianceLink[];
   authorisation: AuthorisationEntry[];
   classification: string;
   dvID: number;

@@ -173,6 +173,7 @@ export function createInvitationService(deps: InvitationServiceDeps) {
       role: invitation.role,
       acceptUrl: acceptUrl(rawToken, Boolean(existingUser)),
       expiresAt: invitation.expiresAt,
+      organizationId: invitation.organizationId,
     });
   }
 

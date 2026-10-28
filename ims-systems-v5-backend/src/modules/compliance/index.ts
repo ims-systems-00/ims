@@ -35,6 +35,7 @@ export {
   createComplianceIncidentMirrorAdapter,
   createOfiComplianceLinkAdapter,
   createComplianceOfiMirrorAdapter,
+  createDocumentComplianceLinkAdapter,
 } from "./adapters";
 export {
   DevAllComplianceLicencesAdapter,

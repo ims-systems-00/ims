@@ -67,19 +67,32 @@ export function ImageUploadControl({
     }
     setBusy("uploading");
     setProgress(0);
+    const localPreview = URL.createObjectURL(file);
     try {
       const meta = await uploadFileViaHandler(file, uploadPath, {
         onProgress: setProgress,
       });
-      const view = await createViewUrl({
-        bucket: meta.Bucket,
-        key: meta.Key || meta.key,
-        fileName: meta.Name,
-      });
-      setPreviewUrl(view.url);
+      // Prefer a signed view URL; fall back to a blob URL so a
+      // preview/mint failure cannot discard a successful upload.
+      let viewUrl = localPreview;
+      try {
+        const view = await createViewUrl({
+          bucket: meta.Bucket,
+          key: meta.Key || meta.key,
+          fileName: meta.Name,
+        });
+        if (view.url && !view.url.startsWith("memory://")) {
+          viewUrl = view.url;
+          URL.revokeObjectURL(localPreview);
+        }
+      } catch {
+        // Keep localPreview — bytes are already stored.
+      }
+      setPreviewUrl(viewUrl);
       setBusy("saving");
-      await onUploaded(meta, view.url);
+      await onUploaded(meta, viewUrl);
     } catch (error) {
+      URL.revokeObjectURL(localPreview);
       setPreviewUrl(null);
       notify.error(
         error instanceof Error ? error.message : "Image upload failed."

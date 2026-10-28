@@ -12,6 +12,7 @@ import type {
   OrganisationProfile,
   PaginatedLicenceRequests,
   RequestOrganisationLicenceInput,
+  UpdateOrganisationEmailBrandingInput,
 } from "../types";
 
 export function createOrganisation(
@@ -94,6 +95,18 @@ export function updateOrganisationLogo(body: {
     method: "PUT",
     body,
   });
+}
+
+export function updateOrganisationEmailBranding(
+  body: UpdateOrganisationEmailBrandingInput
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    "/organisations/current/email-branding",
+    {
+      method: "PUT",
+      body,
+    }
+  );
 }
 
 export function updateIncidentResolutionTargets(

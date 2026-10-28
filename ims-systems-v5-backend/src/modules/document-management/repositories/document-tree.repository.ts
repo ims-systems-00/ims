@@ -53,6 +53,7 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     owners?: string[];
     applicableModules?: DocumentApplicableModule[];
     complianceTools?: DocumentComplianceTool[];
+    complianceLinks?: Array<{ toolkitId?: string; clauseIds?: string[] }>;
     authorisation?: unknown;
     classification?: string;
     dvID?: number;
@@ -71,6 +72,12 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     owners: [...(data.owners ?? [])],
     applicableModules: [...(data.applicableModules ?? [])],
     complianceTools: [...(data.complianceTools ?? [])],
+    complianceLinks: (data.complianceLinks ?? [])
+      .filter((link) => Boolean(link.toolkitId?.trim()))
+      .map((link) => ({
+        toolkitId: String(link.toolkitId).trim(),
+        clauseIds: [...new Set((link.clauseIds ?? []).map((c) => c.trim()).filter(Boolean))],
+      })),
     authorisation: toAuthorisation(data.authorisation),
     classification: data.classification ?? "",
     dvID: data.dvID ?? 0,
@@ -138,6 +145,7 @@ export type PersistDocumentCreate = {
     owners: string[];
     applicableModules: DocumentApplicableModule[];
     complianceTools: DocumentComplianceTool[];
+    complianceLinks?: Array<{ toolkitId: string; clauseIds: string[] }>;
     authorisation: Array<{
       userId: string;
       status: AuthorisationStatus;
@@ -298,6 +306,7 @@ export function createDocumentTreeStore() {
       patch: Partial<{
         conformance: number;
         reviewDate: Date | null;
+        complianceLinks: Array<{ toolkitId: string; clauseIds: string[] }>;
       }>
     ): Promise<DocumentTreeNode | null> {
       const set: Record<string, unknown> = {};
@@ -306,6 +315,9 @@ export function createDocumentTreeStore() {
       }
       if (patch.reviewDate !== undefined) {
         set["documentData.reviewDate"] = patch.reviewDate;
+      }
+      if (patch.complianceLinks !== undefined) {
+        set["documentData.complianceLinks"] = patch.complianceLinks;
       }
       const doc = await Model.findOneAndUpdate(
         { _id: id, organizationId, type: "document" },

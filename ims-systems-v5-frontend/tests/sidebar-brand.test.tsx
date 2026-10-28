@@ -36,13 +36,13 @@ function wrap(node: ReactNode) {
 }
 
 describe("SidebarBrand", () => {
-  it("shows the default iMS Systems branding when the org has no logo", () => {
+  it("shows the default iMS-OS mark when the org has no logo", () => {
     render(wrap(<SidebarBrand logoUrl={null} organisationName="Acme Ltd" />));
 
-    expect(screen.getByText("IMS Systems")).toBeTruthy();
-    expect(screen.getByText("Platform V5")).toBeTruthy();
-    expect(screen.getByText("iMS")).toBeTruthy();
-    expect(screen.queryByRole("img")).toBeNull();
+    const img = screen.getByAltText("iMS Systems") as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toMatch(/iMS-OS_horizontal_white/);
+    expect(screen.queryByAltText("Acme Ltd logo")).toBeNull();
   });
 
   it("shows only the organisation logo when a logo is uploaded", () => {
@@ -57,19 +57,10 @@ describe("SidebarBrand", () => {
 
     const img = screen.getByAltText("Acme Ltd logo") as HTMLImageElement;
     expect(img.src).toContain("https://storage.example/acme.png");
-    // Logo-only branding: no org name, no "IMS Systems", no "Platform V5".
-    expect(screen.queryByText("Acme Ltd")).toBeNull();
-    expect(screen.queryByText("IMS Systems")).toBeNull();
-    expect(screen.queryByText("Platform V5")).toBeNull();
+    expect(screen.queryByAltText("iMS Systems")).toBeNull();
   });
 
-  it("keeps the IMS Systems name when there is no logo, even with an org name", () => {
-    render(wrap(<SidebarBrand logoUrl={null} organisationName="Acme Ltd" />));
-    expect(screen.getByText("IMS Systems")).toBeTruthy();
-    expect(screen.queryByText("Acme Ltd")).toBeNull();
-  });
-
-  it("falls back to the default branding when the logo fails to load", () => {
+  it("falls back to the default iMS-OS mark when the logo fails to load", () => {
     render(
       wrap(
         <SidebarBrand
@@ -82,8 +73,7 @@ describe("SidebarBrand", () => {
     fireEvent.error(screen.getByAltText("Acme Ltd logo"));
 
     expect(screen.queryByAltText("Acme Ltd logo")).toBeNull();
-    expect(screen.getByText("IMS Systems")).toBeTruthy();
-    expect(screen.getByText("Platform V5")).toBeTruthy();
+    expect(screen.getByAltText("iMS Systems")).toBeTruthy();
   });
 });
 

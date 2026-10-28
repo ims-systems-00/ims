@@ -75,3 +75,37 @@ export const listAiResponsesQuerySchema = z
 export const idParamSchema = z.object({
   id: objectIdSchema,
 });
+
+const pinnedRecordSchema = z.object({
+  module: z.string().trim().min(1).max(60),
+  id: objectIdSchema,
+});
+
+const pageContextSchema = z
+  .object({
+    pathname: z.string().trim().max(500).optional(),
+    moduleHint: z.string().trim().max(60).optional(),
+    selectedIds: z.array(pinnedRecordSchema).max(10).optional(),
+  })
+  .optional();
+
+export const streamChatBodySchema = z.object({
+  message: z.string().trim().min(1).max(8000),
+  threadId: objectIdSchema.optional(),
+  pageContext: pageContextSchema,
+  pinnedRecords: z.array(pinnedRecordSchema).max(10).optional(),
+  conversation: z
+    .array(
+      z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().max(20_000),
+      })
+    )
+    .max(20)
+    .optional(),
+});
+
+export const createChatThreadBodySchema = z.object({
+  title: z.string().trim().max(120).optional(),
+  pinnedRecords: z.array(pinnedRecordSchema).max(10).optional(),
+});

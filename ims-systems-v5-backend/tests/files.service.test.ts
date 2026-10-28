@@ -150,6 +150,39 @@ describe("FilesService", () => {
     expect(storage.deleted).toEqual([]);
   });
 
+  it("allows historical org-scoped local buckets after a provider switch", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({ storage, config: baseConfig });
+    const orgId = DEV_STUB_IDENTITY.organizationId!;
+    const key = "123e4567-e89b-12d3-a456-426614174000.pdf";
+
+    const result = await service.createViewUrl(DEV_STUB_IDENTITY, {
+      bucket: `ims-v5-local-${orgId}`,
+      key,
+      fileName: "utility.pdf",
+    });
+
+    expect(result.url).toContain(`ims-v5-local-${orgId}`);
+    expect(result.url).toContain("utility.pdf");
+  });
+
+  it("rejects ephemeral memory-bucket views with a clear gone error", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({ storage, config: baseConfig });
+    const orgId = DEV_STUB_IDENTITY.organizationId!;
+    const key = "123e4567-e89b-12d3-a456-426614174000.pdf";
+
+    await expect(
+      service.createViewUrl(DEV_STUB_IDENTITY, {
+        bucket: `ims-v5-memory-${orgId}`,
+        key,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 410,
+      code: "FILES_EPHEMERAL_GONE",
+    });
+  });
+
   it("rejects non-UUID storage keys (traversal / foreign keys)", async () => {
     const storage = new MemoryObjectStorageAdapter();
     const service = createFilesService({ storage, config: baseConfig });
@@ -199,6 +232,18 @@ describe("FilesService", () => {
     const service = createFilesService({
       storage,
       config: { ...baseConfig, enabled: false, provider: "s3" },
+    });
+
+    await expect(
+      service.createUploadUrl(DEV_STUB_IDENTITY, { fileName: "a.pdf" })
+    ).rejects.toMatchObject({ statusCode: 503, code: "FILES_DISABLED" });
+  });
+
+  it("rejects when files are disabled and provider is local", async () => {
+    const storage = new MemoryObjectStorageAdapter();
+    const service = createFilesService({
+      storage,
+      config: { ...baseConfig, enabled: false, provider: "local" },
     });
 
     await expect(

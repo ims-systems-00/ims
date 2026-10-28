@@ -436,9 +436,17 @@ export function createUsersService(deps: UsersServiceDeps) {
       }
 
       if (input.status === "Active") {
-        await notifications.sendWelcome(updated.email, updated.name);
+        await notifications.sendWelcome(
+          updated.email,
+          updated.name,
+          actor.organizationId
+        );
       } else {
-        await notifications.sendAccessRevoked(updated.email, updated.name);
+        await notifications.sendAccessRevoked(
+          updated.email,
+          updated.name,
+          actor.organizationId
+        );
         await sessions.clearSessionsForUser(updated.id);
       }
 
@@ -568,7 +576,11 @@ export function createUsersService(deps: UsersServiceDeps) {
           expires: null,
         });
         if (!updated) continue;
-        await notifications.sendAccessRevoked(updated.email, updated.name);
+        await notifications.sendAccessRevoked(
+          updated.email,
+          updated.name,
+          actor.organizationId
+        );
         await sessions.clearSessionsForUser(userId);
         blocked += 1;
       }
@@ -677,7 +689,11 @@ export function createUsersService(deps: UsersServiceDeps) {
       if (user.emailVerified.status === "verified") {
         throw new ConflictError("Email is already verified");
       }
-      await notifications.resendEmailVerification(user.email, user.name);
+      await notifications.resendEmailVerification(
+        user.email,
+        user.name,
+        actor.organizationId
+      );
     },
 
     async checkOwnership(

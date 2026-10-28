@@ -18,7 +18,8 @@
     "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts",
     "provision:files-buckets": "tsx scripts/ensure-files-bucket.ts",
     "preflight:prod": "tsx scripts/preflight-prod.ts",
-    "smoke:files-s3": "tsx scripts/smoke-files-s3.ts"
+    "smoke:files-s3": "tsx scripts/smoke-files-s3.ts",
+    "email:preview": "tsx scripts/email-preview.ts"
   },
   "engines": {
     "node": ">=20"

@@ -3,6 +3,7 @@
  * organisation / user repositories and the shared EmailSystem.
  */
 
+import { renderEmail } from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import { createOrganisationMembershipRepository } from "../../organisation/repositories/organisation-membership.repository";
 import { createOrganisationRepository } from "../../organisation/repositories/organisation.repository";
@@ -73,33 +74,37 @@ export function createInvitationUserAdapter(): InvitationUserPort {
   };
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
-
 export function createInvitationEmailAdapter(
-  email: EmailSystem | undefined
+  email: EmailSystem | undefined,
+  resolveBranding?: (organizationId: string) => Promise<
+    import("../../../infrastructure/email/templates").EmailBranding
+  >
 ): InvitationEmailPort {
   if (!email) return new NoOpInvitationEmailAdapter();
   return {
     async sendInvitation(input) {
-      const inviter = escapeHtml(input.inviterName);
-      const organisation = escapeHtml(input.organisationName);
-      const role = escapeHtml(input.role);
+      const branding =
+        input.organizationId && resolveBranding
+          ? await resolveBranding(input.organizationId).catch(() => undefined)
+          : undefined;
+      const rendered = renderEmail(
+        "invitation",
+        {
+          inviterName: input.inviterName,
+          organisationName: input.organisationName,
+          role: input.role,
+          acceptUrl: input.acceptUrl,
+          expiresAt: input.expiresAt,
+        },
+        branding ? { branding } : undefined
+      );
       await email.sendTransactional({
         to: input.to,
-        subject: "iMS Invitation",
-        html: `
-          <p>${inviter} has invited you to join <strong>${organisation}</strong> as a ${role} on iMS Systems.</p>
-          <p><a href="${input.acceptUrl}">Accept your invitation</a></p>
-          <p>This link expires on ${input.expiresAt.toUTCString()}. If you do not yet have an iMS account, register with this email address first, then open the link again.</p>
-        `.trim(),
-        text: `${input.inviterName} has invited you to join ${input.organisationName} as a ${input.role} on iMS Systems. Accept your invitation: ${input.acceptUrl} (expires ${input.expiresAt.toUTCString()}).`,
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
         category: "transactional",
+        organizationId: input.organizationId,
       });
     },
   };

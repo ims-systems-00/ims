@@ -286,6 +286,28 @@ export function revisePendingDocument(
   );
 }
 
+/** Select+implement clause/section and attach this document as evidence. */
+export function applyDocumentComplianceClauses(
+  repositoryId: string,
+  nodeId: string,
+  body: { toolkitId: string; clauseIds: string[] }
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/file-nodes/${nodeId}/compliance-apply`,
+    { method: "POST", body }
+  );
+}
+
+export function clearDocumentComplianceLinks(
+  repositoryId: string,
+  nodeId: string
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/file-nodes/${nodeId}/compliance-links`,
+    { method: "DELETE" }
+  );
+}
+
 export function moveRepoNode(
   repositoryId: string,
   nodeId: string,
@@ -463,4 +485,9 @@ export function listPublishedDocuments(params: {
   return apiRequest<PaginatedDocumentNodes>(
     `/document-trees${toQuery(params)}`
   );
+}
+
+/** Resolve a document node by id (for cross-module deep links). */
+export function getDocumentTreeNode(nodeId: string): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(`/document-trees/${nodeId}`);
 }

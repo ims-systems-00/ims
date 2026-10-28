@@ -11,6 +11,7 @@ import {
   useCurrentOrganisationQuery,
   useOrganisationLogoUrl,
 } from "@/modules/organisation/hooks/use-organisations";
+import imsOsLogo from "@/assets/images/iMS-OS_horizontal_white.png";
 import { SidebarBrand } from "./sidebar-brand";
 import {
   permissionAllowed,
@@ -72,6 +73,13 @@ export function AppSidebar({
   // when the licence query is already enabled.
   const brandOrgQuery = useCurrentOrganisationQuery();
   const orgLogoUrl = useOrganisationLogoUrl(brandOrgQuery.data);
+  // When the org has its own logo in the header, keep the iMS OS mark
+  // visible under the Workspace section label.
+  const showImsOsUnderWorkspace = Boolean(
+    orgLogoUrl ||
+      brandOrgQuery.data?.logoStorage?.bucket ||
+      brandOrgQuery.data?.logoSrc
+  );
   const licenceFilter = useMemo<NavigationLicenceFilter>(() => {
     if (provider !== "auth0-openfga") {
       return { licensedToolkits: null, crmLicensed: null };
@@ -166,6 +174,17 @@ export function AppSidebar({
               ) : (
                 <span className="sr-only">{section.label}</span>
               )}
+              {!collapsed &&
+              section.id === "workspace" &&
+              showImsOsUnderWorkspace ? (
+                <div className="mb-2.5 px-2.5">
+                  <img
+                    src={imsOsLogo}
+                    alt="iMS Systems"
+                    className="h-7 w-auto max-w-full object-contain opacity-95"
+                  />
+                </div>
+              ) : null}
               <div className="space-y-1.5">
                 {section.items.map((item) => (
                   <SidebarNavItem
