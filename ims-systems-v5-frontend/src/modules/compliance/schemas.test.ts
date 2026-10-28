@@ -28,11 +28,16 @@ describe("compliance schemas", () => {
     expect(parsed.success).toBe(false);
   });
 
-  it("blocks document-management until Documents module exists", () => {
+  it("requires related document for document-management evidence", () => {
+    const missing = createControlEvidenceSchema.safeParse({
+      evidenceType: "document-management",
+    });
+    expect(missing.success).toBe(false);
+
     const parsed = createControlEvidenceSchema.safeParse({
       evidenceType: "document-management",
       relatedDocumentId: "aaaaaaaaaaaaaaaaaaaaaaaa",
     });
-    expect(parsed.success).toBe(false);
+    expect(parsed.success).toBe(true);
   });
 });

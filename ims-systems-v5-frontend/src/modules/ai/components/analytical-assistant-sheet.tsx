@@ -7,9 +7,10 @@ import { formatDateTime } from "@/shared/lib/format-date";
 import { notify } from "@/shared/lib/toast";
 import { TaskSheet, type TaskSheetMode } from "@/modules/tasks";
 import type { TaskSource } from "@/modules/tasks/types";
+import { UserAvatar } from "@/modules/users/components/user-avatar";
 import { streamGptResponse } from "../api/ai";
 import {
-  useAiResponsesForSourceQuery,
+  useAiResponsesForSourceInfiniteQuery,
   useCreateAiResponseMutation,
   useDeleteAiResponseMutation,
 } from "../hooks/use-ai";
@@ -57,7 +58,7 @@ export function AnalyticalAssistantSheet({
   const abortRef = useRef<AbortController | null>(null);
 
   const source = context?.source;
-  const listQuery = useAiResponsesForSourceQuery(
+  const listQuery = useAiResponsesForSourceInfiniteQuery(
     source?.moduleType,
     source?.moduleId,
     open && Boolean(source)
@@ -65,7 +66,10 @@ export function AnalyticalAssistantSheet({
   const createMutation = useCreateAiResponseMutation();
   const deleteMutation = useDeleteAiResponseMutation();
 
-  const saved = listQuery.data?.items ?? [];
+  const saved = useMemo(
+    () => listQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [listQuery.data?.pages]
+  );
 
   useEffect(() => {
     if (!open) {
@@ -320,6 +324,9 @@ export function AnalyticalAssistantSheet({
           <HomePanel
             loading={listQuery.isLoading}
             items={saved}
+            hasMore={Boolean(listQuery.hasNextPage)}
+            loadingMore={listQuery.isFetchingNextPage}
+            onLoadMore={() => void listQuery.fetchNextPage()}
             onConduct={openConduct}
             onOpen={openSaved}
           />
@@ -375,11 +382,17 @@ export function AnalyticalAssistantSheet({
 function HomePanel({
   loading,
   items,
+  hasMore,
+  loadingMore,
+  onLoadMore,
   onConduct,
   onOpen,
 }: {
   loading: boolean;
   items: AiResponse[];
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
   onConduct: () => void;
   onOpen: (item: AiResponse) => void;
 }) {
@@ -416,23 +429,52 @@ function HomePanel({
         Previous analyses for this record. Conduct a new one any time.
       </p>
       <ul className="space-y-2">
-        {items.map((item) => (
-          <li key={item.id}>
-            <button
-              type="button"
-              className="flex w-full flex-col items-start gap-0.5 rounded-lg border border-border-subtle px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
-              onClick={() => onOpen(item)}
-            >
-              <span className="text-sm font-medium">
-                Analysis · {item.template.reportStructure.length} sections
-              </span>
-              <span className="text-xs text-muted-foreground">
-                {formatDateTime(item.createdOn)}
-              </span>
-            </button>
-          </li>
-        ))}
+        {items.map((item) => {
+          const conductor = item.createdBy?.name?.trim() || "Unknown analyst";
+          return (
+            <li key={item.id}>
+              <button
+                type="button"
+                className="flex w-full items-start gap-3 rounded-lg border border-border-subtle px-3 py-2.5 text-left transition-colors hover:bg-muted/40"
+                onClick={() => onOpen(item)}
+              >
+                <UserAvatar
+                  name={conductor}
+                  imageUrl={item.createdBy?.avatarUrl}
+                  size="sm"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    Analysis conducted by {conductor}
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {formatDateTime(item.createdOn)} ·{" "}
+                    {item.template.reportStructure.length} sections
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
+      {hasMore ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          disabled={loadingMore}
+          onClick={onLoadMore}
+        >
+          {loadingMore ? (
+            <>
+              <Loader2 className="size-4 animate-spin" />
+              Loading…
+            </>
+          ) : (
+            "Load more"
+          )}
+        </Button>
+      ) : null}
     </div>
   );
 }

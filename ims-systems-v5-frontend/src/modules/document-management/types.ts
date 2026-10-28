@@ -114,6 +114,8 @@ export type DocumentTreeNode = {
     owners: string[];
     applicableModules: DocumentApplicableModule[];
     complianceTools: string[];
+    /** Linked compliance clauses (at most one toolkit). */
+    complianceLinks?: Array<{ toolkitId: string; clauseIds: string[] }>;
     authorisation: AuthorisationEntry[];
     classification: string;
     dvID: number;

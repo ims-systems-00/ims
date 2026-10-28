@@ -17,6 +17,7 @@ import { RequestSignatureDialog } from "../components/request-signature-dialog";
 import { ShareDocumentDialog } from "../components/share-document-dialog";
 import { DocumentSignaturesPanel } from "../components/document-signatures-panel";
 import { SignedDocumentPanel } from "../components/signed-document-panel";
+import { DocumentComplianceSettingsPanel } from "../components/document-compliance-settings-panel";
 import {
   useDocumentRepositoryQuery,
   useRepoNodeQuery,
@@ -31,7 +32,8 @@ type DocumentTabId =
   | "activities"
   | "versions"
   | "update"
-  | "audit-trail";
+  | "audit-trail"
+  | "compliance-settings";
 
 const TABS: Array<{ id: DocumentTabId; label: string }> = [
   { id: "overview", label: "Overview" },
@@ -42,6 +44,7 @@ const TABS: Array<{ id: DocumentTabId; label: string }> = [
   { id: "versions", label: "Versions" },
   { id: "update", label: "Update" },
   { id: "audit-trail", label: "Audit trail" },
+  { id: "compliance-settings", label: "Compliance Settings" },
 ];
 
 /**
@@ -290,6 +293,14 @@ export function DocumentDetailPage() {
 
       {tab === "signed" ? (
         <SignedDocumentPanel repositoryId={repositoryId} node={node} />
+      ) : null}
+
+      {tab === "compliance-settings" ? (
+        <DocumentComplianceSettingsPanel
+          repositoryId={repositoryId}
+          node={node}
+          canEdit={node.status !== "Archived"}
+        />
       ) : null}
 
       <NewVersionSheet

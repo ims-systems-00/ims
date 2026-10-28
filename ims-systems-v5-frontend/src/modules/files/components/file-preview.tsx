@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
+import { isApiClientError } from "@/shared/lib/http";
 import { useDownloadFileMutation, useFileViewUrlQuery } from "../hooks/use-files";
 import {
   buildOfficeViewerUrl,
@@ -33,12 +34,19 @@ export function FilePreview({ file }: { file: FileMetaInfo }) {
   }
 
   if (viewQuery.isError || !url || isMemory) {
+    const ephemeralGone =
+      isApiClientError(viewQuery.error) &&
+      (viewQuery.error.code === "FILES_EPHEMERAL_GONE" ||
+        viewQuery.error.status === 410);
+    const previewHint = isMemory
+      ? "File storage is in memory mode (no real bytes). Set FILES_ENABLED=true with FILES_PROVIDER=local or s3, restart the API, then re-upload."
+      : ephemeralGone
+        ? "This file was uploaded with ephemeral in-memory storage and is no longer available. Re-upload the document to preview it."
+        : "Preview unavailable for this file.";
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="max-w-sm text-sm text-muted-foreground">
-          {isMemory
-            ? "Invalid attachment. This attachment has been removed or not found."
-            : "Preview unavailable for this file."}
+          {previewHint}
         </p>
         <Button
           type="button"

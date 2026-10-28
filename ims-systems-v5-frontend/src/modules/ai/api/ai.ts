@@ -128,10 +128,26 @@ export async function streamGptResponse(
   }
 
   if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    let code = mapStatusToCode(response.status);
+    try {
+      const payload = (await response.json()) as {
+        message?: string;
+        error?: { message?: string; code?: string };
+        code?: string;
+      };
+      message =
+        payload.error?.message ??
+        payload.message ??
+        message;
+      code = payload.error?.code ?? payload.code ?? code;
+    } catch {
+      // Non-JSON error body — keep status-based message.
+    }
     throw new ApiClientError({
-      message: `Request failed with status ${response.status}`,
+      message,
       status: response.status,
-      code: mapStatusToCode(response.status),
+      code,
       correlationId: response.headers.get("x-correlation-id") ?? correlationId,
     });
   }

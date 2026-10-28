@@ -6,6 +6,7 @@ export { AnalyticalAssistantSheet } from "./components/analytical-assistant-shee
 export { AliceMarkdown } from "./components/alice-markdown";
 export {
   useAiResponsesForSourceQuery,
+  useAiResponsesForSourceInfiniteQuery,
   useAiResponseQuery,
   useCreateAiResponseMutation,
   useUpdateAiResponseMutation,
@@ -24,6 +25,7 @@ export {
 } from "./templates";
 export type {
   AiResponse,
+  AiCreator,
   AiAnalyserTemplate,
   AiReportSection,
   AiSourceModuleType,
