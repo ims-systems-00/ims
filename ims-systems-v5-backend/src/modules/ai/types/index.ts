@@ -50,15 +50,27 @@ export type AiResponseSource = {
   moduleId: string;
 };
 
+/** Conductor identity returned on saved analyses (list/get/create). */
+export type AiCreator = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 export type AiResponse = {
   id: string;
   organizationId: string;
   source: AiResponseSource;
   template: AiAnalyserTemplate;
-  createdBy: string;
+  createdBy: AiCreator;
   createdOn: Date;
   createdAt: Date;
   updatedAt: Date;
+};
+
+/** Persistence row — creator is a user id until the service enriches it. */
+export type AiResponseRecord = Omit<AiResponse, "createdBy"> & {
+  createdBy: string;
 };
 
 export type CreateAiResponseInput = {

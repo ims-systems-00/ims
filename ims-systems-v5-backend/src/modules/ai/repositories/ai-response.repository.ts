@@ -4,14 +4,21 @@
 
 import type {
   AiAnalyserTemplate,
-  AiResponse,
+  AiResponseRecord,
   AiSourceModuleType,
   ListAiResponsesQuery,
-  PaginatedAiResponses,
 } from "../types";
 import { getAiResponseModel, type AiResponseDocument } from "./ai-response.model";
 
-function toDomain(doc: AiResponseDocument): AiResponse {
+export type PaginatedAiResponseRecords = {
+  items: AiResponseRecord[];
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+function toRecord(doc: AiResponseDocument): AiResponseRecord {
   const source = doc.source as {
     moduleType: AiSourceModuleType;
     moduleId: string;
@@ -52,17 +59,20 @@ export type AiResponseRepository = {
   create: (
     organizationId: string,
     input: PersistAiResponseCreate
-  ) => Promise<AiResponse>;
-  findById: (organizationId: string, id: string) => Promise<AiResponse | null>;
+  ) => Promise<AiResponseRecord>;
+  findById: (
+    organizationId: string,
+    id: string
+  ) => Promise<AiResponseRecord | null>;
   list: (
     organizationId: string,
     query: ListAiResponsesQuery
-  ) => Promise<PaginatedAiResponses>;
+  ) => Promise<PaginatedAiResponseRecords>;
   updateTemplate: (
     organizationId: string,
     id: string,
     template: AiAnalyserTemplate
-  ) => Promise<AiResponse | null>;
+  ) => Promise<AiResponseRecord | null>;
   delete: (organizationId: string, id: string) => Promise<boolean>;
 };
 
@@ -80,12 +90,12 @@ export function createAiResponseRepository(): AiResponseRepository {
           createdOn: input.createdOn,
         },
       ]);
-      return toDomain(docs[0]! as unknown as AiResponseDocument);
+      return toRecord(docs[0]! as unknown as AiResponseDocument);
     },
 
     async findById(organizationId, id) {
       const doc = await model.findOne({ _id: id, organizationId }).exec();
-      return doc ? toDomain(doc) : null;
+      return doc ? toRecord(doc) : null;
     },
 
     async list(organizationId, query) {
@@ -113,7 +123,7 @@ export function createAiResponseRepository(): AiResponseRepository {
         query.pageSize > 0 ? Math.max(1, Math.ceil(total / query.pageSize)) : 1;
 
       return {
-        items: docs.map((doc) => toDomain(doc)),
+        items: docs.map((doc) => toRecord(doc)),
         page: query.page,
         pageSize: query.pageSize,
         total,
@@ -129,7 +139,7 @@ export function createAiResponseRepository(): AiResponseRepository {
           { new: true }
         )
         .exec();
-      return doc ? toDomain(doc) : null;
+      return doc ? toRecord(doc) : null;
     },
 
     async delete(organizationId, id) {

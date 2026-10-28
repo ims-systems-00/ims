@@ -126,6 +126,12 @@ export function createComplianceModule(deps: ComplianceRouterDeps): {
       syncOfiComplianceLinks: (input) => service.syncOfiComplianceLinks(input),
       clearOfiComplianceEvidence: (input) =>
         service.clearOfiComplianceEvidence(input),
+      applyDocumentComplianceClauses: (input) =>
+        service.applyDocumentComplianceClauses(input),
+      syncDocumentComplianceLinks: (input) =>
+        service.syncDocumentComplianceLinks(input),
+      clearDocumentComplianceEvidence: (input) =>
+        service.clearDocumentComplianceEvidence(input),
     },
     router,
   };

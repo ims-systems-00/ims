@@ -97,6 +97,44 @@ export const updateOrganisationLogoBodySchema = z.object({
     .default(null),
 });
 
+const emailBrandColorsSchema = z.object({
+  primary: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "Primary must be a 6-digit hex color"),
+  primaryDark: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "primaryDark must be a 6-digit hex color"),
+  primaryLight: z
+    .string()
+    .trim()
+    .regex(/^#[0-9a-fA-F]{6}$/, "primaryLight must be a 6-digit hex color"),
+  primaryExtraLight: z
+    .string()
+    .trim()
+    .regex(
+      /^#[0-9a-fA-F]{6}$/,
+      "primaryExtraLight must be a 6-digit hex color"
+    ),
+});
+
+export const updateOrganisationEmailBrandingBodySchema = z
+  .object({
+    enabled: z.boolean(),
+    themeId: z.string().trim().min(1).max(64).nullable().optional(),
+    colors: emailBrandColorsSchema.nullable().optional(),
+  })
+  .superRefine((value, ctx) => {
+    if (value.enabled && !value.colors) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "colors are required when email branding is enabled",
+        path: ["colors"],
+      });
+    }
+  });
+
 const targetHoursSchema = z.number().positive().max(24 * 365).nullable();
 
 export const updateIncidentResolutionTargetsBodySchema = z.object({

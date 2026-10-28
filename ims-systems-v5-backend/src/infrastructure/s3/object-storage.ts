@@ -8,6 +8,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { AppConfig } from "../../config";
 import type { Logger } from "../logging/logger";
+import { S3WithLocalFallbackStorage } from "../../modules/files/local-fallback-storage";
 import {
   createLocalObjectStorageAdapter,
   type LocalObjectStorageAdapter,
@@ -152,6 +153,8 @@ function localObjectEndpoint(config: AppConfig): string {
 /**
  * Build the object-storage port from app config.
  * Uses the in-memory adapter when FILES_PROVIDER=memory or FILES_ENABLED=false.
+ * When provider is s3, wraps with a local-disk fallback so historical
+ * `ims-v5-local-*` uploads remain previewable after switching providers.
  */
 export function createObjectStorageFromConfig(options: {
   config: AppConfig;
@@ -167,16 +170,18 @@ export function createObjectStorageFromConfig(options: {
     return new MemoryObjectStorageAdapter();
   }
 
+  const local = createLocalObjectStorageAdapter({
+    rootDir: config.FILES_LOCAL_ROOT,
+    objectEndpointUrl: localObjectEndpoint(config),
+    signingSecret: config.FILES_LOCAL_SIGNING_SECRET,
+  });
+
   if (config.FILES_PROVIDER === "local") {
     logger.info(
       { rootDir: config.FILES_LOCAL_ROOT },
       "Using local disk file storage (demo / dev)"
     );
-    return createLocalObjectStorageAdapter({
-      rootDir: config.FILES_LOCAL_ROOT,
-      objectEndpointUrl: localObjectEndpoint(config),
-      signingSecret: config.FILES_LOCAL_SIGNING_SECRET,
-    });
+    return local;
   }
 
   const client = createS3Client({
@@ -185,7 +190,13 @@ export function createObjectStorageFromConfig(options: {
     secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
   });
 
-  return createS3ObjectStorageAdapter({ client, logger });
+  const s3 = createS3ObjectStorageAdapter({ client, logger });
+  logger.info(
+    { rootDir: config.FILES_LOCAL_ROOT },
+    "Using S3 file storage with local-disk fallback for ims-v5-local-* buckets"
+  );
+  return new S3WithLocalFallbackStorage(s3, local);
 }
 
 export type { ObjectStoragePort, LocalObjectStorageAdapter };
+export { S3WithLocalFallbackStorage, getLocalObjectStorage } from "../../modules/files/local-fallback-storage";

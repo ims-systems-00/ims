@@ -3,10 +3,12 @@ import type { Authorizer } from "../../../security";
 import { createDocumentManagementController } from "../controllers/document-management.controller";
 import {
   NoOpDocumentActivityAdapter,
+  NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentEmailAdapter,
   NoOpDocumentFilesAdapter,
   NoOpDocumentNotificationAdapter,
   type DocumentActivityPort,
+  type DocumentComplianceLinkPort,
   type DocumentEmailPort,
   type DocumentFilesPort,
   type DocumentMembershipPort,
@@ -18,6 +20,7 @@ import {
   createDocumentManagementService,
   type DocumentManagementApplicationPort,
   type DocumentManagementService,
+  type DocumentManagementServiceDeps,
 } from "../services/document-management.service";
 import {
   createDocumentReviewReminderService,
@@ -31,8 +34,10 @@ export type DocumentManagementRouterDeps = {
   notifications?: DocumentNotificationPort;
   email?: DocumentEmailPort;
   memberships?: DocumentMembershipPort;
+  complianceLinks?: DocumentComplianceLinkPort;
   /** Base URL for emailed access links (share / signature). */
   accessLinkBaseUrl?: string;
+  resolveEmailBranding?: DocumentManagementServiceDeps["resolveEmailBranding"];
 };
 
 /**
@@ -68,7 +73,10 @@ export function createDocumentManagementModule(
     notifications: notificationsPort,
     email: deps.email ?? new NoOpDocumentEmailAdapter(),
     memberships: deps.memberships,
+    complianceLinks:
+      deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter(),
     accessLinkBaseUrl: deps.accessLinkBaseUrl,
+    resolveEmailBranding: deps.resolveEmailBranding,
   });
   const reviewReminders = createDocumentReviewReminderService({
     trees,
@@ -113,6 +121,14 @@ export function createDocumentManagementModule(
   repositoriesRouter.put(
     "/:id/file-nodes/:nodeId",
     controller.updateDocument
+  );
+  repositoriesRouter.post(
+    "/:id/file-nodes/:nodeId/compliance-apply",
+    controller.applyComplianceClauses
+  );
+  repositoriesRouter.delete(
+    "/:id/file-nodes/:nodeId/compliance-links",
+    controller.clearComplianceLinks
   );
   repositoriesRouter.post(
     "/:id/nodes/:nodeId/new-version",
@@ -181,6 +197,7 @@ export function createDocumentManagementModule(
 
   const treesRouter = Router();
   treesRouter.get("/", controller.listPublished);
+  treesRouter.get("/:id", controller.getDocumentTreeNode);
 
   /** Public token-gated share links (no identity; token is the credential). */
   const sharesRouter = Router();

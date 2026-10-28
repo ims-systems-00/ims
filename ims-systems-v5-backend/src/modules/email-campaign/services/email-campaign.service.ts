@@ -3,6 +3,7 @@
  * Spec: docs/module-specifications/email-campaign.md
  */
 
+import { renderEmail } from "../../../infrastructure/email/templates";
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
   ForbiddenError,
@@ -102,16 +103,23 @@ function buildCampaignHtml(input: {
   recipientName: string;
   message: string;
   orgName: string;
+  subject: string;
+  branding?: import("../../../infrastructure/email/templates").EmailBranding;
 }): string {
   const greeting = input.recipientName.trim() || "Customer";
-  return `
-    <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #1a1a1a;">
-      <h2 style="margin: 0 0 16px;">${escapeHtml(input.campaignName)}</h2>
+  const bodyHtml = `
       <p>Dear ${escapeHtml(greeting)},</p>
-      <div style="white-space: pre-wrap;">${escapeHtml(input.message)}</div>
-      <p style="margin-top: 24px;">Kind regards,<br/>${escapeHtml(input.orgName)}</p>
-    </div>
+      <div style="white-space: pre-wrap;margin:0 0 16px;">${escapeHtml(input.message)}</div>
+      <p style="margin:0;">Kind regards,<br/>${escapeHtml(input.orgName)}</p>
   `.trim();
+  return renderEmail(
+    "campaign-wrap",
+    {
+      subject: input.subject || input.campaignName,
+      bodyHtml,
+    },
+    input.branding ? { branding: input.branding } : undefined
+  ).html;
 }
 
 function recipientsFromCustomer(customer: {
@@ -199,7 +207,8 @@ export function createEmailCampaignService(deps: EmailCampaignServiceDeps) {
     return {
       name: org.name,
       email: org.officeEmail.trim(),
-      replyTo: (org.campaignEmail?.trim() || org.officeEmail.trim()),
+      replyTo: org.campaignEmail?.trim() || org.officeEmail.trim(),
+      emailBranding: org.emailBranding,
     };
   }
 
@@ -254,6 +263,8 @@ export function createEmailCampaignService(deps: EmailCampaignServiceDeps) {
         recipientName: recipient.name,
         message: campaign.message,
         orgName: sender.name,
+        subject: campaign.subject,
+        branding: sender.emailBranding,
       });
       await email.sendBulk({
         to: [recipient.email],

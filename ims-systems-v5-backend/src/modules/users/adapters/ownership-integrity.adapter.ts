@@ -6,6 +6,7 @@
  * Wired in auth0-openfga mode; development-stub keeps the NoOp.
  */
 
+import { getAiResponseModel } from "../../ai/repositories/ai-response.model";
 import { getAuditModel } from "../../audits/repositories/audit.model";
 import { getDocumentTreeModel } from "../../document-management/repositories/document-tree.model";
 import { getIncidentModel } from "../../incidents/repositories/incident.model";
@@ -112,6 +113,21 @@ function ownedModules(): OwnedModule[] {
         getDocumentTreeModel() as never,
         "documentData.owners"
       ),
+    },
+    {
+      // AI responses are hard-deleted (no deletedAt soft-delete field).
+      name: "AI Responses",
+      count: async (organizationId, userId) =>
+        getAiResponseModel().countDocuments({
+          organizationId,
+          createdBy: userId,
+        }),
+      transfer: async (organizationId, sourceUserId, destinationUserId) => {
+        await getAiResponseModel().updateMany(
+          { organizationId, createdBy: sourceUserId },
+          { $set: { createdBy: destinationUserId } }
+        );
+      },
     },
   ];
 }

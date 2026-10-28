@@ -4,12 +4,14 @@ import type { AppConfig } from "../config";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { MongoConnection } from "../infrastructure/mongodb/connection";
 import { createEmailSystem, type EmailSystem } from "../infrastructure/queue";
+import { createObjectStorageFromConfig } from "../infrastructure/s3/object-storage";
 import { createStripeClient } from "../infrastructure/stripe/create-stripe-client";
 import {
   composeGoLiveSideEffects,
   createAuth0OrganisationSideEffectsAdapter,
   createFilesBucketSideEffectsAdapter,
   createGoLiveNotifySideEffectsAdapter,
+  createOrganisationEmailBrandingResolver,
   type OrganisationGoLiveSideEffectsPort,
 } from "../modules/organisation";
 import { createAuth0ManagementApiFromConfig } from "../security/auth0/auth0-management-api";
@@ -69,6 +71,12 @@ function composeBillingAndGoLive(deps: {
     email: deps.email,
     supportEmails: deps.config.REPORT_BUG_SUPPORT_EMAILS,
     logger: deps.logger,
+    resolveEmailBranding: createOrganisationEmailBrandingResolver({
+      files: createObjectStorageFromConfig({
+        config: deps.config,
+        logger: deps.logger,
+      }),
+    }),
   });
   // N-09: per-org file bucket provisioning (no-op unless FILES s3).
   const fileBuckets = createFilesBucketSideEffectsAdapter({

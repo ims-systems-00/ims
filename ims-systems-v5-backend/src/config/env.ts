@@ -13,6 +13,7 @@ const logLevelSchema = z.enum([
 const securityProviderSchema = z.enum(["development-stub", "auth0-openfga"]);
 const emailProviderSchema = z.enum(["mailtrap", "sendgrid", "logging"]);
 const filesProviderSchema = z.enum(["s3", "memory", "local"]);
+const aiProviderSchema = z.enum(["openai", "groq"]);
 const booleanFromEnv = z
   .union([z.boolean(), z.enum(["true", "false", "1", "0"])])
   .transform((value) => value === true || value === "true" || value === "1");
@@ -309,13 +310,23 @@ const envSchema = z
     CLIENT_URL: z.string().default("http://localhost:3000"),
 
     /**
+     * Alice LLM provider.
+     * - openai — production default (OPEN_AI_API_KEY + OPEN_AI_MODEL)
+     * - groq — local/dev OpenAI-compatible API (GROQ_API_KEY + GROQ_MODEL)
+     */
+    AI_PROVIDER: aiProviderSchema.default("openai"),
+    /**
      * OpenAI API key for Alice (Analytical Assistant).
-     * Empty → GPT endpoints use NoOp adapter (clear placeholder text).
+     * Empty when AI_PROVIDER=openai → GPT endpoints use NoOp (HTTP 503).
      * Env name matches V4: OPEN_AI_API_KEY.
      */
     OPEN_AI_API_KEY: z.string().default(""),
-    /** Chat model for Alice (V4 default was gpt-3.5-turbo). */
-    OPEN_AI_MODEL: z.string().default("gpt-3.5-turbo"),
+    /** Chat model when AI_PROVIDER=openai (gpt-3.5-turbo is deprecated). */
+    OPEN_AI_MODEL: z.string().default("gpt-4o-mini"),
+    /** Groq API key when AI_PROVIDER=groq. */
+    GROQ_API_KEY: z.string().default(""),
+    /** Chat model when AI_PROVIDER=groq. */
+    GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
   })
   .superRefine((value, ctx) => {
     if (
@@ -327,6 +338,14 @@ const envSchema = z
         path: ["SECURITY_PROVIDER"],
         message:
           "SECURITY_PROVIDER=development-stub is not allowed when NODE_ENV=production",
+      });
+    }
+    if (value.NODE_ENV === "production" && value.AI_PROVIDER === "groq") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["AI_PROVIDER"],
+        message:
+          "AI_PROVIDER=groq is not allowed when NODE_ENV=production (use openai)",
       });
     }
 

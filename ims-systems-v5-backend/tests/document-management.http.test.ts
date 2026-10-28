@@ -8,7 +8,39 @@ import {
   getDocumentSignatureModel,
   getDocumentTreeModel,
 } from "../src/modules/document-management";
+import { buildCatalogueFromJson } from "../src/modules/compliance/lib/catalogue-builder";
+import { createComplianceControlRepository } from "../src/modules/compliance/repositories/compliance-control.repository";
+import { getComplianceControlModel } from "../src/modules/compliance/repositories/compliance-control.model";
+import { getControlStatusModel } from "../src/modules/compliance/repositories/control-status.model";
+import { getComplianceOverviewModel } from "../src/modules/compliance/repositories/compliance-overview.model";
+import { getControlEvidenceModel } from "../src/modules/compliance/repositories/control-evidence.model";
 import { DEV_STUB_IDENTITY, DEV_STUB_ORGANIZATION_ID } from "../src/security";
+
+const complianceToolkit = "ISO 9001";
+const complianceToolkitPath = encodeURIComponent(complianceToolkit);
+
+async function seedDocumentComplianceCatalogue(): Promise<void> {
+  const repository = createComplianceControlRepository();
+  const rows = buildCatalogueFromJson(complianceToolkit, [
+    { clause: "4", title: "Context of the organisation", type: "Clause" },
+    {
+      clause: "4.1",
+      title: "Understanding the organisation",
+      type: "Control",
+    },
+    {
+      clause: "4.1.a",
+      title: "External issues",
+      type: "Sub-control",
+    },
+    {
+      clause: "4.2",
+      title: "Interested parties",
+      type: "Control",
+    },
+  ]);
+  await repository.upsertCatalogue(complianceToolkit, rows);
+}
 
 const fileMeta = {
   Name: "policy.pdf",
@@ -37,6 +69,11 @@ describe("Document Management HTTP", () => {
     await getDocumentRepositoryModel().deleteMany({});
     await getDocumentSignatureModel().deleteMany({});
     await getDocumentAccessTokenModel().deleteMany({});
+    await getControlEvidenceModel().deleteMany({});
+    await getControlStatusModel().deleteMany({});
+    await getComplianceOverviewModel().deleteMany({});
+    await getComplianceControlModel().deleteMany({});
+    await seedDocumentComplianceCatalogue();
   });
 
   async function createRepoWithDocument() {
@@ -390,5 +427,81 @@ describe("Document Management HTTP", () => {
     expect(second.status).toBe(201);
     expect(second.body.data.created).toHaveLength(0);
     expect(second.body.data.skipped).toEqual(["policy.pdf"]);
+  });
+
+  it("resolves a document tree node by id for cross-module deep links", async () => {
+    const { nodeId } = await createRepoWithDocument();
+    const resolved = await request(ctx!.app).get(
+      `/api/v1/document-trees/${nodeId}`
+    );
+    expect(resolved.status).toBe(200);
+    expect(resolved.body.data).toMatchObject({
+      id: nodeId,
+      type: "document",
+      name: "policy.pdf",
+    });
+    expect(resolved.body.data.repositoryId).toBeTruthy();
+  });
+
+  it("applies compliance section: select+implement children and attach evidence", async () => {
+    const { repoId, nodeId } = await createRepoWithDocument();
+
+    const applied = await request(ctx!.app)
+      .post(
+        `/api/v1/document-repositories/${repoId}/file-nodes/${nodeId}/compliance-apply`
+      )
+      .send({ toolkitId: complianceToolkit, clauseIds: ["4"] });
+    expect(applied.status).toBe(200);
+    expect(applied.body.data.documentData.complianceLinks).toEqual([
+      {
+        toolkitId: complianceToolkit,
+        clauseIds: expect.arrayContaining(["4", "4.1", "4.1.a", "4.2"]),
+      },
+    ]);
+
+    const controls = await request(ctx!.app).get(
+      `/api/v1/compliance/toolkits/${complianceToolkitPath}/controls?pageSize=50`
+    );
+    expect(controls.status).toBe(200);
+    const leaves = (controls.body.data.items as Array<{
+      clause: string;
+      isLocked: boolean;
+      selected: string;
+      state: string;
+      id: string;
+    }>).filter((row) => !row.isLocked);
+    expect(leaves.length).toBeGreaterThan(0);
+    for (const leaf of leaves) {
+      expect(leaf.selected).toBe("Selected");
+      expect(leaf.state).toBe("Implemented");
+    }
+
+    const leafId = leaves.find((row) => row.clause === "4.1.a")?.id;
+    expect(leafId).toBeTruthy();
+    const evidence = await request(ctx!.app).get(
+      `/api/v1/compliance/controls/${leafId}/control-evidence`
+    );
+    expect(evidence.status).toBe(200);
+    expect(evidence.body.data.total).toBeGreaterThanOrEqual(1);
+    expect(
+      evidence.body.data.items.some(
+        (row: { evidenceType: string; relatedDocumentId: string | null }) =>
+          row.evidenceType === "document-management" &&
+          row.relatedDocumentId === nodeId
+      )
+    ).toBe(true);
+
+    const overview = await request(ctx!.app).get(
+      `/api/v1/compliance/toolkits/${complianceToolkitPath}/overview`
+    );
+    expect(overview.status).toBe(200);
+    expect(overview.body.data.controlsSelected).toBeGreaterThan(0);
+    expect(overview.body.data.controlsImplemented).toBeGreaterThan(0);
+
+    const cleared = await request(ctx!.app).delete(
+      `/api/v1/document-repositories/${repoId}/file-nodes/${nodeId}/compliance-links`
+    );
+    expect(cleared.status).toBe(200);
+    expect(cleared.body.data.documentData.complianceLinks).toEqual([]);
   });
 });

@@ -110,3 +110,47 @@ export class NoOpDocumentNotificationAdapter
     return;
   }
 }
+
+export type DocumentComplianceLinkPair = {
+  toolkitId: string;
+  clauseIds: string[];
+};
+
+/**
+ * Select+implement clauses and attach this document as evidence.
+ * Wired to Compliance in /api/v1 composition.
+ */
+export type DocumentComplianceLinkPort = {
+  applyClauses(input: {
+    organizationId: string;
+    actorId: string;
+    documentId: string;
+    toolkitId: string;
+    clauseIds: string[];
+  }): Promise<{ appliedClauseIds: string[] }>;
+  syncLinks(input: {
+    organizationId: string;
+    actorId: string;
+    documentId: string;
+    previousLinks: DocumentComplianceLinkPair[];
+    nextLinks: DocumentComplianceLinkPair[];
+  }): Promise<void>;
+  clearLinks(input: {
+    organizationId: string;
+    documentId: string;
+  }): Promise<void>;
+};
+
+export class NoOpDocumentComplianceLinkAdapter
+  implements DocumentComplianceLinkPort
+{
+  async applyClauses(): Promise<{ appliedClauseIds: string[] }> {
+    return { appliedClauseIds: [] };
+  }
+  async syncLinks(): Promise<void> {
+    return;
+  }
+  async clearLinks(): Promise<void> {
+    return;
+  }
+}

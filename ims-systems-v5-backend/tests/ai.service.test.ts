@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Authorizer, SecurityIdentity } from "../src/security";
 import {
+  AppError,
   ForbiddenError,
   NotFoundError,
   UnauthorizedError,
@@ -8,14 +9,15 @@ import {
 } from "../src/shared";
 import {
   createAiService,
+  NoOpAiGptAdapter,
   type AiActivityPort,
   type AiActorDirectoryPort,
   type AiGptPort,
-  type AiResponse,
+  type AiResponseRecord,
   type AiResponseRepository,
   type ListAiResponsesQuery,
-  type PaginatedAiResponses,
 } from "../src/modules/ai";
+import type { PaginatedAiResponseRecords } from "../src/modules/ai/repositories/ai-response.repository";
 
 const ORG = "507f1f77bcf86cd799439012";
 const USER = "507f1f77bcf86cd799439011";
@@ -41,13 +43,13 @@ function sampleTemplate() {
 }
 
 function inMemoryRepository(): AiResponseRepository {
-  const rows = new Map<string, AiResponse>();
+  const rows = new Map<string, AiResponseRecord>();
   let seq = 0;
   return {
     async create(organizationId, input) {
       seq += 1;
       const now = new Date();
-      const row: AiResponse = {
+      const row: AiResponseRecord = {
         id: `bbbbbbbbbbbbbbbbbbbb${String(seq).padStart(4, "0")}`,
         organizationId,
         source: {
@@ -70,7 +72,7 @@ function inMemoryRepository(): AiResponseRepository {
     async list(
       organizationId,
       query: ListAiResponsesQuery
-    ): Promise<PaginatedAiResponses> {
+    ): Promise<PaginatedAiResponseRecords> {
       let items = [...rows.values()].filter(
         (row) => row.organizationId === organizationId
       );
@@ -132,6 +134,24 @@ describe("createAiService", () => {
       getDisplayName: vi.fn(async (id) =>
         id === USER ? "Test User" : `User ${id}`
       ),
+      getProfile: vi.fn(async (id) => ({
+        id,
+        name: id === USER ? "Test User" : `User ${id}`,
+        avatarUrl:
+          id === USER ? "https://cdn.example/avatar.png" : null,
+      })),
+      getProfiles: vi.fn(async (ids) => {
+        const map = new Map();
+        for (const id of ids) {
+          map.set(id, {
+            id,
+            name: id === USER ? "Test User" : `User ${id}`,
+            avatarUrl:
+              id === USER ? "https://cdn.example/avatar.png" : null,
+          });
+        }
+        return map;
+      }),
     };
   });
 
@@ -202,7 +222,11 @@ describe("createAiService", () => {
     });
 
     expect(created.source).toEqual({ moduleType: "risks", moduleId: RISK });
-    expect(created.createdBy).toBe(USER);
+    expect(created.createdBy).toEqual({
+      id: USER,
+      name: "Test User",
+      avatarUrl: "https://cdn.example/avatar.png",
+    });
     expect(activities.recordAnalysisSaved).toHaveBeenCalledWith(
       expect.objectContaining({
         organizationId: ORG,
@@ -214,7 +238,7 @@ describe("createAiService", () => {
     );
   });
 
-  it("lists analyses filtered by source", async () => {
+  it("lists analyses with enriched creator profiles", async () => {
     await service().create(identityFor(USER), {
       moduleType: "risks",
       module: RISK,
@@ -234,6 +258,11 @@ describe("createAiService", () => {
     });
     expect(listed.total).toBe(1);
     expect(listed.items[0]?.source.moduleType).toBe("risks");
+    expect(listed.items[0]?.createdBy.name).toBe("Test User");
+    expect(listed.items[0]?.createdBy.avatarUrl).toBe(
+      "https://cdn.example/avatar.png"
+    );
+    expect(actors.getProfiles).toHaveBeenCalled();
   });
 
   it("updates a saved analysis template", async () => {
@@ -249,6 +278,7 @@ describe("createAiService", () => {
       },
     });
     expect(updated.template.context).toBe("Updated context");
+    expect(updated.createdBy.id).toBe(USER);
   });
 
   it("deletes a saved analysis and records activity", async () => {
@@ -259,6 +289,7 @@ describe("createAiService", () => {
     });
     const removed = await service().remove(identityFor(USER), created.id);
     expect(removed.id).toBe(created.id);
+    expect(removed.createdBy.name).toBe("Test User");
     expect(activities.recordAnalysisDeleted).toHaveBeenCalledWith(
       expect.objectContaining({
         moduleType: "audits",
@@ -286,5 +317,19 @@ describe("createAiService", () => {
     await expect(
       service().list(identityFor(USER), { page: 1, pageSize: 20 })
     ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("fails loud when OpenAI is not configured", async () => {
+    gpt = new NoOpAiGptAdapter();
+    await expect(
+      service().generateGpt(identityFor(USER), {
+        prompt: "Analyse",
+        systemInstructions: [],
+        conversation: [],
+      })
+    ).rejects.toMatchObject({
+      statusCode: 503,
+      code: "AI_NOT_CONFIGURED",
+    } satisfies Partial<AppError>);
   });
 });

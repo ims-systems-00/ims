@@ -112,6 +112,11 @@ export type Organisation = {
   /** File Handler location for the logo, so clients can mint fresh view URLs. */
   logoStorage: OrganisationLogoStorage | null;
   /**
+   * When enabled, org-scoped transactional emails use org logo + theme colors.
+   * When disabled, emails use iMS Systems defaults.
+   */
+  emailBranding: OrganisationEmailBranding;
+  /**
    * Auth0 Organization id (`org_…`). Optional until linked (auth rollout M2+).
    * Canonical tenant key remains `id` (IMS ObjectId / organizationId).
    */
@@ -150,9 +155,28 @@ export type OrganisationLogoStorage = {
   fileName?: string;
 };
 
+export type OrganisationEmailBrandColors = {
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  primaryExtraLight: string;
+};
+
+export type OrganisationEmailBranding = {
+  enabled: boolean;
+  themeId: string | null;
+  colors: OrganisationEmailBrandColors | null;
+};
+
 export type UpdateOrganisationLogoInput = {
   logoSrc: string | null;
   logoStorage?: OrganisationLogoStorage | null;
+};
+
+export type UpdateOrganisationEmailBrandingInput = {
+  enabled: boolean;
+  themeId?: string | null;
+  colors?: OrganisationEmailBrandColors | null;
 };
 
 export type MembershipDayHours = {

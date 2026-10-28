@@ -13,8 +13,13 @@
 
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import type { Logger } from "../../../infrastructure/logging/logger";
 import type { EmailAttachment } from "../../../infrastructure/email";
+import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  renderEmail,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
+import type { Logger } from "../../../infrastructure/logging/logger";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { OrganisationGoLiveSideEffectsPort } from "../ports";
 
@@ -56,8 +61,18 @@ export function createGoLiveNotifySideEffectsAdapter(deps: {
   email: EmailSystem;
   supportEmails: string[];
   logger?: Logger;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 }): OrganisationGoLiveSideEffectsPort {
   const { email, supportEmails, logger } = deps;
+
+  async function brandingFor(organizationId: string): Promise<EmailBranding> {
+    if (!deps.resolveEmailBranding) return DEFAULT_IMS_EMAIL_BRANDING;
+    try {
+      return await deps.resolveEmailBranding(organizationId);
+    } catch {
+      return DEFAULT_IMS_EMAIL_BRANDING;
+    }
+  }
 
   async function notifyInvoiceSignupInternal(
     input: Parameters<
@@ -73,26 +88,26 @@ export function createGoLiveNotifySideEffectsAdapter(deps: {
       return;
     }
 
-    const subject = `[iMS] New customer signup (monthly invoice) — ${input.organizationId}`;
-    const html = `
-      <p>A new organisation completed Go Live with <strong>Monthly invoice</strong>.</p>
-      <ul>
-        <li>Organisation id: ${input.organizationId}</li>
-        <li>Actor id: ${input.actorId}</li>
-        ${input.actorEmail ? `<li>Actor email: ${input.actorEmail}</li>` : ""}
-        <li>Super Admin seats: ${input.licences.superUser}</li>
-        <li>User seats: ${input.licences.users}</li>
-        <li>Business units: ${input.licences.groups}</li>
-        <li>Compliance toolkits: ${input.licences.complianceTools.join(", ") || "—"}</li>
-      </ul>
-    `.trim();
+    const rendered = renderEmail(
+      "go-live-invoice-internal",
+      {
+        organizationId: input.organizationId,
+        actorId: input.actorId,
+        ...(input.actorEmail ? { actorEmail: input.actorEmail } : {}),
+        superUser: input.licences.superUser,
+        users: input.licences.users,
+        groups: input.licences.groups,
+        complianceTools: input.licences.complianceTools,
+      },
+      { branding: await brandingFor(input.organizationId) }
+    );
 
     try {
       await email.sendTransactional({
         to: recipients,
-        subject,
-        html,
-        text: subject,
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
         category: "system",
         organizationId: input.organizationId,
       });
@@ -124,27 +139,24 @@ export function createGoLiveNotifySideEffectsAdapter(deps: {
       return;
     }
 
-    const subject = "Welcome to iMS — your workspace is live";
-    const html = `
-      <p>Hi,</p>
-      <p>Your organisation's iMS workspace is now live. Here's what was activated:</p>
-      <ul>
-        <li>Payment method: ${input.paymentType}</li>
-        <li>Super Admin seats: ${input.licences.superUser}</li>
-        <li>User seats: ${input.licences.users}</li>
-        <li>Business units: ${input.licences.groups}</li>
-        <li>Compliance toolkits: ${input.licences.complianceTools.join(", ") || "—"}</li>
-      </ul>
-      <p>We've attached the iMS adoption pack and service charter to help you get started.</p>
-      <p>— iMS Systems</p>
-    `.trim();
+    const rendered = renderEmail(
+      "go-live-onboard-success",
+      {
+        paymentType: input.paymentType,
+        superUser: input.licences.superUser,
+        users: input.licences.users,
+        groups: input.licences.groups,
+        complianceTools: input.licences.complianceTools,
+      },
+      { branding: await brandingFor(input.organizationId) }
+    );
 
     try {
       await email.sendTransactional({
         to: input.actorEmail,
-        subject,
-        html,
-        text: `${subject}. Your iMS workspace is now live.`,
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
         category: "customer-communication",
         organizationId: input.organizationId,
         attachments: loadOnboardingAttachments(logger),

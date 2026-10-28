@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { EmailBranding } from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { Authorizer } from "../../../security";
 import { createInvoiceCustomerAdapter } from "../adapters/customer.adapter";
@@ -13,6 +14,7 @@ export type InvoiceRouterDeps = {
   email?: EmailSystem;
   notifications?: InvoiceNotificationPort;
   issuerName?: (organizationId: string) => Promise<string>;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 /**
@@ -29,7 +31,7 @@ export function createInvoiceModule(deps: InvoiceRouterDeps): {
     repository,
     authorizer: deps.authorizer,
     customers: createInvoiceCustomerAdapter(),
-    mailer: createInvoiceMailerAdapter(deps.email),
+    mailer: createInvoiceMailerAdapter(deps.email, deps.resolveEmailBranding),
     notifications: deps.notifications ?? new NoOpInvoiceNotificationAdapter(),
     issuerName: deps.issuerName,
   });

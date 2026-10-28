@@ -55,6 +55,7 @@ export interface InvitationEmailPort {
     role: OrganisationRole;
     acceptUrl: string;
     expiresAt: Date;
+    organizationId?: string;
   }): Promise<void>;
 }
 

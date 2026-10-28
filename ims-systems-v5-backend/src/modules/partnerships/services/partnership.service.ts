@@ -6,6 +6,10 @@
  * partner code and signup link). Duplicate user/org enrolment blocked.
  */
 
+import {
+  renderEmailForOrganisation,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { Logger } from "../../../infrastructure/logging/logger";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { SecurityIdentity } from "../../../security";
@@ -34,6 +38,7 @@ export type PartnershipServiceDeps = {
   email?: EmailSystem;
   clientUrl: string;
   logger?: Logger;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 export function createPartnershipService(deps: PartnershipServiceDeps) {
@@ -57,6 +62,7 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
     to: string;
     subject: string;
     html: string;
+    text: string;
     organizationId: string;
     label: string;
   }): Promise<void> {
@@ -66,7 +72,7 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
         to: input.to,
         subject: input.subject,
         html: input.html,
-        text: input.subject,
+        text: input.text,
         category: "customer-communication",
         organizationId: input.organizationId,
       });
@@ -94,24 +100,38 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
       );
       return;
     }
+    const brandOpts = {
+      organizationId: partnership.organizationId,
+      resolveBranding: deps.resolveEmailBranding,
+    };
+    const received = await renderEmailForOrganisation(
+      "partnership-application-received",
+      { organisationName: orgName },
+      brandOpts
+    );
     await sendSafe({
       to: actorEmail,
-      subject: "Welcome to the iMS Partnership programme",
-      html: `<p>Thanks for applying to the iMS Partnership programme for ${orgName}. Your application has been received.</p>`,
+      subject: received.subject,
+      html: received.html,
+      text: received.text,
       organizationId: partnership.organizationId,
       label: "partnership-received",
     });
+    const link = signupUrl(partnership.id);
+    const codeReady = await renderEmailForOrganisation(
+      "partnership-code-ready",
+      {
+        organisationName: orgName,
+        partnerCode: partnership.id,
+        htmlExtra: `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;">Share your code or link — organisations that sign up with it will appear on your partner dashboard.</p><p style="margin:0 0 14px;font-size:14px;"><a href="${link}">${link}</a></p>`,
+      },
+      brandOpts
+    );
     await sendSafe({
       to: actorEmail,
-      subject: "Your iMS partner code is ready",
-      html: `
-        <p>Your partnership for ${orgName} is now active.</p>
-        <ul>
-          <li>Partner code: <strong>${partnership.id}</strong></li>
-          <li>Signup link: <a href="${signupUrl(partnership.id)}">${signupUrl(partnership.id)}</a></li>
-        </ul>
-        <p>Share your code or link — organisations that sign up with it will appear on your partner dashboard.</p>
-      `.trim(),
+      subject: codeReady.subject,
+      html: codeReady.html,
+      text: `${codeReady.text}\nSignup link: ${link}`,
       organizationId: partnership.organizationId,
       label: "partnership-accepted",
     });

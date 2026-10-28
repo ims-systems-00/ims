@@ -306,5 +306,39 @@ export function createControlEvidenceRepository() {
       ).exec();
       return result.modifiedCount ?? 0;
     },
+
+    async softDeleteForRelatedDocument(
+      organizationId: string,
+      relatedDocumentId: string
+    ): Promise<number> {
+      const result = await Model.updateMany(
+        {
+          organizationId,
+          evidenceType: "document-management",
+          relatedDocumentId,
+          deletedAt: null,
+        },
+        { $set: { deletedAt: new Date() } }
+      ).exec();
+      return result.modifiedCount ?? 0;
+    },
+
+    async softDeleteForRelatedDocumentAndControl(
+      organizationId: string,
+      controlStatusId: string,
+      relatedDocumentId: string
+    ): Promise<number> {
+      const result = await Model.updateMany(
+        {
+          organizationId,
+          controlStatusId,
+          evidenceType: "document-management",
+          relatedDocumentId,
+          deletedAt: null,
+        },
+        { $set: { deletedAt: new Date() } }
+      ).exec();
+      return result.modifiedCount ?? 0;
+    },
   };
 }
