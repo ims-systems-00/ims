@@ -1,12 +1,17 @@
 /**
- * OpenAI-compatible chat completions adapter for Alice (stream + normal).
+ * OpenAI-compatible chat completions adapter for Alice (stream + normal + tools).
  * Supports OpenAI and Groq (OpenAI-compatible base URL).
  */
 
 import OpenAI from "openai";
 import { AppError } from "../../../shared";
 import type { AiGptPort } from "../ports";
-import type { GptGenerateInput, GptMessage } from "../types";
+import type {
+  GptCompleteTurnInput,
+  GptGenerateInput,
+  GptMessage,
+  GptToolCall,
+} from "../types";
 
 export const GROQ_OPENAI_COMPAT_BASE_URL = "https://api.groq.com/openai/v1";
 export const DEFAULT_OPENAI_MODEL = "gpt-4o-mini";
@@ -27,7 +32,7 @@ function toChatMessages(
   input: GptGenerateInput
 ): OpenAI.Chat.ChatCompletionMessageParam[] {
   const map = (message: GptMessage): OpenAI.Chat.ChatCompletionMessageParam => ({
-    role: message.role,
+    role: message.role as "system" | "assistant" | "user",
     content: message.content ?? "",
   });
 
@@ -36,6 +41,38 @@ function toChatMessages(
     ...(input.systemInstructions ?? []).map(map),
     { role: "user", content: input.prompt },
   ];
+}
+
+function toAgentMessages(
+  messages: GptMessage[]
+): OpenAI.Chat.ChatCompletionMessageParam[] {
+  return messages.map((message) => {
+    if (message.role === "tool") {
+      return {
+        role: "tool" as const,
+        tool_call_id: message.tool_call_id ?? "",
+        content: message.content ?? "",
+      };
+    }
+    if (message.role === "assistant" && message.tool_calls?.length) {
+      return {
+        role: "assistant" as const,
+        content: message.content ?? null,
+        tool_calls: message.tool_calls.map((tc) => ({
+          id: tc.id,
+          type: "function" as const,
+          function: {
+            name: tc.function.name,
+            arguments: tc.function.arguments,
+          },
+        })),
+      };
+    }
+    return {
+      role: message.role as "system" | "assistant" | "user",
+      content: message.content ?? "",
+    };
+  });
 }
 
 function mapProviderError(error: unknown, providerLabel: string): never {
@@ -139,6 +176,50 @@ export function createOpenAiGptAdapter(
         });
         return completion.choices[0]?.message?.content ?? "";
       } catch (error) {
+        mapProviderError(error, providerLabel);
+      }
+    },
+
+    async completeTurn(input: GptCompleteTurnInput, signal?: AbortSignal) {
+      try {
+        const completion = await client.chat.completions.create(
+          {
+            model,
+            messages: toAgentMessages(input.messages),
+            max_tokens: input.maxTokens ?? maxTokens,
+            temperature: input.temperature ?? temperature,
+            ...(input.tools?.length
+              ? {
+                  tools: input.tools,
+                  tool_choice: input.toolChoice ?? "auto",
+                }
+              : {}),
+          },
+          { signal }
+        );
+
+        const choice = completion.choices[0];
+        const message = choice?.message;
+        const toolCalls: GptToolCall[] = (message?.tool_calls ?? []).map(
+          (tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: {
+              name: tc.function.name,
+              arguments: tc.function.arguments ?? "{}",
+            },
+          })
+        );
+
+        return {
+          content: message?.content ?? null,
+          toolCalls,
+          finishReason: choice?.finish_reason ?? null,
+        };
+      } catch (error) {
+        if (signal?.aborted) {
+          return { content: null, toolCalls: [], finishReason: "abort" };
+        }
         mapProviderError(error, providerLabel);
       }
     },

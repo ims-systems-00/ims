@@ -125,6 +125,11 @@ describe("createAiService", () => {
         onChunk("Alice");
       }),
       generateText: vi.fn(async () => "Single shot reply"),
+      completeTurn: vi.fn(async () => ({
+        content: "ok",
+        toolCalls: [],
+        finishReason: "stop",
+      })),
     };
     activities = {
       recordAnalysisSaved: vi.fn(async () => undefined),

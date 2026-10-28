@@ -195,12 +195,22 @@ export function createAiContextAdapter(deps: {
         if (filters.openOnly !== false) {
           filter.status = { $ne: "Complete" };
         }
-        if (filters.priorityHigh) {
+        if (filters.priorityHigh || filters.priority === "High") {
           filter.priority = "High";
+        } else if (filters.priority === "Medium" || filters.priority === "Low") {
+          filter.priority = filters.priority;
         }
         if (filters.overdue) {
           filter.dueDate = { $lt: new Date() };
           filter.status = { $ne: "Complete" };
+        }
+        if (
+          typeof filters.updatedSinceDays === "number" &&
+          filters.updatedSinceDays > 0
+        ) {
+          const since = new Date();
+          since.setUTCDate(since.getUTCDate() - filters.updatedSinceDays);
+          filter.updatedAt = { $gte: since };
         }
         const docs = await getTaskModel()
           .find(filter)
@@ -228,12 +238,46 @@ export function createAiContextAdapter(deps: {
       }
 
       if (module === "risks") {
+        const filter: Record<string, unknown> = {
+          organizationId,
+          deletedAt: null,
+        };
+        const riskStatus = filters.riskStatus?.trim();
+        if (riskStatus === "Escalated") {
+          Object.assign(filter, {
+            "mitigated.status": { $ne: true },
+            "accepted.status": { $ne: true },
+            "escalated.status": true,
+          });
+        } else if (riskStatus === "Accepted") {
+          Object.assign(filter, {
+            "mitigated.status": { $ne: true },
+            "accepted.status": true,
+          });
+        } else if (riskStatus === "Mitigated") {
+          Object.assign(filter, { "mitigated.status": true });
+        } else if (riskStatus === "Open") {
+          Object.assign(filter, {
+            "mitigated.status": { $ne: true },
+            "accepted.status": { $ne: true },
+            "escalated.status": { $ne: true },
+          });
+        } else if (filters.openOnly !== false) {
+          // Default open-ish: not mitigated
+          Object.assign(filter, {
+            "mitigated.status": { $ne: true },
+          });
+        }
+        if (
+          typeof filters.updatedSinceDays === "number" &&
+          filters.updatedSinceDays > 0
+        ) {
+          const since = new Date();
+          since.setUTCDate(since.getUTCDate() - filters.updatedSinceDays);
+          filter.updatedAt = { $gte: since };
+        }
         const docs = await getRiskModel()
-          .find({
-            organizationId,
-            deletedAt: null,
-            status: { $nin: ["Mitigated", "Closed", "Deleted"] },
-          })
+          .find(filter)
           .sort({ updatedAt: -1 })
           .limit(limit)
           .lean();
@@ -346,6 +390,43 @@ export function createAiContextAdapter(deps: {
         .catch(() => []);
       return docs.map((row) =>
         truncate(String((row as { value?: string }).value ?? ""), 160)
+      );
+    },
+
+    async searchDocuments(input) {
+      if (
+        !(await canRead(
+          deps.authorizer,
+          input.identity,
+          "document-management"
+        ))
+      ) {
+        return [];
+      }
+      const q = input.query.trim();
+      if (q.length < 2) return [];
+      const limit = Math.min(10, Math.max(1, input.limit ?? 6));
+      const pattern = {
+        $regex: q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+        $options: "i",
+      };
+      const docs = await getDocumentTreeModel()
+        .find({
+          organizationId: input.organizationId,
+          deletedAt: null,
+          type: "document",
+          $or: [
+            { name: pattern },
+            { reference: pattern },
+            { "documentData.purpose": pattern },
+          ],
+        })
+        .sort({ updatedAt: -1 })
+        .limit(limit)
+        .lean()
+        .catch(() => []);
+      return docs.map((d) =>
+        toListCard(documentCard(d as Record<string, unknown>))
       );
     },
   };

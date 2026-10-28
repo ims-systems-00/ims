@@ -47,6 +47,10 @@ export type {
   ListAiResponsesQuery,
   PaginatedAiResponses,
   GptGenerateInput,
+  GptCompleteTurnInput,
+  GptCompleteTurnResult,
+  GptToolDefinition,
+  GptToolCall,
   GptMessage,
   GptMessageRole,
 } from "./types";
@@ -55,4 +59,10 @@ export {
   AI_SOURCE_MODULE_TYPES,
   GPT_MESSAGE_ROLES,
 } from "./types";
+export { ALICE_CHAT_TOOLS } from "./tools/registry";
+export { executeAliceTool } from "./tools/execute";
+export {
+  detectPromptInjectionSignals,
+  ALICE_CHAT_LATENCY_SLO_MS,
+} from "./lib/chat-telemetry";
 export type { AiActorProfile } from "./ports";
