@@ -6,9 +6,13 @@ import {
 } from "@tanstack/react-query";
 import { activityKeys } from "@/modules/activities";
 import {
+  createAiChatThread,
   createAiResponse,
+  deleteAiChatThread,
   deleteAiResponse,
+  getAiChatThread,
   getAiResponse,
+  listAiChatThreads,
   listAiResponses,
   updateAiResponse,
 } from "../api/ai";
@@ -38,6 +42,8 @@ export const aiKeys = {
       moduleId,
       sortDir: "desc",
     }),
+  chatThreads: () => [...aiKeys.all, "chat-threads"] as const,
+  chatThread: (id: string) => [...aiKeys.all, "chat-thread", id] as const,
 };
 
 function invalidateAiAndActivity(
@@ -158,6 +164,45 @@ export function useDeleteAiResponseMutation() {
         data.source.moduleType,
         data.source.moduleId
       );
+    },
+  });
+}
+
+export function useAiChatThreadsQuery(enabled = true) {
+  return useQuery({
+    queryKey: aiKeys.chatThreads(),
+    queryFn: listAiChatThreads,
+    enabled,
+  });
+}
+
+export function useAiChatThreadQuery(id: string | undefined) {
+  return useQuery({
+    queryKey: aiKeys.chatThread(id ?? ""),
+    queryFn: () => getAiChatThread(id!),
+    enabled: Boolean(id),
+  });
+}
+
+export function useCreateAiChatThreadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body?: {
+      title?: string;
+      pinnedRecords?: Array<{ module: string; id: string }>;
+    }) => createAiChatThread(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: aiKeys.chatThreads() });
+    },
+  });
+}
+
+export function useDeleteAiChatThreadMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteAiChatThread(id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: aiKeys.chatThreads() });
     },
   });
 }

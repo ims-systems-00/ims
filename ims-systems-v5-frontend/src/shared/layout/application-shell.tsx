@@ -5,6 +5,10 @@ import {
   navigationSections,
 } from "@/shared/navigation";
 import { NotificationPopupQueue } from "@/modules/notifications";
+import {
+  AliceChatPanel,
+  FloatingAliceButton,
+} from "@/modules/ai";
 import { AppNavbar } from "./app-navbar";
 import { AppSidebar } from "./app-sidebar";
 import { MainContent } from "./page-header";
@@ -41,6 +45,8 @@ export function ApplicationShell() {
         </main>
       </div>
       <NotificationPopupQueue />
+      <AliceChatPanel />
+      <FloatingAliceButton />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { Menu } from "lucide-react";
 import aliceIcon from "@/assets/images/Type=Icon Dark BG.png";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { useAliceChatStore } from "@/modules/ai";
 import { GlobalSearch } from "./global-search";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { NotificationBell } from "@/modules/notifications";
@@ -10,14 +11,14 @@ import { OrganisationSwitcher } from "./organisation-switcher";
 import { ThemeSelector } from "./theme-selector";
 import { UserMenu } from "./user-menu";
 
-const ALICE_EXTERNAL_URL = "https://alice.imssystems.tech/";
-
 type AppNavbarProps = {
   breadcrumbs: BreadcrumbItem[];
   onMenuClick: () => void;
 };
 
 export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
+  const openChat = useAliceChatStore((state) => state.openChat);
+
   return (
     <header className="sticky top-0 z-30 flex h-[var(--navbar-height)] shrink-0 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur-sm md:px-6">
       <Button
@@ -72,13 +73,12 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
       </nav>
 
       <div className="flex items-center gap-1 sm:gap-1.5">
-        <a
-          href={ALICE_EXTERNAL_URL}
-          target="_blank"
-          rel="noopener noreferrer"
+        <button
+          type="button"
           className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-offset-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Open Alice AI (opens in a new tab)"
+          aria-label="Open Alice AI chat"
           title="Alice AI"
+          onClick={() => openChat()}
         >
           <img
             src={aliceIcon}
@@ -87,7 +87,7 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
             width={32}
             height={32}
           />
-        </a>
+        </button>
         <GlobalSearch />
         <OrganisationSwitcher />
         <ThemeSelector />

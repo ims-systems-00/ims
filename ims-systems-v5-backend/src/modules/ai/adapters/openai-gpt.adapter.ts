@@ -32,8 +32,8 @@ function toChatMessages(
   });
 
   return [
-    ...input.conversation.map(map),
-    ...input.systemInstructions.map(map),
+    ...(input.conversation ?? []).map(map),
+    ...(input.systemInstructions ?? []).map(map),
     { role: "user", content: input.prompt },
   ];
 }
@@ -111,7 +111,7 @@ export function createOpenAiGptAdapter(
           {
             model,
             messages: toChatMessages(input),
-            max_tokens: maxTokens,
+            max_tokens: input.maxTokens ?? maxTokens,
             temperature,
             stream: true,
           },
@@ -134,7 +134,7 @@ export function createOpenAiGptAdapter(
         const completion = await client.chat.completions.create({
           model,
           messages: toChatMessages(input),
-          max_tokens: maxTokens,
+          max_tokens: input.maxTokens ?? maxTokens,
           temperature,
         });
         return completion.choices[0]?.message?.content ?? "";

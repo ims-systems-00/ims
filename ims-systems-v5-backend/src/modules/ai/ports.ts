@@ -1,4 +1,5 @@
 import type { ActivityExtraLog, ActivityModuleType } from "../activities";
+import type { AiContextCard, AiChatPinnedRecord } from "./types/chat";
 import type { GptGenerateInput } from "./types";
 import { AppError } from "../../shared";
 
@@ -100,3 +101,58 @@ export class FallbackAiActorDirectoryAdapter implements AiActorDirectoryPort {
     return map;
   }
 }
+
+/**
+ * Permission-scoped record lookup + search for grounded Alice chat.
+ */
+export type AiContextPort = {
+  searchRecords(input: {
+    organizationId: string;
+    identity: import("../../security").SecurityIdentity;
+    query: string;
+    limit?: number;
+  }): Promise<AiContextCard[]>;
+
+  getRecordCard(input: {
+    organizationId: string;
+    identity: import("../../security").SecurityIdentity;
+    module: string;
+    id: string;
+  }): Promise<AiContextCard | null>;
+
+  listOpenByModule(input: {
+    organizationId: string;
+    identity: import("../../security").SecurityIdentity;
+    module: string;
+    limit?: number;
+    filters?: {
+      priorityHigh?: boolean;
+      openOnly?: boolean;
+      overdue?: boolean;
+    };
+  }): Promise<AiContextCard[]>;
+
+  getActivitiesSummary(input: {
+    organizationId: string;
+    module: string;
+    id: string;
+    limit?: number;
+  }): Promise<string[]>;
+};
+
+export class NoOpAiContextAdapter implements AiContextPort {
+  async searchRecords(): Promise<AiContextCard[]> {
+    return [];
+  }
+  async getRecordCard(): Promise<AiContextCard | null> {
+    return null;
+  }
+  async listOpenByModule(): Promise<AiContextCard[]> {
+    return [];
+  }
+  async getActivitiesSummary(): Promise<string[]> {
+    return [];
+  }
+}
+
+export type { AiChatPinnedRecord };

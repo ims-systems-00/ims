@@ -105,4 +105,6 @@ export type GptGenerateInput = {
   prompt: string;
   systemInstructions: GptMessage[];
   conversation: GptMessage[];
+  /** Per-call override for provider max_tokens (e.g. lean chat). */
+  maxTokens?: number;
 };

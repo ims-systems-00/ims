@@ -18,16 +18,22 @@ export {
 export type { OpenAiGptAdapterOptions } from "./adapters/openai-gpt.adapter";
 export { createAiActivityAdapter } from "./adapters/activity.adapter";
 export { createAiActorDirectoryAdapter } from "./adapters/actor-directory.adapter";
+export { createAiContextAdapter } from "./adapters/context.adapter";
 export {
   NoOpAiGptAdapter,
   NoOpAiActivityAdapter,
+  NoOpAiContextAdapter,
   FallbackAiActorDirectoryAdapter,
 } from "./ports";
 export type {
   AiGptPort,
   AiActivityPort,
   AiActorDirectoryPort,
+  AiContextPort,
 } from "./ports";
+export { createAiChatService } from "./services/ai-chat.service";
+export type { AiChatService } from "./services/ai-chat.service";
+export { createAiChatThreadRepository } from "./repositories/ai-chat-thread.repository";
 export type {
   AiResponse,
   AiResponseRecord,

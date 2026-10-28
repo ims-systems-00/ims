@@ -3,20 +3,29 @@ import type { Authorizer } from "../../../security";
 import {
   FallbackAiActorDirectoryAdapter,
   NoOpAiActivityAdapter,
+  NoOpAiContextAdapter,
   NoOpAiGptAdapter,
   type AiActivityPort,
   type AiActorDirectoryPort,
+  type AiContextPort,
   type AiGptPort,
 } from "../ports";
 import { createAiResponseRepository } from "../repositories/ai-response.repository";
+import { createAiChatThreadRepository } from "../repositories/ai-chat-thread.repository";
 import { createAiService, type AiService } from "../services/ai.service";
+import {
+  createAiChatService,
+  type AiChatService,
+} from "../services/ai-chat.service";
 import { createAiController } from "../controllers/ai.controller";
+import { createAiChatController } from "../controllers/ai-chat.controller";
 
 export type AiRouterDeps = {
   authorizer: Authorizer;
   gpt?: AiGptPort;
   activities?: AiActivityPort;
   actors?: AiActorDirectoryPort;
+  context?: AiContextPort;
 };
 
 /**
@@ -24,16 +33,25 @@ export type AiRouterDeps = {
  */
 export function createAiModule(deps: AiRouterDeps): {
   service: AiService;
+  chat: AiChatService;
   router: Router;
 } {
+  const gpt = deps.gpt ?? new NoOpAiGptAdapter();
   const service = createAiService({
     repository: createAiResponseRepository(),
     authorizer: deps.authorizer,
-    gpt: deps.gpt ?? new NoOpAiGptAdapter(),
+    gpt,
     activities: deps.activities ?? new NoOpAiActivityAdapter(),
     actors: deps.actors ?? new FallbackAiActorDirectoryAdapter(),
   });
+  const chat = createAiChatService({
+    threads: createAiChatThreadRepository(),
+    authorizer: deps.authorizer,
+    gpt,
+    context: deps.context ?? new NoOpAiContextAdapter(),
+  });
   const controller = createAiController(service);
+  const chatController = createAiChatController(chat);
   const router = Router();
 
   router.post("/gpt-stream", controller.streamGpt);
@@ -44,7 +62,13 @@ export function createAiModule(deps: AiRouterDeps): {
   router.put("/responses/:id", controller.update);
   router.delete("/responses/:id", controller.remove);
 
-  return { service, router };
+  router.post("/chat/stream", chatController.streamChat);
+  router.get("/chat/threads", chatController.listThreads);
+  router.post("/chat/threads", chatController.createThread);
+  router.get("/chat/threads/:id", chatController.getThread);
+  router.delete("/chat/threads/:id", chatController.deleteThread);
+
+  return { service, chat, router };
 }
 
 /**

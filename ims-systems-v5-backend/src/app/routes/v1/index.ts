@@ -150,6 +150,7 @@ import {
   createAiModule,
   createAiActivityAdapter,
   createAiActorDirectoryAdapter,
+  createAiContextAdapter,
   createOpenAiGptAdapter,
   GROQ_OPENAI_COMPAT_BASE_URL,
   NoOpAiGptAdapter,
@@ -737,6 +738,10 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     gpt: aiGpt,
     activities: createAiActivityAdapter(activities.application),
     actors: createAiActorDirectoryAdapter(),
+    context: createAiContextAdapter({
+      authorizer: security.authorizer,
+      search: search.service,
+    }),
   });
 
   const documentComplianceLinkHolder: {
