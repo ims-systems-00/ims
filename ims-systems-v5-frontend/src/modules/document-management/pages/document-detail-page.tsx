@@ -251,6 +251,9 @@ export function DocumentDetailPage() {
           <DocumentPreviewPanel
             storageInfo={node.documentData?.storageInfo}
             title={node.name}
+            repositoryId={repositoryId}
+            nodeId={nodeId}
+            canEditInPreview={canAddVersion}
           />
           <DocumentInfoPanel
             node={node}

@@ -53,8 +53,12 @@ export function CreateOrganisationWizard({
   const [postCode, setPostCode] = useState("");
 
   // Partner referral: prefilled from the signup link (?partnerCode=) or
-  // the cached code, editable on the confirm step.
+  // the cached code. Codes arriving via the partner signup URL are locked
+  // (view-only) so the referred org cannot change who referred them.
   const [searchParams] = useSearchParams();
+  const partnerCodeFromLink = Boolean(
+    searchParams.get("partnerCode")?.trim()
+  );
   const [partnerCode, setPartnerCode] = useState<string>(() => {
     const fromUrl = searchParams.get("partnerCode")?.trim();
     if (fromUrl) {
@@ -420,22 +424,44 @@ export function CreateOrganisationWizard({
               </dd>
             </div>
           </dl>
-          <FormField label="Partner code (optional)" htmlFor="partner-code">
+          <FormField
+            label={
+              partnerCodeFromLink
+                ? "Partner referral"
+                : "Partner code (optional)"
+            }
+            htmlFor="partner-code"
+          >
             <Input
               id="partner-code"
               value={partnerCode}
+              readOnly={partnerCodeFromLink}
+              aria-readonly={partnerCodeFromLink || undefined}
               placeholder="Referred by an iMS partner? Enter their code"
-              onChange={(event) => setPartnerCode(event.target.value)}
+              onChange={
+                partnerCodeFromLink
+                  ? undefined
+                  : (event) => setPartnerCode(event.target.value)
+              }
+              className={
+                partnerCodeFromLink
+                  ? "cursor-default bg-muted/40 text-muted-foreground"
+                  : undefined
+              }
             />
             {partnerCode.trim() ? (
               <p className="mt-1 text-[0.75rem] text-muted-foreground">
                 {partnerLookup.isPending
                   ? "Checking partner code…"
                   : partnerLookup.data?.organisationName
-                    ? `Referred by ${partnerLookup.data.organisationName}`
+                    ? partnerCodeFromLink
+                      ? `Referred by ${partnerLookup.data.organisationName} (set by your signup link)`
+                      : `Referred by ${partnerLookup.data.organisationName}`
                     : partnerLookup.isError
                       ? "This partner code was not recognised."
-                      : "Referred over from one of our strategic partners? You should have received a code."}
+                      : partnerCodeFromLink
+                        ? "This referral came from your partner signup link and cannot be changed."
+                        : "Referred over from one of our strategic partners? You should have received a code."}
               </p>
             ) : null}
           </FormField>

@@ -401,3 +401,24 @@ export const MAX_FOLDER_DEPTH = 20;
 export const MAX_SIBLING_NAMES = 100;
 export const MAX_REPO_NAME_LENGTH = 200;
 export const MAX_NODE_NAME_LENGTH = 255;
+
+/** OnlyOffice DocsAPI config returned by editor-session. */
+export type DocumentEditorSession = {
+  documentServerUrl: string;
+  config: {
+    documentType: "word" | "cell" | "slide" | "pdf";
+    document: {
+      fileType: string;
+      key: string;
+      title: string;
+      url: string;
+    };
+    editorConfig: {
+      mode: "edit";
+      callbackUrl: string;
+      user: { id: string; name: string };
+      customization: { forcesave: boolean; autosave: boolean };
+    };
+    token: string;
+  };
+};

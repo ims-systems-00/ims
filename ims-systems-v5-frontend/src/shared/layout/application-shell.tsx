@@ -7,6 +7,7 @@ import {
 import { NotificationPopupQueue } from "@/modules/notifications";
 import {
   AliceChatPanel,
+  AliceChatSheet,
   FloatingAliceButton,
 } from "@/modules/ai";
 import { AppNavbar } from "./app-navbar";
@@ -46,6 +47,7 @@ export function ApplicationShell() {
       </div>
       <NotificationPopupQueue />
       <AliceChatPanel />
+      <AliceChatSheet />
       <FloatingAliceButton />
     </div>
   );

@@ -21,6 +21,7 @@ import type {
   ShareDocumentResult,
   SignDocumentInput,
   SignatureStatus,
+  DocumentEditorSession,
 } from "../types";
 
 function toQuery(
@@ -490,4 +491,15 @@ export function listPublishedDocuments(params: {
 /** Resolve a document node by id (for cross-module deep links). */
 export function getDocumentTreeNode(nodeId: string): Promise<DocumentTreeNode> {
   return apiRequest<DocumentTreeNode>(`/document-trees/${nodeId}`);
+}
+
+/** Mint OnlyOffice editor session for a published Office document. */
+export function createDocumentEditorSession(
+  repositoryId: string,
+  nodeId: string
+): Promise<DocumentEditorSession> {
+  return apiRequest<DocumentEditorSession>(
+    `/document-repositories/${repositoryId}/nodes/${nodeId}/editor-session`,
+    { method: "POST" }
+  );
 }

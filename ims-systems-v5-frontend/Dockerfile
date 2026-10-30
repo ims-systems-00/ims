@@ -17,8 +17,10 @@ COPY ims-systems-v5-frontend ./ims-systems-v5-frontend
 # development-stub security provider allowed until real auth exists.
 ARG VITE_API_BASE_URL=/api/v1
 ARG VITE_SECURITY_PROVIDER=development-stub
+ARG VITE_ONLYOFFICE_URL=
 ENV VITE_API_BASE_URL=$VITE_API_BASE_URL \
-    VITE_SECURITY_PROVIDER=$VITE_SECURITY_PROVIDER
+    VITE_SECURITY_PROVIDER=$VITE_SECURITY_PROVIDER \
+    VITE_ONLYOFFICE_URL=$VITE_ONLYOFFICE_URL
 
 RUN pnpm --filter ims-systems-v5-frontend typecheck \
   && pnpm --filter ims-systems-v5-frontend exec vite build --mode docker

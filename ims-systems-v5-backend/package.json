@@ -15,6 +15,7 @@
     "test:watch": "vitest",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "seed:compliance-catalogues": "tsx scripts/seed-compliance-catalogues.ts",
+    "migrate:v4": "tsx scripts/migrate-v4/index.ts",
     "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts",
     "provision:files-buckets": "tsx scripts/ensure-files-bucket.ts",
     "preflight:prod": "tsx scripts/preflight-prod.ts",

@@ -288,3 +288,24 @@ export type PublicSignatureContext = {
   documentName: string;
   repositoryId: string;
 };
+
+/** OnlyOffice DocsAPI session from POST …/editor-session */
+export type DocumentEditorSession = {
+  documentServerUrl: string;
+  config: {
+    documentType: "word" | "cell" | "slide" | "pdf";
+    document: {
+      fileType: string;
+      key: string;
+      title: string;
+      url: string;
+    };
+    editorConfig: {
+      mode: "edit";
+      callbackUrl: string;
+      user: { id: string; name: string };
+      customization: { forcesave: boolean; autosave: boolean };
+    };
+    token: string;
+  };
+};

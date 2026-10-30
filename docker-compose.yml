@@ -32,6 +32,12 @@ services:
       MONGODB_URI: mongodb://mongodb:27017/ims_v5
       LOG_LEVEL: info
       SECURITY_PROVIDER: development-stub
+      # OnlyOffice in-preview edit (D-27). Callback/file URLs must be
+      # reachable from the onlyoffice container (use service DNS in Compose).
+      ONLYOFFICE_ENABLED: ${ONLYOFFICE_ENABLED:-false}
+      ONLYOFFICE_URL: ${ONLYOFFICE_URL:-http://localhost:8088}
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-dev-onlyoffice-jwt-secret}
+      ONLYOFFICE_CALLBACK_BASE_URL: ${ONLYOFFICE_CALLBACK_BASE_URL:-http://backend:3001/api/v1}
     depends_on:
       mongodb:
         condition: service_healthy
@@ -56,6 +62,7 @@ services:
       args:
         VITE_API_BASE_URL: /api/v1
         VITE_SECURITY_PROVIDER: development-stub
+        VITE_ONLYOFFICE_URL: http://localhost:8088
     restart: unless-stopped
     ports:
       - "7864:80"
@@ -63,5 +70,27 @@ services:
       backend:
         condition: service_healthy
 
+  # In-browser Office editing for Document Management (D-27).
+  # Browser loads DocsAPI from localhost:8088; Document Server must reach
+  # the API + file signed URLs via ONLYOFFICE_CALLBACK_BASE_URL /
+  # FILES_LOCAL_PUBLIC_BASE_URL (host.docker.internal when API is on the host).
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    restart: unless-stopped
+    ports:
+      - "8088:80"
+    extra_hosts:
+      # Linux Docker: let Document Server reach the API on the host
+      # (document download + editor-callback via host.docker.internal).
+      - "host.docker.internal:host-gateway"
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-dev-onlyoffice-jwt-secret}
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: "true"
+    volumes:
+      - ims_v5_onlyoffice_data:/var/www/onlyoffice/Data
+
 volumes:
   ims_v5_mongodb_data:
+  ims_v5_onlyoffice_data:

@@ -769,6 +769,14 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     },
     accessLinkBaseUrl: config?.CLIENT_URL,
     resolveEmailBranding,
+    onlyOffice: config
+      ? {
+          enabled: config.ONLYOFFICE_ENABLED,
+          publicUrl: config.ONLYOFFICE_URL,
+          jwtSecret: config.ONLYOFFICE_JWT_SECRET,
+          callbackBaseUrl: config.ONLYOFFICE_CALLBACK_BASE_URL,
+        }
+      : undefined,
   });
   router.use("/document-management", documentManagement.managementRouter);
   router.use("/document-repositories", documentManagement.repositoriesRouter);

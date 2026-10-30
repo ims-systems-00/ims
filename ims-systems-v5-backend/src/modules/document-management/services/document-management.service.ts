@@ -44,6 +44,17 @@ import type { DocumentRepositoryStore } from "../repositories/document-repositor
 import type { DocumentTreeStore } from "../repositories/document-tree.repository";
 import { normalizeFileMeta } from "../schemas";
 import {
+  ONLYOFFICE_SAVE_STATUSES,
+  isOnlyOfficeEditableFileName,
+  resolveOnlyOfficeFileInfo,
+  rewriteUrlForOnlyOfficeFetch,
+  signEditorSessionToken,
+  signOnlyOfficePayload,
+  verifyEditorSessionToken,
+  type OnlyOfficeCallbackBody,
+  type OnlyOfficeRuntimeConfig,
+} from "../lib/onlyoffice";
+import {
   DOCUMENT_MANAGEMENT_RESOURCE,
   MAX_DOCUMENT_OWNERS,
   MAX_FOLDER_DEPTH,
@@ -60,6 +71,7 @@ import {
   type CreateFileNodesResult,
   type CreateFolderNodeInput,
   type DecideAuthorisationInput,
+  type DocumentEditorSession,
   type DocumentOverviewCounts,
   type DocumentSignature,
   type InviteSignaturesInput,
@@ -130,6 +142,8 @@ export type DocumentManagementServiceDeps = {
   accessLinkBaseUrl?: string;
   /** Resolves org logo/theme for transactional document emails. */
   resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
+  /** OnlyOffice Document Server (in-preview Office edit). */
+  onlyOffice?: OnlyOfficeRuntimeConfig;
 };
 
 export type DocumentManagementService = ReturnType<
@@ -162,6 +176,12 @@ export function createDocumentManagementService(
   const complianceLinks =
     deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter();
   const accessLinkBaseUrl = (deps.accessLinkBaseUrl ?? "").replace(/\/+$/, "");
+  const onlyOffice: OnlyOfficeRuntimeConfig = deps.onlyOffice ?? {
+    enabled: false,
+    publicUrl: "",
+    jwtSecret: "",
+    callbackBaseUrl: "",
+  };
 
   async function brandingFor(
     organizationId: string
@@ -357,7 +377,7 @@ export function createDocumentManagementService(
     }
   }
 
-  return {
+  const api = {
     async overview(
       identity: SecurityIdentity | null | undefined
     ): Promise<DocumentOverviewCounts> {
@@ -1274,6 +1294,232 @@ export function createDocumentManagementService(
       return updated;
     },
 
+    /**
+     * Mint an OnlyOffice DocsAPI editor session for a published Office document.
+     * Saves create a new version via the editor-callback (never overwrite in place).
+     */
+    async createEditorSession(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<DocumentEditorSession> {
+      if (!onlyOffice.enabled) {
+        throw new ValidationAppError("In-browser Office editing is not enabled");
+      }
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "create");
+      await requireRepository(organizationId, repositoryId);
+      const published = await requireNode(organizationId, nodeId);
+      if (
+        published.repositoryId !== repositoryId ||
+        published.type !== "document" ||
+        published.status !== "Published"
+      ) {
+        throw new ValidationAppError(
+          "Only published documents can be edited in the preview"
+        );
+      }
+      const storageInfo = published.documentData?.storageInfo;
+      if (!storageInfo?.Bucket || !(storageInfo.Key || storageInfo.key)) {
+        throw new ValidationAppError("Document file metadata is missing");
+      }
+      if (!isOnlyOfficeEditableFileName(published.name)) {
+        throw new ValidationAppError(
+          "This file type cannot be edited in the preview"
+        );
+      }
+      const officeInfo = resolveOnlyOfficeFileInfo(published.name);
+      if (!officeInfo) {
+        throw new ValidationAppError(
+          "This file type cannot be edited in the preview"
+        );
+      }
+
+      const pending = await trees.findPendingByName(
+        organizationId,
+        repositoryId,
+        published.parentNodeId,
+        published.name
+      );
+      if (pending) {
+        throw new ConflictError(
+          "A pending authorisation already exists for this document."
+        );
+      }
+
+      const browserDocumentUrl = await files.createViewUrl(storageInfo);
+      if (browserDocumentUrl.startsWith("memory://")) {
+        throw new ValidationAppError(
+          "File storage is not available for in-browser editing"
+        );
+      }
+
+      const callbackBase = onlyOffice.callbackBaseUrl.replace(/\/+$/, "");
+      // OnlyOffice DS fetches this URL server-side (from Docker). Rewrite
+      // localhost/127.0.0.1 to the callback host so OO does not hit itself.
+      const documentUrl = rewriteUrlForOnlyOfficeFetch(
+        browserDocumentUrl,
+        callbackBase
+      );
+
+      const base = published.documentData!;
+      const documentKey = [
+        base.threadId || published.id,
+        String(base.dvID ?? 0),
+        published.id,
+      ].join(":");
+
+      const sessionToken = await signEditorSessionToken(onlyOffice.jwtSecret, {
+        organizationId,
+        repositoryId,
+        nodeId: published.id,
+        userId: subjectId,
+        fileName: published.name,
+        bucket: storageInfo.Bucket,
+      });
+
+      const callbackUrl =
+        `${callbackBase}/document-repositories/${encodeURIComponent(repositoryId)}` +
+        `/nodes/${encodeURIComponent(published.id)}/editor-callback` +
+        `?imsToken=${encodeURIComponent(sessionToken)}`;
+
+      const userName =
+        actor.email?.trim() || actor.subjectId || "Document editor";
+
+      const configPayload = {
+        documentType: officeInfo.documentType,
+        document: {
+          fileType: officeInfo.extension,
+          key: documentKey,
+          title: published.name,
+          url: documentUrl,
+        },
+        editorConfig: {
+          mode: "edit" as const,
+          callbackUrl,
+          user: { id: subjectId, name: userName },
+          customization: { forcesave: true, autosave: true },
+        },
+      };
+
+      const token = await signOnlyOfficePayload(
+        onlyOffice.jwtSecret,
+        configPayload
+      );
+
+      return {
+        documentServerUrl: onlyOffice.publicUrl.replace(/\/+$/, ""),
+        config: { ...configPayload, token },
+      };
+    },
+
+    /**
+     * OnlyOffice Document Server save callback. Verifies the session JWT,
+     * stores the saved bytes, and creates a new version via addVersion.
+     * Returns OnlyOffice's `{ error: 0 | 1 }` shape (not the IMS envelope).
+     */
+    async handleEditorCallback(
+      repositoryId: string,
+      nodeId: string,
+      imsToken: string,
+      body: OnlyOfficeCallbackBody
+    ): Promise<{ error: number }> {
+      if (!onlyOffice.enabled) {
+        return { error: 1 };
+      }
+
+      let claims;
+      try {
+        claims = await verifyEditorSessionToken(
+          onlyOffice.jwtSecret,
+          imsToken
+        );
+      } catch {
+        return { error: 1 };
+      }
+
+      if (claims.repositoryId !== repositoryId || claims.nodeId !== nodeId) {
+        return { error: 1 };
+      }
+
+      const status = Number(body.status ?? 0);
+      if (!ONLYOFFICE_SAVE_STATUSES.has(status)) {
+        return { error: 0 };
+      }
+
+      const downloadUrl = typeof body.url === "string" ? body.url.trim() : "";
+      if (!downloadUrl) {
+        return { error: 1 };
+      }
+
+      const officeInfo = resolveOnlyOfficeFileInfo(claims.fileName);
+      if (!officeInfo) {
+        return { error: 1 };
+      }
+
+      let bytes: Buffer;
+      try {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          return { error: 1 };
+        }
+        bytes = Buffer.from(await response.arrayBuffer());
+      } catch {
+        return { error: 1 };
+      }
+
+      let storageInfo;
+      try {
+        storageInfo = await files.writeStoredFile({
+          fileName: claims.fileName,
+          bucket: claims.bucket,
+          contentType: officeInfo.contentType,
+          body: bytes,
+        });
+      } catch {
+        return { error: 1 };
+      }
+
+      const actorIdentity: SecurityIdentity = {
+        subjectId: claims.userId,
+        organizationId: claims.organizationId,
+      };
+
+      const published = await trees.findById(
+        claims.organizationId,
+        claims.nodeId
+      );
+      if (!published?.documentData) {
+        return { error: 1 };
+      }
+
+      const priorAuthorisers =
+        published.documentData.authorisation
+          ?.map((entry) => entry.userId)
+          .filter(Boolean) ?? [];
+      const authorisation =
+        priorAuthorisers.length > 0 ? priorAuthorisers : [claims.userId];
+
+      try {
+        await api.addVersion(actorIdentity, repositoryId, nodeId, {
+          parentNodeId: published.parentNodeId,
+          storageInfo,
+          owners: published.documentData.owners,
+          authorisation,
+        });
+      } catch {
+        try {
+          await files.deleteStoredFile(storageInfo);
+        } catch {
+          // Non-fatal cleanup.
+        }
+        return { error: 1 };
+      }
+
+      return { error: 0 };
+    },
+
     async moveNode(
       identity: SecurityIdentity | null | undefined,
       repositoryId: string,
@@ -2109,6 +2355,8 @@ export function createDocumentManagementService(
       return updated;
     },
   };
+
+  return api;
 
   async function sendExternalInviteEmail(
     record: DocumentSignature,

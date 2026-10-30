@@ -16,6 +16,7 @@ export type OrganisationController = {
   goLive: RequestHandler;
   getCurrent: RequestHandler;
   getById: RequestHandler;
+  ensureAuth0Link: RequestHandler;
   listMine: RequestHandler;
   createCardPaymentSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
@@ -62,6 +63,16 @@ export function createOrganisationController(
     try {
       const { id } = parseWithSchema(organisationIdParamSchema, req.params);
       const data = await service.getById(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const ensureAuth0Link: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.ensureAuth0Link(req.identity, id);
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -169,6 +180,7 @@ export function createOrganisationController(
     goLive,
     getCurrent,
     getById,
+    ensureAuth0Link,
     listMine,
     createCardPaymentSession,
     createBillingPortalSession,

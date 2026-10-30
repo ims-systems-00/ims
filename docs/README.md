@@ -20,6 +20,7 @@
 | Module specifications (business SoT) | [module-specifications/](./module-specifications/) |
 | Organisation onboarding / create org (V4) | [module-specifications/organisation-onboarding.md](./module-specifications/organisation-onboarding.md) |
 | Current-state DB map (V4 investigation) | [MASTER_DB_SCHEMA_PLAN.md](./MASTER_DB_SCHEMA_PLAN.md) |
+| V4→V5 core domain migration | [migration/V4_V5_CORE_MIGRATION.md](./migration/V4_V5_CORE_MIGRATION.md) |
 
 Start with [architecture/V5_ARCHITECTURE.md](./architecture/V5_ARCHITECTURE.md).
 For AI agents: [development/AI_DEVELOPMENT_GUIDE.md](./development/AI_DEVELOPMENT_GUIDE.md).

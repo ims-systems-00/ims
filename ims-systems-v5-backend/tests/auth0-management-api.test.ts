@@ -27,7 +27,12 @@ describe("Auth0ManagementApi", () => {
     expect(await api.createOrganization({ name: "acme" })).toEqual({ id: "org_123" });
     const [tokenUrl, tokenInit] = fetchFn.mock.calls[0];
     expect(tokenUrl).toBe("https://tenant.eu.auth0.com/oauth/token");
-    expect(JSON.parse(tokenInit.body).audience).toBe("https://tenant.eu.auth0.com/api/v2/");
+    expect(tokenInit.headers["Content-Type"]).toBe(
+      "application/x-www-form-urlencoded",
+    );
+    expect(String(tokenInit.body)).toContain(
+      "audience=https%3A%2F%2Ftenant.eu.auth0.com%2Fapi%2Fv2%2F",
+    );
     const [orgUrl, orgInit] = fetchFn.mock.calls[1];
     expect(orgUrl).toBe("https://tenant.eu.auth0.com/api/v2/organizations");
     expect(orgInit.headers.Authorization).toBe("Bearer mgmt-token");

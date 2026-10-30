@@ -87,7 +87,11 @@ function composeBillingAndGoLive(deps: {
   // Management API M2M app is configured).
   const mgmt = createAuth0ManagementApiFromConfig(deps.config);
   const auth0Org = mgmt
-    ? createAuth0OrganisationSideEffectsAdapter({ mgmt, logger: deps.logger })
+    ? createAuth0OrganisationSideEffectsAdapter({
+        mgmt,
+        logger: deps.logger,
+        dbConnectionName: deps.config.AUTH0_DB_CONNECTION,
+      })
     : undefined;
   const withAuth0 = (parts: Array<OrganisationGoLiveSideEffectsPort | undefined>) =>
     composeGoLiveSideEffects([...parts, auth0Org]);

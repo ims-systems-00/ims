@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   addDocumentVersion,
@@ -34,6 +35,7 @@ import {
   signDocumentPublic,
   applyDocumentComplianceClauses,
   clearDocumentComplianceLinks,
+  createDocumentEditorSession,
   getDocumentTreeNode,
   softDeleteDocumentRepository,
   softDeleteNode,
@@ -364,6 +366,20 @@ export function useAddDocumentVersionMutation(repositoryId: string) {
       await invalidateDocumentQueries(queryClient, repositoryId);
     },
   });
+}
+
+export function useCreateDocumentEditorSessionMutation(repositoryId: string) {
+  return useMutation({
+    mutationFn: (nodeId: string) =>
+      createDocumentEditorSession(repositoryId, nodeId),
+  });
+}
+
+export function useInvalidateDocumentQueries(repositoryId?: string) {
+  const queryClient = useQueryClient();
+  return useCallback(() => {
+    return invalidateDocumentQueries(queryClient, repositoryId);
+  }, [queryClient, repositoryId]);
 }
 
 export function useRevisePendingDocumentMutation(repositoryId: string) {

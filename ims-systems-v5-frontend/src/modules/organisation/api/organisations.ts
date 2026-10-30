@@ -45,6 +45,16 @@ export function getOrganisation(id: string): Promise<OrganisationProfile> {
   return apiRequest<OrganisationProfile>(`/organisations/${id}`);
 }
 
+/** Create/link Auth0 Organization so org switch can acquire an org-scoped token. */
+export function ensureOrganisationAuth0Link(
+  organizationId: string
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    `/organisations/${organizationId}/ensure-auth0-link`,
+    { method: "POST" }
+  );
+}
+
 export function listMyOrganisations(): Promise<Organisation[]> {
   return apiRequest<Organisation[]>("/organisations");
 }

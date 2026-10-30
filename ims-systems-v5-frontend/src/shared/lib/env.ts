@@ -44,6 +44,11 @@ const publicEnvSchema = z.object({
    * Example: org_xxxxxxxx
    */
   VITE_AUTH0_ORGANIZATION_ID: z.string().default(""),
+  /**
+   * OnlyOffice Document Server origin (no trailing slash). Empty hides Edit.
+   * Example: http://localhost:8088
+   */
+  VITE_ONLYOFFICE_URL: z.string().default(""),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -55,6 +60,7 @@ export type EnvSource = {
   VITE_AUTH0_CLIENT_ID?: string;
   VITE_AUTH0_AUDIENCE?: string;
   VITE_AUTH0_ORGANIZATION_ID?: string;
+  VITE_ONLYOFFICE_URL?: string;
 };
 
 function readViteEnv(): EnvSource {
@@ -65,6 +71,7 @@ function readViteEnv(): EnvSource {
     VITE_AUTH0_CLIENT_ID: import.meta.env.VITE_AUTH0_CLIENT_ID,
     VITE_AUTH0_AUDIENCE: import.meta.env.VITE_AUTH0_AUDIENCE,
     VITE_AUTH0_ORGANIZATION_ID: import.meta.env.VITE_AUTH0_ORGANIZATION_ID,
+    VITE_ONLYOFFICE_URL: import.meta.env.VITE_ONLYOFFICE_URL,
   };
 }
 

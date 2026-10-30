@@ -80,7 +80,7 @@ describe("createAuth0OrganisationSideEffectsAdapter (N-09)", () => {
     expect(create).toHaveBeenCalledTimes(1);
   });
 
-  it("never throws when Auth0 fails", async () => {
+  it("never throws when Auth0 fails (failSoft default)", async () => {
     const adapter = createAuth0OrganisationSideEffectsAdapter({
       mgmt: {
         getOrganizationByName: vi.fn().mockRejectedValue(new Error("down")),
@@ -94,5 +94,57 @@ describe("createAuth0OrganisationSideEffectsAdapter (N-09)", () => {
     await expect(
       adapter.ensureAuth0Organisation?.({ organizationId: "o" }),
     ).resolves.toBeUndefined();
+  });
+
+  it("rethrows when failSoft is false", async () => {
+    const adapter = createAuth0OrganisationSideEffectsAdapter({
+      mgmt: {
+        getOrganizationByName: vi.fn().mockRejectedValue(new Error("down")),
+        createOrganization: vi.fn(),
+      } as unknown as Auth0ManagementApi,
+      organisations: {
+        findById: vi.fn().mockResolvedValue({ id: "o", name: "A", auth0OrganizationId: null }),
+        linkAuth0OrganizationId: vi.fn(),
+      } as never,
+    });
+    await expect(
+      adapter.ensureAuth0Organisation?.({
+        organizationId: "o",
+        failSoft: false,
+      }),
+    ).rejects.toThrow("down");
+  });
+
+  it("enables DB connection and adds the actor as a member", async () => {
+    const enable = vi.fn().mockResolvedValue(undefined);
+    const addMembers = vi.fn().mockResolvedValue(undefined);
+    const link = vi.fn().mockResolvedValue(undefined);
+    const adapter = createAuth0OrganisationSideEffectsAdapter({
+      mgmt: {
+        getOrganizationByName: vi.fn().mockResolvedValue(null),
+        createOrganization: vi.fn().mockResolvedValue({ id: "org_new" }),
+        getConnectionIdByName: vi.fn().mockResolvedValue("con_db"),
+        enableOrganizationConnection: enable,
+        addOrganizationMembers: addMembers,
+      } as unknown as Auth0ManagementApi,
+      dbConnectionName: "Username-Password-Authentication",
+      organisations: {
+        findById: vi.fn().mockResolvedValue({
+          id: "org1",
+          name: "Acme",
+          auth0OrganizationId: null,
+        }),
+        linkAuth0OrganizationId: link,
+      } as never,
+    });
+    await adapter.ensureAuth0Organisation?.({
+      organizationId: "org1",
+      auth0UserId: "auth0|actor",
+    });
+    expect(enable).toHaveBeenCalledWith({
+      organizationId: "org_new",
+      connectionId: "con_db",
+    });
+    expect(addMembers).toHaveBeenCalledWith("org_new", ["auth0|actor"]);
   });
 });

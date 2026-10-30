@@ -48,25 +48,34 @@ export class Auth0ManagementApi {
     if (this.cached && this.cached.expiresAt > Date.now() + 30_000) {
       return this.cached.token;
     }
+    // Auth0 expects application/x-www-form-urlencoded for /oauth/token.
+    const body = new URLSearchParams({
+      grant_type: "client_credentials",
+      client_id: this.clientId,
+      client_secret: this.clientSecret,
+      audience: `https://${this.domain}/api/v2/`,
+    });
     const res = await this.fetchFn(`https://${this.domain}/oauth/token`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        grant_type: "client_credentials",
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        audience: `https://${this.domain}/api/v2/`,
-      }),
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body,
     });
     if (!res.ok) {
-      throw new Error(`Auth0 Management token request failed (HTTP ${res.status})`);
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Auth0 Management token request failed (HTTP ${res.status})${text ? `: ${text.slice(0, 300)}` : ""}. ` +
+          "Confirm AUTH0_MGMT_* is an M2M app authorized for Auth0 Management API (Applications → APIs → Auth0 Management API → Machine to Machine).",
+      );
     }
-    const body = (await res.json()) as { access_token: string; expires_in?: number };
-    this.cached = {
-      token: body.access_token,
-      expiresAt: Date.now() + (body.expires_in ?? 3600) * 1000,
+    const tokenBody = (await res.json()) as {
+      access_token: string;
+      expires_in?: number;
     };
-    return body.access_token;
+    this.cached = {
+      token: tokenBody.access_token,
+      expiresAt: Date.now() + (tokenBody.expires_in ?? 3600) * 1000,
+    };
+    return this.cached.token;
   }
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
@@ -112,6 +121,59 @@ export class Auth0ManagementApi {
     } catch {
       return null;
     }
+  }
+
+  /** Look up a connection id by name (e.g. Username-Password-Authentication). */
+  async getConnectionIdByName(name: string): Promise<string | null> {
+    const rows = await this.request<Array<{ id: string; name: string }>>(
+      `/connections?strategy=auth0&name=${encodeURIComponent(name)}`,
+    ).catch(() => [] as Array<{ id: string; name: string }>);
+    const match = rows.find((row) => row.name === name) ?? rows[0];
+    return match?.id ?? null;
+  }
+
+  /** Enable a database/social connection on an Auth0 Organization. */
+  async enableOrganizationConnection(input: {
+    organizationId: string;
+    connectionId: string;
+    assignMembershipOnLogin?: boolean;
+  }): Promise<void> {
+    await this.request(
+      `/organizations/${encodeURIComponent(input.organizationId)}/enabled_connections`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          connection_id: input.connectionId,
+          assign_membership_on_login: input.assignMembershipOnLogin ?? true,
+        }),
+      },
+    ).catch(async (error) => {
+      // Already enabled — treat as success.
+      const message = error instanceof Error ? error.message : String(error);
+      if (message.includes("HTTP 409") || message.includes("HTTP 400")) return;
+      throw error;
+    });
+  }
+
+  /** Add Auth0 users as members of an Auth0 Organization. */
+  async addOrganizationMembers(
+    organizationId: string,
+    auth0UserIds: string[],
+  ): Promise<void> {
+    const members = auth0UserIds.map((id) => id.trim()).filter(Boolean);
+    if (members.length === 0) return;
+    await this.request(
+      `/organizations/${encodeURIComponent(organizationId)}/members`,
+      {
+        method: "POST",
+        body: JSON.stringify({ members }),
+      },
+    ).catch(async (error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      // Already a member is fine for idempotent ensure.
+      if (message.includes("HTTP 409") || message.includes("HTTP 400")) return;
+      throw error;
+    });
   }
 
   /**

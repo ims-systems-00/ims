@@ -95,14 +95,14 @@ export function AppSidebar({
     };
   }, [provider, orgQuery.data]);
 
-  const sections = useMemo(
-    () =>
-      filterNavigationSections(
-        buildNavigationSections(licenceFilter),
-        (permission) => permissionAllowed(permission, permissions, provider)
-      ),
-    [permissions, provider, licenceFilter]
-  );
+  const sections = useMemo(() => {
+    // Always show Partnership. The dashboard is org-scoped: partners see
+    // their referrals; non-partners get the apply CTA for this org.
+    return filterNavigationSections(
+      buildNavigationSections(licenceFilter),
+      (permission) => permissionAllowed(permission, permissions, provider)
+    );
+  }, [permissions, provider, licenceFilter]);
 
   return (
     <>

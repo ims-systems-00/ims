@@ -7,17 +7,18 @@ type FloatingAliceButtonProps = {
 };
 
 /**
- * Fixed bottom-right FAB that opens the in-app Alice chatbot.
+ * Fixed bottom-right FAB that opens the general org-wide Alice chat.
  */
 export function FloatingAliceButton({ className }: FloatingAliceButtonProps) {
-  const open = useAliceChatStore((s) => s.open);
-  const toggleChat = useAliceChatStore((s) => s.toggleChat);
+  const surface = useAliceChatStore((s) => s.surface);
+  const open = surface === "float";
+  const toggleFloat = useAliceChatStore((s) => s.toggleFloat);
 
   return (
     <button
       type="button"
-      aria-label={open ? "Close Alice chat" : "Open Alice chat"}
-      title="Alice AI"
+      aria-label={open ? "Close Alice chat" : "Open Alice org-wide chat"}
+      title="Alice AI — organisation"
       className={cn(
         "fixed bottom-5 right-5 z-50 flex size-14 items-center justify-center overflow-hidden rounded-full",
         "bg-foreground shadow-[0_10px_28px_rgb(0_0_0_/0.18)] ring-2 ring-background",
@@ -27,7 +28,7 @@ export function FloatingAliceButton({ className }: FloatingAliceButtonProps) {
         open && "scale-95 ring-primary/40",
         className
       )}
-      onClick={() => toggleChat()}
+      onClick={() => toggleFloat()}
     >
       <img
         src={aliceIcon}
