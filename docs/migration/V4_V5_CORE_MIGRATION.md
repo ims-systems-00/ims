@@ -117,7 +117,13 @@ Skip `ComplianceAutomationRun`.
 3. Cutover — [CUTOVER_CHECKLIST.md](../security/CUTOVER_CHECKLIST.md)
 4. Optional `nextNudgeAt` backfill; skip AI history
 
-### Wave 6 — Parked (out of scope)
+### Wave 6 — Parked archive (Mongo durability)
+
+Copies every non-core / parked V4 collection into V5 as `legacy_<collection>` (preserves `_id`, adds `organizationId` string). No product UI required — so V4 can be retired as system of record later. Validate with `pnpm migrate:v4 --wave=6 --validate-only`.
+
+**Shared multi-org tenant DBs:** Wave 1 stamps `organizationId` from each document’s `organization` field (not the first org in the DB). Re-running Wave 1 repairs mis-stamped functional units and memberships.
+
+Parked domains included in the archive (examples):
 
 | Domain | V4 collections (examples) |
 | ------ | ------------------------- |
@@ -128,7 +134,7 @@ Skip `ComplianceAutomationRun`.
 | Wallet / HR extras | `expensereports`, `worklogs`, `staffalerts`, `walletunits` |
 | Dashboards | `dashboards`, `groupdashboards` |
 
-Wave 0 inventory reports counts for these so a later phase can resume.
+Wave 0 inventory still reports counts; Wave 6 copies them into `legacy_*`.
 
 ## Field maps (Wave 1 highlights)
 
@@ -215,6 +221,9 @@ pnpm migrate:v4 --wave=3 --validate-only
 
 # Wave 5 prints Auth0/OpenFGA runbook (does not invent Auth0 users)
 pnpm migrate:v4 --wave=5
+
+# Wave 6 archives parked/non-core collections as legacy_*
+pnpm migrate:v4 --wave=6 --tenant=ims_v4_db
 ```
 
 Env:
@@ -229,6 +238,7 @@ Env:
 
 ## Related docs
 
+- [V4_TO_V5_USER_CUTOVER.md](./V4_TO_V5_USER_CUTOVER.md) — **ordered ops runbook** (migrate → Auth0 → OpenFGA → users login)
 - [MASTER_DB_SCHEMA_PLAN.md](../MASTER_DB_SCHEMA_PLAN.md) — entity inventory
 - [AUTH0_IDENTITY_BACKFILL.md](../security/AUTH0_IDENTITY_BACKFILL.md)
 - [OPENFGA_MEMBERSHIP_BACKFILL.md](../security/OPENFGA_MEMBERSHIP_BACKFILL.md)

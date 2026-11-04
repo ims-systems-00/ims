@@ -135,7 +135,8 @@ export async function streamGptResponse(
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
-    let code = mapStatusToCode(response.status);
+    let code: ReturnType<typeof mapStatusToCode> | string =
+      mapStatusToCode(response.status);
     try {
       const payload = (await response.json()) as {
         message?: string;
@@ -258,7 +259,8 @@ export async function streamAliceChat(
 
   if (!response.ok) {
     let message = `Request failed with status ${response.status}`;
-    let code = mapStatusToCode(response.status);
+    let code: ReturnType<typeof mapStatusToCode> | string =
+      mapStatusToCode(response.status);
     try {
       const payload = (await response.json()) as {
         message?: string;

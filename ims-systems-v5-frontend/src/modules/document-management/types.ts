@@ -299,6 +299,8 @@ export type DocumentEditorSession = {
       key: string;
       title: string;
       url: string;
+      /** Set for PDFs so OnlyOffice skips the internal checkExtendedPDF probe. */
+      isForm?: boolean;
     };
     editorConfig: {
       mode: "edit";

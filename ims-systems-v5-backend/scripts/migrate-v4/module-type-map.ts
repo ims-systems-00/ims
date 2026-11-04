@@ -159,5 +159,28 @@ export const CORE_COLLECTIONS_BY_WAVE: Record<number, string[]> = {
     "documentsignatures",
     "documentreviewreminders",
   ],
-  4: ["controlstatuses", "controlevidence", "complianceoverviews"],
+  4: ["controlstatuses", "controlevidences", "complianceoverviews"],
 };
+
+/** V5 collection names used for per-org CORE parity checks. */
+export const CORE_V5_PARITY: Array<{
+  wave: number;
+  v4: string;
+  v5: string;
+  /** V4 org field is ObjectId `organization`; V5 is string `organizationId`. */
+  orgFieldV4?: string;
+}> = [
+  { wave: 1, v4: "groups", v5: "functionalunits" },
+  { wave: 1, v4: "memberships", v5: "organisationmemberships" },
+  { wave: 1, v4: "grouppremises", v5: "businesspremises" },
+  { wave: 3, v4: "risks", v5: "risks" },
+  { wave: 3, v4: "incidents", v5: "incidents" },
+  { wave: 3, v4: "cips", v5: "ofis" },
+  { wave: 3, v4: "tasks", v5: "tasks" },
+  { wave: 3, v4: "audits", v5: "audits" },
+  { wave: 3, v4: "documentrepositories", v5: "documentrepositories" },
+  { wave: 3, v4: "documenttrees", v5: "documenttrees" },
+  { wave: 4, v4: "controlstatuses", v5: "controlstatuses" },
+  { wave: 4, v4: "complianceoverviews", v5: "complianceoverviews" },
+  { wave: 4, v4: "controlevidences", v5: "controlevidences" },
+];

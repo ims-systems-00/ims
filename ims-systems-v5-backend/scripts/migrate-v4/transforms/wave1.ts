@@ -9,6 +9,7 @@ import {
   mapEmailVerifiedStatus,
   mapOrgRole,
   msToHhMm,
+  resolveOrganizationId,
   resolveUserId,
 } from "./common";
 
@@ -171,6 +172,8 @@ export function transformMembership(
   organizationId: string,
   ctx: MigrateContext
 ): Record<string, unknown> | null {
+  const org = resolveOrganizationId(doc, organizationId);
+  if (!org) return null;
   const userId = resolveUserId(doc.invitedUserId ?? doc.userId, ctx.userIdRemap);
   if (!userId) return null;
 
@@ -203,7 +206,7 @@ export function transformMembership(
 
   return {
     _id: asId(doc._id)!,
-    organizationId,
+    organizationId: org,
     userId,
     role: mapOrgRole(doc.role),
     jobTitle: String(doc.jobTitle ?? "Not set"),
@@ -232,6 +235,8 @@ export function transformUnitMemberships(
   organizationId: string,
   ctx: MigrateContext
 ): Record<string, unknown>[] {
+  const org = resolveOrganizationId(membershipDoc, organizationId);
+  if (!org) return [];
   const userId = resolveUserId(
     membershipDoc.invitedUserId ?? membershipDoc.userId,
     ctx.userIdRemap
@@ -239,7 +244,7 @@ export function transformUnitMemberships(
   if (!userId) return [];
   const groups = asIdList(membershipDoc.groups);
   return groups.map((functionalUnitId) => ({
-    organizationId,
+    organizationId: org,
     userId,
     functionalUnitId,
   }));
@@ -248,15 +253,17 @@ export function transformUnitMemberships(
 export function transformFunctionalUnit(
   doc: Record<string, unknown>,
   organizationId: string
-): Record<string, unknown> {
+): Record<string, unknown> | null {
   const id = asId(doc._id)!;
+  const org = resolveOrganizationId(doc, organizationId);
+  if (!org) return null;
   const licences = (doc.licenses ?? doc.userLicences ?? {}) as Record<
     string,
     unknown
   >;
   return {
     _id: id,
-    organizationId,
+    organizationId: org,
     reference: String(doc.reference ?? `FU-${id.slice(-6)}`),
     name: String(doc.name ?? "Unnamed unit"),
     accessType: mapAccessType(doc.type ?? doc.accessType),
@@ -284,12 +291,14 @@ export function transformFunctionalUnit(
 export function transformBusinessPremise(
   doc: Record<string, unknown>,
   organizationId: string
-): Record<string, unknown> {
+): Record<string, unknown> | null {
   const id = asId(doc._id)!;
+  const org = resolveOrganizationId(doc, organizationId);
+  if (!org) return null;
   const { createdBy, createdOn } = createdByOn(doc);
   return {
     _id: id,
-    organizationId,
+    organizationId: org,
     reference: String(doc.reference ?? ""),
     name: String(doc.name ?? "Premise"),
     location: String(doc.location ?? "Not set"),
@@ -307,6 +316,8 @@ export function transformInvitation(
   organizationId: string,
   ctx: MigrateContext
 ): Record<string, unknown> | null {
+  const org = resolveOrganizationId(doc, organizationId);
+  if (!org) return null;
   const expiresAt = doc.expiresAt
     ? new Date(doc.expiresAt as string | Date)
     : null;
@@ -317,7 +328,7 @@ export function transformInvitation(
 
   return {
     _id: asId(doc._id)!,
-    organizationId,
+    organizationId: org,
     email: String(doc.email ?? "")
       .trim()
       .toLowerCase(),
@@ -337,7 +348,9 @@ export function transformPartnership(
   doc: Record<string, unknown>,
   organizationId: string,
   ctx: MigrateContext
-): Record<string, unknown> {
+): Record<string, unknown> | null {
+  const org = resolveOrganizationId(doc, organizationId);
+  if (!org) return null;
   const statusRaw = String(doc.status ?? "Pending").toLowerCase();
   const status =
     statusRaw.includes("accept") || statusRaw === "approved"
@@ -345,7 +358,7 @@ export function transformPartnership(
       : "Pending";
   return {
     _id: asId(doc._id)!,
-    organizationId,
+    organizationId: org,
     userId:
       resolveUserId(doc.userId, ctx.userIdRemap) ??
       asId(doc.userId) ??
@@ -364,7 +377,9 @@ export function transformLicenceRequest(
   doc: Record<string, unknown>,
   organizationId: string,
   ctx: MigrateContext
-): Record<string, unknown> {
+): Record<string, unknown> | null {
+  const org = resolveOrganizationId(doc, organizationId);
+  if (!org) return null;
   const { createdBy } = createdByOn(doc);
   const statusRaw = String(doc.status ?? "Pending").toLowerCase();
   const status =
@@ -375,7 +390,7 @@ export function transformLicenceRequest(
         : "Pending";
   return {
     _id: asId(doc._id)!,
-    organizationId,
+    organizationId: org,
     reference: String(doc.reference ?? `LR-${asId(doc._id)!.slice(-6)}`),
     requestedBy:
       resolveUserId(doc.requestedBy, ctx.userIdRemap) ?? createdBy,

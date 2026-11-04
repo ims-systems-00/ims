@@ -230,6 +230,29 @@ const envSchema = z
     /** Public/media bucket (logos, avatars). Optional. V4: AWS_PUBLIC_BUCKET_NAME. */
     AWS_PUBLIC_BUCKET: z.string().default(""),
 
+    /**
+     * Comma-separated V4 per-org private bucket suffixes still referenced by
+     * migrated document metadata. Default matches V4 AWS_BUCKET_NAME.
+     */
+    AWS_LEGACY_BUCKET_SUFFIXES: z
+      .string()
+      .default("-ims-static-resources-bucket")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      ),
+
+    /**
+     * Optional dedicated credentials for reading V4 legacy buckets while
+     * FILES_PROVIDER=local (Compose demo). Falls back to AWS_ACCESS_KEY_ID /
+     * AWS_SECRET_ACCESS_KEY / AWS_REGION when unset.
+     */
+    AWS_LEGACY_ACCESS_KEY_ID: z.string().default(""),
+    AWS_LEGACY_SECRET_ACCESS_KEY: z.string().default(""),
+    AWS_LEGACY_REGION: z.string().default(""),
+
     /** Upload signed URL TTL (seconds). V4 default ~3h. */
     FILES_UPLOAD_URL_TTL_SECONDS: z.coerce
       .number()

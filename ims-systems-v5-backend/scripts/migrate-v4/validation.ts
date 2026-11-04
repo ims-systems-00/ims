@@ -1,6 +1,9 @@
-import mongoose from "mongoose";
+import mongoose, { type Connection, Types } from "mongoose";
 import type { OrphanFkHit, WaveReport } from "./types";
 import { asId } from "./transforms/common";
+import { CORE_V5_PARITY } from "./module-type-map";
+import { legacyCollectionName } from "./waves/wave6-archive";
+import { PARKED_COLLECTIONS } from "./module-type-map";
 
 type FkRule = {
   collection: string;
@@ -244,4 +247,131 @@ export async function attachValidation(
   for (const issue of uniqueIssues) {
     report.notes.push(issue);
   }
+}
+
+/**
+ * Per-organisation V4 vs V5 CORE counts + wrong organizationId stamps on FUs.
+ * Returns human-readable failure lines (empty = pass).
+ */
+export async function validatePerOrgParity(
+  v4Conn: Connection,
+  options?: { sampleOrgIds?: string[] }
+): Promise<string[]> {
+  const failures: string[] = [];
+  const v5 = mongoose.connection.db;
+  if (!v5) {
+    failures.push("V5 mongoose connection not ready for parity validation");
+    return failures;
+  }
+
+  const orgIds = new Set<string>();
+  if (options?.sampleOrgIds?.length) {
+    for (const id of options.sampleOrgIds) orgIds.add(id);
+  } else {
+    const orgs = await v4Conn.db
+      .collection("organizations")
+      .find({}, { projection: { _id: 1 } })
+      .toArray();
+    for (const o of orgs) {
+      const id = asId(o._id);
+      if (id) orgIds.add(id);
+    }
+  }
+
+  for (const orgId of orgIds) {
+    let oid: Types.ObjectId;
+    try {
+      oid = new Types.ObjectId(orgId);
+    } catch {
+      continue;
+    }
+
+    for (const rule of CORE_V5_PARITY) {
+      const v4Exists = await v4Conn.db
+        .listCollections({ name: rule.v4 }, { nameOnly: true })
+        .hasNext();
+      if (!v4Exists) continue;
+
+      const v4Count = await v4Conn.db
+        .collection(rule.v4)
+        .countDocuments({ organization: oid });
+
+      if (v4Count === 0) continue;
+
+      const v5Exists = await v5
+        .listCollections({ name: rule.v5 }, { nameOnly: true })
+        .hasNext();
+      const v5Count = v5Exists
+        ? await v5
+            .collection(rule.v5)
+            .countDocuments({ organizationId: orgId })
+        : 0;
+
+      if (v5Count === 0) {
+        failures.push(
+          `ORG ${orgId}: ${rule.v4}→${rule.v5} V4=${v4Count} V5=0 (CORE gap)`
+        );
+      } else if (v5Count < Math.floor(v4Count * 0.5)) {
+        // Soft warn: allow some skips (expired invites etc.) but flag large loss.
+        failures.push(
+          `ORG ${orgId}: ${rule.v4}→${rule.v5} V4=${v4Count} V5=${v5Count} (<50% retained)`
+        );
+      }
+    }
+
+    // Wrong org stamp: V4 group _id exists in V5 under a different organizationId
+    const v4Groups = await v4Conn.db
+      .collection("groups")
+      .find({ organization: oid }, { projection: { _id: 1 } })
+      .toArray();
+    if (v4Groups.length > 0) {
+      const ids = v4Groups
+        .map((g) => asId(g._id))
+        .filter((id): id is string => Boolean(id))
+        .map((id) => new Types.ObjectId(id));
+      const misStamped = await v5.collection("functionalunits").countDocuments({
+        _id: { $in: ids },
+        organizationId: { $ne: orgId },
+      });
+      if (misStamped > 0) {
+        failures.push(
+          `ORG ${orgId}: ${misStamped} functionalunits mis-stamped under wrong organizationId`
+        );
+      }
+    }
+  }
+
+  return failures;
+}
+
+/** Parked archive coverage: V4 parked count vs V5 legacy_* count. */
+export async function validateParkedArchive(
+  v4Conn: Connection
+): Promise<string[]> {
+  const failures: string[] = [];
+  const v5 = mongoose.connection.db;
+  if (!v5) return ["V5 connection not ready for parked archive validation"];
+
+  for (const parked of PARKED_COLLECTIONS) {
+    const v4Exists = await v4Conn.db
+      .listCollections({ name: parked }, { nameOnly: true })
+      .hasNext();
+    if (!v4Exists) continue;
+    const v4Count = await v4Conn.db.collection(parked).countDocuments({});
+    if (v4Count === 0) continue;
+
+    const legacy = legacyCollectionName(parked);
+    const v5Exists = await v5
+      .listCollections({ name: legacy }, { nameOnly: true })
+      .hasNext();
+    const v5Count = v5Exists
+      ? await v5.collection(legacy).countDocuments({})
+      : 0;
+    if (v5Count < v4Count) {
+      failures.push(
+        `PARKED ${parked}: V4=${v4Count} legacy=${v5Count} (${legacy})`
+      );
+    }
+  }
+  return failures;
 }

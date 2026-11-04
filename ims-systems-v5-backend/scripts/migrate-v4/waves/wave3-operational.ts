@@ -185,9 +185,11 @@ async function runJob(
         stat.migrated += 1;
       } catch (error) {
         stat.failed += 1;
-        stat.errors.push(
-          `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
-        );
+        if (stat.errors.length < 50) {
+          stat.errors.push(
+            `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
       }
     }
   }
@@ -199,23 +201,20 @@ export async function runWave3(
   ctx: MigrateContext
 ): Promise<WaveReport> {
   const startedAt = new Date().toISOString();
-  if (!tenant.organizationId) {
-    return {
-      wave: 3,
-      tenantDb: tenant.dbName,
-      organizationId: null,
-      dryRun: ctx.dryRun,
-      startedAt,
-      finishedAt: new Date().toISOString(),
-      entities: [],
-      orphanFks: [],
-      notes: ["Skipped Wave 3 — no organization"],
-    };
-  }
+  const notes: string[] = [
+    "DocumentAccessToken skipped — regenerate share/sign tokens in V5 as needed.",
+    "Wave 3 is resumable: each job upserts by _id and continues after per-doc failures.",
+  ];
 
+  const organizationId = tenant.organizationId ?? "";
   const entities: EntityStat[] = [];
   for (const job of JOBS) {
-    entities.push(await runJob(tenant, ctx, tenant.organizationId, job));
+    console.log(`  Wave 3 job: ${job.v4}…`);
+    const stat = await runJob(tenant, ctx, organizationId, job);
+    entities.push(stat);
+    notes.push(
+      `checkpoint ${job.v4}: v4=${stat.v4Count} migrated=${stat.migrated} skipped=${stat.skipped} failed=${stat.failed}`
+    );
   }
 
   const report: WaveReport = {
@@ -227,9 +226,7 @@ export async function runWave3(
     finishedAt: new Date().toISOString(),
     entities,
     orphanFks: [],
-    notes: [
-      "DocumentAccessToken skipped — regenerate share/sign tokens in V5 as needed.",
-    ],
+    notes,
   };
 
   if (!ctx.dryRun) {

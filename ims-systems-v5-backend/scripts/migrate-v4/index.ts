@@ -6,6 +6,7 @@
  *   pnpm migrate:v4 --wave=1-4 --tenant=my_tenant_db
  *   pnpm migrate:v4 --wave=3 --validate-only
  *   pnpm migrate:v4 --wave=5
+ *   pnpm migrate:v4 --wave=6 --tenant=ims_v4_db
  *
  * Env:
  *   MONGODB_URI       V5 target
@@ -35,7 +36,13 @@ import { runWave2 } from "./waves/wave2-shared";
 import { runWave3 } from "./waves/wave3-operational";
 import { runWave4 } from "./waves/wave4-compliance";
 import { runWave5 } from "./waves/wave5-authz";
-import { attachValidation } from "./validation";
+import { runWave6 } from "./waves/wave6-archive";
+import {
+  attachValidation,
+  validateParkedArchive,
+  validatePerOrgParity,
+} from "./validation";
+import { seedUserIdentityMaps } from "./seed-user-remap";
 
 async function runWaveForTenant(
   wave: number,
@@ -55,6 +62,48 @@ async function runWaveForTenant(
       notes: [`Validate-only for wave ${wave}`],
     };
     await attachValidation(report, wave);
+    const parity = await validatePerOrgParity(tenant.connection);
+    for (const line of parity.slice(0, 100)) {
+      report.notes.push(line);
+    }
+    if (parity.length > 0) {
+      report.entities.push({
+        collection: "parity",
+        v4Count: 0,
+        migrated: 0,
+        skipped: 0,
+        failed: parity.length,
+        errors: parity.slice(0, 50),
+      });
+    }
+    report.finishedAt = new Date().toISOString();
+    return report;
+  }
+
+  if (ctx.validateOnly && wave === 6) {
+    const report: WaveReport = {
+      wave: 6,
+      tenantDb: tenant.dbName,
+      organizationId: tenant.organizationId,
+      dryRun: true,
+      startedAt: new Date().toISOString(),
+      finishedAt: new Date().toISOString(),
+      entities: [],
+      orphanFks: [],
+      notes: ["Validate-only for wave 6 (parked archive)"],
+    };
+    const parked = await validateParkedArchive(tenant.connection);
+    for (const line of parked) report.notes.push(line);
+    if (parked.length > 0) {
+      report.entities.push({
+        collection: "parked-archive",
+        v4Count: 0,
+        migrated: 0,
+        skipped: 0,
+        failed: parked.length,
+        errors: parked.slice(0, 50),
+      });
+    }
     report.finishedAt = new Date().toISOString();
     return report;
   }
@@ -72,6 +121,8 @@ async function runWaveForTenant(
       return runWave4(tenant, ctx);
     case 5:
       return runWave5(tenant, ctx);
+    case 6:
+      return runWave6(tenant, ctx);
     default:
       throw new Error(`Unknown wave ${wave}`);
   }
@@ -99,6 +150,7 @@ async function main(): Promise<void> {
     emailToUserId: new Map(),
     userIdRemap: new Map(),
     complianceNaturalKeyToId: new Map(),
+    v4ControlMeta: new Map(),
     reports: [],
   };
 
@@ -108,7 +160,8 @@ async function main(): Promise<void> {
   console.log(`V5 target: ${env.v5Uri}`);
   console.log(`V4 base:   ${env.v4UriBase}`);
 
-  const needsV5Write = waves.some((w) => w >= 1) && !cli.validateOnly;
+  const needsV5Write =
+    waves.some((w) => w >= 1 && w !== 5) && !cli.validateOnly;
   const needsV5Read =
     waves.some((w) => w >= 1) || cli.validateOnly || waves.includes(5);
 
@@ -136,6 +189,16 @@ async function main(): Promise<void> {
       console.log(`\n--- Tenant DB: ${dbName} ---`);
       const tenant = await openTenant(env.v4UriBase, dbName);
       try {
+        if (
+          !cli.validateOnly &&
+          waves.some((w) => w >= 1 && w <= 4) &&
+          needsV5Read
+        ) {
+          const seeded = await seedUserIdentityMaps(ctx, tenant.connection);
+          console.log(
+            `User identity seed: ${seeded.v5Emails} emails, ${seeded.remapped} V4→V5 remaps`
+          );
+        }
         for (const wave of waves) {
           // Wave 5 is global (Auth0/OpenFGA); run once after last tenant for Mongo waves
           if (wave === 5 && dbName !== tenantNames[tenantNames.length - 1]) {
@@ -144,6 +207,41 @@ async function main(): Promise<void> {
           const report = await runWaveForTenant(wave, tenant, ctx);
           ctx.reports.push(report);
           printWaveReport(report);
+
+          // After Mongo waves on the last applicable wave set, run hard parity gate
+          if (
+            !cli.validateOnly &&
+            !ctx.dryRun &&
+            (wave === 4 || wave === 6) &&
+            waves.includes(wave)
+          ) {
+            const parity =
+              wave === 4
+                ? await validatePerOrgParity(tenant.connection)
+                : await validateParkedArchive(tenant.connection);
+            if (parity.length > 0) {
+              console.error(
+                `\nParity gate failures (${parity.length}):\n` +
+                  parity.slice(0, 40).join("\n")
+              );
+              report.notes.push(...parity.slice(0, 40));
+              report.entities.push({
+                collection: wave === 4 ? "parity-gate" : "parked-parity-gate",
+                v4Count: 0,
+                migrated: 0,
+                skipped: 0,
+                failed: parity.length,
+                errors: parity.slice(0, 50),
+              });
+              process.exitCode = 1;
+            } else {
+              console.log(
+                wave === 4
+                  ? "\nPer-org CORE parity gate: PASS"
+                  : "\nParked archive parity gate: PASS"
+              );
+            }
+          }
         }
       } finally {
         await disconnectV4(tenant.connection);
@@ -159,6 +257,8 @@ async function main(): Promise<void> {
     if (failed > 0) {
       console.error(`\nMigration finished with ${failed} failed document(s).`);
       process.exitCode = 1;
+    } else if (process.exitCode) {
+      console.error("\nMigration finished with parity gate failures.");
     } else {
       console.log("\nMigration finished successfully.");
     }

@@ -155,7 +155,15 @@ export function createApp(options: CreateAppOptions): CreatedApp {
 
   app.disable("x-powered-by");
   app.locals.email = email;
-  app.use(corsMiddleware());
+  app.use(
+    corsMiddleware([
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:7864",
+      "http://127.0.0.1:7864",
+      config.CLIENT_URL.replace(/\/+$/, ""),
+    ])
+  );
   app.use(correlationIdMiddleware());
 
   const billingWiring = composeBillingAndGoLive({

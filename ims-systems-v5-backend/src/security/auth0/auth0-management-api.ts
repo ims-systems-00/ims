@@ -1,5 +1,6 @@
 /**
- * Auth0 Management API client (N-13 sessions, N-09 Organizations).
+ * Auth0 Management API client (N-13 sessions, N-09 Organizations,
+ * identity backfill: users + change-password emails).
  *
  * Requires a Machine-to-Machine application authorized for the
  * Management API (AUTH0_MGMT_CLIENT_ID / AUTH0_MGMT_CLIENT_SECRET).
@@ -7,13 +8,22 @@
  * Backend-only — the M2M secret must never reach the frontend.
  */
 
+import { randomBytes } from "node:crypto";
 import type { AppConfig } from "../../config";
 
 export type Auth0ManagementApiConfig = {
   domain: string;
   clientId: string;
   clientSecret: string;
+  /** SPA / ROPG client id used for dbconnections/change_password emails. */
+  spaClientId?: string;
   fetchFn?: typeof fetch;
+};
+
+export type Auth0ManagedUser = {
+  user_id: string;
+  email?: string;
+  email_verified?: boolean;
 };
 
 type FetchFn = typeof fetch;
@@ -34,6 +44,7 @@ export class Auth0ManagementApi {
   private readonly domain: string;
   private readonly clientId: string;
   private readonly clientSecret: string;
+  private readonly spaClientId: string;
   private readonly fetchFn: FetchFn;
   private cached: { token: string; expiresAt: number } | null = null;
 
@@ -41,6 +52,7 @@ export class Auth0ManagementApi {
     this.domain = normalizeDomain(config.domain);
     this.clientId = config.clientId;
     this.clientSecret = config.clientSecret;
+    this.spaClientId = config.spaClientId?.trim() || config.clientId;
     this.fetchFn = config.fetchFn ?? fetch;
   }
 
@@ -176,6 +188,82 @@ export class Auth0ManagementApi {
     });
   }
 
+  /** Look up a user by email (Auth0 users-by-email). */
+  async getUserByEmail(email: string): Promise<Auth0ManagedUser | null> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+    const rows = await this.request<Auth0ManagedUser[]>(
+      `/users-by-email?email=${encodeURIComponent(normalized)}`,
+    ).catch(() => [] as Auth0ManagedUser[]);
+    return rows[0] ?? null;
+  }
+
+  /**
+   * Create a DB-connection user. Password is a random unusable secret —
+   * callers must trigger change_password so the person can set their own.
+   */
+  async createUser(input: {
+    email: string;
+    connection: string;
+    emailVerified?: boolean;
+    name?: string;
+  }): Promise<Auth0ManagedUser> {
+    const email = input.email.trim().toLowerCase();
+    const password = `Im${randomBytes(24).toString("base64url")}!9a`;
+    return this.request<Auth0ManagedUser>("/users", {
+      method: "POST",
+      body: JSON.stringify({
+        email,
+        connection: input.connection,
+        password,
+        email_verified: input.emailVerified ?? true,
+        verify_email: false,
+        ...(input.name?.trim() ? { name: input.name.trim() } : {}),
+      }),
+    });
+  }
+
+  /** Get existing Auth0 user by email, or create on the DB connection. */
+  async ensureUserByEmail(input: {
+    email: string;
+    connection: string;
+    emailVerified?: boolean;
+    name?: string;
+  }): Promise<{ user: Auth0ManagedUser; created: boolean }> {
+    const existing = await this.getUserByEmail(input.email);
+    if (existing?.user_id) {
+      return { user: existing, created: false };
+    }
+    const created = await this.createUser(input);
+    return { user: created, created: true };
+  }
+
+  /**
+   * Trigger Auth0's change-password email (same endpoint as forgot-password).
+   * Uses the SPA client id when configured so the email branding/client matches login.
+   */
+  async sendChangePasswordEmail(input: {
+    email: string;
+    connection: string;
+  }): Promise<void> {
+    const email = input.email.trim().toLowerCase();
+    const url = `https://${this.domain}/dbconnections/change_password`;
+    const res = await this.fetchFn(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        client_id: this.spaClientId,
+        email,
+        connection: input.connection,
+      }),
+    });
+    if (res.ok) return;
+    const text = await res.text().catch(() => "");
+    throw new Error(
+      `Auth0 change_password failed (HTTP ${res.status})${text ? `: ${text.slice(0, 200)}` : ""}`,
+    );
+  }
+
   /**
    * Revoke a user's refresh tokens / grants so existing sessions cannot
    * be extended. Auth0 access tokens are stateless and remain valid
@@ -202,6 +290,7 @@ export const createAuth0ManagementApiFromConfig = (
     domain: config.AUTH0_DOMAIN,
     clientId: config.AUTH0_MGMT_CLIENT_ID,
     clientSecret: config.AUTH0_MGMT_CLIENT_SECRET,
+    spaClientId: config.AUTH0_SPA_CLIENT_ID || config.AUTH0_ROPG_CLIENT_ID,
     fetchFn,
   });
 };

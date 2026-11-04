@@ -7,9 +7,9 @@ function parseWave(raw: string | undefined): MigrateWave {
   if (!raw || raw === "all") return "all";
   if (raw === "1-4") return "1-4";
   const n = Number(raw);
-  if ([0, 1, 2, 3, 4, 5].includes(n)) return n as MigrateWave;
+  if ([0, 1, 2, 3, 4, 5, 6].includes(n)) return n as MigrateWave;
   throw new Error(
-    `Invalid --wave=${raw}. Use 0|1|2|3|4|5|all|1-4`
+    `Invalid --wave=${raw}. Use 0|1|2|3|4|5|6|all|1-4`
   );
 }
 
@@ -83,7 +83,7 @@ export function loadMigrateEnv(): {
 }
 
 export function wavesToRun(wave: MigrateWave): number[] {
-  if (wave === "all") return [0, 1, 2, 3, 4, 5];
+  if (wave === "all") return [0, 1, 2, 3, 4, 5, 6];
   if (wave === "1-4") return [1, 2, 3, 4];
   return [wave];
 }

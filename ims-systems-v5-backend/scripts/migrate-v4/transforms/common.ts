@@ -16,6 +16,22 @@ export function asId(value: unknown): string | null {
   return String(value);
 }
 
+/**
+ * Resolve organisation id from a V4 document.
+ * Prefer the document's own `organization` / `organizationId` so shared
+ * multi-org tenant DBs (e.g. ims_v4_db) are not stamped with openTenant's
+ * first-org fallback.
+ */
+export function resolveOrganizationId(
+  doc: Record<string, unknown>,
+  fallback: string | null | undefined
+): string {
+  const fromDoc = asId(doc.organization ?? doc.organizationId);
+  if (fromDoc) return fromDoc;
+  if (fallback && fallback.trim()) return fallback.trim();
+  return "";
+}
+
 export function asIdList(values: unknown): string[] {
   if (!Array.isArray(values)) return [];
   return values.map(asId).filter((id): id is string => Boolean(id));
@@ -186,4 +202,178 @@ export function msToHhMm(ms: number | null | undefined): string {
   const h = Math.floor(totalMinutes / 60);
   const m = totalMinutes % 60;
   return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** V4 soft-delete flag → V5 deletedAt. */
+export function deletedAtFromV4(doc: Record<string, unknown>): Date | null {
+  const marker = doc.deleteMarker as
+    | { status?: boolean; deletedAt?: Date | null }
+    | undefined;
+  if (marker?.status) {
+    return marker.deletedAt ?? (doc.deletedAt as Date) ?? new Date();
+  }
+  if (doc.deletedAt) return doc.deletedAt as Date;
+  return null;
+}
+
+/**
+ * V4 assignees are often `{ user: ObjectId, acceptance }` (not `userId`).
+ * Never treat the assignment subdocument `_id` as the user id.
+ */
+export function mapV4Assignees(
+  raw: unknown,
+  remap: Map<string, string>
+): Array<{ userId: string; acceptance: string }> {
+  if (!Array.isArray(raw)) return [];
+  const out: Array<{ userId: string; acceptance: string }> = [];
+  for (const entry of raw) {
+    if (entry == null) continue;
+    let userId: string | null = null;
+    let acceptance = "pending";
+    if (typeof entry === "object") {
+      const a = entry as Record<string, unknown>;
+      userId = resolveUserId(
+        a.user ?? a.userId ?? a.member ?? a.assignee,
+        remap
+      );
+      const acc = String(a.acceptance ?? a.status ?? "pending").toLowerCase();
+      // V5 AssigneeAcceptance: Pending | Accepted | Declined
+      if (acc.includes("accept")) acceptance = "Accepted";
+      else if (acc.includes("reject") || acc.includes("declin"))
+        acceptance = "Declined";
+      else acceptance = "Pending";
+    } else {
+      userId = resolveUserId(entry, remap);
+    }
+    if (userId) out.push({ userId, acceptance });
+  }
+  return out;
+}
+
+/** Map V4 task completion/status onto V5 TASK_STATUSES. */
+export function mapTaskStatus(doc: Record<string, unknown>): string {
+  const completed = doc.completed as
+    | { status?: string | boolean }
+    | undefined;
+  const completedRaw = completed?.status;
+  if (
+    completedRaw === true ||
+    completedRaw === "Complete" ||
+    completedRaw === "Completed" ||
+    completedRaw === "complete"
+  ) {
+    return "Complete";
+  }
+  const raw = String(doc.status ?? "Pending").trim().toLowerCase();
+  if (raw === "complete" || raw === "completed" || raw === "done") {
+    return "Complete";
+  }
+  if (raw.includes("progress") || raw === "in progress") return "In progress";
+  if (raw === "open" || raw === "pending" || raw === "") return "Pending";
+  if (raw === "in progress") return "In progress";
+  return "Pending";
+}
+
+/** Normalize V4 repository privacy labels to V5 enums. */
+export function mapDocumentPrivacy(raw: unknown): string {
+  const s = String(raw ?? "Organisational").trim();
+  const lower = s.toLowerCase();
+  if (lower === "organisational" || lower === "organizational" || lower === "organisation") {
+    return "Organisational";
+  }
+  if (lower === "business unit" || lower === "businessunit" || lower === "group") {
+    return "Business unit";
+  }
+  if (lower === "only me" || lower === "private" || lower === "personal") {
+    return "Only me";
+  }
+  if (lower === "custom") return "Custom";
+  return "Organisational";
+}
+
+/** Normalize V4 file meta into V5 DocumentFileMeta shape. */
+export function normalizeStorageInfo(
+  raw: unknown
+): { Name: string; Key: string; key: string; Bucket: string } | null {
+  if (!raw || typeof raw !== "object") return null;
+  const s = raw as Record<string, unknown>;
+  const name = String(s.Name ?? s.name ?? s.fileName ?? "").trim();
+  const key = String(s.Key ?? s.key ?? s.storageKey ?? "").trim();
+  const bucket = String(s.Bucket ?? s.bucket ?? "").trim();
+  if (!name || !key || !bucket) return null;
+  return { Name: name, Key: key, key, Bucket: bucket };
+}
+
+/** Map V4 compliance tool labels (often spaced) onto V5 enums. */
+export function mapComplianceTools(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const allowed = new Set([
+    "DSPTNHS",
+    "ISO27001",
+    "ISO27001_2022",
+    "ISO27001_2022_ANNEX_A",
+    "ISO27002",
+    "ISO9001",
+    "ISO45001",
+    "ISO20000",
+    "CQC",
+    "BS9997",
+    "ISO14001",
+    "CRM",
+    "ISO15686_5",
+    "ESG_ENVIRONMENTAL",
+    "ESG_GOVERNANCE",
+    "ESG_SOCIAL",
+  ]);
+  const out: string[] = [];
+  for (const item of raw) {
+    const compact = String(item ?? "")
+      .trim()
+      .replace(/\s+/g, "")
+      .replace(/-/g, "_")
+      .toUpperCase();
+    // Keep known casing from allowed set
+    const match = [...allowed].find((a) => a.toUpperCase() === compact);
+    if (match) out.push(match);
+  }
+  return [...new Set(out)];
+}
+
+export function mapTaskPriority(raw: unknown): string {
+  const s = String(raw ?? "Medium").trim().toLowerCase();
+  if (s === "high" || s === "h") return "High";
+  if (s === "low" || s === "l") return "Low";
+  return "Medium";
+}
+
+/**
+ * V4 rich-text fields are often Draft.js raw JSON strings
+ * (`{"blocks":[{"text":"..."}],"entityMap":{}}`). V5 stores plain text.
+ */
+export function plainTextFromV4RichText(raw: unknown): string {
+  if (raw == null) return "";
+  if (typeof raw === "object") {
+    return draftBlocksToText(raw as { blocks?: unknown });
+  }
+  const trimmed = String(raw).trim();
+  if (!trimmed) return "";
+  if (trimmed.startsWith("{") && trimmed.includes('"blocks"')) {
+    try {
+      return draftBlocksToText(JSON.parse(trimmed) as { blocks?: unknown });
+    } catch {
+      return trimmed;
+    }
+  }
+  return trimmed;
+}
+
+function draftBlocksToText(parsed: { blocks?: unknown }): string {
+  if (!Array.isArray(parsed?.blocks)) return "";
+  return parsed.blocks
+    .map((block) => {
+      if (!block || typeof block !== "object") return "";
+      return String((block as { text?: unknown }).text ?? "");
+    })
+    .join("\n")
+    .trim();
 }

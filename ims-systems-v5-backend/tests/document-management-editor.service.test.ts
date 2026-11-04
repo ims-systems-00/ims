@@ -226,6 +226,9 @@ describe("Document Management OnlyOffice editor session", () => {
     expect(session.config.editorConfig.mode).toBe("edit");
     expect(session.config.editorConfig.callbackUrl).toContain("imsToken=");
     expect(session.config.token).toBeTruthy();
+    // OnlyOffice rejects keys with ":" (403 on /downloadfile).
+    expect(session.config.document.key).toMatch(/^[0-9A-Za-z\-._=]+$/);
+    expect(session.config.document.key).not.toContain(":");
   });
 
   it("rewrites localhost file URLs so OnlyOffice can fetch from Docker", () => {
@@ -267,6 +270,8 @@ describe("Document Management OnlyOffice editor session", () => {
     expect(session.config.documentType).toBe("pdf");
     expect(session.config.document.fileType).toBe("pdf");
     expect(session.config.document.title).toBe("policy.pdf");
+    expect(session.config.document.isForm).toBe(false);
+    expect(session.config.document.key).toMatch(/^[0-9A-Za-z\-._=]+$/);
   });
 
   it("rejects unsupported types and non-Published documents", async () => {

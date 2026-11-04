@@ -3,9 +3,18 @@ import {
   asId,
   asIdList,
   createdByOn,
+  deletedAtFromV4,
   mapAttachments,
   mapComplianceLinks,
+  mapComplianceTools,
+  mapDocumentPrivacy,
   mapSource,
+  mapTaskPriority,
+  mapTaskStatus,
+  mapV4Assignees,
+  normalizeStorageInfo,
+  plainTextFromV4RichText,
+  resolveOrganizationId,
   resolveUserId,
 } from "./common";
 import { mapModuleType } from "../module-type-map";
@@ -14,7 +23,70 @@ function orgId(
   doc: Record<string, unknown>,
   fallback: string
 ): string {
-  return asId(doc.organization ?? doc.organizationId) ?? fallback;
+  return resolveOrganizationId(doc, fallback);
+}
+
+const NOTIFICATION_REF_MAP: Record<string, string> = {
+  notifications: "notifications",
+  tasks: "tasks",
+  risks: "risks",
+  incidents: "incidents",
+  audits: "audits",
+  managementreviews: "management-reviews",
+  "management-reviews": "management-reviews",
+  kpiobjectives: "kpi-objectives",
+  "kpi-objectives": "kpi-objectives",
+  cips: "ofi",
+  ofi: "ofi",
+  ofis: "ofi",
+  suppliers: "suppliers",
+  customers: "customers",
+  users: "users",
+  hardwareassets: "assets",
+  softwareassets: "assets",
+  informationassets: "assets",
+  peopleassets: "assets",
+  premiseassets: "assets",
+  assets: "assets",
+  groups: "functional-units",
+  "functional-units": "functional-units",
+  documentrepositories: "documents",
+  documenttrees: "documents",
+  documents: "documents",
+  calendarevents: "calendar",
+  calenderevents: "calendar",
+  calendar: "calendar",
+  controlstatuses: "compliance",
+  compliance: "compliance",
+  leaves: "leaves",
+};
+
+function mapNotificationReferenceType(raw: unknown): string {
+  const key = String(raw ?? "notifications")
+    .trim()
+    .toLowerCase();
+  return NOTIFICATION_REF_MAP[key] ?? "notifications";
+}
+
+function notificationFlag(
+  raw: unknown,
+  truthyStatus: string,
+  falsyStatus: string
+): { status: string; on: Date | null } {
+  if (raw && typeof raw === "object" && "status" in (raw as object)) {
+    const r = raw as { status?: string | boolean; on?: Date };
+    const status =
+      typeof r.status === "string"
+        ? r.status
+        : r.status
+          ? truthyStatus
+          : falsyStatus;
+    return { status, on: r.on ?? null };
+  }
+  return {
+    status: Boolean(raw) ? truthyStatus : falsyStatus,
+    on: null,
+  };
 }
 
 function buId(doc: Record<string, unknown>): string | undefined {
@@ -64,7 +136,7 @@ export function transformTag(
     _id: asId(doc._id)!,
     organizationId: orgId(doc, organizationId),
     name: String(doc.name ?? "Untitled tag"),
-    description: String(doc.description ?? ""),
+    description: plainTextFromV4RichText(doc.description),
     applicableModules: Array.isArray(doc.applicableModules)
       ? doc.applicableModules.map((m) => mapModuleType(String(m)) ?? String(m))
       : [],
@@ -230,17 +302,30 @@ export function transformInvoice(
 ): Record<string, unknown> {
   const id = asId(doc._id)!;
   const { createdBy, createdOn } = createdByOn(doc);
+  // Unique index (organizationId, number) — never leave number null.
+  const numberRaw = doc.number ?? doc.invoiceNumber;
+  let number = Number(numberRaw);
+  if (!Number.isFinite(number) || number <= 0) {
+    // Stable positive int from ObjectId hex (avoids colliding nulls).
+    number = parseInt(id.slice(-8), 16) % 1_000_000_000 || 1;
+  }
+  const customerId = asId(doc.customer ?? doc.customerId) ?? "migration-unknown-customer";
   return {
     _id: id,
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `INV-${id.slice(-6)}`),
-    customerId: asId(doc.customer ?? doc.customerId),
-    groupId: buId(doc),
+    number,
+    customerId,
+    customerName: String(doc.customerName ?? doc.customer ?? "Migrated customer"),
+    groupId: buId(doc) ?? null,
     accountManagerId: resolveUserId(
       doc.accountManager ?? doc.accountManagerId,
       ctx.userIdRemap
     ),
-    status: String(doc.status ?? "Draft"),
+    status: ["Draft", "Sent", "Paid"].includes(String(doc.status))
+      ? String(doc.status)
+      : "Draft",
+    dueDate: (doc.dueDate as Date) ?? createdOn,
     entries: Array.isArray(doc.entries) ? doc.entries : [],
     createdBy: resolveUserId(createdBy, ctx.userIdRemap) ?? createdBy,
     createdOn,
@@ -304,7 +389,9 @@ export function transformRisk(
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `RSK-${id.slice(-6)}`),
     title: String(doc.title ?? "Risk"),
-    description: String(doc.description ?? doc.title ?? "Migrated risk"),
+    description:
+      plainTextFromV4RichText(doc.description) ||
+      String(doc.title ?? "Migrated risk"),
     type: mapRiskType(doc.type),
     businessUnitId: buId(doc),
     categoryId: asId(doc.category ?? doc.categoryId ?? doc.tagsAndCategories),
@@ -370,7 +457,9 @@ export function transformIncident(
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `INC-${id.slice(-6)}`),
     title: String(doc.title ?? "Incident"),
-    description: String(doc.description ?? doc.title ?? "Migrated incident"),
+    description:
+      plainTextFromV4RichText(doc.description) ||
+      String(doc.title ?? "Migrated incident"),
     priority: String(doc.priority ?? "P3"),
     privacy: doc.privacy,
     businessUnitId: buId(doc),
@@ -418,9 +507,10 @@ export function transformOfi(
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `OFI-${id.slice(-6)}`),
     title: String(doc.title ?? "OFI"),
-    opportunityForImprovement: String(
-      doc.opportunityForImprovement ?? doc.description ?? doc.title ?? "Migrated OFI"
-    ),
+    opportunityForImprovement:
+      plainTextFromV4RichText(
+        doc.opportunityForImprovement ?? doc.description
+      ) || String(doc.title ?? "Migrated OFI"),
     ownerId: resolveUserId(doc.owner ?? doc.ownerId, ctx.userIdRemap),
     businessUnitId: buId(doc) ?? "unknown",
     cost: doc.cost != null ? Number(doc.cost) : undefined,
@@ -452,40 +542,37 @@ export function transformTask(
 ): Record<string, unknown> {
   const id = asId(doc._id)!;
   const { createdBy, createdOn } = createdByOn(doc);
-  const assignees = Array.isArray(doc.assignedTo)
-    ? doc.assignedTo.map((a: unknown) => {
-        if (typeof a === "object" && a && "userId" in a) {
-          return {
-            userId: resolveUserId(
-              (a as { userId: unknown }).userId,
-              ctx.userIdRemap
-            ),
-            acceptance: (a as { acceptance?: string }).acceptance ?? "pending",
-          };
-        }
-        return {
-          userId: resolveUserId(a, ctx.userIdRemap),
-          acceptance: "pending",
-        };
-      })
-    : [];
+  const assignees = mapV4Assignees(doc.assignedTo ?? doc.assignees, ctx.userIdRemap);
+  const completed = doc.completed as
+    | { by?: unknown; on?: Date; status?: unknown }
+    | undefined;
+  const status = mapTaskStatus(doc);
 
   return {
     _id: id,
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `TSK-${id.slice(-6)}`),
     name: String(doc.name ?? doc.title ?? "Task"),
-    description: doc.description ? String(doc.description) : undefined,
+    description: doc.description
+      ? plainTextFromV4RichText(doc.description)
+      : undefined,
     businessUnitId: buId(doc),
     assignees,
-    priority: String(doc.priority ?? "Medium"),
-    status: doc.completed?.status ? "Completed" : String(doc.status ?? "Open"),
+    priority: mapTaskPriority(doc.priority),
+    teamPriority: Boolean(doc.teamPriority),
+    status,
+    completedBy:
+      status === "Complete"
+        ? resolveUserId(completed?.by, ctx.userIdRemap)
+        : null,
+    completedOn: status === "Complete" ? (completed?.on ?? null) : null,
+    // V4 field is `due` (not `dueDate`).
     dueDate: doc.dueDate ?? doc.due ?? null,
     source: mapSource(doc.source),
     createdBy: resolveUserId(createdBy, ctx.userIdRemap) ?? createdBy,
     createdOn,
     nextNudgeAt: null,
-    deletedAt: null,
+    deletedAt: deletedAtFromV4(doc),
   };
 }
 
@@ -573,25 +660,48 @@ export function transformNotification(
   doc: Record<string, unknown>,
   organizationId: string,
   ctx: MigrateContext
-): Record<string, unknown> {
+): Record<string, unknown> | null {
   const id = asId(doc._id)!;
+  const recipientUserId = resolveUserId(
+    doc.user ?? doc.recipientUserId ?? doc.recipient,
+    ctx.userIdRemap
+  );
+  if (!recipientUserId) return null;
+
+  const title = String(doc.title ?? doc.message ?? "Notification").trim() || "Notification";
+  const message = String(doc.message ?? doc.body ?? doc.title ?? title).trim() || title;
+  const { createdBy, createdOn } = createdByOn(doc);
+
   return {
     _id: id,
     organizationId: orgId(doc, organizationId),
-    reference: String(doc.reference ?? `NTF-${id.slice(-6)}`),
-    recipientUserId: resolveUserId(
-      doc.user ?? doc.recipientUserId ?? doc.recipient,
-      ctx.userIdRemap
+    recipientUserId,
+    businessUnitId: buId(doc),
+    title,
+    message,
+    referenceType: mapNotificationReferenceType(
+      doc.referenceType ?? doc.moduleType ?? doc.module
     ),
-    referenceType: mapModuleType(String(doc.referenceType ?? doc.moduleType ?? "")) ,
-    referenceModuleId: asId(doc.referenceModule ?? doc.module ?? doc.referenceModuleId),
-    title: doc.title ?? doc.message,
-    body: doc.body ?? doc.message,
-    sent: Boolean(doc.sent),
-    read: Boolean(doc.read),
-    popUp: Boolean(doc.popUp),
+    referenceModuleId: asId(
+      doc.referenceModule ?? doc.module ?? doc.referenceModuleId
+    ),
+    screenIdentifier: doc.screenIdentifier ? String(doc.screenIdentifier) : undefined,
+    params: {
+      id: asId(doc.params && (doc.params as { id?: unknown }).id) ?? null,
+      businessUnitId:
+        asId(
+          doc.params && (doc.params as { businessUnitId?: unknown }).businessUnitId
+        ) ??
+        buId(doc) ??
+        null,
+    },
+    icon: doc.icon ? String(doc.icon) : undefined,
+    sent: notificationFlag(doc.sent, "sent", "unsent"),
+    read: notificationFlag(doc.read, "read", "unread"),
+    popUp: notificationFlag(doc.popUp, "unread", "read"),
     isOrganizational: Boolean(doc.isOrganizational),
-    createdAt: doc.createdAt,
+    createdBy: resolveUserId(createdBy, ctx.userIdRemap) ?? createdBy,
+    createdOn,
   };
 }
 
@@ -707,14 +817,19 @@ export function transformDocumentRepository(
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `DR-${id.slice(-6)}`),
     name: String(doc.name ?? "Repository"),
-    privacy: String(doc.privacy ?? "Private"),
+    description: doc.description
+      ? plainTextFromV4RichText(doc.description)
+      : undefined,
+    privacy: mapDocumentPrivacy(doc.privacy),
     businessUnitId: buId(doc) ?? null,
-    owners: asIdList(doc.owners).map((id) => ctx.userIdRemap.get(id) ?? id),
-    sharedWith: asIdList(doc.sharedWith),
+    owners: asIdList(doc.owners).map((uid) => ctx.userIdRemap.get(uid) ?? uid),
+    sharedWith: asIdList(doc.sharedWith).map(
+      (uid) => ctx.userIdRemap.get(uid) ?? uid
+    ),
     reviewInterval: doc.reviewInterval,
     createdBy: resolveUserId(createdBy, ctx.userIdRemap) ?? createdBy,
     createdOn,
-    deletedAt: null,
+    deletedAt: deletedAtFromV4(doc),
   };
 }
 
@@ -724,21 +839,84 @@ export function transformDocumentTree(
   ctx: MigrateContext
 ): Record<string, unknown> {
   const id = asId(doc._id)!;
+  const { createdBy, createdOn } = createdByOn(doc);
+  const type = String(doc.type ?? "document") === "folder" ? "folder" : "document";
+  const rawData = (doc.documentData ?? null) as Record<string, unknown> | null;
+  const storageInfo = normalizeStorageInfo(
+    rawData?.storageInfo ??
+      doc.storageInfo ??
+      doc.storage ??
+      rawData?.fileMetaInfo
+  );
+
+  let documentData: Record<string, unknown> | null = null;
+  if (type === "document") {
+    const purposeRaw = String(rawData?.purpose ?? doc.purpose ?? "Document");
+    documentData = {
+      storageInfo,
+      purpose: purposeRaw,
+      owners: asIdList(rawData?.owners ?? doc.owners).map(
+        (uid) => ctx.userIdRemap.get(uid) ?? uid
+      ),
+      applicableModules: Array.isArray(rawData?.applicableModules)
+        ? rawData!.applicableModules
+        : [],
+      complianceTools: mapComplianceTools(rawData?.complianceTools),
+      complianceLinks: mapComplianceLinks(
+        rawData?.complianceLinks ??
+          doc.complianceLinks ??
+          doc.compliance ??
+          doc.isoControls
+      ),
+      authorisation: Array.isArray(rawData?.authorisation)
+        ? (rawData!.authorisation as unknown[]).map((entry) => {
+            const a = (entry ?? {}) as Record<string, unknown>;
+            return {
+              userId:
+                resolveUserId(a.user ?? a.userId, ctx.userIdRemap) ?? "migration",
+              status: String(a.status ?? "Pending"),
+              handledOn: a.handledOn ?? null,
+              message: String(a.message ?? ""),
+            };
+          })
+        : [],
+      classification: String(rawData?.classification ?? ""),
+      dvID: Number(rawData?.dvID ?? 0) || 0,
+      conformance: Number(rawData?.conformance ?? -1),
+      threadId: String(rawData?.threadId ?? ""),
+      reviewDate: rawData?.reviewDate ?? doc.reviewDate ?? null,
+    };
+  }
+
+  const v4Folder = (doc.folderData ?? null) as Record<string, unknown> | null;
+  const folderModified = (v4Folder?.modified ?? null) as
+    | { by?: unknown; on?: Date }
+    | null;
+
   return {
     _id: id,
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `DT-${id.slice(-6)}`),
     repositoryId: asId(doc.repository ?? doc.repositoryId),
-    parentNodeId: asId(doc.parent ?? doc.parentNodeId),
-    type: String(doc.type ?? "document"),
+    // V4 field is `parentNode` (not `parent` / `parentNodeId`).
+    parentNodeId: asId(
+      doc.parentNode ?? doc.parent ?? doc.parentNodeId ?? doc.parentId
+    ),
+    type,
+    status: String(doc.status ?? "Published"),
     name: String(doc.name ?? doc.title ?? "Document"),
-    documentData: doc.documentData ?? {
-      owners: asIdList(doc.owners),
-      complianceLinks: mapComplianceLinks(doc.complianceLinks ?? doc.compliance),
-      reviewDate: doc.reviewDate,
-      storageInfo: doc.storageInfo ?? doc.storage,
-    },
-    deletedAt: null,
+    documentData,
+    folderData:
+      type === "folder"
+        ? {
+            reviewDate: v4Folder?.reviewDate ?? doc.reviewDate ?? null,
+            modifiedBy: resolveUserId(folderModified?.by, ctx.userIdRemap),
+            modifiedOn: folderModified?.on ?? null,
+          }
+        : null,
+    createdBy: resolveUserId(createdBy, ctx.userIdRemap) ?? createdBy,
+    createdOn,
+    deletedAt: deletedAtFromV4(doc),
   };
 }
 

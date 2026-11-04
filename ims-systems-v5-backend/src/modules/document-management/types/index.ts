@@ -412,6 +412,8 @@ export type DocumentEditorSession = {
       key: string;
       title: string;
       url: string;
+      /** PDFs: skip checkExtendedPDF when set (OnlyOffice internal probe). */
+      isForm?: boolean;
     };
     editorConfig: {
       mode: "edit";

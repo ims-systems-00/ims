@@ -7,6 +7,7 @@ export type MigrateWave =
   | 3
   | 4
   | 5
+  | 6
   | "all"
   | "1-4";
 
@@ -59,6 +60,22 @@ export type MigrateContext = {
   userIdRemap: Map<string, string>;
   /** toolkit|clause → V5 compliance control id */
   complianceNaturalKeyToId: Map<string, string>;
+  /** V4 compliancecontrols _id → clause/title metadata for Wave 4 */
+  v4ControlMeta: Map<
+    string,
+    {
+      name: string;
+      clause: string;
+      title: string;
+      description: string;
+      annex: string;
+      note: string;
+      isLocked: boolean;
+      parentClause: string | null;
+      childrenClauses: string[];
+      moreInfo: unknown;
+    }
+  >;
   reports: WaveReport[];
 };
 

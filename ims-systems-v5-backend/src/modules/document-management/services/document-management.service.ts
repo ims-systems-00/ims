@@ -1364,11 +1364,16 @@ export function createDocumentManagementService(
       );
 
       const base = published.documentData!;
+      // OnlyOffice allows key chars: 0-9 a-z A-Z -._= (no ":"). Colons
+      // produce 403 on /downloadfile and crash the PDF extended check.
       const documentKey = [
         base.threadId || published.id,
         String(base.dvID ?? 0),
         published.id,
-      ].join(":");
+      ]
+        .join("_")
+        .replace(/[^0-9A-Za-z\-._=]/g, "_")
+        .slice(0, 128);
 
       const sessionToken = await signEditorSessionToken(onlyOffice.jwtSecret, {
         organizationId,
@@ -1394,6 +1399,10 @@ export function createDocumentManagementService(
           key: documentKey,
           title: published.name,
           url: documentUrl,
+          // Skip OnlyOffice's internal PDF probe (checkExtendedPDF →
+          // /downloadfile) which 403s when key/JWT are wrong; open as
+          // a regular PDF, not a fillable form.
+          ...(officeInfo.documentType === "pdf" ? { isForm: false } : {}),
         },
         editorConfig: {
           mode: "edit" as const,

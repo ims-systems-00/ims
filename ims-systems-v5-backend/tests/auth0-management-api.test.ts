@@ -70,4 +70,101 @@ describe("Auth0ManagementApi", () => {
     expect(isAuth0ManagementConfigured(withMgmt)).toBe(true);
     expect(createAuth0ManagementApiFromConfig(withMgmt)).not.toBeNull();
   });
+
+  it("getUserByEmail returns the first match", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ access_token: "t", expires_in: 3600 }))
+      .mockResolvedValueOnce(
+        jsonRes([{ user_id: "auth0|abc", email: "a@b.com" }]),
+      );
+    const api = new Auth0ManagementApi({
+      domain: "tenant.auth0.com",
+      clientId: "id",
+      clientSecret: "secret",
+      fetchFn: fetchFn as typeof fetch,
+    });
+    expect(await api.getUserByEmail("A@B.com")).toEqual({
+      user_id: "auth0|abc",
+      email: "a@b.com",
+    });
+    expect(fetchFn.mock.calls[1][0]).toContain(
+      "/api/v2/users-by-email?email=a%40b.com",
+    );
+  });
+
+  it("ensureUserByEmail creates when missing", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ access_token: "t", expires_in: 3600 }))
+      .mockResolvedValueOnce(jsonRes([]))
+      .mockResolvedValueOnce(
+        jsonRes({ user_id: "auth0|new", email: "n@x.com" }, 201),
+      );
+    const api = new Auth0ManagementApi({
+      domain: "tenant.auth0.com",
+      clientId: "id",
+      clientSecret: "secret",
+      fetchFn: fetchFn as typeof fetch,
+    });
+    const result = await api.ensureUserByEmail({
+      email: "n@x.com",
+      connection: "Username-Password-Authentication",
+    });
+    expect(result.created).toBe(true);
+    expect(result.user.user_id).toBe("auth0|new");
+    const createBody = JSON.parse(String(fetchFn.mock.calls[2][1].body));
+    expect(createBody.email).toBe("n@x.com");
+    expect(createBody.connection).toBe("Username-Password-Authentication");
+    expect(typeof createBody.password).toBe("string");
+    expect(createBody.password.length).toBeGreaterThan(16);
+  });
+
+  it("ensureUserByEmail reuses existing users", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ access_token: "t", expires_in: 3600 }))
+      .mockResolvedValueOnce(
+        jsonRes([{ user_id: "auth0|exist", email: "e@x.com" }]),
+      );
+    const api = new Auth0ManagementApi({
+      domain: "tenant.auth0.com",
+      clientId: "id",
+      clientSecret: "secret",
+      fetchFn: fetchFn as typeof fetch,
+    });
+    const result = await api.ensureUserByEmail({
+      email: "e@x.com",
+      connection: "Username-Password-Authentication",
+    });
+    expect(result).toEqual({
+      created: false,
+      user: { user_id: "auth0|exist", email: "e@x.com" },
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+  });
+
+  it("sendChangePasswordEmail posts to dbconnections with SPA client", async () => {
+    const fetchFn = vi.fn().mockResolvedValueOnce(new Response("ok", { status: 200 }));
+    const api = new Auth0ManagementApi({
+      domain: "tenant.auth0.com",
+      clientId: "m2m",
+      clientSecret: "secret",
+      spaClientId: "spa-client",
+      fetchFn: fetchFn as typeof fetch,
+    });
+    await api.sendChangePasswordEmail({
+      email: "U@X.com",
+      connection: "Username-Password-Authentication",
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(fetchFn.mock.calls[0][0]).toBe(
+      "https://tenant.auth0.com/dbconnections/change_password",
+    );
+    expect(JSON.parse(String(fetchFn.mock.calls[0][1].body))).toEqual({
+      client_id: "spa-client",
+      email: "u@x.com",
+      connection: "Username-Password-Authentication",
+    });
+  });
 });

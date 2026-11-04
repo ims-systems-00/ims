@@ -98,6 +98,14 @@ export function DocumentPreviewPanel({
     if (!nodeId || !repositoryId) return;
     try {
       const session = await editorMutation.mutateAsync(nodeId);
+      if (
+        !session?.documentServerUrl ||
+        !session.config?.document?.key ||
+        !session.config?.token
+      ) {
+        notify.error("Editor session was incomplete. Check OnlyOffice config.");
+        return;
+      }
       setEditorSession(session);
       setEditing(true);
     } catch (error) {
@@ -210,7 +218,7 @@ export function DocumentPreviewPanel({
       <div className="relative flex min-h-0 flex-1 flex-col bg-muted/20">
         {editing && editorSession ? (
           <ErrorBoundary
-            resetKey={editorSession.config.document.key}
+            resetKey={editorSession.config?.document?.key ?? editorSession.documentServerUrl}
             fallback={
               <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
                 <p className="max-w-md text-sm text-destructive">

@@ -2,16 +2,30 @@ import type { MigrateContext } from "../types";
 import {
   asId,
   mapAttachments,
+  resolveOrganizationId,
   resolveUserId,
 } from "./common";
 
 function orgId(doc: Record<string, unknown>, fallback: string): string {
-  return asId(doc.organization ?? doc.organizationId) ?? fallback;
+  return resolveOrganizationId(doc, fallback);
 }
 
 function naturalKey(toolkit: string, clause: string): string {
-  return `${toolkit}|${clause}`;
+  return `${toolkit.trim()}|${clause.trim()}`;
 }
+
+export type V4ControlMeta = {
+  name: string;
+  clause: string;
+  title: string;
+  description: string;
+  annex: string;
+  note: string;
+  isLocked: boolean;
+  parentClause: string | null;
+  childrenClauses: string[];
+  moreInfo: unknown;
+};
 
 function mapEvidenceType(raw: unknown): string {
   const s = String(raw ?? "raw-file").toLowerCase();
@@ -40,18 +54,62 @@ function mapEvidenceType(raw: unknown): string {
  * Falls back to V4 control id if catalogue map has no entry.
  */
 export function resolveControlId(
+  toolkit: string,
+  clause: string,
   doc: Record<string, unknown>,
   ctx: MigrateContext
 ): string {
-  const toolkit = String(doc.name ?? doc.toolkit ?? "");
-  const clause = String(doc.clause ?? "");
-  if (toolkit && clause) {
-    const mapped = ctx.complianceNaturalKeyToId.get(
-      naturalKey(toolkit, clause)
-    );
+  if (toolkit && clause && clause !== "unknown") {
+    const mapped = ctx.complianceNaturalKeyToId.get(naturalKey(toolkit, clause));
     if (mapped) return mapped;
   }
   return asId(doc.control ?? doc.controlId) ?? asId(doc._id)!;
+}
+
+export function enrichFromV4Control(
+  doc: Record<string, unknown>,
+  ctx: MigrateContext
+): {
+  toolkit: string;
+  clause: string;
+  title: string;
+  description: string;
+  annex: string;
+  note: string;
+  isLocked: boolean;
+  parentClause: string | null;
+  childrenClauses: string[];
+  moreInfo: unknown;
+} {
+  const controlId = asId(doc.control ?? doc.controlId);
+  const meta = controlId ? ctx.v4ControlMeta.get(controlId) : undefined;
+
+  const toolkit = String(
+    meta?.name ?? doc.name ?? doc.toolkit ?? "ISO 27001"
+  ).trim();
+  const clause = String(meta?.clause ?? doc.clause ?? "").trim() || "unknown";
+  const title = String(
+    meta?.title ?? doc.title ?? (clause !== "unknown" ? clause : toolkit)
+  );
+
+  return {
+    toolkit,
+    clause,
+    title,
+    description: String(meta?.description ?? doc.description ?? ""),
+    annex: String(meta?.annex ?? doc.annex ?? ""),
+    note: String(meta?.note ?? doc.note ?? ""),
+    isLocked: Boolean(meta?.isLocked ?? doc.isLocked),
+    parentClause:
+      meta?.parentClause ??
+      (doc.parentClause ? String(doc.parentClause) : null),
+    childrenClauses: meta?.childrenClauses?.length
+      ? meta.childrenClauses
+      : Array.isArray(doc.childrenClauses)
+        ? doc.childrenClauses.map(String)
+        : [],
+    moreInfo: meta?.moreInfo ?? doc.moreInfo ?? null,
+  };
 }
 
 export function transformControlStatus(
@@ -59,24 +117,26 @@ export function transformControlStatus(
   organizationId: string,
   ctx: MigrateContext
 ): Record<string, unknown> {
-  const toolkit = String(doc.name ?? "ISO 27001");
-  const clause = String(doc.clause ?? "unknown");
+  const enriched = enrichFromV4Control(doc, ctx);
   return {
     _id: asId(doc._id)!,
     organizationId: orgId(doc, organizationId),
-    name: toolkit,
-    controlId: resolveControlId(doc, ctx),
-    clause,
-    title: String(doc.title ?? clause),
-    description: String(doc.description ?? ""),
-    annex: String(doc.annex ?? ""),
-    note: String(doc.note ?? ""),
-    isLocked: Boolean(doc.isLocked),
-    parentClause: doc.parentClause ? String(doc.parentClause) : null,
-    childrenClauses: Array.isArray(doc.childrenClauses)
-      ? doc.childrenClauses.map(String)
-      : [],
-    moreInfo: doc.moreInfo ?? null,
+    name: enriched.toolkit,
+    controlId: resolveControlId(
+      enriched.toolkit,
+      enriched.clause,
+      doc,
+      ctx
+    ),
+    clause: enriched.clause,
+    title: enriched.title,
+    description: enriched.description,
+    annex: enriched.annex,
+    note: enriched.note,
+    isLocked: enriched.isLocked,
+    parentClause: enriched.parentClause,
+    childrenClauses: enriched.childrenClauses,
+    moreInfo: enriched.moreInfo,
     selected: String(doc.selected ?? "Not selected"),
     state: String(doc.state ?? "Not implemented"),
     compliancePercentage: Number(doc.compliancePercentage ?? 0),
@@ -117,7 +177,9 @@ export function transformControlEvidence(
     evidenceType: mapEvidenceType(doc.evidenceType),
     relatedRiskId: asId(doc.risk ?? doc.relatedRiskId),
     relatedIncidentId: asId(doc.incident ?? doc.relatedIncidentId),
-    relatedCipId: asId(doc.cip ?? doc.relatedCipId ?? doc.ofi),
+    relatedCipId: asId(
+      doc.cip ?? doc.relatedCip ?? doc.relatedCipId ?? doc.ofi
+    ),
     relatedDocumentId: asId(
       doc.document ?? doc.documenttree ?? doc.relatedDocumentId
     ),

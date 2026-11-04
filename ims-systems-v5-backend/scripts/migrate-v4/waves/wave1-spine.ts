@@ -60,8 +60,10 @@ async function migrateCollection(
         stat.migrated += 1;
       } catch (error) {
         stat.failed += 1;
-        const message = error instanceof Error ? error.message : String(error);
-        stat.errors.push(`${asId(raw._id)}: ${message}`);
+        if (stat.errors.length < 50) {
+          const message = error instanceof Error ? error.message : String(error);
+          stat.errors.push(`${asId(raw._id)}: ${message}`);
+        }
       }
     }
   }
@@ -74,7 +76,8 @@ export async function runWave1(
   const startedAt = new Date().toISOString();
   const notes: string[] = [];
 
-  if (!tenant.organizationId) {
+  const orgCount = await countCollection(tenant.connection, "organizations");
+  if (!tenant.organizationId && orgCount === 0) {
     return {
       wave: 1,
       tenantDb: tenant.dbName,
@@ -88,7 +91,12 @@ export async function runWave1(
     };
   }
 
-  const organizationId = tenant.organizationId;
+  // Fallback only when a child doc lacks organization; shared multi-org DBs
+  // resolve per-document via resolveOrganizationId in transforms.
+  const organizationId = tenant.organizationId ?? "";
+  notes.push(
+    "Wave 1 stamps organizationId from each document's organization field (shared-DB safe)."
+  );
   const orgModel = getOrganisationModel();
   const userModel = getUserModel();
   const membershipModel = getOrganisationMembershipModel();
@@ -144,9 +152,11 @@ export async function runWave1(
         stats.users.migrated += 1;
       } catch (error) {
         stats.users.failed += 1;
-        stats.users.errors.push(
-          `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
-        );
+        if (stats.users.errors.length < 50) {
+          stats.users.errors.push(
+            `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
       }
     }
   }
@@ -185,9 +195,11 @@ export async function runWave1(
         unitDocs.push(...transformUnitMemberships(raw, organizationId, ctx));
       } catch (error) {
         stats.memberships.failed += 1;
-        stats.memberships.errors.push(
-          `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
-        );
+        if (stats.memberships.errors.length < 50) {
+          stats.memberships.errors.push(
+            `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
       }
     }
   }

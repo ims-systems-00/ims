@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
 import { ImageUploadControl } from "@/modules/files/components/image-upload-control";

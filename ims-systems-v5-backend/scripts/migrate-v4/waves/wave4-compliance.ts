@@ -32,6 +32,38 @@ async function loadCatalogueMap(ctx: MigrateContext): Promise<number> {
   return ctx.complianceNaturalKeyToId.size;
 }
 
+/** Load V4 compliancecontrols so controlstatuses (which lack clause) can join. */
+async function loadV4ControlMeta(
+  tenant: TenantHandle,
+  ctx: MigrateContext
+): Promise<number> {
+  ctx.v4ControlMeta.clear();
+  for await (const batch of iterateCollection(
+    tenant.connection,
+    "compliancecontrols"
+  )) {
+    for (const raw of batch) {
+      const id = asId(raw._id);
+      if (!id) continue;
+      ctx.v4ControlMeta.set(id, {
+        name: String(raw.name ?? ""),
+        clause: String(raw.clause ?? ""),
+        title: String(raw.title ?? raw.clause ?? ""),
+        description: String(raw.description ?? ""),
+        annex: String(raw.annex ?? ""),
+        note: String(raw.note ?? ""),
+        isLocked: Boolean(raw.isLocked),
+        parentClause: raw.parentClause ? String(raw.parentClause) : null,
+        childrenClauses: Array.isArray(raw.childrenClauses)
+          ? raw.childrenClauses.map(String)
+          : [],
+        moreInfo: raw.moreInfo ?? null,
+      });
+    }
+  }
+  return ctx.v4ControlMeta.size;
+}
+
 async function migrateSimple(
   tenant: TenantHandle,
   ctx: MigrateContext,
@@ -56,9 +88,11 @@ async function migrateSimple(
         stat.migrated += 1;
       } catch (error) {
         stat.failed += 1;
-        stat.errors.push(
-          `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
-        );
+        if (stat.errors.length < 50) {
+          stat.errors.push(
+            `${asId(raw._id)}: ${error instanceof Error ? error.message : String(error)}`
+          );
+        }
       }
     }
   }
@@ -72,32 +106,26 @@ export async function runWave4(
   const startedAt = new Date().toISOString();
   const notes: string[] = [];
 
-  if (!tenant.organizationId) {
-    return {
-      wave: 4,
-      tenantDb: tenant.dbName,
-      organizationId: null,
-      dryRun: ctx.dryRun,
-      startedAt,
-      finishedAt: new Date().toISOString(),
-      entities: [],
-      orphanFks: [],
-      notes: ["Skipped Wave 4 — no organization"],
-    };
-  }
-
+  const organizationId = tenant.organizationId ?? "";
   const catalogueSize = await loadCatalogueMap(ctx);
   if (catalogueSize === 0) {
     notes.push(
       "WARNING: V5 compliance catalogue is empty. Run `pnpm seed:compliance-catalogues` then re-run Wave 4 so controlId remaps by toolkit|clause."
     );
   } else {
-    notes.push(`Loaded ${catalogueSize} catalogue natural keys for controlId remap.`);
+    notes.push(
+      `Loaded ${catalogueSize} catalogue natural keys for controlId remap.`
+    );
   }
 
-  const organizationId = tenant.organizationId;
+  const v4Controls = await loadV4ControlMeta(tenant, ctx);
+  notes.push(
+    `Loaded ${v4Controls} V4 compliancecontrols for clause/title join on controlstatuses.`
+  );
+
   const entities: EntityStat[] = [];
 
+  console.log("  Wave 4 job: controlstatuses…");
   entities.push(
     await migrateSimple(
       tenant,
@@ -109,17 +137,20 @@ export async function runWave4(
     )
   );
 
+  // V4 collection is plural `controlevidences` (not `controlevidence`).
+  console.log("  Wave 4 job: controlevidences…");
   entities.push(
     await migrateSimple(
       tenant,
       ctx,
       organizationId,
-      "controlevidence",
+      "controlevidences",
       getControlEvidenceModel,
       transformControlEvidence
     )
   );
 
+  console.log("  Wave 4 job: complianceoverviews…");
   entities.push(
     await migrateSimple(
       tenant,
@@ -132,11 +163,16 @@ export async function runWave4(
   );
 
   notes.push("ComplianceAutomationRun skipped (V5-native; leave empty).");
+  for (const e of entities) {
+    notes.push(
+      `checkpoint ${e.collection}: v4=${e.v4Count} migrated=${e.migrated} failed=${e.failed}`
+    );
+  }
 
   const report: WaveReport = {
     wave: 4,
     tenantDb: tenant.dbName,
-    organizationId,
+    organizationId: tenant.organizationId,
     dryRun: ctx.dryRun,
     startedAt,
     finishedAt: new Date().toISOString(),
