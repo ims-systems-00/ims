@@ -1,17 +1,32 @@
-# IMS Systems V5 — Docker Compose (local / production-like)
+# IMS Systems V5 — full local Docker Compose stack
 #
-# Access the application at: http://localhost:7864
-# Browser → frontend (Nginx) → backend → mongodb
+# Stub demo (default):
+#   docker compose up -d --build
+#   → http://localhost:7864  (dev-stub user)
 #
-# Backend and MongoDB stay on the internal Compose network (not published).
+# Auth0 + OpenFGA (prod-like local):
+#   1. cp .env.docker.example .env   # fill Auth0 + OpenFGA ids (see docs)
+#   2. ./scripts/docker/openfga-bootstrap.sh
+#   3. Put OPENFGA_STORE_ID / OPENFGA_MODEL_ID into .env
+#   4. SECURITY_PROVIDER=auth0-openfga  (+ matching VITE_*)
+#   5. docker compose up -d --build
+#   → http://localhost:7864  (real Auth0 login)
+#
+# Docs: docs/development/DOCKER_COMPOSE.md
+# NEVER: docker compose down -v  (wipes volumes)
+
+name: ims-v5
 
 services:
   mongodb:
     image: mongo:7
     restart: unless-stopped
+    # Internal only — avoids clash with host mongod on :27017.
+    # Backend default URI is mongodb://mongodb:27017/ims_v5
+    # For your existing host DB set in .env:
+    #   MONGODB_URI=mongodb://host.docker.internal:27017/ims_v5_dev
     volumes:
       - ims_v5_mongodb_data:/data/db
-    # No host port published — internal only
     healthcheck:
       test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
       interval: 10s
@@ -19,23 +34,127 @@ services:
       retries: 10
       start_period: 20s
 
+  openfga-db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: openfga
+      POSTGRES_PASSWORD: ${OPENFGA_DB_PASSWORD:-openfga}
+      POSTGRES_DB: openfga
+    volumes:
+      - ims_v5_openfga_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openfga -d openfga"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  openfga-migrate:
+    image: openfga/openfga:v1.8.4
+    command: migrate
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:${OPENFGA_DB_PASSWORD:-openfga}@openfga-db:5432/openfga?sslmode=disable
+    depends_on:
+      openfga-db:
+        condition: service_healthy
+    restart: "on-failure"
+
+  openfga:
+    image: openfga/openfga:v1.8.4
+    command: run
+    restart: unless-stopped
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:${OPENFGA_DB_PASSWORD:-openfga}@openfga-db:5432/openfga?sslmode=disable
+      OPENFGA_HTTP_ADDR: 0.0.0.0:8080
+      OPENFGA_PLAYGROUND_ENABLED: "true"
+    ports:
+      - "${OPENFGA_HOST_PORT:-18080}:8080"
+    depends_on:
+      openfga-migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/grpc_health_probe", "-addr=:8081"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   backend:
     build:
       context: .
       dockerfile: ims-systems-v5-backend/Dockerfile
     restart: unless-stopped
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     environment:
-      # development-stub remains the only security provider; NODE_ENV must
-      # stay development until Auth0/OpenFGA adapters exist (see env guards).
       NODE_ENV: development
       PORT: "3001"
-      MONGODB_URI: mongodb://mongodb:27017/ims_v5
-      LOG_LEVEL: info
-      SECURITY_PROVIDER: development-stub
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      # From repo-root .env (Compose loads it). Default stub for one-command demo.
+      # Set SECURITY_PROVIDER=auth0-openfga in .env for Auth0 — do not export it
+      # casually in the shell without Auth0 + OpenFGA ids filled in.
+      SECURITY_PROVIDER: ${SECURITY_PROVIDER:-development-stub}
+      # Compose Mongo by default; override to host.docker.internal for your real DB.
+      MONGODB_URI: ${MONGODB_URI:-mongodb://mongodb:27017/ims_v5}
+      FILES_ENABLED: "true"
+      FILES_PROVIDER: local
+      FILES_LOCAL_ROOT: /data/local-files
+      # Browser-facing base for signed local PUT/GET URLs. Use the frontend
+      # origin so uploads stay same-origin via nginx `/api` proxy (avoids CORS).
+      # Do not use the Docker hostname `backend` — the browser cannot resolve it.
+      FILES_LOCAL_PUBLIC_BASE_URL: ${FILES_LOCAL_PUBLIC_BASE_URL:-http://localhost:7864}
+      FILES_LOCAL_SIGNING_SECRET: ${FILES_LOCAL_SIGNING_SECRET:-dev-local-files-signing-secret}
+      AWS_PRIVATE_BUCKET: ${AWS_PRIVATE_BUCKET:-ims-v5-local-demo}
+      # Optional: V4 S3 credentials so migrated document previews work while
+      # FILES_PROVIDER=local (new uploads stay on disk).
+      AWS_REGION: ${AWS_REGION:-eu-west-2}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_LEGACY_BUCKET_SUFFIXES: ${AWS_LEGACY_BUCKET_SUFFIXES:--ims-static-resources-bucket}
+      AWS_LEGACY_ACCESS_KEY_ID: ${AWS_LEGACY_ACCESS_KEY_ID:-}
+      AWS_LEGACY_SECRET_ACCESS_KEY: ${AWS_LEGACY_SECRET_ACCESS_KEY:-}
+      AWS_LEGACY_REGION: ${AWS_LEGACY_REGION:-eu-west-2}
+      ONLYOFFICE_ENABLED: "true"
+      ONLYOFFICE_URL: http://localhost:8088
+      ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-dev-onlyoffice-jwt-secret}
+      ONLYOFFICE_CALLBACK_BASE_URL: http://backend:3001/api/v1
+      OPENFGA_API_URL: ${OPENFGA_API_URL:-http://openfga:8080}
+      OPENFGA_STORE_ID: ${OPENFGA_STORE_ID:-}
+      OPENFGA_MODEL_ID: ${OPENFGA_MODEL_ID:-}
+      OPENFGA_API_TOKEN: ${OPENFGA_API_TOKEN:-}
+      # Auth0 (required when SECURITY_PROVIDER=auth0-openfga) — from .env
+      AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
+      AUTH0_AUDIENCE: ${AUTH0_AUDIENCE:-}
+      AUTH0_ISSUER: ${AUTH0_ISSUER:-}
+      AUTH0_DB_CONNECTION: ${AUTH0_DB_CONNECTION:-Username-Password-Authentication}
+      AUTH0_SPA_CLIENT_ID: ${AUTH0_SPA_CLIENT_ID:-}
+      AUTH0_ROPG_CLIENT_ID: ${AUTH0_ROPG_CLIENT_ID:-}
+      AUTH0_ROPG_CLIENT_SECRET: ${AUTH0_ROPG_CLIENT_SECRET:-}
+      AUTH0_MGMT_CLIENT_ID: ${AUTH0_MGMT_CLIENT_ID:-}
+      AUTH0_MGMT_CLIENT_SECRET: ${AUTH0_MGMT_CLIENT_SECRET:-}
+      CLIENT_URL: ${CLIENT_URL:-http://localhost:7864}
+      # Keep Compose demo off real SMTP — host .env often has EMAIL_ENABLED=true
+      # for Mailtrap, which would fail boot without MAILTRAP_* in the container.
+      EMAIL_ENABLED: "false"
+      EMAIL_PROVIDER: logging
+      # Alice AI — openai needs OPEN_AI_API_KEY; groq needs GROQ_API_KEY.
+      AI_PROVIDER: ${AI_PROVIDER:-openai}
+      OPEN_AI_API_KEY: ${OPEN_AI_API_KEY:-}
+      OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+    volumes:
+      - ims_v5_backend_files:/data/local-files
+    ports:
+      - "${BACKEND_HOST_PORT:-3001}:3001"
     depends_on:
       mongodb:
         condition: service_healthy
-    # No host port published — reached via frontend Nginx /api/
+      openfga:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -44,10 +163,10 @@ services:
           "-e",
           "fetch('http://127.0.0.1:3001/api/v1/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
         ]
-      interval: 15s
+      interval: 10s
       timeout: 5s
-      retries: 10
-      start_period: 30s
+      retries: 12
+      start_period: 60s
 
   frontend:
     build:
@@ -55,13 +174,43 @@ services:
       dockerfile: ims-systems-v5-frontend/Dockerfile
       args:
         VITE_API_BASE_URL: /api/v1
-        VITE_SECURITY_PROVIDER: development-stub
+        VITE_SECURITY_PROVIDER: ${VITE_SECURITY_PROVIDER:-development-stub}
+        VITE_ONLYOFFICE_URL: http://localhost:8088
+        VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
+        VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
+        VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
+        VITE_AUTH0_ORGANIZATION_ID: ${VITE_AUTH0_ORGANIZATION_ID:-}
     restart: unless-stopped
     ports:
-      - "7864:80"
+      - "${FRONTEND_HOST_PORT:-7864}:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  onlyoffice:
+    image: onlyoffice/documentserver:latest
+    restart: unless-stopped
+    ports:
+      - "${ONLYOFFICE_HOST_PORT:-8088}:80"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      JWT_ENABLED: "true"
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-dev-onlyoffice-jwt-secret}
+      JWT_HEADER: Authorization
+      JWT_IN_BODY: "true"
+    volumes:
+      - ims_v5_onlyoffice_data:/var/www/onlyoffice/Data
     depends_on:
       backend:
         condition: service_healthy
 
 volumes:
   ims_v5_mongodb_data:
+    name: ims_v5_mongodb_data
+  ims_v5_backend_files:
+    name: ims_v5_backend_files
+  ims_v5_onlyoffice_data:
+    name: ims_v5_onlyoffice_data
+  ims_v5_openfga_pg:
+    name: ims_v5_openfga_pg

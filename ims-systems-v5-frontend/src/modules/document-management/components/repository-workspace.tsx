@@ -24,6 +24,7 @@ import {
 } from "@/shared/components/row-actions-menu";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
+import { plainTextFromPossiblyRich } from "@/shared/lib/plain-text";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
 import { useSessionSubjectId } from "@/security";
@@ -200,9 +201,9 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
             <span>{repo.reference}</span>
           </p>
           <h1 className="ims-text-page-title">{repo.name}</h1>
-          {repo.description ? (
+          {plainTextFromPossiblyRich(repo.description) ? (
             <p className="max-w-2xl text-[0.8125rem] text-muted-foreground">
-              {repo.description}
+              {plainTextFromPossiblyRich(repo.description)}
             </p>
           ) : null}
         </div>

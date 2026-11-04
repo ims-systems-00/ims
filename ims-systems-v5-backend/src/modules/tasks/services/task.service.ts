@@ -121,10 +121,20 @@ export function createTaskService(deps: TaskServiceDeps) {
     }
   }
 
+  async function canManageTasks(identity: SecurityIdentity): Promise<boolean> {
+    return authorizer.allow({
+      identity,
+      action: "manage",
+      resourceType: TASKS_RESOURCE,
+      organizationId: identity.organizationId,
+    });
+  }
+
   async function requireVisibleTask(
     organizationId: string,
     id: string,
-    subjectId: string
+    subjectId: string,
+    options?: { allowManage?: boolean; identity?: SecurityIdentity }
   ): Promise<Task> {
     const task = await repository.findById(organizationId, id, {
       includeDeleted: true,
@@ -132,10 +142,15 @@ export function createTaskService(deps: TaskServiceDeps) {
     if (!task || task.deletedAt) {
       throw new NotFoundError("This task has been deleted or removed");
     }
-    if (!isVisibleTo(task, subjectId)) {
-      throw new NotFoundError("Task not found");
+    if (isVisibleTo(task, subjectId)) return task;
+    if (
+      options?.allowManage &&
+      options.identity &&
+      (await canManageTasks(options.identity))
+    ) {
+      return task;
     }
-    return task;
+    throw new NotFoundError("Task not found");
   }
 
   async function resolveAssignees(
@@ -242,10 +257,14 @@ export function createTaskService(deps: TaskServiceDeps) {
     ): Promise<PaginatedTasks> {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read");
+      // Super Admin / manage can list the whole org; personal list stays
+      // creator-or-assignee (matches product default for Basic users).
+      const manage = await canManageTasks(actor.identity);
       return repository.listForSubject(
         actor.organizationId,
         actor.identity.subjectId,
-        query
+        query,
+        { scope: manage ? "organization" : "personal" }
       );
     },
 
@@ -258,7 +277,8 @@ export function createTaskService(deps: TaskServiceDeps) {
       return requireVisibleTask(
         actor.organizationId,
         id,
-        actor.identity.subjectId
+        actor.identity.subjectId,
+        { allowManage: true, identity: actor.identity }
       );
     },
 

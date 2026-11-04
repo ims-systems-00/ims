@@ -230,6 +230,29 @@ const envSchema = z
     /** Public/media bucket (logos, avatars). Optional. V4: AWS_PUBLIC_BUCKET_NAME. */
     AWS_PUBLIC_BUCKET: z.string().default(""),
 
+    /**
+     * Comma-separated V4 per-org private bucket suffixes still referenced by
+     * migrated document metadata. Default matches V4 AWS_BUCKET_NAME.
+     */
+    AWS_LEGACY_BUCKET_SUFFIXES: z
+      .string()
+      .default("-ims-static-resources-bucket")
+      .transform((value) =>
+        value
+          .split(",")
+          .map((part) => part.trim())
+          .filter(Boolean)
+      ),
+
+    /**
+     * Optional dedicated credentials for reading V4 legacy buckets while
+     * FILES_PROVIDER=local (Compose demo). Falls back to AWS_ACCESS_KEY_ID /
+     * AWS_SECRET_ACCESS_KEY / AWS_REGION when unset.
+     */
+    AWS_LEGACY_ACCESS_KEY_ID: z.string().default(""),
+    AWS_LEGACY_SECRET_ACCESS_KEY: z.string().default(""),
+    AWS_LEGACY_REGION: z.string().default(""),
+
     /** Upload signed URL TTL (seconds). V4 default ~3h. */
     FILES_UPLOAD_URL_TTL_SECONDS: z.coerce
       .number()
@@ -327,6 +350,21 @@ const envSchema = z
     GROQ_API_KEY: z.string().default(""),
     /** Chat model when AI_PROVIDER=groq. */
     GROQ_MODEL: z.string().default("openai/gpt-oss-120b"),
+
+    /**
+     * OnlyOffice Document Server (Document Management in-preview Office edit).
+     * When ONLYOFFICE_ENABLED=false, editor-session endpoints reject clearly.
+     */
+    ONLYOFFICE_ENABLED: booleanFromEnv.default(false),
+    /** Browser-facing Document Server origin (no trailing slash), e.g. http://localhost:8088 */
+    ONLYOFFICE_URL: z.string().default(""),
+    /** Shared HS256 secret with Document Server JWT_SECRET. */
+    ONLYOFFICE_JWT_SECRET: z.string().default("dev-onlyoffice-jwt-secret"),
+    /**
+     * API base URL reachable by the Document Server for editor callbacks
+     * (no trailing slash), e.g. http://host.docker.internal:3001/api/v1
+     */
+    ONLYOFFICE_CALLBACK_BASE_URL: z.string().default(""),
   })
   .superRefine((value, ctx) => {
     if (
@@ -347,6 +385,27 @@ const envSchema = z
         message:
           "AI_PROVIDER=groq is not allowed when NODE_ENV=production (use openai)",
       });
+    }
+
+    if (value.ONLYOFFICE_ENABLED) {
+      requireNonEmpty(
+        value.ONLYOFFICE_URL,
+        "ONLYOFFICE_URL",
+        "ONLYOFFICE_URL is required when ONLYOFFICE_ENABLED=true",
+        ctx
+      );
+      requireNonEmpty(
+        value.ONLYOFFICE_CALLBACK_BASE_URL,
+        "ONLYOFFICE_CALLBACK_BASE_URL",
+        "ONLYOFFICE_CALLBACK_BASE_URL is required when ONLYOFFICE_ENABLED=true",
+        ctx
+      );
+      requireNonEmpty(
+        value.ONLYOFFICE_JWT_SECRET,
+        "ONLYOFFICE_JWT_SECRET",
+        "ONLYOFFICE_JWT_SECRET is required when ONLYOFFICE_ENABLED=true",
+        ctx
+      );
     }
 
     if (value.SECURITY_PROVIDER === "auth0-openfga") {

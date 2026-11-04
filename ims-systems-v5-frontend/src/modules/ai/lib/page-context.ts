@@ -51,27 +51,77 @@ export function buildPageContext(
   };
 }
 
+/** Human label for the sidebar context chip. */
+export function pageContextLabel(pageContext: AiChatPageContext): string {
+  const selected = pageContext.selectedIds?.[0];
+  const moduleHint = pageContext.moduleHint ?? "other";
+  const moduleLabel = moduleLabelForHint(moduleHint);
+  if (selected) {
+    return `Viewing ${moduleLabel} record`;
+  }
+  return `On ${moduleLabel}`;
+}
+
+export function moduleLabelForHint(moduleHint: string): string {
+  switch (moduleHint) {
+    case "risks":
+      return "Risks";
+    case "incidents":
+      return "Incidents";
+    case "audits":
+      return "Audits";
+    case "documents":
+      return "Documents";
+    case "compliance":
+      return "Compliance";
+    case "ofi":
+      return "Continual improvement";
+    case "tasks":
+      return "Tasks";
+    case "suppliers":
+      return "Suppliers";
+    case "customers":
+      return "Customers";
+    default:
+      return "IMS";
+  }
+}
+
+/** Org-wide suggestions for the floating general chat. */
+export function suggestedPromptsGeneral(): string[] {
+  return [
+    "What open risks and incidents need attention across the organisation?",
+    "Show high priority tasks that need attention ASAP",
+    "Where are we weakest in compliance right now?",
+    "Summarise outstanding work across risks, incidents, and OFIs",
+  ];
+}
+
+/** Page-tailored suggestions for the navbar sidebar sheet. */
 export function suggestedPromptsForModule(
   moduleHint: string | undefined
 ): string[] {
   switch (moduleHint) {
     case "risks":
       return [
-        "Summarise open high risks in my organisation",
+        "Summarise open high risks relevant to this page",
         "What should I prioritise next for risk treatment?",
+        "Create a treatment task for the open risk on this page",
         "Which risks are linked to compliance gaps?",
       ];
     case "incidents":
       return [
         "What open P1/P2 incidents do we have?",
+        "Suggest next steps for the incident on this page",
+        "Draft follow-up actions for this incident",
         "Summarise recent unresolved incidents",
-        "Suggest next steps for the open incident on this page",
       ];
     case "audits":
       return [
         "Which audits are upcoming or overdue?",
         "Help me prepare for the audit on this page",
         "What findings themes should I watch for?",
+        "Create a follow-up task from this audit",
       ];
     case "documents":
       return [
@@ -84,11 +134,13 @@ export function suggestedPromptsForModule(
         "Which selected controls are not yet implemented?",
         "Explain the control on this page and what evidence is missing",
         "Where are we weakest in this toolkit?",
+        "Suggest an OFI for the weakest control area",
       ];
     case "ofi":
       return [
         "List open OFIs that need attention",
         "Suggest improvements based on recent OFIs",
+        "Create a task to track this OFI",
       ];
     case "tasks":
       return [
@@ -96,11 +148,21 @@ export function suggestedPromptsForModule(
         "Which incomplete tasks are overdue?",
         "Summarise my open tasks by priority",
       ];
+    case "suppliers":
+      return [
+        "Which suppliers need attention or review?",
+        "Summarise supplier-related risks or incidents",
+      ];
+    case "customers":
+      return [
+        "Summarise customer-related work that needs attention",
+        "What open tasks relate to customers?",
+      ];
     default:
       return [
+        "Ask about this page — what should I focus on?",
         "Show high priority tasks that need attention ASAP",
         "What open risks and incidents need attention?",
-        "Summarise my organisation's outstanding work",
       ];
   }
 }

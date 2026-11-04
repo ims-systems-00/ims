@@ -55,14 +55,15 @@ Primary users:
 
 ### Partnership dashboard and referral tools
 
-- **Capability:** Access a partner dashboard showing referral code, signup URL, analytics, and referred organisations.
-- **Who uses it:** Accepted partners whose session includes a **`partnershipProgramId`** (partnership record ID with **iMS Accepted** status).
+- **Capability:** Access a partner dashboard showing referral code, signup URL, analytics, and referred organisations for **the active organisation**.
+- **Who uses it:** Users whose **active organisation** is an accepted partner (`isPartner`). Referred customer organisations do not see this until they apply separately.
 - **Outcome:**
-  - **Partner code** displayed and copyable (partnership record ID).
-  - **Signup URL** with embedded partner code (`/auth/onboard/organisation?partnerCode={id}`) — copyable and openable.
+  - **Partner code** displayed and copyable (that organisation’s partnership record ID).
+  - **Signup URL** with embedded partner code (`/onboard/organisation?partnerCode={id}`) — copyable and openable.
   - **Analytics cards:** count of referred organisations, total allocated business units, users, super users, and CRM module count across referred orgs; bar chart of compliance toolkit allocation across referred orgs.
   - **Organisations table:** paginated list of organisations whose **`referralSource`** matches the partner’s code, with licence summary columns and detail drawer.
-- **Conditions:** Dashboard shows a prompt to join the programme if `partnershipProgramId` is absent from the session. Loading state while partner organisation profile loads.
+  - Dashboard is **org-scoped**: switching organisation shows that org’s partnership only (or the apply empty state / hidden nav if it is not a partner).
+- **Conditions:** Sidebar Partnership entry is hidden unless the current org is a partner. Dashboard API returns not-found when the active org has no accepted partnership.
 
 ### Refer a new customer organisation (partner code at signup)
 

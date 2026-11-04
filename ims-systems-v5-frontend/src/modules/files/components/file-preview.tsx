@@ -38,11 +38,21 @@ export function FilePreview({ file }: { file: FileMetaInfo }) {
       isApiClientError(viewQuery.error) &&
       (viewQuery.error.code === "FILES_EPHEMERAL_GONE" ||
         viewQuery.error.status === 410);
+    const apiMessage =
+      isApiClientError(viewQuery.error) && viewQuery.error.message
+        ? viewQuery.error.message
+        : null;
+    const forbiddenBucket =
+      isApiClientError(viewQuery.error) &&
+      (viewQuery.error.status === 403 ||
+        /bucket does not belong/i.test(apiMessage ?? ""));
     const previewHint = isMemory
       ? "File storage is in memory mode (no real bytes). Set FILES_ENABLED=true with FILES_PROVIDER=local or s3, restart the API, then re-upload."
       : ephemeralGone
         ? "This file was uploaded with ephemeral in-memory storage and is no longer available. Re-upload the document to preview it."
-        : "Preview unavailable for this file.";
+        : forbiddenBucket
+          ? "This file is in a V4 storage bucket that is not readable with the current file settings. Configure AWS_LEGACY_* credentials (or FILES_PROVIDER=s3) for migrated documents, or re-upload the file."
+          : apiMessage || "Preview unavailable for this file.";
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
         <p className="max-w-sm text-sm text-muted-foreground">

@@ -92,6 +92,7 @@ const pageContextSchema = z
 export const streamChatBodySchema = z.object({
   message: z.string().trim().min(1).max(8000),
   threadId: objectIdSchema.optional(),
+  surfaceMode: z.enum(["general", "page"]).optional().default("general"),
   pageContext: pageContextSchema,
   pinnedRecords: z.array(pinnedRecordSchema).max(10).optional(),
   conversation: z

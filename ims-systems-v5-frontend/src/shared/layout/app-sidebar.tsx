@@ -17,15 +17,6 @@ import {
   permissionAllowed,
   useSecurityCapabilitiesQuery,
 } from "@/modules/security/hooks/use-security-capabilities";
-import { UserAvatar } from "@/modules/users/components/user-avatar";
-import {
-  useProfileImageUrl,
-  useSessionUserQuery,
-} from "@/modules/users/hooks/use-users";
-import {
-  DEV_STUB_IDENTITY,
-  resolveProfileUserId,
-} from "@/security";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { SidebarNavItem } from "./sidebar-nav-item";
 
@@ -47,21 +38,6 @@ export function AppSidebar({
   const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
   const capabilitiesQuery = useSecurityCapabilitiesQuery();
   const permissions = capabilitiesQuery.data?.permissions;
-  const stubProfileId =
-    provider === "development-stub"
-      ? resolveProfileUserId(DEV_STUB_IDENTITY)
-      : undefined;
-  const userQuery = useSessionUserQuery(stubProfileId);
-  const user = userQuery.data?.user;
-  const profileImageUrl = useProfileImageUrl(user);
-  const displayName =
-    user?.name ??
-    (provider === "auth0-openfga" ? "Signed in" : "Dev user");
-  const displayEmail =
-    user?.email ??
-    (provider === "development-stub"
-      ? (DEV_STUB_IDENTITY.email ?? "Session")
-      : "Session");
 
   // Licence-gated nav (V4 parity): Auth0 mode shows only licensed
   // toolkits / CRM from the org profile; dev-stub keeps the full catalogue.
@@ -73,13 +49,6 @@ export function AppSidebar({
   // when the licence query is already enabled.
   const brandOrgQuery = useCurrentOrganisationQuery();
   const orgLogoUrl = useOrganisationLogoUrl(brandOrgQuery.data);
-  // When the org has its own logo in the header, keep the iMS OS mark
-  // visible under the Workspace section label.
-  const showImsOsUnderWorkspace = Boolean(
-    orgLogoUrl ||
-      brandOrgQuery.data?.logoStorage?.bucket ||
-      brandOrgQuery.data?.logoSrc
-  );
   const licenceFilter = useMemo<NavigationLicenceFilter>(() => {
     if (provider !== "auth0-openfga") {
       return { licensedToolkits: null, crmLicensed: null };
@@ -95,14 +64,14 @@ export function AppSidebar({
     };
   }, [provider, orgQuery.data]);
 
-  const sections = useMemo(
-    () =>
-      filterNavigationSections(
-        buildNavigationSections(licenceFilter),
-        (permission) => permissionAllowed(permission, permissions, provider)
-      ),
-    [permissions, provider, licenceFilter]
-  );
+  const sections = useMemo(() => {
+    // Always show Partnership. The dashboard is org-scoped: partners see
+    // their referrals; non-partners get the apply CTA for this org.
+    return filterNavigationSections(
+      buildNavigationSections(licenceFilter),
+      (permission) => permissionAllowed(permission, permissions, provider)
+    );
+  }, [permissions, provider, licenceFilter]);
 
   return (
     <>
@@ -174,17 +143,6 @@ export function AppSidebar({
               ) : (
                 <span className="sr-only">{section.label}</span>
               )}
-              {!collapsed &&
-              section.id === "workspace" &&
-              showImsOsUnderWorkspace ? (
-                <div className="mb-2.5 px-2.5">
-                  <img
-                    src={imsOsLogo}
-                    alt="iMS Systems"
-                    className="h-7 w-auto max-w-full object-contain opacity-95"
-                  />
-                </div>
-              ) : null}
               <div className="space-y-1.5">
                 {section.items.map((item) => (
                   <SidebarNavItem
@@ -208,27 +166,28 @@ export function AppSidebar({
         >
           <div
             className={cn(
-              "flex items-center gap-2.5 px-1 py-0.5",
-              collapsed && "md:justify-center"
+              "flex items-center gap-2 px-1 py-0.5",
+              collapsed ? "md:justify-center" : "justify-start"
             )}
+            aria-label="Powered by iMS Systems"
           >
-            <UserAvatar
-              name={displayName}
-              imageUrl={profileImageUrl}
-              size="sm"
-              className="size-7 rounded-sm"
-            />
             {!collapsed ? (
-              <div className="min-w-0">
-                <p className="truncate text-[0.8125rem] font-medium">
-                  {displayName}
-                </p>
-                <p className="truncate text-[0.6875rem] text-sidebar-muted">
-                  {displayEmail}
-                </p>
-              </div>
+              <>
+                <span className="shrink-0 text-[0.6875rem] text-sidebar-muted">
+                  Powered by
+                </span>
+                <img
+                  src={imsOsLogo}
+                  alt="iMS Systems"
+                  className="h-5 w-auto max-w-[7.5rem] object-contain opacity-95"
+                />
+              </>
             ) : (
-              <span className="sr-only">{`${displayName}, ${displayEmail}`}</span>
+              <img
+                src={imsOsLogo}
+                alt="Powered by iMS Systems"
+                className="h-4 w-auto max-w-full object-contain opacity-95"
+              />
             )}
           </div>
         </div>

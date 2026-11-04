@@ -16,6 +16,7 @@ import {
 } from "../ports";
 import { createDocumentRepositoryStore } from "../repositories/document-repository.repository";
 import { createDocumentTreeStore } from "../repositories/document-tree.repository";
+import type { OnlyOfficeRuntimeConfig } from "../lib/onlyoffice";
 import {
   createDocumentManagementService,
   type DocumentManagementApplicationPort,
@@ -38,6 +39,7 @@ export type DocumentManagementRouterDeps = {
   /** Base URL for emailed access links (share / signature). */
   accessLinkBaseUrl?: string;
   resolveEmailBranding?: DocumentManagementServiceDeps["resolveEmailBranding"];
+  onlyOffice?: OnlyOfficeRuntimeConfig;
 };
 
 /**
@@ -77,6 +79,7 @@ export function createDocumentManagementModule(
       deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter(),
     accessLinkBaseUrl: deps.accessLinkBaseUrl,
     resolveEmailBranding: deps.resolveEmailBranding,
+    onlyOffice: deps.onlyOffice,
   });
   const reviewReminders = createDocumentReviewReminderService({
     trees,
@@ -137,6 +140,14 @@ export function createDocumentManagementModule(
   repositoriesRouter.put(
     "/:id/nodes/:nodeId/revision",
     controller.addRevision
+  );
+  repositoriesRouter.post(
+    "/:id/nodes/:nodeId/editor-session",
+    controller.createEditorSession
+  );
+  repositoriesRouter.post(
+    "/:id/nodes/:nodeId/editor-callback",
+    controller.editorCallback
   );
   repositoriesRouter.put("/:id/nodes/:nodeId/move-node", controller.moveNode);
   repositoriesRouter.put(

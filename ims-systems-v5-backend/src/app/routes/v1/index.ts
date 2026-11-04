@@ -282,6 +282,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         privateBucket: config.AWS_PRIVATE_BUCKET,
         bucketSuffix: config.AWS_BUCKET_SUFFIX,
         publicBucket: config.AWS_PUBLIC_BUCKET,
+        legacyBucketSuffixes: config.AWS_LEGACY_BUCKET_SUFFIXES,
         uploadUrlTtlSeconds: config.FILES_UPLOAD_URL_TTL_SECONDS,
         viewUrlTtlSeconds: config.FILES_VIEW_URL_TTL_SECONDS,
         allowedPaths: config.ALLOWED_FILE_PATHS,
@@ -769,6 +770,14 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     },
     accessLinkBaseUrl: config?.CLIENT_URL,
     resolveEmailBranding,
+    onlyOffice: config
+      ? {
+          enabled: config.ONLYOFFICE_ENABLED,
+          publicUrl: config.ONLYOFFICE_URL,
+          jwtSecret: config.ONLYOFFICE_JWT_SECRET,
+          callbackBaseUrl: config.ONLYOFFICE_CALLBACK_BASE_URL,
+        }
+      : undefined,
   });
   router.use("/document-management", documentManagement.managementRouter);
   router.use("/document-repositories", documentManagement.repositoriesRouter);

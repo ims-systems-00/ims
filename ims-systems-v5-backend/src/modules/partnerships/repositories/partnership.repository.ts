@@ -74,6 +74,17 @@ export function createPartnershipRepository() {
       return doc ? toDomain(doc as PartnershipDocument) : null;
     },
 
+    /** Partnership enrolment for a specific organisation (org-scoped). */
+    async findByOrganizationId(
+      organizationId: string
+    ): Promise<Partnership | null> {
+      const doc = await Model.findOne({
+        organizationId,
+        deletedAt: null,
+      }).lean();
+      return doc ? toDomain(doc as PartnershipDocument) : null;
+    },
+
     async listByUser(userId: string): Promise<Partnership[]> {
       const docs = await Model.find({ userId, deletedAt: null })
         .sort({ createdAt: -1 })
@@ -84,6 +95,17 @@ export function createPartnershipRepository() {
     async findAcceptedByUser(userId: string): Promise<Partnership | null> {
       const doc = await Model.findOne({
         userId,
+        status: "iMS Accepted",
+        deletedAt: null,
+      }).lean();
+      return doc ? toDomain(doc as PartnershipDocument) : null;
+    },
+
+    async findAcceptedByOrganization(
+      organizationId: string
+    ): Promise<Partnership | null> {
+      const doc = await Model.findOne({
+        organizationId,
         status: "iMS Accepted",
         deletedAt: null,
       }).lean();

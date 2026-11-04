@@ -17,7 +17,7 @@ type AppNavbarProps = {
 };
 
 export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
-  const openChat = useAliceChatStore((state) => state.openChat);
+  const openSidebar = useAliceChatStore((state) => state.openSidebar);
 
   return (
     <header className="sticky top-0 z-30 flex h-[var(--navbar-height)] shrink-0 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur-sm md:px-6">
@@ -76,9 +76,9 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
         <button
           type="button"
           className="inline-flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full ring-offset-background transition-opacity hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-label="Open Alice AI chat"
-          title="Alice AI"
-          onClick={() => openChat()}
+          aria-label="Open Alice page assistant"
+          title="Alice AI — this page"
+          onClick={() => openSidebar()}
         >
           <img
             src={aliceIcon}

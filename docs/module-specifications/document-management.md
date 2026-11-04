@@ -87,6 +87,13 @@ Primary users are organisation members with **Document Management** access (typi
 - **Outcome:** In-app preview (File Handler previewer). Download uses File Handler with the document’s stored file metadata.
 - **Conditions:** Preview/download availability follows File Handler support for the file type.
 
+### Edit a PDF or Office document in preview (new version)
+
+- **Capability:** Open a published PDF, Word, Excel, or PowerPoint file in an in-browser OnlyOffice editor from the document preview panel, then save.
+- **Who uses it:** Users who can create document versions (same permission as Add new version).
+- **Outcome:** Each save stores the edited file and creates a **new version** via the existing versioning rules (Pending when authorisers apply; otherwise Published). Prior authorisers are reused when present.
+- **Conditions:** OnlyOffice must be enabled. The open node must be **Published** PDF or Office format with no pending sibling. Microsoft Office Online remains the view-only fallback for Office when editing is unavailable. Scanned/image-only PDFs may have limited text editing.
+
 ### Search, filter, and pick documents from other modules
 
 - **Capability:** Search repositories and folder contents by name/reference. Filter repository lists by privacy. From Risk, Incident, CIP, Audit, Supplier, Management Review, and Compliance toolkit screens, search and select published documents that apply to that module or toolkit.
@@ -248,7 +255,7 @@ An older panel-based layout (`Overview` / `New repository` / `Repositories` / `R
 
 **Repository workspace:** Header (name, actions, recycle bin for contents), folder path navigator, table of child folders/documents (name, owners, dates, file-type icons). Empty repository illustration when no children. Error: *“This repository has been deleted or removed”*.
 
-**Document page:** Preview of the file; metadata (download); versions table; signature badges/table; authorisation form; share form; request signatures; add revision; upload new version; document information form; conformance bar if present; timeline/audit trail; alerts for pending authorisation or signature.
+**Document page:** Preview of the file (with Edit for published PDF/Office documents when OnlyOffice is enabled); metadata (download); versions table; signature badges/table; authorisation form; share form; request signatures; add revision; upload new version; document information form; conformance bar if present; timeline/audit trail; alerts for pending authorisation or signature.
 
 **Other modules:** Searchable document picker (list + tabs) to select published documents.
 

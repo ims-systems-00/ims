@@ -43,7 +43,7 @@ export function RequestLicenceSheet({
   const availableToolkits = useMemo(
     () =>
       COMPLIANCE_TOOLKIT_NAMES.filter(
-        (name) => !existing.complianceTools.includes(name)
+        (name) => !(existing.complianceTools ?? []).includes(name)
       ),
     [existing.complianceTools]
   );
@@ -51,7 +51,7 @@ export function RequestLicenceSheet({
   const availableModules = useMemo(
     () =>
       ADDITIONAL_MODULE_OPTIONS.filter(
-        (name) => !existing.additionalModules.includes(name)
+        (name) => !(existing.additionalModules ?? []).includes(name)
       ),
     [existing.additionalModules]
   );

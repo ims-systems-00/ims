@@ -11,9 +11,9 @@ type SidebarBrandProps = {
 
 /**
  * Sidebar header branding. When the current organisation has uploaded
- * a logo, that logo is shown here (the iMS-OS mark is rendered separately
- * under the Workspace nav label in AppSidebar). Otherwise — or if the
- * logo fails to load — it falls back to the default iMS-OS white mark.
+ * a logo, that logo is shown here. Otherwise — or if the logo fails to
+ * load — it falls back to the default iMS-OS white mark. The iMS mark
+ * also appears as “Powered by” in the sidebar footer.
  */
 export function SidebarBrand({
   logoUrl,

@@ -1,11 +1,14 @@
 /**
- * Public surface for AI / Alice (Analytical Assistant + floating chat).
+ * Public surface for AI / Alice (Analytical Assistant + dual chat surfaces).
  */
 
 export { AnalyticalAssistantSheet } from "./components/analytical-assistant-sheet";
 export { AliceMarkdown } from "./components/alice-markdown";
 export { FloatingAliceButton } from "./components/floating-alice-button";
 export { AliceChatPanel } from "./components/alice-chat-panel";
+export { AliceChatSheet } from "./components/alice-chat-sheet";
+export { AliceProposalCard } from "./components/alice-proposal-card";
+export { AliceCitationChip } from "./components/alice-citation-chip";
 export { useAliceChatStore } from "./store/use-alice-chat-store";
 export {
   useAiResponsesForSourceQuery,
@@ -46,6 +49,9 @@ export type {
   AiChatCitation,
   AiChatMessage,
   AiChatPinnedRecord,
+  AiChatProposal,
   AiChatThread,
   AiChatThreadSummary,
+  AliceChatSurface,
+  AiChatSurfaceMode,
 } from "./types-chat";

@@ -25,6 +25,11 @@ export type FilesServiceConfig = {
   /** Production: `${organizationId}${bucketSuffix}`. */
   bucketSuffix: string;
   publicBucket: string;
+  /**
+   * Extra per-org bucket suffixes from V4 (e.g. `-ims-static-resources-bucket`).
+   * View/delete of migrated documents is allowed for these org-scoped names.
+   */
+  legacyBucketSuffixes?: string[];
   uploadUrlTtlSeconds: number;
   viewUrlTtlSeconds: number;
   allowedPaths: string[];
@@ -206,6 +211,11 @@ export function collectAllowedBuckets(
   // FILES_PROVIDER was local|memory and AWS_PRIVATE_BUCKET was unset.
   allowed.add(`ims-v5-local-${organizationId}`);
   allowed.add(`ims-v5-memory-${organizationId}`);
+  // V4 migrated documents keep `{orgId}-ims-static-resources-bucket` (etc.).
+  for (const suffix of config.legacyBucketSuffixes ?? []) {
+    const trimmed = suffix.trim();
+    if (trimmed) allowed.add(`${organizationId}${trimmed}`);
+  }
   return allowed;
 }
 

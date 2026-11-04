@@ -1,6 +1,10 @@
 /**
- * Floating Alice chatbot types.
+ * Alice dual-surface chatbot types (float + page sidebar).
  */
+
+export type AliceChatSurface = "float" | "sidebar";
+
+export type AiChatSurfaceMode = "general" | "page";
 
 export type AiChatModuleHint =
   | "risks"
@@ -35,11 +39,19 @@ export type AiChatCitation = {
   href: string;
 };
 
+export type AiChatProposalAction = "create_task" | "create_ofi";
+
+export type AiChatProposal = {
+  action: AiChatProposalAction;
+  payload: Record<string, unknown>;
+};
+
 export type AiChatMessage = {
   id: string;
   role: "user" | "assistant" | "system";
   content: string;
   citations?: AiChatCitation[];
+  proposals?: AiChatProposal[];
   createdAt?: string;
 };
 
@@ -64,6 +76,7 @@ export type AiChatThread = {
 export type StreamChatInput = {
   message: string;
   threadId?: string;
+  surfaceMode?: AiChatSurfaceMode;
   pageContext?: AiChatPageContext;
   pinnedRecords?: AiChatPinnedRecord[];
   conversation?: Array<{ role: "user" | "assistant"; content: string }>;
@@ -72,6 +85,11 @@ export type StreamChatInput = {
 export type ChatStreamEvent =
   | { type: "citations"; citations: AiChatCitation[] }
   | { type: "token"; text: string }
+  | {
+      type: "proposal";
+      action: AiChatProposalAction;
+      payload: Record<string, unknown>;
+    }
   | {
       type: "done";
       threadId: string;

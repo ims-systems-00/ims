@@ -1,7 +1,7 @@
 # ADR 0018: Production migration tooling deferred
 
 - **ID:** D-18
-- **Status:** Deferred
+- **Status:** Superseded by [D-26](./0026-v4-v5-core-migration-tooling.md)
 
 ## Context
 
@@ -16,3 +16,7 @@ V4→V5 data migration is a distinct programme from establishing the V5 engineer
 - Do not build production migration pipelines as part of early platform bootstrap.
 - Development may still use a separate empty/dedicated V5 database (D-02).
 - Migration design later may produce new ADRs for tools and cutover rules.
+
+## Supersession
+
+Strategy and tooling are now accepted under D-26. See [V4_V5_CORE_MIGRATION.md](../migration/V4_V5_CORE_MIGRATION.md).

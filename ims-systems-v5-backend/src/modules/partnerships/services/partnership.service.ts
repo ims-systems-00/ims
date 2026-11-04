@@ -3,7 +3,8 @@
  *
  * Apply: record saved Pending → immediately accepted (organisation
  * isPartner = true) → emails to the applicant (received + accepted with
- * partner code and signup link). Duplicate user/org enrolment blocked.
+ * partner code and signup link). Duplicate enrolment blocked per organisation
+ * (same user may partner separately for another org).
  */
 
 import {
@@ -159,13 +160,14 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
         );
       }
 
-      const existing = await repository.findForUserOrOrg(
-        actor.subjectId,
+      // Partnership is per organisation: a user may partner for org A and
+      // later apply separately for referred org B. Do not block on userId.
+      const existing = await repository.findByOrganizationId(
         actor.organizationId
       );
       if (existing) {
         throw new ConflictError(
-          "User or organization is already enrolled in a partnership programme."
+          "This organisation is already enrolled in a partnership programme."
         );
       }
 
@@ -218,10 +220,19 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
       identity: SecurityIdentity | null | undefined
     ): Promise<PartnershipDashboard> {
       const actor = requireIdentity(identity);
-      const partnership = await repository.findAcceptedByUser(actor.subjectId);
+      if (!actor.organizationId) {
+        throw new ForbiddenError(
+          "Organisation context is required for the partner dashboard."
+        );
+      }
+      // Dashboard is org-scoped: the active org's partnership only — not
+      // another org the same user may partner for.
+      const partnership = await repository.findAcceptedByOrganization(
+        actor.organizationId
+      );
       if (!partnership) {
         throw new NotFoundError(
-          "No accepted partnership found for this user"
+          "No accepted partnership found for this organisation"
         );
       }
 

@@ -42,10 +42,16 @@ export type OrganisationGoLiveSideEffectsPort = {
 
   /**
    * Create/link the organisation's Auth0 Organization (N-09 remainder).
-   * Best-effort: failures must be logged by the adapter, not thrown.
+   * Best-effort by default (`failSoft: true`): failures are logged, not thrown.
+   * Pass `failSoft: false` for ensure-auth0-link (navbar switch).
    * Optional — omitted until the Management API M2M app is configured.
    */
-  ensureAuth0Organisation?(input: { organizationId: string }): Promise<void>;
+  ensureAuth0Organisation?(input: {
+    organizationId: string;
+    failSoft?: boolean;
+    /** Auth0 user id (`sub`) to add as an org member after link. */
+    auth0UserId?: string;
+  }): Promise<void>;
 
   /**
    * Notify internal teams (invoice Go Live) and/or the activating user.
