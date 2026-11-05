@@ -344,8 +344,16 @@ const envSchema = z
      * Env name matches V4: OPEN_AI_API_KEY.
      */
     OPEN_AI_API_KEY: z.string().default(""),
-    /** Chat model when AI_PROVIDER=openai (gpt-3.5-turbo is deprecated). */
+    /**
+     * Default OpenAI model (Analytical Assistant sections).
+     * Chat uses OPEN_AI_CHAT_MODEL when set.
+     */
     OPEN_AI_MODEL: z.string().default("gpt-4o-mini"),
+    /**
+     * Stronger tool-calling model for floating Alice chat.
+     * Empty → falls back to OPEN_AI_MODEL.
+     */
+    OPEN_AI_CHAT_MODEL: z.string().default("gpt-4o"),
     /** Groq API key when AI_PROVIDER=groq. */
     GROQ_API_KEY: z.string().default(""),
     /** Chat model when AI_PROVIDER=groq. */

@@ -65,4 +65,10 @@ export {
   detectPromptInjectionSignals,
   ALICE_CHAT_LATENCY_SLO_MS,
 } from "./lib/chat-telemetry";
+export {
+  ALICE_GOLDEN_QUESTIONS,
+  ALICE_FACTUAL_PASS_RATE_TARGET,
+} from "./lib/golden-questions";
+export { verifyAliceCitations } from "./lib/citation-verifier";
+export { resolveForcedTool, detectAnalyticsKind } from "./lib/forced-tools";
 export type { AiActorProfile } from "./ports";

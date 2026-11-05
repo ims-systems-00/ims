@@ -33,16 +33,52 @@ export function toDetailCard(card: AiContextCard): AiContextCard {
   };
 }
 
+function riskLifecycleStatus(doc: Record<string, unknown>): string {
+  if ((doc.mitigated as { status?: boolean } | undefined)?.status) {
+    return "Mitigated";
+  }
+  if ((doc.accepted as { status?: boolean } | undefined)?.status) {
+    return "Accepted";
+  }
+  if ((doc.escalated as { status?: boolean } | undefined)?.status) {
+    return "Escalated";
+  }
+  return "Open";
+}
+
+function scorePairLabel(
+  pair: { likelihood?: number; consequence?: number } | null | undefined,
+  label: string
+): string | null {
+  if (!pair || pair.likelihood == null || pair.consequence == null) return null;
+  const product = Number(pair.likelihood) * Number(pair.consequence);
+  return `${label}: L${pair.likelihood}×C${pair.consequence}=${product}`;
+}
+
 export function riskCard(doc: Record<string, unknown>): AiContextCard {
   const id = String(doc._id ?? doc.id);
   const reference = doc.reference ? String(doc.reference) : null;
   const title = String(doc.title ?? reference ?? "Risk");
-  const status = doc.status ? String(doc.status) : null;
+  const status = doc.status ? String(doc.status) : riskLifecycleStatus(doc);
+  const raisedOn = doc.raisedOn
+    ? new Date(String(doc.raisedOn)).toISOString().slice(0, 10)
+    : null;
+  const ownerId = doc.ownerId ? String(doc.ownerId) : null;
+  const current = doc.currentScore as
+    | { likelihood?: number; consequence?: number }
+    | undefined;
+  const initial = doc.initialScore as
+    | { likelihood?: number; consequence?: number }
+    | undefined;
   const summary = truncate(
     [
       reference,
       title,
-      status ? `Status: ${status}` : null,
+      `Status: ${status}`,
+      raisedOn ? `Raised: ${raisedOn}` : null,
+      scorePairLabel(current, "Current"),
+      scorePairLabel(initial, "Initial"),
+      ownerId ? `Owner: ${ownerId}` : null,
       doc.likelihood != null ? `Likelihood: ${doc.likelihood}` : null,
       doc.consequence != null ? `Consequence: ${doc.consequence}` : null,
       doc.description ? String(doc.description) : null,
@@ -221,15 +257,23 @@ export function complianceControlCard(
   const selected = doc.selected ? String(doc.selected) : null;
   const state = doc.state ? String(doc.state) : null;
   const status = [selected, state].filter(Boolean).join(" / ") || null;
+  const pct =
+    doc.compliancePercentage != null
+      ? Number(doc.compliancePercentage)
+      : null;
+  const ownerId = doc.ownerId ? String(doc.ownerId) : null;
+  const updatedAt = doc.updatedAt
+    ? new Date(String(doc.updatedAt)).toISOString().slice(0, 10)
+    : null;
   const summary = truncate(
     [
       toolkit,
       clause,
       title,
       status ? `Status: ${status}` : null,
-      doc.compliancePercentage != null
-        ? `Progress: ${doc.compliancePercentage}%`
-        : null,
+      pct != null && !Number.isNaN(pct) ? `Progress: ${pct}%` : null,
+      ownerId ? `Owner: ${ownerId}` : null,
+      updatedAt ? `Updated: ${updatedAt}` : null,
     ]
       .filter(Boolean)
       .join(" · ")

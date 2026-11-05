@@ -171,7 +171,7 @@ export function createAiContextAdapter(deps: {
 
     async listOpenByModule(input) {
       const { organizationId, identity, module } = input;
-      const limit = Math.min(10, Math.max(1, input.limit ?? 5));
+      const limit = Math.min(25, Math.max(1, input.limit ?? 6));
       const filters = input.filters ?? {};
       const resourceType =
         module === "documents"
@@ -243,6 +243,7 @@ export function createAiContextAdapter(deps: {
           deletedAt: null,
         };
         const riskStatus = filters.riskStatus?.trim();
+        const includeClosed = filters.includeClosed === true;
         if (riskStatus === "Escalated") {
           Object.assign(filter, {
             "mitigated.status": { $ne: true },
@@ -262,7 +263,7 @@ export function createAiContextAdapter(deps: {
             "accepted.status": { $ne: true },
             "escalated.status": { $ne: true },
           });
-        } else if (filters.openOnly !== false) {
+        } else if (!includeClosed && filters.openOnly !== false) {
           // Default open-ish: not mitigated
           Object.assign(filter, {
             "mitigated.status": { $ne: true },
@@ -276,12 +277,36 @@ export function createAiContextAdapter(deps: {
           since.setUTCDate(since.getUTCDate() - filters.updatedSinceDays);
           filter.updatedAt = { $gte: since };
         }
-        const docs = await getRiskModel()
-          .find(filter)
-          .sort({ updatedAt: -1 })
-          .limit(limit)
-          .lean();
-        return asList(docs.map((d) => riskCard(d as Record<string, unknown>)));
+        const sortDir = filters.sortDir === "asc" ? 1 : -1;
+        const sortBy = filters.sortBy ?? "updatedAt";
+        let docs: Record<string, unknown>[];
+        if (sortBy === "score") {
+          const raw = await getRiskModel().find(filter).limit(200).lean();
+          docs = [...raw]
+            .map((d) => d as Record<string, unknown>)
+            .sort((a, b) => {
+              const scoreOf = (row: Record<string, unknown>) => {
+                const cur = row.currentScore as
+                  | { likelihood?: number; consequence?: number }
+                  | undefined;
+                return (
+                  Number(cur?.likelihood ?? 0) * Number(cur?.consequence ?? 0)
+                );
+              };
+              return sortDir === 1
+                ? scoreOf(a) - scoreOf(b)
+                : scoreOf(b) - scoreOf(a);
+            })
+            .slice(0, limit);
+        } else {
+          const sortField = sortBy === "raisedOn" ? "raisedOn" : "updatedAt";
+          docs = (await getRiskModel()
+            .find(filter)
+            .sort({ [sortField]: sortDir })
+            .limit(limit)
+            .lean()) as Record<string, unknown>[];
+        }
+        return asList(docs.map((d) => riskCard(d)));
       }
       if (module === "incidents") {
         const incidentFilter: Record<string, unknown> = {
@@ -341,14 +366,19 @@ export function createAiContextAdapter(deps: {
         );
       }
       if (module === "compliance") {
+        const filter: Record<string, unknown> = {
+          organizationId,
+          isLocked: false,
+        };
+        if (filters.selectedOnly !== false) {
+          filter.selected = "Selected";
+        }
+        if (filters.notImplementedOnly !== false) {
+          filter.state = { $ne: "Implemented" };
+        }
         const docs = await getControlStatusModel()
-          .find({
-            organizationId,
-            selected: "Selected",
-            state: { $ne: "Implemented" },
-            isLocked: false,
-          })
-          .sort({ updatedAt: -1 })
+          .find(filter)
+          .sort({ compliancePercentage: 1, updatedAt: -1 })
           .limit(limit)
           .lean();
         return asList(
@@ -358,6 +388,236 @@ export function createAiContextAdapter(deps: {
         );
       }
       return [];
+    },
+
+    async analyticsRisks(input) {
+      if (!(await canRead(deps.authorizer, input.identity, "risks"))) {
+        return {
+          cards: [],
+          meta: { status: "forbidden", module: "risks" },
+        };
+      }
+      const filter: Record<string, unknown> = {
+        organizationId: input.organizationId,
+        deletedAt: null,
+      };
+      if (!input.includeClosed) {
+        filter["mitigated.status"] = { $ne: true };
+      }
+      const limit = Math.min(25, Math.max(1, input.limit ?? 3));
+      const Model = getRiskModel();
+
+      if (input.metric === "counts_by_status") {
+        const all = await Model.find({
+          organizationId: input.organizationId,
+          deletedAt: null,
+        })
+          .select({
+            mitigated: 1,
+            accepted: 1,
+            escalated: 1,
+          })
+          .lean();
+        const counts = {
+          total: all.length,
+          open: 0,
+          escalated: 0,
+          accepted: 0,
+          mitigated: 0,
+        };
+        for (const row of all) {
+          const r = row as {
+            mitigated?: { status?: boolean };
+            accepted?: { status?: boolean };
+            escalated?: { status?: boolean };
+          };
+          if (r.mitigated?.status) counts.mitigated += 1;
+          else if (r.accepted?.status) counts.accepted += 1;
+          else if (r.escalated?.status) counts.escalated += 1;
+          else counts.open += 1;
+        }
+        return {
+          cards: [],
+          meta: { status: "ok", metric: input.metric, counts },
+        };
+      }
+
+      let sort: Record<string, 1 | -1> = { raisedOn: 1 };
+      if (input.metric === "newest_raised") sort = { raisedOn: -1 };
+      if (input.metric === "highest_score") {
+        const raw = await Model.find(filter).limit(200).lean();
+        const ranked = [...raw]
+          .map((d) => d as Record<string, unknown>)
+          .sort((a, b) => {
+            const scoreOf = (row: Record<string, unknown>) => {
+              const cur = row.currentScore as
+                | { likelihood?: number; consequence?: number }
+                | undefined;
+              return (
+                Number(cur?.likelihood ?? 0) * Number(cur?.consequence ?? 0)
+              );
+            };
+            return scoreOf(b) - scoreOf(a);
+          })
+          .slice(0, limit);
+        return {
+          cards: ranked.map((d) => toListCard(riskCard(d))),
+          meta: {
+            status: "ok",
+            metric: input.metric,
+            count: ranked.length,
+          },
+        };
+      }
+
+      const docs = await Model.find(filter).sort(sort).limit(limit).lean();
+      return {
+        cards: docs.map((d) =>
+          toListCard(riskCard(d as Record<string, unknown>))
+        ),
+        meta: {
+          status: "ok",
+          metric: input.metric,
+          count: docs.length,
+          includeClosed: Boolean(input.includeClosed),
+        },
+      };
+    },
+
+    async analyticsCompliance(input) {
+      if (!(await canRead(deps.authorizer, input.identity, "compliance"))) {
+        return {
+          cards: [],
+          meta: { status: "forbidden", module: "compliance" },
+        };
+      }
+      const limit = Math.min(25, Math.max(1, input.limit ?? 8));
+      const orgId = input.organizationId;
+      const gaps = await getControlStatusModel()
+        .find({
+          organizationId: orgId,
+          selected: "Selected",
+          isLocked: false,
+          state: { $ne: "Implemented" },
+        })
+        .sort({ compliancePercentage: 1, updatedAt: -1 })
+        .limit(limit)
+        .lean();
+      const selectedTotal = await getControlStatusModel().countDocuments({
+        organizationId: orgId,
+        selected: "Selected",
+        isLocked: false,
+      });
+      const implemented = await getControlStatusModel().countDocuments({
+        organizationId: orgId,
+        selected: "Selected",
+        isLocked: false,
+        state: "Implemented",
+      });
+      const cards = gaps.map((d) =>
+        toListCard(complianceControlCard(d as Record<string, unknown>))
+      );
+      return {
+        cards,
+        meta: {
+          status: "ok",
+          focus: input.focus,
+          selectedTotal,
+          implemented,
+          notImplemented: Math.max(0, selectedTotal - implemented),
+          gapCount: gaps.length,
+        },
+      };
+    },
+
+    async analyticsOrgHealth(input) {
+      const limit = Math.min(8, Math.max(1, input.limit ?? 5));
+      const cards: AiContextCard[] = [];
+      const sections: Record<string, number> = {};
+
+      if (await canRead(deps.authorizer, input.identity, "risks")) {
+        const risks = await getRiskModel()
+          .find({
+            organizationId: input.organizationId,
+            deletedAt: null,
+            "mitigated.status": { $ne: true },
+            "escalated.status": true,
+          })
+          .sort({ updatedAt: -1 })
+          .limit(limit)
+          .lean();
+        sections.escalatedRisks = risks.length;
+        cards.push(
+          ...risks.map((d) =>
+            toListCard(riskCard(d as Record<string, unknown>))
+          )
+        );
+      }
+      if (await canRead(deps.authorizer, input.identity, "tasks")) {
+        const tasks = await getTaskModel()
+          .find({
+            organizationId: input.organizationId,
+            deletedAt: null,
+            status: { $ne: "Complete" },
+            dueDate: { $lt: new Date() },
+          })
+          .sort({ dueDate: 1 })
+          .limit(limit)
+          .lean();
+        sections.overdueTasks = tasks.length;
+        cards.push(
+          ...tasks.map((d) =>
+            toListCard(taskCard(d as Record<string, unknown>))
+          )
+        );
+      }
+      if (await canRead(deps.authorizer, input.identity, "incidents")) {
+        const incidentFilter: Record<string, unknown> = {
+          organizationId: input.organizationId,
+          deletedAt: null,
+          status: { $nin: ["Resolved", "Closed"] },
+          priority: { $in: ["P1", "Critical", "High"] },
+        };
+        const incidents = await getIncidentModel()
+          .find(incidentFilter)
+          .sort({ updatedAt: -1 })
+          .limit(limit)
+          .lean();
+        sections.openHighIncidents = incidents.length;
+        cards.push(
+          ...incidents.map((d) =>
+            toListCard(incidentCard(d as Record<string, unknown>))
+          )
+        );
+      }
+      if (await canRead(deps.authorizer, input.identity, "compliance")) {
+        const gaps = await getControlStatusModel()
+          .find({
+            organizationId: input.organizationId,
+            selected: "Selected",
+            state: { $ne: "Implemented" },
+            isLocked: false,
+          })
+          .sort({ compliancePercentage: 1 })
+          .limit(limit)
+          .lean();
+        sections.complianceGaps = gaps.length;
+        cards.push(
+          ...gaps.map((d) =>
+            toListCard(complianceControlCard(d as Record<string, unknown>))
+          )
+        );
+      }
+
+      return {
+        cards: cards.slice(0, limit * 4),
+        meta: {
+          status: "ok",
+          sections,
+          message:
+            "Attention areas: escalated risks, overdue tasks, high-priority open incidents, non-implemented selected controls.",
+        },
+      };
     },
 
     async getActivitiesSummary(input) {

@@ -724,6 +724,20 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
             providerLabel: "openai",
           })
         : new NoOpAiGptAdapter();
+  const chatModelId =
+    aiProvider === "groq"
+      ? config?.GROQ_MODEL?.trim() || undefined
+      : config?.OPEN_AI_CHAT_MODEL?.trim() ||
+        config?.OPEN_AI_MODEL?.trim() ||
+        undefined;
+  const aiChatGpt =
+    aiProvider === "openai" && openAiKey && chatModelId
+      ? createOpenAiGptAdapter({
+          apiKey: openAiKey,
+          model: chatModelId,
+          providerLabel: "openai",
+        })
+      : aiGpt;
 
   const activities = createActivitiesModule({
     authorizer: security.authorizer,
@@ -737,6 +751,8 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const ai = createAiModule({
     authorizer: security.authorizer,
     gpt: aiGpt,
+    chatGpt: aiChatGpt,
+    chatModelId,
     activities: createAiActivityAdapter(activities.application),
     actors: createAiActorDirectoryAdapter(),
     context: createAiContextAdapter({

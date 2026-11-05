@@ -5,13 +5,17 @@
 import { z } from "zod";
 
 const limitSchema = z.number().int().min(1).max(8).optional().default(6);
+const analyticsLimitSchema = z.number().int().min(1).max(25).optional().default(8);
 
 export const listRisksArgsSchema = z.object({
   status: z
     .enum(["Open", "Escalated", "Accepted", "Mitigated"])
     .optional(),
   updatedSinceDays: z.number().int().min(1).max(365).optional(),
-  limit: limitSchema,
+  sortBy: z.enum(["raisedOn", "updatedAt", "score"]).optional(),
+  sortDir: z.enum(["asc", "desc"]).optional(),
+  includeClosed: z.boolean().optional(),
+  limit: z.number().int().min(1).max(25).optional().default(6),
 });
 
 export const listTasksArgsSchema = z.object({
@@ -29,6 +33,32 @@ export const listIncidentsArgsSchema = z.object({
 
 export const listLimitOnlySchema = z.object({
   limit: limitSchema,
+});
+
+export const listComplianceArgsSchema = z.object({
+  selectedOnly: z.boolean().optional().default(true),
+  notImplementedOnly: z.boolean().optional().default(true),
+  limit: analyticsLimitSchema,
+});
+
+export const analyticsRisksArgsSchema = z.object({
+  metric: z.enum([
+    "oldest_raised",
+    "newest_raised",
+    "highest_score",
+    "counts_by_status",
+  ]),
+  includeClosed: z.boolean().optional(),
+  limit: z.number().int().min(1).max(25).optional().default(3),
+});
+
+export const analyticsComplianceArgsSchema = z.object({
+  focus: z.enum(["gaps", "lowest_progress", "summary"]).optional().default("gaps"),
+  limit: analyticsLimitSchema,
+});
+
+export const analyticsOrgHealthArgsSchema = z.object({
+  limit: z.number().int().min(1).max(8).optional().default(5),
 });
 
 export const getRecordArgsSchema = z.object({

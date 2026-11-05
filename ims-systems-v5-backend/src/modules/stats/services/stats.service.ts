@@ -309,21 +309,25 @@ export function createStatsService(deps: StatsServiceDeps) {
 
       const counts = new Map<string, number>();
       for (const audit of sample) {
-        const n = audit.identifications.length;
+        const n = audit.identifications?.length ?? 0;
         if (n === 0) continue;
-        counts.set(
-          audit.businessUnitId,
-          (counts.get(audit.businessUnitId) ?? 0) + n
-        );
+        // Migrated / incomplete audits may omit businessUnitId.
+        const businessUnitId =
+          typeof audit.businessUnitId === "string" &&
+          audit.businessUnitId.trim()
+            ? audit.businessUnitId.trim()
+            : "unassigned";
+        counts.set(businessUnitId, (counts.get(businessUnitId) ?? 0) + n);
       }
-      const names = await ports.functionalUnits.resolveNames(
-        actor,
-        [...counts.keys()]
-      );
+      const unitIds = [...counts.keys()].filter((id) => id !== "unassigned");
+      const names = await ports.functionalUnits.resolveNames(actor, unitIds);
       const nonConformitiesByBusinessUnit = [...counts.entries()].map(
         ([businessUnitId, count]) => ({
           businessUnitId,
-          name: names.get(businessUnitId) ?? businessUnitId.slice(0, 8),
+          name:
+            businessUnitId === "unassigned"
+              ? "Unassigned"
+              : (names.get(businessUnitId) ?? businessUnitId.slice(0, 8)),
           count,
         })
       );
@@ -538,7 +542,11 @@ export function createStatsService(deps: StatsServiceDeps) {
         { opportunities: number; improvements: number }
       >();
       for (const ofi of sample) {
-        const current = totals.get(ofi.businessUnitId) ?? {
+        const businessUnitId =
+          typeof ofi.businessUnitId === "string" && ofi.businessUnitId.trim()
+            ? ofi.businessUnitId.trim()
+            : "unassigned";
+        const current = totals.get(businessUnitId) ?? {
           opportunities: 0,
           improvements: 0,
         };
@@ -546,16 +554,17 @@ export function createStatsService(deps: StatsServiceDeps) {
         if (ofi.implemented.status === "Implemented") {
           current.improvements += 1;
         }
-        totals.set(ofi.businessUnitId, current);
+        totals.set(businessUnitId, current);
       }
-      const names = await ports.functionalUnits.resolveNames(
-        actor,
-        [...totals.keys()]
-      );
+      const unitIds = [...totals.keys()].filter((id) => id !== "unassigned");
+      const names = await ports.functionalUnits.resolveNames(actor, unitIds);
       return {
         byBusinessUnit: [...totals.entries()].map(([businessUnitId, counts]) => ({
           businessUnitId,
-          name: names.get(businessUnitId) ?? businessUnitId.slice(0, 8),
+          name:
+            businessUnitId === "unassigned"
+              ? "Unassigned"
+              : (names.get(businessUnitId) ?? businessUnitId.slice(0, 8)),
           opportunities: counts.opportunities,
           improvements: counts.improvements,
         })),
