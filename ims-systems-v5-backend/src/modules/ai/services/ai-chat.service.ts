@@ -9,11 +9,17 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
+import { verifyAliceCitations } from "../lib/citation-verifier";
 import { toDetailCard } from "../lib/context-cards";
 import {
   detectPromptInjectionSignals,
   logAliceChatTelemetry,
 } from "../lib/chat-telemetry";
+import {
+  emptyRetryTool,
+  resolveForcedTool,
+  type ForcedAliceTool,
+} from "../lib/forced-tools";
 import { routeChatIntent } from "../lib/intent-router";
 import type { AiContextPort, AiGptPort } from "../ports";
 import type { AiChatThreadRepository } from "../repositories/ai-chat-thread.repository";
@@ -36,22 +42,24 @@ const CHAT_SYSTEM = `You are Alice, the iMS Systems AI assistant embedded in an 
 You answer in Markdown using UK English.
 
 You have tools to fetch live organisation records. ALWAYS use tools to look up data before answering factual questions about risks, tasks, incidents, audits, documents, OFI, or compliance.
-Prefer structured list_* tools with filters (e.g. list_risks status=Escalated, updatedSinceDays=30 for "escalated recently"; list_tasks priority=High incomplete=true for high priority ASAP).
-Use search_records only when filters cannot express the ask. Use search_documents for policies/SOPs/document text. Use get_record when the user asks about one cited id/reference.
+Prefer analytics_* tools for oldest/newest/highest/counts, compliance gaps, and "what should I worry about".
+Prefer structured list_* tools with filters (e.g. list_risks status=Escalated; list_compliance for control gaps; list_tasks priority=High incomplete=true).
+Use search_records only when filters cannot express the ask. Use search_documents for policies/SOPs. Use get_record for one cited id/reference.
 
 Rules:
 - Answer ONLY from tool results and any pinned/page-selected records in the prompt.
 - Never invent references (RK-, TASK-, DOC-, etc.) or rows.
-- If tools return zero records, say none were found — do not use earlier conversation as a data source.
+- Distinguish tool status: zero_results = truly none found; forbidden = permission; tool_error = retrieval failure (say so — do not claim the org has no data).
 - For lists, use a compact Markdown table or bullets with references and links from tool results.
+- Advisory answers ("major concerns") must summarise tool meta + cited records — still no invented refs.
 - propose_create_task / propose_create_ofi never write data; tell the user confirmation is required in the UI.
 - Never claim you changed record status.`;
 
-const CHAT_MAX_TOKENS = 1000;
-const HISTORY_TURNS = 4;
-const HISTORY_CONTENT_CAP = 600;
+const CHAT_MAX_TOKENS = 1400;
+const HISTORY_TURNS = 6;
+const HISTORY_CONTENT_CAP = 800;
 const MAX_PIN_DETAIL = 4;
-const MAX_TOOL_ROUNDS = 4;
+const MAX_TOOL_ROUNDS = 6;
 
 function requireOrgIdentity(identity: SecurityIdentity | null | undefined): {
   identity: SecurityIdentity;
@@ -183,12 +191,14 @@ export type AiChatServiceDeps = {
   authorizer: Authorizer;
   gpt: AiGptPort;
   context: AiContextPort;
+  /** Optional model id for telemetry (e.g. gpt-4o). */
+  modelId?: string;
 };
 
 export type AiChatService = ReturnType<typeof createAiChatService>;
 
 export function createAiChatService(deps: AiChatServiceDeps) {
-  const { threads, authorizer, gpt, context } = deps;
+  const { threads, authorizer, gpt, context, modelId } = deps;
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -328,6 +338,14 @@ export function createAiChatService(deps: AiChatServiceDeps) {
 
       const pinned = await gatherPinnedDetail(actor, organizationId, input);
       const pinnedBlock = pinnedCardsBlock(pinned);
+      const intent = routeChatIntent({
+        message,
+        pageHint:
+          (input.surfaceMode ?? "general") === "page"
+            ? input.pageContext?.moduleHint
+            : undefined,
+      });
+      const forced = resolveForcedTool(message, intent);
       const systemContent = buildSystemPrompt(input, pinnedBlock);
 
       const messages: GptMessage[] = [
@@ -340,13 +358,110 @@ export function createAiChatService(deps: AiChatServiceDeps) {
       const toolsInvoked: string[] = [];
       const toolArgKeys: string[][] = [];
       const resultCounts: number[] = [];
+      const toolErrors: string[] = [];
       let rounds = 0;
       let assistantText = "";
+      let emptyRetry = false;
+      let retrievalSucceeded = Boolean(pinned.length);
+
+      const runTool = async (
+        toolName: string,
+        argsJson: string,
+        toolCallId: string
+      ) => {
+        toolsInvoked.push(toolName);
+        let argKeys: string[] = [];
+        try {
+          const parsed = JSON.parse(argsJson || "{}") as Record<string, unknown>;
+          argKeys = Object.keys(parsed);
+        } catch {
+          argKeys = [];
+        }
+        toolArgKeys.push(argKeys);
+
+        let result;
+        try {
+          result = await executeAliceTool(toolName, argsJson, {
+            organizationId,
+            identity: actor,
+            context,
+          });
+        } catch (err) {
+          const errMsg =
+            err instanceof Error ? err.message : "Tool execution failed";
+          toolErrors.push(toolName);
+          result = {
+            ok: false,
+            tool: toolName,
+            cards: [] as AiContextCard[],
+            content: JSON.stringify({
+              status: "tool_error",
+              error: errMsg,
+              tool: toolName,
+            }),
+          };
+        }
+        resultCounts.push(result.cards.length);
+        if (result.cards.length > 0) retrievalSucceeded = true;
+        if (!result.ok) toolErrors.push(toolName);
+        collectedCards.push(...result.cards);
+
+        const proposal = proposalFromToolMeta(toolName, result.meta);
+        if (proposal) {
+          emit({
+            type: "proposal",
+            action: proposal.action,
+            payload: proposal.payload,
+          });
+        }
+
+        messages.push({
+          role: "tool",
+          tool_call_id: toolCallId,
+          name: toolName,
+          content: result.content,
+        });
+        return result;
+      };
+
+      const injectForcedTool = async (forcedTool: ForcedAliceTool) => {
+        const callId = `forced_${forcedTool.name}_${Date.now()}`;
+        messages.push({
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: callId,
+              type: "function",
+              function: {
+                name: forcedTool.name,
+                arguments: JSON.stringify(forcedTool.args),
+              },
+            },
+          ],
+        });
+        return runTool(forcedTool.name, JSON.stringify(forcedTool.args), callId);
+      };
+
+      if (forced && !signal?.aborted) {
+        const first = await injectForcedTool(forced);
+        if (
+          first.cards.length === 0 &&
+          (first.meta?.status !== "forbidden" || !first.meta)
+        ) {
+          const retry = emptyRetryTool(forced, intent);
+          if (retry) {
+            emptyRetry = true;
+            await injectForcedTool(retry);
+          }
+        }
+      }
 
       for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
         if (signal?.aborted) break;
         rounds = round + 1;
-        const forceFinal = round === MAX_TOOL_ROUNDS - 1;
+        const forceFinal =
+          round === MAX_TOOL_ROUNDS - 1 && retrievalSucceeded;
         const turn = await gpt.completeTurn(
           {
             messages,
@@ -370,57 +485,11 @@ export function createAiChatService(deps: AiChatServiceDeps) {
         messages.push(assistantMsg);
 
         for (const call of turn.toolCalls as GptToolCall[]) {
-          toolsInvoked.push(call.function.name);
-          let argKeys: string[] = [];
-          try {
-            const parsed = JSON.parse(call.function.arguments || "{}") as Record<
-              string,
-              unknown
-            >;
-            argKeys = Object.keys(parsed);
-          } catch {
-            argKeys = [];
-          }
-          toolArgKeys.push(argKeys);
-
-          let result;
-          try {
-            result = await executeAliceTool(
-              call.function.name,
-              call.function.arguments,
-              { organizationId, identity: actor, context }
-            );
-          } catch (err) {
-            const errMsg =
-              err instanceof Error ? err.message : "Tool execution failed";
-            result = {
-              ok: false,
-              tool: call.function.name,
-              cards: [] as AiContextCard[],
-              content: JSON.stringify({
-                error: errMsg,
-                tool: call.function.name,
-              }),
-            };
-          }
-          resultCounts.push(result.cards.length);
-          collectedCards.push(...result.cards);
-
-          const proposal = proposalFromToolMeta(call.function.name, result.meta);
-          if (proposal) {
-            emit({
-              type: "proposal",
-              action: proposal.action,
-              payload: proposal.payload,
-            });
-          }
-
-          messages.push({
-            role: "tool",
-            tool_call_id: call.id,
-            name: call.function.name,
-            content: result.content,
-          });
+          await runTool(
+            call.function.name,
+            call.function.arguments,
+            call.id
+          );
         }
       }
 
@@ -440,13 +509,22 @@ export function createAiChatService(deps: AiChatServiceDeps) {
       }
 
       if (!assistantText) {
-        assistantText =
-          collectedCards.length === 0
-            ? "I could not find matching organisation records for that request."
-            : "I could not generate a response.";
+        if (toolErrors.length > 0 && collectedCards.length === 0) {
+          assistantText =
+            "I hit a retrieval error looking that up. Please try again — this does not mean your organisation has no matching records.";
+        } else if (collectedCards.length === 0) {
+          assistantText =
+            "I could not find matching organisation records for that request.";
+        } else {
+          assistantText = "I could not generate a response.";
+        }
       }
 
-      const citations = toCitations(uniqueCards(collectedCards));
+      const unique = uniqueCards(collectedCards);
+      const verified = verifyAliceCitations(assistantText, unique);
+      assistantText = verified.sanitizedText;
+
+      const citations = toCitations(unique);
       emit({ type: "citations", citations });
 
       // Stream final answer in chunks for existing FE NDJSON contract.
@@ -468,6 +546,13 @@ export function createAiChatService(deps: AiChatServiceDeps) {
         ),
         latencyMs: Date.now() - started,
         moduleHint: input.pageContext?.moduleHint,
+        intentModule: intent.primaryModule,
+        intentMode: intent.mode,
+        analyticsKind: forced?.analyticsKind ?? null,
+        toolErrors,
+        model: modelId,
+        forcedTool: forced?.name ?? null,
+        emptyRetry,
       });
 
       const updated = await threads.appendMessages(

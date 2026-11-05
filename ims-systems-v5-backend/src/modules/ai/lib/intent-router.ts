@@ -58,7 +58,7 @@ const MODULE_PATTERNS: Array<{ module: AiIntentModule; re: RegExp }> = [
   },
   {
     module: "ofi",
-    re: /\b(ofi|cips?|continual improvement|corrective actions?)\b/i,
+    re: /\b(ofis?|cips?|continual improvement|corrective actions?)\b/i,
   },
   {
     module: "suppliers",

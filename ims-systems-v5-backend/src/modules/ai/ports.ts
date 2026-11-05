@@ -154,6 +154,14 @@ export type AiContextPort = {
       updatedSinceDays?: number;
       /** Task priority exact: High | Medium | Low */
       priority?: string;
+      /** Risk sort field. */
+      sortBy?: "raisedOn" | "updatedAt" | "score";
+      sortDir?: "asc" | "desc";
+      /** When true, include mitigated/accepted risks. */
+      includeClosed?: boolean;
+      /** Compliance list filters. */
+      selectedOnly?: boolean;
+      notImplementedOnly?: boolean;
     };
   }): Promise<AiContextCard[]>;
 
@@ -164,6 +172,34 @@ export type AiContextPort = {
     query: string;
     limit?: number;
   }): Promise<AiContextCard[]>;
+
+  /** Deterministic risk analytics (oldest/newest/highest/counts). */
+  analyticsRisks?(input: {
+    organizationId: string;
+    identity: import("../../security").SecurityIdentity;
+    metric:
+      | "oldest_raised"
+      | "newest_raised"
+      | "highest_score"
+      | "counts_by_status";
+    includeClosed?: boolean;
+    limit?: number;
+  }): Promise<{ cards: AiContextCard[]; meta: Record<string, unknown> }>;
+
+  /** Deterministic compliance gap / progress analytics. */
+  analyticsCompliance?(input: {
+    organizationId: string;
+    identity: import("../../security").SecurityIdentity;
+    focus: "gaps" | "lowest_progress" | "summary";
+    limit?: number;
+  }): Promise<{ cards: AiContextCard[]; meta: Record<string, unknown> }>;
+
+  /** Cross-module attention summary. */
+  analyticsOrgHealth?(input: {
+    organizationId: string;
+    identity: import("../../security").SecurityIdentity;
+    limit?: number;
+  }): Promise<{ cards: AiContextCard[]; meta: Record<string, unknown> }>;
 
   getActivitiesSummary(input: {
     organizationId: string;
@@ -188,6 +224,24 @@ export class NoOpAiContextAdapter implements AiContextPort {
   }
   async searchDocuments(): Promise<AiContextCard[]> {
     return [];
+  }
+  async analyticsRisks(): Promise<{
+    cards: AiContextCard[];
+    meta: Record<string, unknown>;
+  }> {
+    return { cards: [], meta: { status: "noop" } };
+  }
+  async analyticsCompliance(): Promise<{
+    cards: AiContextCard[];
+    meta: Record<string, unknown>;
+  }> {
+    return { cards: [], meta: { status: "noop" } };
+  }
+  async analyticsOrgHealth(): Promise<{
+    cards: AiContextCard[];
+    meta: Record<string, unknown>;
+  }> {
+    return { cards: [], meta: { status: "noop" } };
   }
 }
 

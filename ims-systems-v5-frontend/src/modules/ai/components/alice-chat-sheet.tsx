@@ -178,12 +178,15 @@ export function AliceChatSheet() {
         <SheetContent
           side="right"
           showClose
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-md"
+          className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
         >
           <SheetHeader className="space-y-2 border-b border-border-subtle/80 px-4 py-3 text-left">
             <div className="flex items-start justify-between gap-2 pr-6">
               <div className="min-w-0">
                 <SheetTitle className="sr-only">Alice on this page</SheetTitle>
+                <p className="px-1 pb-1 text-[0.65rem] text-muted-foreground">
+                  Beta — answers use live records; verify citations before acting.
+                </p>
                 <img
                   src={aliceHorizontal}
                   alt="Alice"

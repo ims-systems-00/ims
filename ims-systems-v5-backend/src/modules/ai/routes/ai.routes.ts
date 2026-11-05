@@ -23,9 +23,12 @@ import { createAiChatController } from "../controllers/ai-chat.controller";
 export type AiRouterDeps = {
   authorizer: Authorizer;
   gpt?: AiGptPort;
+  /** Stronger model for floating Alice chat (defaults to gpt). */
+  chatGpt?: AiGptPort;
   activities?: AiActivityPort;
   actors?: AiActorDirectoryPort;
   context?: AiContextPort;
+  chatModelId?: string;
 };
 
 /**
@@ -37,6 +40,7 @@ export function createAiModule(deps: AiRouterDeps): {
   router: Router;
 } {
   const gpt = deps.gpt ?? new NoOpAiGptAdapter();
+  const chatGpt = deps.chatGpt ?? gpt;
   const service = createAiService({
     repository: createAiResponseRepository(),
     authorizer: deps.authorizer,
@@ -47,8 +51,9 @@ export function createAiModule(deps: AiRouterDeps): {
   const chat = createAiChatService({
     threads: createAiChatThreadRepository(),
     authorizer: deps.authorizer,
-    gpt,
+    gpt: chatGpt,
     context: deps.context ?? new NoOpAiContextAdapter(),
+    modelId: deps.chatModelId,
   });
   const controller = createAiController(service);
   const chatController = createAiChatController(chat);

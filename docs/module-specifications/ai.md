@@ -5,7 +5,9 @@
 The **AI** module provides **Alice** (marked **Beta**) in two complementary surfaces:
 
 1. **Analytical Assistant** — embedded multi-section report generator on risk, incident, and audit record sheets.
-2. **Floating chatbot** — org-wide grounded Q&A from the app shell (bottom-right FAB + navbar Alice icon), using live IMS records via server-side retrieval (search + get-by-id context cards). It is **not** a generic ChatGPT bubble: answers must cite organisation records and deep-link to them.
+2. **Floating chatbot** — org-wide grounded Q&A from the app shell (bottom-right FAB + navbar Alice icon), using live IMS records via server-side retrieval (search + get-by-id context cards + **deterministic analytics tools** for oldest/newest risks, compliance gaps, org health). It is **not** a generic ChatGPT bubble: answers must cite organisation records and deep-link to them.
+
+**Quality bar (Beta exit):** factual golden questions in `ims-systems-v5-backend/src/modules/ai/lib/golden-questions.ts` must pass routing/tool selection at ≥95% (`ALICE_FACTUAL_PASS_RATE_TARGET`). Advisory answers must stay citation-grounded (no invented refs). Prefer `OPEN_AI_CHAT_MODEL=gpt-4o` for chat; Analytical Assistant may keep `OPEN_AI_MODEL=gpt-4o-mini`.
 
 Primary business purpose remains **record-level decision-making** — assessing risks, analysing incidents, preparing audits, finding documents/controls — with Markdown advisory content users review. AI does **not** silently change parent record status (including compliance Selected/Implemented).
 

@@ -8,8 +8,12 @@ import { cardsToPromptBlock, toListCard } from "../lib/context-cards";
 import type { AiContextPort } from "../ports";
 import type { AiContextCard } from "../types/chat";
 import {
+  analyticsComplianceArgsSchema,
+  analyticsOrgHealthArgsSchema,
+  analyticsRisksArgsSchema,
   getActivitiesArgsSchema,
   getRecordArgsSchema,
+  listComplianceArgsSchema,
   listIncidentsArgsSchema,
   listLimitOnlySchema,
   listRisksArgsSchema,
@@ -44,18 +48,32 @@ function parseArgs(raw: string): unknown {
   }
 }
 
-function cardsContent(tool: string, cards: AiContextCard[]): string {
+function cardsContent(
+  tool: string,
+  cards: AiContextCard[],
+  extra?: Record<string, unknown>
+): string {
   if (cards.length === 0) {
+    const status =
+      typeof extra?.status === "string" ? extra.status : "zero_results";
     return JSON.stringify({
       tool,
       count: 0,
-      message: "No matching organisation records found.",
+      status,
+      message:
+        status === "forbidden"
+          ? "Permission denied for this module — do not invent records."
+          : status === "tool_error"
+            ? "Tool failed — say there was a retrieval error, not that the organisation has no data."
+            : "No matching organisation records found for this query.",
       records: [],
+      ...(extra ?? {}),
     });
   }
   return JSON.stringify({
     tool,
     count: cards.length,
+    status: "ok",
     records: cards.map((c) => ({
       module: c.module,
       id: c.id,
@@ -65,6 +83,7 @@ function cardsContent(tool: string, cards: AiContextCard[]): string {
       href: c.href,
       summary: c.summary,
     })),
+    ...(extra ?? {}),
   });
 }
 
@@ -78,6 +97,7 @@ export async function executeAliceTool(
   switch (name) {
     case "list_risks": {
       const args = listRisksArgsSchema.parse(parseArgs(rawArgs));
+      const includeClosed = args.includeClosed === true;
       const cards = await context.listOpenByModule({
         organizationId,
         identity,
@@ -86,7 +106,12 @@ export async function executeAliceTool(
         filters: {
           riskStatus: args.status,
           updatedSinceDays: args.updatedSinceDays,
-          openOnly: !args.status || args.status === "Open",
+          sortBy: args.sortBy,
+          sortDir: args.sortDir,
+          includeClosed,
+          openOnly: includeClosed
+            ? false
+            : !args.status || args.status === "Open",
         },
       });
       return {
@@ -94,6 +119,100 @@ export async function executeAliceTool(
         tool: name,
         cards,
         content: cardsContent(name, cards),
+      };
+    }
+    case "list_compliance": {
+      const args = listComplianceArgsSchema.parse(parseArgs(rawArgs));
+      const cards = await context.listOpenByModule({
+        organizationId,
+        identity,
+        module: "compliance",
+        limit: args.limit,
+        filters: {
+          selectedOnly: args.selectedOnly,
+          notImplementedOnly: args.notImplementedOnly,
+        },
+      });
+      return {
+        ok: true,
+        tool: name,
+        cards,
+        content: cardsContent(name, cards),
+      };
+    }
+    case "analytics_risks": {
+      const args = analyticsRisksArgsSchema.parse(parseArgs(rawArgs));
+      const includeClosed =
+        args.includeClosed ??
+        (args.metric === "oldest_raised" || args.metric === "newest_raised");
+      if (!context.analyticsRisks) {
+        return {
+          ok: false,
+          tool: name,
+          cards: [],
+          content: cardsContent(name, [], { status: "tool_error" }),
+        };
+      }
+      const result = await context.analyticsRisks({
+        organizationId,
+        identity,
+        metric: args.metric,
+        includeClosed,
+        limit: args.limit,
+      });
+      return {
+        ok: true,
+        tool: name,
+        cards: result.cards,
+        content: cardsContent(name, result.cards, result.meta),
+        meta: result.meta,
+      };
+    }
+    case "analytics_compliance": {
+      const args = analyticsComplianceArgsSchema.parse(parseArgs(rawArgs));
+      if (!context.analyticsCompliance) {
+        return {
+          ok: false,
+          tool: name,
+          cards: [],
+          content: cardsContent(name, [], { status: "tool_error" }),
+        };
+      }
+      const result = await context.analyticsCompliance({
+        organizationId,
+        identity,
+        focus: args.focus,
+        limit: args.limit,
+      });
+      return {
+        ok: true,
+        tool: name,
+        cards: result.cards,
+        content: cardsContent(name, result.cards, result.meta),
+        meta: result.meta,
+      };
+    }
+    case "analytics_org_health": {
+      const args = analyticsOrgHealthArgsSchema.parse(parseArgs(rawArgs));
+      if (!context.analyticsOrgHealth) {
+        return {
+          ok: false,
+          tool: name,
+          cards: [],
+          content: cardsContent(name, [], { status: "tool_error" }),
+        };
+      }
+      const result = await context.analyticsOrgHealth({
+        organizationId,
+        identity,
+        limit: args.limit,
+      });
+      return {
+        ok: true,
+        tool: name,
+        cards: result.cards,
+        content: cardsContent(name, result.cards, result.meta),
+        meta: result.meta,
       };
     }
     case "list_tasks": {

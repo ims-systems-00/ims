@@ -11,6 +11,13 @@ export type AliceChatTelemetryEvent = {
   promptCharsApprox: number;
   latencyMs: number;
   moduleHint?: string;
+  intentModule?: string;
+  intentMode?: string;
+  analyticsKind?: string | null;
+  toolErrors?: string[];
+  model?: string;
+  forcedTool?: string | null;
+  emptyRetry?: boolean;
 };
 
 /** Soft latency SLO for a full agent turn (ms). */

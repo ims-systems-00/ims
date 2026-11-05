@@ -189,7 +189,11 @@ export function AliceChatPanel() {
               className="h-7 w-auto max-w-[9.5rem] object-contain object-left"
             />
             <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
-              Org-wide assistant
+              Org-wide assistant · Beta
+            </p>
+            <p className="mt-0.5 text-[0.6rem] leading-snug text-muted-foreground/90">
+              Answers use live IMS records. Treat advice as guidance — verify
+              citations before acting.
             </p>
           </div>
           <div className="flex items-center gap-0.5">
