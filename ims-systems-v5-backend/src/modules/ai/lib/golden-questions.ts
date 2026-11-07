@@ -26,6 +26,7 @@ export type AliceGoldenQuestion = {
     | "risk_counts"
     | "compliance_concerns"
     | "org_health"
+    | "person_filter"
     | null;
   expectTool?: string;
   asserts?: {
@@ -68,6 +69,42 @@ export const ALICE_GOLDEN_QUESTIONS: AliceGoldenQuestion[] = [
     expectModule: "risks",
     expectAnalytics: null,
     expectTool: "list_risks",
+  },
+  {
+    id: "risk-raised-by-person",
+    kind: "factual",
+    prompt: "any risks raised by Zain?",
+    expectModule: "risks",
+    expectAnalytics: "person_filter",
+    expectTool: "list_risks",
+    asserts: { mustNotSayNoneWhenData: true, mustCiteModule: "risks" },
+  },
+  {
+    id: "risk-owned-by-person",
+    kind: "factual",
+    prompt: "any risks owned by Alex?",
+    expectModule: "risks",
+    expectAnalytics: "person_filter",
+    expectTool: "list_risks",
+    asserts: { mustNotSayNoneWhenData: true, mustCiteModule: "risks" },
+  },
+  {
+    id: "risk-involved-person",
+    kind: "factual",
+    prompt: "risks by Sam",
+    expectModule: "risks",
+    expectAnalytics: "person_filter",
+    expectTool: "list_risks",
+    asserts: { mustNotSayNoneWhenData: true, mustCiteModule: "risks" },
+  },
+  {
+    id: "risk-possessive-person",
+    kind: "factual",
+    prompt: "Show Sam's risks",
+    expectModule: "risks",
+    expectAnalytics: "person_filter",
+    expectTool: "list_risks",
+    asserts: { mustNotSayNoneWhenData: true },
   },
   {
     id: "risk-counts",

@@ -291,6 +291,15 @@
   }
 }
 
+/*
+ * Radix Sheet/Dialog (react-remove-scroll) sets body { pointer-events: none }
+ * while open. Alice is portaled to body above sheets, so it must opt back in
+ * or clicks fall through to the sheet underneath.
+ */
+[data-alice-float] {
+  pointer-events: auto !important;
+}
+
 @layer components {
   .ims-sheet-overlay[data-state="open"] {
     animation: ims-overlay-in var(--duration-normal) ease-out;
@@ -496,4 +505,39 @@
   .ims-alert-info {
     @apply border-border bg-surface-muted text-foreground;
   }
+}
+
+/* Activity timeline TipTap composer / viewer */
+.activity-editor-prose {
+  word-break: break-word;
+}
+
+.activity-editor-prose p {
+  margin: 0.25rem 0;
+}
+
+.activity-editor-prose ul {
+  list-style: disc;
+  padding-left: 1.25rem;
+  margin: 0.35rem 0;
+}
+
+.activity-editor-prose ol {
+  list-style: decimal;
+  padding-left: 1.25rem;
+  margin: 0.35rem 0;
+}
+
+.activity-editor-prose a.activity-file-attachment,
+.activity-editor-prose a[data-bucket] {
+  cursor: pointer;
+}
+
+.activity-editor-prose p.is-editor-empty:first-child::before,
+.activity-editor-prose .is-empty::before {
+  color: var(--color-muted-foreground, #6b7280);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
 }

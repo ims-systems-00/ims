@@ -103,6 +103,7 @@ import {
   type SupplierIncidentStatsPort,
   type SupplierTaskPort,
 } from "../../../modules/suppliers";
+import { createFormsModule } from "../../../modules/forms";
 import {
   createCustomerModule,
   createCustomerInteractionStatsAdapter,
@@ -753,6 +754,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     gpt: aiGpt,
     chatGpt: aiChatGpt,
     chatModelId,
+    clientAppOrigin: config?.CLIENT_URL,
     activities: createAiActivityAdapter(activities.application),
     actors: createAiActorDirectoryAdapter(),
     context: createAiContextAdapter({
@@ -1095,6 +1097,10 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/ai", ai.router);
   router.use("/compliance", compliance.router);
   router.use("/suppliers", suppliers.router);
+  const forms = createFormsModule({
+    authorizer: security.authorizer,
+  });
+  router.use("/forms", forms.router);
   router.use("/customers", customers.router);
   router.use("/email-campaigns", emailCampaigns.router);
   router.use("/tasks", tasks.router);

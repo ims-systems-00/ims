@@ -22,6 +22,7 @@ import {
   Network,
   Package,
   PenLine,
+  ClipboardList,
   ShieldAlert,
   ShieldCheck,
   Tags,
@@ -244,6 +245,15 @@ export function buildNavigationSections(
             icon: PenLine,
             requiredPermission: "document-management:read",
           },
+          {
+            id: "documents-forms",
+            label: "Forms",
+            href: "/documents/forms",
+            icon: ClipboardList,
+            // Same as other Documents children so the item is visible whenever
+            // the user can open Documents; API still enforces forms + licence.
+            requiredPermission: "document-management:read",
+          }
         ],
       },
       {

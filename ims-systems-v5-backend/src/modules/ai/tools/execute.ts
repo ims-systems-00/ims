@@ -5,6 +5,12 @@
 import type { SecurityIdentity } from "../../../security";
 import { ValidationAppError } from "../../../shared";
 import { cardsToPromptBlock, toListCard } from "../lib/context-cards";
+import {
+  resolveAliceDirectory,
+  resolvePersonIdsByName,
+  resolveUnitIdsByName,
+} from "../lib/resolve-directory";
+import { toAbsoluteAppHref } from "../lib/rewrite-app-urls";
 import type { AiContextPort } from "../ports";
 import type { AiContextCard } from "../types/chat";
 import {
@@ -16,18 +22,149 @@ import {
   listComplianceArgsSchema,
   listIncidentsArgsSchema,
   listLimitOnlySchema,
+  listOfiArgsSchema,
   listRisksArgsSchema,
   listTasksArgsSchema,
   proposeCreateOfiArgsSchema,
   proposeCreateTaskArgsSchema,
+  resolveDirectoryArgsSchema,
   searchDocumentsArgsSchema,
   searchRecordsArgsSchema,
 } from "./schemas";
+
+async function resolveNameFilters(
+  organizationId: string,
+  names: {
+    raisedByName?: string;
+    ownerName?: string;
+    assigneeName?: string;
+    personName?: string;
+    unitName?: string;
+  }
+): Promise<
+  | {
+      ok: true;
+      raisedByIds?: string[];
+      ownerIds?: string[];
+      assigneeIds?: string[];
+      involvedPersonIds?: string[];
+      businessUnitIds?: string[];
+      meta: Record<string, unknown>;
+    }
+  | { ok: false; content: string; meta: Record<string, unknown> }
+> {
+  const meta: Record<string, unknown> = {};
+  const out: {
+    raisedByIds?: string[];
+    ownerIds?: string[];
+    assigneeIds?: string[];
+    involvedPersonIds?: string[];
+    businessUnitIds?: string[];
+  } = {};
+
+  const resolvePeople = async (
+    label: string,
+    name: string | undefined,
+    key: "raisedByIds" | "ownerIds" | "assigneeIds" | "involvedPersonIds"
+  ) => {
+    if (!name) return true;
+    const { ids, matches } = await resolvePersonIdsByName(
+      organizationId,
+      name,
+      5
+    );
+    meta[label] = matches.map((m) => ({ id: m.id, name: m.name }));
+    if (ids.length === 0) {
+      return false;
+    }
+    out[key] = ids;
+    return true;
+  };
+
+  if (
+    !(await resolvePeople("raisedByMatches", names.raisedByName, "raisedByIds"))
+  ) {
+    return {
+      ok: false,
+      content: JSON.stringify({
+        status: "zero_results",
+        message: `No organisation member matched "${names.raisedByName}".`,
+        meta,
+      }),
+      meta: { status: "zero_results", ...meta },
+    };
+  }
+  if (!(await resolvePeople("ownerMatches", names.ownerName, "ownerIds"))) {
+    return {
+      ok: false,
+      content: JSON.stringify({
+        status: "zero_results",
+        message: `No organisation member matched "${names.ownerName}".`,
+        meta,
+      }),
+      meta: { status: "zero_results", ...meta },
+    };
+  }
+  if (
+    !(await resolvePeople("assigneeMatches", names.assigneeName, "assigneeIds"))
+  ) {
+    return {
+      ok: false,
+      content: JSON.stringify({
+        status: "zero_results",
+        message: `No organisation member matched "${names.assigneeName}".`,
+        meta,
+      }),
+      meta: { status: "zero_results", ...meta },
+    };
+  }
+  if (
+    !(await resolvePeople(
+      "personMatches",
+      names.personName,
+      "involvedPersonIds"
+    ))
+  ) {
+    return {
+      ok: false,
+      content: JSON.stringify({
+        status: "zero_results",
+        message: `No organisation member matched "${names.personName}".`,
+        meta,
+      }),
+      meta: { status: "zero_results", ...meta },
+    };
+  }
+  if (names.unitName) {
+    const { ids, matches } = await resolveUnitIdsByName(
+      organizationId,
+      names.unitName,
+      5
+    );
+    meta.unitMatches = matches.map((m) => ({ id: m.id, name: m.name }));
+    if (ids.length === 0) {
+      return {
+        ok: false,
+        content: JSON.stringify({
+          status: "zero_results",
+          message: `No functional unit matched "${names.unitName}".`,
+          meta,
+        }),
+        meta: { status: "zero_results", ...meta },
+      };
+    }
+    out.businessUnitIds = ids;
+  }
+
+  return { ok: true, ...out, meta };
+}
 
 export type AliceToolExecuteContext = {
   organizationId: string;
   identity: SecurityIdentity;
   context: AiContextPort;
+  /** Public frontend origin for absolute deep links in tool payloads. */
+  clientAppOrigin?: string;
 };
 
 export type AliceToolResult = {
@@ -51,7 +188,8 @@ function parseArgs(raw: string): unknown {
 function cardsContent(
   tool: string,
   cards: AiContextCard[],
-  extra?: Record<string, unknown>
+  extra?: Record<string, unknown>,
+  clientAppOrigin?: string
 ): string {
   if (cards.length === 0) {
     const status =
@@ -74,14 +212,30 @@ function cardsContent(
     tool,
     count: cards.length,
     status: "ok",
+    note:
+      "Use reference/title and owner/raisedBy/functionalUnit/assignee names in user-facing answers. " +
+      "recordId and nested *.id are internal only — never show Mongo ObjectIds.",
     records: cards.map((c) => ({
       module: c.module,
-      id: c.id,
       reference: c.reference,
       title: c.title,
       status: c.status,
-      href: c.href,
+      recordId: c.id,
+      href: toAbsoluteAppHref(c.href, clientAppOrigin),
       summary: c.summary,
+      owner: c.owner
+        ? { id: c.owner.id, name: c.owner.name }
+        : null,
+      raisedBy: c.raisedBy
+        ? { id: c.raisedBy.id, name: c.raisedBy.name }
+        : null,
+      functionalUnit: c.functionalUnit
+        ? { id: c.functionalUnit.id, name: c.functionalUnit.name }
+        : null,
+      assignees: (c.assignees ?? []).map((a) => ({
+        id: a.id,
+        name: a.name,
+      })),
     })),
     ...(extra ?? {}),
   });
@@ -92,33 +246,169 @@ export async function executeAliceTool(
   rawArgs: string,
   ctx: AliceToolExecuteContext
 ): Promise<AliceToolResult> {
-  const { organizationId, identity, context } = ctx;
+  const { organizationId, identity, context, clientAppOrigin } = ctx;
+  const pack = (cards: AiContextCard[], extra?: Record<string, unknown>) =>
+    cardsContent(name, cards, extra, clientAppOrigin);
 
   switch (name) {
+    case "resolve_directory": {
+      const args = resolveDirectoryArgsSchema.parse(parseArgs(rawArgs));
+      const result = await resolveAliceDirectory({
+        organizationId,
+        query: args.query,
+        kind: args.kind,
+      });
+      const matches = [...result.people, ...result.units];
+      return {
+        ok: true,
+        tool: name,
+        cards: [],
+        content: JSON.stringify({
+          status: matches.length > 0 ? "ok" : "zero_results",
+          query: result.query,
+          people: result.people,
+          units: result.units,
+          message:
+            matches.length === 0
+              ? `No directory matches for "${result.query}".`
+              : undefined,
+        }),
+        meta: {
+          status: matches.length > 0 ? "ok" : "zero_results",
+          people: result.people,
+          units: result.units,
+        },
+      };
+    }
     case "list_risks": {
       const args = listRisksArgsSchema.parse(parseArgs(rawArgs));
       const includeClosed = args.includeClosed === true;
-      const cards = await context.listOpenByModule({
-        organizationId,
-        identity,
-        module: "risks",
-        limit: args.limit,
-        filters: {
-          riskStatus: args.status,
-          updatedSinceDays: args.updatedSinceDays,
-          sortBy: args.sortBy,
-          sortDir: args.sortDir,
-          includeClosed,
-          openOnly: includeClosed
-            ? false
-            : !args.status || args.status === "Open",
-        },
+      const baseFilters = {
+        riskStatus: args.status,
+        updatedSinceDays: args.updatedSinceDays,
+        sortBy: args.sortBy,
+        sortDir: args.sortDir,
+        includeClosed,
+        openOnly: includeClosed
+          ? false
+          : !args.status || args.status === "Open",
+      } as const;
+
+      const resolved = await resolveNameFilters(organizationId, {
+        raisedByName: args.raisedByName,
+        ownerName: args.ownerName,
+        personName: args.personName,
+        unitName: args.unitName,
+      });
+      if (!resolved.ok) {
+        return {
+          ok: true,
+          tool: name,
+          cards: [],
+          content: resolved.content,
+          meta: resolved.meta,
+        };
+      }
+
+      const listWith = (personFilters: {
+        raisedByIds?: string[];
+        ownerIds?: string[];
+        involvedPersonIds?: string[];
+        businessUnitIds?: string[];
+      }) =>
+        context.listOpenByModule({
+          organizationId,
+          identity,
+          module: "risks",
+          limit: args.limit,
+          filters: {
+            ...baseFilters,
+            ...personFilters,
+            businessUnitIds:
+              personFilters.businessUnitIds ?? resolved.businessUnitIds,
+          },
+        });
+
+      // Vague personName → multi-role OR (raiser OR owner).
+      if (resolved.involvedPersonIds?.length) {
+        const cards = await listWith({
+          involvedPersonIds: resolved.involvedPersonIds,
+        });
+        const meta = {
+          ...resolved.meta,
+          matchedRole: "involved",
+          matchedRoles: ["raisedBy", "owner"],
+        };
+        return {
+          ok: true,
+          tool: name,
+          cards,
+          content: pack(cards, meta),
+          meta,
+        };
+      }
+
+      // Precise raiser: try raisedBy, then sibling owner fallback.
+      if (resolved.raisedByIds?.length && !resolved.ownerIds?.length) {
+        let cards = await listWith({ raisedByIds: resolved.raisedByIds });
+        let matchedRole: "raisedBy" | "owner" = "raisedBy";
+        if (cards.length === 0) {
+          cards = await listWith({ ownerIds: resolved.raisedByIds });
+          matchedRole = "owner";
+        }
+        const meta = {
+          ...resolved.meta,
+          matchedRole,
+          note:
+            matchedRole === "owner"
+              ? "No risks as raiser; matched the same person as owner instead. Say that clearly — do not claim none exist."
+              : undefined,
+        };
+        return {
+          ok: true,
+          tool: name,
+          cards,
+          content: pack(cards, meta),
+          meta,
+        };
+      }
+
+      // Precise owner: try owner, then sibling raiser fallback.
+      if (resolved.ownerIds?.length && !resolved.raisedByIds?.length) {
+        let cards = await listWith({ ownerIds: resolved.ownerIds });
+        let matchedRole: "owner" | "raisedBy" = "owner";
+        if (cards.length === 0) {
+          cards = await listWith({ raisedByIds: resolved.ownerIds });
+          matchedRole = "raisedBy";
+        }
+        const meta = {
+          ...resolved.meta,
+          matchedRole,
+          note:
+            matchedRole === "raisedBy"
+              ? "No risks as owner; matched the same person as raiser instead. Say that clearly — do not claim none exist."
+              : undefined,
+        };
+        return {
+          ok: true,
+          tool: name,
+          cards,
+          content: pack(cards, meta),
+          meta,
+        };
+      }
+
+      // Both roles provided explicitly, or neither person filter.
+      const cards = await listWith({
+        raisedByIds: resolved.raisedByIds,
+        ownerIds: resolved.ownerIds,
       });
       return {
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards, resolved.meta),
+        meta: resolved.meta,
       };
     }
     case "list_compliance": {
@@ -137,7 +427,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards),
       };
     }
     case "analytics_risks": {
@@ -150,7 +440,7 @@ export async function executeAliceTool(
           ok: false,
           tool: name,
           cards: [],
-          content: cardsContent(name, [], { status: "tool_error" }),
+          content: pack([], { status: "tool_error" }),
         };
       }
       const result = await context.analyticsRisks({
@@ -164,7 +454,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards: result.cards,
-        content: cardsContent(name, result.cards, result.meta),
+        content: pack(result.cards, result.meta),
         meta: result.meta,
       };
     }
@@ -175,7 +465,7 @@ export async function executeAliceTool(
           ok: false,
           tool: name,
           cards: [],
-          content: cardsContent(name, [], { status: "tool_error" }),
+          content: pack([], { status: "tool_error" }),
         };
       }
       const result = await context.analyticsCompliance({
@@ -188,7 +478,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards: result.cards,
-        content: cardsContent(name, result.cards, result.meta),
+        content: pack(result.cards, result.meta),
         meta: result.meta,
       };
     }
@@ -199,7 +489,7 @@ export async function executeAliceTool(
           ok: false,
           tool: name,
           cards: [],
-          content: cardsContent(name, [], { status: "tool_error" }),
+          content: pack([], { status: "tool_error" }),
         };
       }
       const result = await context.analyticsOrgHealth({
@@ -211,12 +501,25 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards: result.cards,
-        content: cardsContent(name, result.cards, result.meta),
+        content: pack(result.cards, result.meta),
         meta: result.meta,
       };
     }
     case "list_tasks": {
       const args = listTasksArgsSchema.parse(parseArgs(rawArgs));
+      const resolved = await resolveNameFilters(organizationId, {
+        assigneeName: args.assigneeName,
+        unitName: args.unitName,
+      });
+      if (!resolved.ok) {
+        return {
+          ok: true,
+          tool: name,
+          cards: [],
+          content: resolved.content,
+          meta: resolved.meta,
+        };
+      }
       const cards = await context.listOpenByModule({
         organizationId,
         identity,
@@ -228,17 +531,33 @@ export async function executeAliceTool(
           openOnly: args.incomplete !== false,
           overdue: args.overdue,
           updatedSinceDays: args.updatedSinceDays,
+          assigneeIds: resolved.assigneeIds,
+          businessUnitIds: resolved.businessUnitIds,
         },
       });
       return {
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards, resolved.meta),
+        meta: resolved.meta,
       };
     }
     case "list_incidents": {
       const args = listIncidentsArgsSchema.parse(parseArgs(rawArgs));
+      const resolved = await resolveNameFilters(organizationId, {
+        ownerName: args.ownerName,
+        unitName: args.unitName,
+      });
+      if (!resolved.ok) {
+        return {
+          ok: true,
+          tool: name,
+          cards: [],
+          content: resolved.content,
+          meta: resolved.meta,
+        };
+      }
       const cards = await context.listOpenByModule({
         organizationId,
         identity,
@@ -247,28 +566,49 @@ export async function executeAliceTool(
         filters: {
           priorityHigh: args.priorityHigh,
           openOnly: true,
+          ownerIds: resolved.ownerIds,
+          businessUnitIds: resolved.businessUnitIds,
         },
       });
       return {
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards, resolved.meta),
+        meta: resolved.meta,
       };
     }
     case "list_ofi": {
-      const args = listLimitOnlySchema.parse(parseArgs(rawArgs));
+      const args = listOfiArgsSchema.parse(parseArgs(rawArgs));
+      const resolved = await resolveNameFilters(organizationId, {
+        ownerName: args.ownerName,
+        unitName: args.unitName,
+      });
+      if (!resolved.ok) {
+        return {
+          ok: true,
+          tool: name,
+          cards: [],
+          content: resolved.content,
+          meta: resolved.meta,
+        };
+      }
       const cards = await context.listOpenByModule({
         organizationId,
         identity,
         module: "ofi",
         limit: args.limit,
+        filters: {
+          ownerIds: resolved.ownerIds,
+          businessUnitIds: resolved.businessUnitIds,
+        },
       });
       return {
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards, resolved.meta),
+        meta: resolved.meta,
       };
     }
     case "list_audits": {
@@ -283,7 +623,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards),
       };
     }
     case "list_documents": {
@@ -298,7 +638,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards),
       };
     }
     case "get_record": {
@@ -314,7 +654,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards),
       };
     }
     case "search_records": {
@@ -334,7 +674,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards),
       };
     }
     case "search_documents": {
@@ -360,7 +700,7 @@ export async function executeAliceTool(
         ok: true,
         tool: name,
         cards,
-        content: cardsContent(name, cards),
+        content: pack(cards),
       };
     }
     case "get_activities": {
@@ -424,7 +764,10 @@ export async function executeAliceTool(
 }
 
 /** Format cards for optional prompt injection (pins). */
-export function pinnedCardsBlock(cards: AiContextCard[]): string {
+export function pinnedCardsBlock(
+  cards: AiContextCard[],
+  clientAppOrigin?: string
+): string {
   if (cards.length === 0) return "";
-  return `Pinned / page-selected records:\n${cardsToPromptBlock(cards)}\n`;
+  return `Pinned / page-selected records:\n${cardsToPromptBlock(cards, undefined, clientAppOrigin)}\n`;
 }

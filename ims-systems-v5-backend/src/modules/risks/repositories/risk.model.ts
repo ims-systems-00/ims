@@ -182,6 +182,7 @@ const riskSchema = new Schema(
 riskSchema.index({ organizationId: 1, deletedAt: 1, raisedOn: -1 });
 riskSchema.index({ organizationId: 1, deletedAt: 1, "mitigated.status": 1 });
 riskSchema.index({ organizationId: 1, deletedAt: 1, ownerId: 1 });
+riskSchema.index({ organizationId: 1, deletedAt: 1, raisedBy: 1 });
 riskSchema.index({ organizationId: 1, deletedAt: 1, businessUnitId: 1 });
 riskSchema.index({ organizationId: 1, deletedAt: 1, type: 1 });
 riskSchema.index({ organizationId: 1, deletedAt: 1, "currentScore.total": -1 });

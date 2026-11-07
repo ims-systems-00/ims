@@ -15,6 +15,12 @@ import {
   detectPromptInjectionSignals,
   logAliceChatTelemetry,
 } from "../lib/chat-telemetry";
+import { enrichAliceText } from "../lib/resolve-entity-labels";
+import {
+  normalizeClientAppOrigin,
+  rewriteAliceAppUrls,
+  toAbsoluteAppHref,
+} from "../lib/rewrite-app-urls";
 import {
   emptyRetryTool,
   resolveForcedTool,
@@ -44,13 +50,17 @@ You answer in Markdown using UK English.
 You have tools to fetch live organisation records. ALWAYS use tools to look up data before answering factual questions about risks, tasks, incidents, audits, documents, OFI, or compliance.
 Prefer analytics_* tools for oldest/newest/highest/counts, compliance gaps, and "what should I worry about".
 Prefer structured list_* tools with filters (e.g. list_risks status=Escalated; list_compliance for control gaps; list_tasks priority=High incomplete=true).
-Use search_records only when filters cannot express the ask. Use search_documents for policies/SOPs. Use get_record for one cited id/reference.
+For person/unit questions, resolve the person/unit in the org directory then list with role-aware filters (raisedByName / ownerName / personName for vague involvement / assigneeName / unitName). If a precise role returns empty, tool meta may say a sibling role matched — report that honestly. Never invent who a person is. Never claim “none exist” if another role matched.
+Use search_records only when filters cannot express the ask. Use search_documents for policies/SOPs. Use get_record for one cited recordId/reference.
 
 Rules:
 - Answer ONLY from tool results and any pinned/page-selected records in the prompt.
 - Never invent references (RK-, TASK-, DOC-, etc.) or rows.
 - Distinguish tool status: zero_results = truly none found; forbidden = permission; tool_error = retrieval failure (say so — do not claim the org has no data).
-- For lists, use a compact Markdown table or bullets with references and links from tool results.
+- For lists, use a compact Markdown table or bullets with human references, titles, and people/unit names — never Mongo ObjectIds.
+- When linking to IMS records, copy href from tool results. Prefer root-relative BrowserRouter paths. Never use hash routes (/#/…). Never invent hostnames. Link labels must be "View …" or the record title/reference — never a raw ObjectId.
+- Always show people and functional units by name from tool results (Raised by / Owner / Assignees / Functional unit). Never put raw Mongo ObjectIds in tables or prose.
+- recordId in tool JSON is internal for get_record only — never display it.
 - Advisory answers ("major concerns") must summarise tool meta + cited records — still no invented refs.
 - propose_create_task / propose_create_ofi never write data; tell the user confirmation is required in the UI.
 - Never claim you changed record status.`;
@@ -112,8 +122,24 @@ function capHistory(
     });
 }
 
-function buildSystemPrompt(input: StreamChatInput, pinnedBlock: string): string {
+function buildSystemPrompt(
+  input: StreamChatInput,
+  pinnedBlock: string,
+  clientAppOrigin?: string
+): string {
   const bits = [CHAT_SYSTEM];
+  const origin = normalizeClientAppOrigin(clientAppOrigin);
+  if (origin) {
+    bits.push(
+      `App origin (only allowed absolute IMS base URL): ${origin}. ` +
+        `Example deep link: ${toAbsoluteAppHref("/tasks?task=<id>", origin)}. ` +
+        `Do not use any other scheme/host for in-app links.`
+    );
+  } else {
+    bits.push(
+      "Use root-relative IMS paths from tool href fields only (e.g. /tasks?task=…). Never invent absolute URLs."
+    );
+  }
   const surfaceMode = input.surfaceMode ?? "general";
   const intent = routeChatIntent({
     message: input.message,
@@ -144,9 +170,9 @@ function buildSystemPrompt(input: StreamChatInput, pinnedBlock: string): string 
     }
     if (input.pageContext?.selectedIds?.length) {
       bits.push(
-        `Selected record(s) on this page: ${input.pageContext.selectedIds
-          .map((row) => `${row.module}:${row.id}`)
-          .join(", ")}. Prefer get_record / activities for these when relevant.`
+        `Selected record(s) on this page (use get_record with recordId when needed; do not show raw ids): ${input.pageContext.selectedIds
+          .map((row) => `${row.module} recordId=${row.id}`)
+          .join("; ")}.`
       );
     }
   }
@@ -193,12 +219,15 @@ export type AiChatServiceDeps = {
   context: AiContextPort;
   /** Optional model id for telemetry (e.g. gpt-4o). */
   modelId?: string;
+  /** Public frontend origin (CLIENT_URL) for deep-link rewriting. */
+  clientAppOrigin?: string;
 };
 
 export type AiChatService = ReturnType<typeof createAiChatService>;
 
 export function createAiChatService(deps: AiChatServiceDeps) {
-  const { threads, authorizer, gpt, context, modelId } = deps;
+  const { threads, authorizer, gpt, context, modelId, clientAppOrigin } = deps;
+  const appOrigin = normalizeClientAppOrigin(clientAppOrigin);
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -337,7 +366,7 @@ export function createAiChatService(deps: AiChatServiceDeps) {
       }
 
       const pinned = await gatherPinnedDetail(actor, organizationId, input);
-      const pinnedBlock = pinnedCardsBlock(pinned);
+      const pinnedBlock = pinnedCardsBlock(pinned, appOrigin);
       const intent = routeChatIntent({
         message,
         pageHint:
@@ -346,7 +375,7 @@ export function createAiChatService(deps: AiChatServiceDeps) {
             : undefined,
       });
       const forced = resolveForcedTool(message, intent);
-      const systemContent = buildSystemPrompt(input, pinnedBlock);
+      const systemContent = buildSystemPrompt(input, pinnedBlock, appOrigin);
 
       const messages: GptMessage[] = [
         { role: "system", content: systemContent },
@@ -385,6 +414,7 @@ export function createAiChatService(deps: AiChatServiceDeps) {
             organizationId,
             identity: actor,
             context,
+            clientAppOrigin: appOrigin,
           });
         } catch (err) {
           const errMsg =
@@ -522,7 +552,12 @@ export function createAiChatService(deps: AiChatServiceDeps) {
 
       const unique = uniqueCards(collectedCards);
       const verified = verifyAliceCitations(assistantText, unique);
-      assistantText = verified.sanitizedText;
+      assistantText = rewriteAliceAppUrls(verified.sanitizedText, appOrigin);
+      assistantText = await enrichAliceText(
+        organizationId,
+        assistantText,
+        unique
+      );
 
       const citations = toCitations(unique);
       emit({ type: "citations", citations });

@@ -15,6 +15,7 @@ import type {
   CompliancePickerItem,
   UpdateControlRaciInput,
 } from "../types";
+import { CLAUSE_SORT_COLLATION } from "../lib/compliance-algorithms";
 import {
   getControlStatusModel,
   type ControlStatusDocument,
@@ -133,6 +134,7 @@ export function createControlStatusRepository() {
         name,
         deletedAt: null,
       })
+        .collation(CLAUSE_SORT_COLLATION)
         .sort({ clause: 1 })
         .exec();
       return docs.map(mapDoc);
@@ -172,9 +174,14 @@ export function createControlStatusRepository() {
       const pageSize = query.pageSize;
       const skip = (page - 1) * pageSize;
 
+      const findQuery = Model.find(filter).sort(sort).skip(skip).limit(pageSize);
+      if (sortField === "clause") {
+        findQuery.collation(CLAUSE_SORT_COLLATION);
+      }
+
       const [total, docs] = await Promise.all([
         Model.countDocuments(filter).exec(),
-        Model.find(filter).sort(sort).skip(skip).limit(pageSize).exec(),
+        findQuery.exec(),
       ]);
 
       return {
@@ -210,6 +217,7 @@ export function createControlStatusRepository() {
       const [total, docs] = await Promise.all([
         Model.countDocuments(filter).exec(),
         Model.find(filter)
+          .collation(CLAUSE_SORT_COLLATION)
           .sort({ name: 1, clause: 1 })
           .skip(skip)
           .limit(pageSize)

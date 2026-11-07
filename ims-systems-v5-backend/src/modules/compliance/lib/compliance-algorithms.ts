@@ -243,3 +243,20 @@ export function sectionKeyFromClause(clause: string): string {
   const match = /^[^.]+/.exec(clause.trim());
   return match?.[0] ?? clause;
 }
+
+/**
+ * Natural clause order: "3" < "4" < "10", and "4.2" < "4.10".
+ * Prefer this over lexicographic string sort (which puts "10" before "3").
+ */
+export function compareClauses(a: string, b: string): number {
+  return a.localeCompare(b, undefined, {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
+
+/** Mongo collation so paginated `.sort({ clause })` matches compareClauses. */
+export const CLAUSE_SORT_COLLATION = {
+  locale: "en",
+  numericOrdering: true,
+} as const;

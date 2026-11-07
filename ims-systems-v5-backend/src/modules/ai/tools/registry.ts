@@ -47,6 +47,24 @@ export const ALICE_CHAT_TOOLS: GptToolDefinition[] = [
             description:
               "When true, include mitigated/accepted risks (needed for oldest ever raised).",
           },
+          raisedByName: {
+            type: "string",
+            description:
+              "Person who raised/created the risk (exact role). Prefer after resolve_directory.",
+          },
+          ownerName: {
+            type: "string",
+            description: "Risk owner display name filter (exact role).",
+          },
+          personName: {
+            type: "string",
+            description:
+              "Person involved in any role (raiser OR owner). Use for vague asks like 'risks by X' / 'X's risks'.",
+          },
+          unitName: {
+            type: "string",
+            description: "Functional unit name filter.",
+          },
           limit: {
             type: "integer",
             minimum: 1,
@@ -54,6 +72,29 @@ export const ALICE_CHAT_TOOLS: GptToolDefinition[] = [
             description: "Max rows (default 6, max 25).",
           },
         },
+        additionalProperties: false,
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "resolve_directory",
+      description:
+        "Look up organisation people and/or functional units by name. Use before list_* when the user names a person or unit (e.g. 'raised by Zain').",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Name fragment to search (e.g. Zain, Operations).",
+          },
+          kind: {
+            type: "string",
+            enum: ["people", "units", "both"],
+          },
+        },
+        required: ["query"],
         additionalProperties: false,
       },
     },
@@ -180,6 +221,14 @@ export const ALICE_CHAT_TOOLS: GptToolDefinition[] = [
             minimum: 1,
             maximum: 365,
           },
+          assigneeName: {
+            type: "string",
+            description: "Assignee display name filter.",
+          },
+          unitName: {
+            type: "string",
+            description: "Functional unit name filter.",
+          },
           limit: limitProp,
         },
         additionalProperties: false,
@@ -195,6 +244,14 @@ export const ALICE_CHAT_TOOLS: GptToolDefinition[] = [
         type: "object",
         properties: {
           priorityHigh: { type: "boolean" },
+          ownerName: {
+            type: "string",
+            description: "Incident owner display name filter.",
+          },
+          unitName: {
+            type: "string",
+            description: "Functional unit name filter.",
+          },
           limit: limitProp,
         },
         additionalProperties: false,
@@ -208,7 +265,17 @@ export const ALICE_CHAT_TOOLS: GptToolDefinition[] = [
       description: "List open OFIs / continual improvement items.",
       parameters: {
         type: "object",
-        properties: { limit: limitProp },
+        properties: {
+          ownerName: {
+            type: "string",
+            description: "OFI owner display name filter.",
+          },
+          unitName: {
+            type: "string",
+            description: "Functional unit name filter.",
+          },
+          limit: limitProp,
+        },
         additionalProperties: false,
       },
     },

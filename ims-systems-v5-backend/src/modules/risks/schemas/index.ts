@@ -102,6 +102,7 @@ export const listRisksQuerySchema = z.object({
   status: z.enum(["Open", "Escalated", "Mitigated", "Accepted"]).optional(),
   businessUnitIds: csvList.pipe(z.array(objectIdSchema).optional()),
   ownerIds: csvList.pipe(z.array(objectIdSchema).optional()),
+  raisedByIds: csvList.pipe(z.array(objectIdSchema).optional()),
   categoryIds: csvList.pipe(z.array(objectIdSchema).optional()),
   types: csvList.pipe(z.array(riskTypeSchema).optional()),
   raisedFrom: z.coerce.date().optional(),

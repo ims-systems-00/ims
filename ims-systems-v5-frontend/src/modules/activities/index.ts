@@ -6,6 +6,10 @@
  */
 
 export { ActivityTimeline } from "./components/activity-timeline";
+export {
+  ActivityRichTextEditor,
+  ActivityRichTextView,
+} from "./components/activity-rich-text";
 export { SheetPanelTabs } from "./components/sheet-panel-tabs";
 export type { SheetPanelTab } from "./components/sheet-panel-tabs";
 export {

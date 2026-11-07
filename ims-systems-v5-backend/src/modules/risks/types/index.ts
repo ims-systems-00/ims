@@ -194,6 +194,8 @@ export type ListRisksQuery = {
   status?: RiskDisplayStatus;
   businessUnitIds?: string[];
   ownerIds?: string[];
+  /** Filter by who raised the risk (user subject ids). */
+  raisedByIds?: string[];
   categoryIds?: string[];
   types?: RiskType[];
   raisedFrom?: Date;

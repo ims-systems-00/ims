@@ -29,6 +29,8 @@ export type AiRouterDeps = {
   actors?: AiActorDirectoryPort;
   context?: AiContextPort;
   chatModelId?: string;
+  /** Public frontend origin (CLIENT_URL) for Alice deep links. */
+  clientAppOrigin?: string;
 };
 
 /**
@@ -54,6 +56,7 @@ export function createAiModule(deps: AiRouterDeps): {
     gpt: chatGpt,
     context: deps.context ?? new NoOpAiContextAdapter(),
     modelId: deps.chatModelId,
+    clientAppOrigin: deps.clientAppOrigin,
   });
   const controller = createAiController(service);
   const chatController = createAiChatController(chat);

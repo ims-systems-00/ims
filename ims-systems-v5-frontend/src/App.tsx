@@ -29,6 +29,15 @@ import {
   RepositoryDetailPage,
   SignatureRequestsPage,
 } from "@/modules/document-management";
+import {
+  BuildFormPage,
+  FormAnalysisPage,
+  FormBuilderLayout,
+  FormResponsePage,
+  FormSettingsPage,
+  FormSubmissionPage,
+  FormsLibraryPage,
+} from "@/modules/forms";
 import { ComplianceToolkitPage } from "@/modules/compliance";
 import { OfisListPage } from "@/modules/ofi";
 import { RisksListPage } from "@/modules/risks";
@@ -168,6 +177,18 @@ export function App() {
             <Route
               path="documents/signatures"
               element={<SignatureRequestsPage />}
+            />
+            <Route path="documents/forms" element={<FormsLibraryPage />} />
+            <Route path="documents/forms/:formId" element={<FormBuilderLayout />}>
+              <Route index element={<Navigate to="build-form" replace />} />
+              <Route path="build-form" element={<BuildFormPage />} />
+              <Route path="settings" element={<FormSettingsPage />} />
+              <Route path="analysis" element={<FormAnalysisPage />} />
+              <Route path="response" element={<FormResponsePage />} />
+            </Route>
+            <Route
+              path="documents/forms/:formId/submission"
+              element={<FormSubmissionPage />}
             />
             <Route path="ofi" element={<OfisListPage />} />
             <Route
