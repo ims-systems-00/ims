@@ -1,5 +1,6 @@
-import { OpenFgaClient, CredentialsMethod } from "@openfga/sdk";
+import { OpenFgaClient } from "@openfga/sdk";
 import type { AppConfig } from "../../config";
+import { resolveOpenFgaCredentials } from "./credentials";
 import type {
   OpenFgaCheckRequest,
   OpenFgaGateway,
@@ -7,20 +8,12 @@ import type {
 } from "./types";
 
 export function createOpenFgaSdkGateway(config: AppConfig): OpenFgaGateway {
+  const credentials = resolveOpenFgaCredentials(config);
   const client = new OpenFgaClient({
     apiUrl: config.OPENFGA_API_URL,
     storeId: config.OPENFGA_STORE_ID,
     authorizationModelId: config.OPENFGA_MODEL_ID,
-    ...(config.OPENFGA_API_TOKEN.trim()
-      ? {
-          credentials: {
-            method: CredentialsMethod.ApiToken,
-            config: {
-              token: config.OPENFGA_API_TOKEN,
-            },
-          },
-        }
-      : {}),
+    ...(credentials ? { credentials } : {}),
   });
 
   return {

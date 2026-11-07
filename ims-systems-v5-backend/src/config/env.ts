@@ -107,7 +107,21 @@ const envSchema = z
     OPENFGA_API_URL: z.string().default(""),
     OPENFGA_STORE_ID: z.string().default(""),
     OPENFGA_MODEL_ID: z.string().default(""),
-    /** Optional API token / client credentials depending on deployment. */
+    /**
+     * Preferred Auth0 FGA / Okta FGA auth: OAuth client credentials.
+     * When any of these are set, all four must be set. Leave empty for
+     * local unauthenticated OpenFGA.
+     */
+    OPENFGA_CLIENT_ID: z.string().default(""),
+    OPENFGA_CLIENT_SECRET: z.string().default(""),
+    /** Token issuer host or URL, e.g. auth.fga.dev or https://auth.fga.dev */
+    OPENFGA_API_TOKEN_ISSUER: z.string().default(""),
+    /** API audience, e.g. https://api.us1.fga.dev/ */
+    OPENFGA_API_AUDIENCE: z.string().default(""),
+    /**
+     * Deprecated legacy static API token. Used only when client credentials
+     * are not configured. Prefer OPENFGA_CLIENT_ID / OPENFGA_CLIENT_SECRET.
+     */
     OPENFGA_API_TOKEN: z.string().default(""),
 
     /** Redis connection used by BullMQ email queues. */
