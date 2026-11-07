@@ -1,3 +1,4 @@
+import { createOrganisationEmailBrandingResolver } from "../../organisation/adapters/email-branding.adapter";
 import { createOrganisationRepository } from "../../organisation/repositories/organisation.repository";
 import type {
   CampaignOrganisationPort,
@@ -7,8 +8,15 @@ import type {
 /**
  * Read organisation sender fields for campaign mail headers.
  */
-export function createCampaignOrganisationAdapter(): CampaignOrganisationPort {
+export function createCampaignOrganisationAdapter(deps?: {
+  resolveEmailBranding?: ReturnType<
+    typeof createOrganisationEmailBrandingResolver
+  >;
+}): CampaignOrganisationPort {
   const organisations = createOrganisationRepository();
+  const resolveEmailBranding =
+    deps?.resolveEmailBranding ?? createOrganisationEmailBrandingResolver();
+
   return {
     async getSender(
       organizationId: string
@@ -21,6 +29,7 @@ export function createCampaignOrganisationAdapter(): CampaignOrganisationPort {
         campaignEmail:
           (org as { campaignEmail?: string | null }).campaignEmail ??
           undefined,
+        emailBranding: await resolveEmailBranding(organizationId),
       };
     },
   };

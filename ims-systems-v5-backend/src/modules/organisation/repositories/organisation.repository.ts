@@ -1,9 +1,11 @@
+import { normalizeOrganisationEmailBranding } from "../../../infrastructure/email/templates";
 import type {
   CreateOrganisationInput,
   DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
   IncidentResolutionTargets,
   Organisation,
+  OrganisationEmailBranding,
   OrganisationLicences,
   OrganisationLogoStorage,
   OrganisationPaymentStatus,
@@ -151,6 +153,9 @@ function toDomain(doc: OrganisationDocument): Organisation {
           fileName: doc.logoStorage.fileName ?? undefined,
         }
       : null,
+    emailBranding: normalizeOrganisationEmailBranding(
+      (doc as { emailBranding?: OrganisationEmailBranding | null }).emailBranding
+    ),
     auth0OrganizationId: doc.auth0OrganizationId?.trim()
       ? doc.auth0OrganizationId.trim()
       : null,
@@ -222,6 +227,7 @@ export function createOrganisationRepository() {
         documentReviewReminderOffsets: [],
         referralSource: input.data.referralSource ?? null,
         logoSrc: input.data.logoSrc?.trim() ? input.data.logoSrc.trim() : null,
+        emailBranding: { enabled: false, themeId: null, colors: null },
         createdBy: input.createdBy,
         createdOn: input.createdOn,
       });
@@ -521,6 +527,7 @@ export function createOrganisationRepository() {
             ],
             referralSource: null,
             logoSrc: null,
+            emailBranding: { enabled: false, themeId: null, colors: null },
             createdBy: input.createdBy,
             createdOn: input.createdOn,
           },
@@ -538,6 +545,19 @@ export function createOrganisationRepository() {
       const doc = await Model.findByIdAndUpdate(
         id,
         { $set: { logoSrc, logoStorage } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
+    },
+
+    async updateEmailBranding(
+      id: string,
+      emailBranding: OrganisationEmailBranding
+    ): Promise<Organisation | null> {
+      const normalized = normalizeOrganisationEmailBranding(emailBranding);
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        { $set: { emailBranding: normalized } },
         { returnDocument: "after" }
       ).lean();
       return doc ? toDomain(doc as OrganisationDocument) : null;

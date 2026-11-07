@@ -4,6 +4,7 @@ import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
+import { loadPublicEnv } from "@/shared/lib/env";
 import { notify } from "@/shared/lib/toast";
 import { SheetPanelTabs } from "@/modules/activities";
 import {
@@ -11,6 +12,11 @@ import {
   buildAuditAssistantContext,
 } from "@/modules/ai";
 import { useCurrentOrganisationQuery } from "@/modules/organisation";
+import {
+  permissionAllowed,
+  useSecurityCapabilitiesQuery,
+} from "@/modules/security/hooks/use-security-capabilities";
+import { useSessionSubjectId } from "@/security";
 import {
   useAuditQuery,
   useCompleteAuditMutation,
@@ -78,6 +84,8 @@ export function AuditSheet({
     mode === "create" ? undefined : (auditId ?? undefined)
   );
   const orgQuery = useCurrentOrganisationQuery(open && mode === "view");
+  const capabilitiesQuery = useSecurityCapabilitiesQuery(open);
+  const sessionSubjectId = useSessionSubjectId();
   const createMutation = useCreateAuditMutation();
   const updateMutation = useUpdateAuditMutation(auditId ?? "");
   const deleteMutation = useDeleteAuditMutation();
@@ -110,6 +118,20 @@ export function AuditSheet({
     !completed &&
     audit != null &&
     new Date(audit.startDate).getTime() <= Date.now();
+  // Capabilities API only emits `*:read` keys (nav preflight). BE still
+  // authorizes AI create on `/ai`. Also allow auditor/creator participants.
+  const hasAuditRead = permissionAllowed(
+    "audits:read",
+    capabilitiesQuery.data?.permissions,
+    loadPublicEnv().VITE_SECURITY_PROVIDER
+  );
+  const isAuditParticipant = Boolean(
+    audit &&
+      sessionSubjectId &&
+      (audit.auditorId === sessionSubjectId ||
+        audit.createdBy === sessionSubjectId)
+  );
+  const canAssist = hasAuditRead || isAuditParticipant;
 
   async function handleCreate(values: CreateAuditInput | UpdateAuditInput) {
     const result = await createMutation.mutateAsync(values as CreateAuditInput);
@@ -225,15 +247,17 @@ export function AuditSheet({
               </Button>
               {!completed ? (
                 <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => setAliceOpen(true)}
-                  >
-                    <Sparkles className="size-4" />
-                    Assist & Verification
-                  </Button>
+                  {canAssist ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => setAliceOpen(true)}
+                    >
+                      <Sparkles className="size-4" />
+                      Assist & Verification
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"

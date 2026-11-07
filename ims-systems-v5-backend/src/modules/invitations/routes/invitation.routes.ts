@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { EmailBranding } from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { Logger } from "../../../infrastructure/logging/logger";
 import type { Authorizer, MembershipProjection } from "../../../security";
@@ -22,6 +23,7 @@ export type InvitationRouterDeps = {
   /** Base URL for emailed acceptance links. */
   clientUrl: string;
   logger?: Logger;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 /**
@@ -38,7 +40,10 @@ export function createInvitationModule(deps: InvitationRouterDeps): {
     organisations: createInvitationOrganisationAdapter(),
     memberships: createInvitationMembershipAdapter(),
     users: createInvitationUserAdapter(),
-    email: createInvitationEmailAdapter(deps.email),
+    email: createInvitationEmailAdapter(
+      deps.email,
+      deps.resolveEmailBranding
+    ),
     membershipProjection: deps.membershipProjection,
     clientUrl: deps.clientUrl,
   });

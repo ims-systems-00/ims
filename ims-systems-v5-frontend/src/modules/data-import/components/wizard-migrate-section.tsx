@@ -49,6 +49,7 @@ export function WizardMigrateSection() {
       const total = sheets.length;
       for (let index = 0; index < sheets.length; index += 1) {
         const sheet = sheets[index];
+        if (!sheet) continue;
         setProgress({ index: index + 1, total, name: sheet.name });
         await startMutation.mutateAsync({
           module: module as ImportableModule,

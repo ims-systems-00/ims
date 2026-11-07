@@ -10,6 +10,11 @@
  *    and processed notice to the organisation's Super Admins.
  */
 
+import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  renderEmail,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { Logger } from "../../../infrastructure/logging/logger";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { SecurityIdentity } from "../../../security";
@@ -86,6 +91,7 @@ export function createLicenceRequestService(
     to: string | string[];
     subject: string;
     html: string;
+    text: string;
     category: "system" | "transactional";
     organizationId: string;
     label: string;
@@ -98,7 +104,7 @@ export function createLicenceRequestService(
         to: recipients,
         subject: input.subject,
         html: input.html,
-        text: input.subject,
+        text: input.text,
         category: input.category,
         organizationId: input.organizationId,
       });
@@ -114,22 +120,37 @@ export function createLicenceRequestService(
     }
   }
 
+  async function resolveBranding(
+    organizationId: string
+  ): Promise<EmailBranding> {
+    if (!deps.recipients?.getEmailBranding) return DEFAULT_IMS_EMAIL_BRANDING;
+    try {
+      return await deps.recipients.getEmailBranding(organizationId);
+    } catch {
+      return DEFAULT_IMS_EMAIL_BRANDING;
+    }
+  }
+
   async function emailContext(
     request: LicenceRequest,
     input: CreateLicenceRequestInput
-  ): Promise<{ orgName: string; detailRows: string }> {
+  ): Promise<{
+    orgName: string;
+    meta: Array<{ label: string; value: string }>;
+    branding: EmailBranding;
+  }> {
     const orgName =
       (await deps.recipients
         ?.getOrganisationName(request.organizationId)
         .catch(() => null)) ?? request.organizationId;
-    const detailRows = `
-      <ul>
-        <li>Reference: ${request.reference}</li>
-        <li>Organisation: ${orgName}</li>
-        <li>Requested: ${licenceSummary(input)}</li>
-        ${input.message ? `<li>Message: ${input.message}</li>` : ""}
-      </ul>`.trim();
-    return { orgName, detailRows };
+    const meta = [
+      { label: "Requested", value: licenceSummary(input) },
+      ...(input.message
+        ? [{ label: "Message", value: input.message }]
+        : []),
+    ];
+    const branding = await resolveBranding(request.organizationId);
+    return { orgName, meta, branding };
   }
 
   async function superAdminEmails(organizationId: string): Promise<string[]> {
@@ -146,21 +167,34 @@ export function createLicenceRequestService(
     input: CreateLicenceRequestInput
   ): Promise<void> {
     if (!email) return;
-    const { orgName, detailRows } = await emailContext(request, input);
+    const { orgName, meta, branding } = await emailContext(request, input);
+    const payload = {
+      reference: request.reference,
+      organisationName: orgName,
+      meta,
+    };
 
+    const support = renderEmail("licence-request-support", payload, {
+      branding,
+    });
     await sendSafe({
       to: supportEmails,
-      subject: `[iMS] New licence request ${request.reference} — ${orgName}`,
-      html: `<p>A new licence request was submitted.</p>${detailRows}`,
+      subject: support.subject,
+      html: support.html,
+      text: support.text,
       category: "system",
       organizationId: request.organizationId,
       label: "support-alert",
     });
 
+    const received = renderEmail("licence-request-received", payload, {
+      branding,
+    });
     await sendSafe({
       to: await superAdminEmails(request.organizationId),
-      subject: `Licence request ${request.reference} received`,
-      html: `<p>We received your licence request for ${orgName}.</p>${detailRows}`,
+      subject: received.subject,
+      html: received.html,
+      text: received.text,
       category: "transactional",
       organizationId: request.organizationId,
       label: "received-confirmation",
@@ -173,12 +207,22 @@ export function createLicenceRequestService(
     input: CreateLicenceRequestInput
   ): Promise<void> {
     if (!email) return;
-    const { orgName, detailRows } = await emailContext(request, input);
+    const { orgName, meta, branding } = await emailContext(request, input);
+    const granted = renderEmail(
+      "licence-request-granted",
+      {
+        reference: request.reference,
+        organisationName: orgName,
+        meta,
+      },
+      { branding }
+    );
 
     await sendSafe({
       to: await superAdminEmails(request.organizationId),
-      subject: `Licence request ${request.reference} granted`,
-      html: `<p>Your licence request for ${orgName} has been granted and the licences are now active.</p>${detailRows}`,
+      subject: granted.subject,
+      html: granted.html,
+      text: granted.text,
       category: "transactional",
       organizationId: request.organizationId,
       label: "processed-notice",

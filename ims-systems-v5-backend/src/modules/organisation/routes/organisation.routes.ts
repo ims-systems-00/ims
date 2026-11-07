@@ -49,6 +49,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   // Licence requests live in the licence-requests module
   // (POST /api/v1/licence-requests) so every request gets a record.
   router.put("/current/logo", controller.updateLogo);
+  router.put("/current/email-branding", controller.updateEmailBranding);
   router.put(
     "/current/document-review-reminders",
     controller.updateDocumentReviewReminders
@@ -58,6 +59,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     controller.updateIncidentResolutionTargets
   );
   router.post("/:id/go-live", controller.goLive);
+  router.post("/:id/ensure-auth0-link", controller.ensureAuth0Link);
   router.get("/:id/card-payment-session", controller.createCardPaymentSession);
   router.get("/:id/billing-session", controller.createBillingPortalSession);
   router.get("/:id", controller.getById);

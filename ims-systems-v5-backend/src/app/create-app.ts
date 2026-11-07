@@ -4,12 +4,14 @@ import type { AppConfig } from "../config";
 import type { Logger } from "../infrastructure/logging/logger";
 import type { MongoConnection } from "../infrastructure/mongodb/connection";
 import { createEmailSystem, type EmailSystem } from "../infrastructure/queue";
+import { createObjectStorageFromConfig } from "../infrastructure/s3/object-storage";
 import { createStripeClient } from "../infrastructure/stripe/create-stripe-client";
 import {
   composeGoLiveSideEffects,
   createAuth0OrganisationSideEffectsAdapter,
   createFilesBucketSideEffectsAdapter,
   createGoLiveNotifySideEffectsAdapter,
+  createOrganisationEmailBrandingResolver,
   type OrganisationGoLiveSideEffectsPort,
 } from "../modules/organisation";
 import { createAuth0ManagementApiFromConfig } from "../security/auth0/auth0-management-api";
@@ -69,6 +71,12 @@ function composeBillingAndGoLive(deps: {
     email: deps.email,
     supportEmails: deps.config.REPORT_BUG_SUPPORT_EMAILS,
     logger: deps.logger,
+    resolveEmailBranding: createOrganisationEmailBrandingResolver({
+      files: createObjectStorageFromConfig({
+        config: deps.config,
+        logger: deps.logger,
+      }),
+    }),
   });
   // N-09: per-org file bucket provisioning (no-op unless FILES s3).
   const fileBuckets = createFilesBucketSideEffectsAdapter({
@@ -79,7 +87,11 @@ function composeBillingAndGoLive(deps: {
   // Management API M2M app is configured).
   const mgmt = createAuth0ManagementApiFromConfig(deps.config);
   const auth0Org = mgmt
-    ? createAuth0OrganisationSideEffectsAdapter({ mgmt, logger: deps.logger })
+    ? createAuth0OrganisationSideEffectsAdapter({
+        mgmt,
+        logger: deps.logger,
+        dbConnectionName: deps.config.AUTH0_DB_CONNECTION,
+      })
     : undefined;
   const withAuth0 = (parts: Array<OrganisationGoLiveSideEffectsPort | undefined>) =>
     composeGoLiveSideEffects([...parts, auth0Org]);
@@ -143,7 +155,15 @@ export function createApp(options: CreateAppOptions): CreatedApp {
 
   app.disable("x-powered-by");
   app.locals.email = email;
-  app.use(corsMiddleware());
+  app.use(
+    corsMiddleware([
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "http://localhost:7864",
+      "http://127.0.0.1:7864",
+      config.CLIENT_URL.replace(/\/+$/, ""),
+    ])
+  );
   app.use(correlationIdMiddleware());
 
   const billingWiring = composeBillingAndGoLive({

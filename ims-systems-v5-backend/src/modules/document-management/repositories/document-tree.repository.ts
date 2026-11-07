@@ -48,11 +48,12 @@ function toAuthorisation(raw: unknown): AuthorisationEntry[] {
 function toDocumentData(raw: unknown): DocumentNodeData | null {
   if (!raw || typeof raw !== "object") return null;
   const data = raw as {
-    storageInfo: DocumentFileMeta;
-    purpose: DocumentPurpose;
+    storageInfo?: DocumentFileMeta | null;
+    purpose?: DocumentPurpose;
     owners?: string[];
     applicableModules?: DocumentApplicableModule[];
     complianceTools?: DocumentComplianceTool[];
+    complianceLinks?: Array<{ toolkitId?: string; clauseIds?: string[] }>;
     authorisation?: unknown;
     classification?: string;
     dvID?: number;
@@ -60,17 +61,39 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     threadId?: string;
     reviewDate?: Date | null;
   };
+  // Migrated folders sometimes carried a documentData stub without storageInfo.
+  // Treat missing/invalid storage as "not a document payload" so listChildren
+  // does not 500 the whole folder listing.
+  const storage = data.storageInfo;
+  if (
+    !storage ||
+    typeof storage !== "object" ||
+    !storage.Name ||
+    !(storage.Key || storage.key) ||
+    !storage.Bucket
+  ) {
+    return null;
+  }
+  const key = String(storage.key ?? storage.Key);
   return {
     storageInfo: {
-      Name: data.storageInfo.Name,
-      Key: data.storageInfo.Key,
-      key: data.storageInfo.key ?? data.storageInfo.Key,
-      Bucket: data.storageInfo.Bucket,
+      Name: String(storage.Name),
+      Key: String(storage.Key ?? key),
+      key,
+      Bucket: String(storage.Bucket),
     },
-    purpose: data.purpose,
-    owners: [...(data.owners ?? [])],
+    purpose: (data.purpose && DOCUMENT_PURPOSES.includes(data.purpose)
+      ? data.purpose
+      : "Document") as DocumentPurpose,
+    owners: [...(data.owners ?? [])].map(String),
     applicableModules: [...(data.applicableModules ?? [])],
     complianceTools: [...(data.complianceTools ?? [])],
+    complianceLinks: (data.complianceLinks ?? [])
+      .filter((link) => Boolean(link.toolkitId?.trim()))
+      .map((link) => ({
+        toolkitId: String(link.toolkitId).trim(),
+        clauseIds: [...new Set((link.clauseIds ?? []).map((c) => c.trim()).filter(Boolean))],
+      })),
     authorisation: toAuthorisation(data.authorisation),
     classification: data.classification ?? "",
     dvID: data.dvID ?? 0,
@@ -95,19 +118,20 @@ function toFolderData(raw: unknown): FolderNodeData | null {
 }
 
 function toDomain(doc: DocumentTreeDocument): DocumentTreeNode {
+  const type = doc.type as DocumentNodeType;
   return {
     id: String(doc._id),
     organizationId: doc.organizationId,
     repositoryId: doc.repositoryId,
     reference: doc.reference,
     name: doc.name,
-    type: doc.type as DocumentNodeType,
+    type,
     status: doc.status as DocumentStatus,
     parentNodeId: doc.parentNodeId ?? null,
-    documentData: toDocumentData(doc.documentData),
-    folderData: toFolderData(doc.folderData),
-    createdBy: doc.createdBy,
-    createdOn: doc.createdOn,
+    documentData: type === "document" ? toDocumentData(doc.documentData) : null,
+    folderData: type === "folder" ? toFolderData(doc.folderData) : null,
+    createdBy: doc.createdBy ?? "migration",
+    createdOn: doc.createdOn ?? doc.createdAt ?? new Date(0),
     updatedBy: doc.updatedBy ?? null,
     updatedOn: doc.updatedOn ?? null,
     deletedAt: doc.deletedAt ?? null,
@@ -138,6 +162,7 @@ export type PersistDocumentCreate = {
     owners: string[];
     applicableModules: DocumentApplicableModule[];
     complianceTools: DocumentComplianceTool[];
+    complianceLinks?: Array<{ toolkitId: string; clauseIds: string[] }>;
     authorisation: Array<{
       userId: string;
       status: AuthorisationStatus;
@@ -298,6 +323,7 @@ export function createDocumentTreeStore() {
       patch: Partial<{
         conformance: number;
         reviewDate: Date | null;
+        complianceLinks: Array<{ toolkitId: string; clauseIds: string[] }>;
       }>
     ): Promise<DocumentTreeNode | null> {
       const set: Record<string, unknown> = {};
@@ -306,6 +332,9 @@ export function createDocumentTreeStore() {
       }
       if (patch.reviewDate !== undefined) {
         set["documentData.reviewDate"] = patch.reviewDate;
+      }
+      if (patch.complianceLinks !== undefined) {
+        set["documentData.complianceLinks"] = patch.complianceLinks;
       }
       const doc = await Model.findOneAndUpdate(
         { _id: id, organizationId, type: "document" },

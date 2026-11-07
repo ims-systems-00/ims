@@ -23,6 +23,7 @@ describe("Global search (F-07)", () => {
         audits: counter([]),
         suppliers: counter([]),
         documents: counter([{ _id: "d1", name: "Fire policy", reference: "DOC-1" }]),
+        tasks: counter([{ _id: "t1", name: "Fire drill task", reference: "TSK-1" }]),
         users: counter([]),
       },
       listMemberUserIds: async () => [],
@@ -31,12 +32,16 @@ describe("Global search (F-07)", () => {
     const types = result.items.map((i) => i.type);
     expect(types).toContain("Risk");
     expect(types).toContain("Document");
+    expect(types).toContain("Task");
     expect(types).not.toContain("Incident");
     expect(result.items.find((i) => i.type === "Risk")?.route).toBe(
       "/risks?risk=r1",
     );
     expect(result.items.find((i) => i.type === "Document")?.route).toBe(
       "/documents",
+    );
+    expect(result.items.find((i) => i.type === "Task")?.route).toBe(
+      "/tasks?task=t1",
     );
   });
 

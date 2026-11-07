@@ -134,6 +134,12 @@ export const createFileNodesBodySchema = z.object({
     .max(50),
 });
 
+/** Compliance Settings — apply one or more clauses/sections (single toolkit). */
+export const applyDocumentComplianceBodySchema = z.object({
+  toolkitId: z.string().trim().min(1).max(120),
+  clauseIds: z.array(z.string().trim().min(1).max(64)).min(1).max(200),
+});
+
 export const listRepoNodesQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().positive().max(200).default(50),

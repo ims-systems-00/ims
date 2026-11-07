@@ -1,3 +1,4 @@
+import type { EmailBranding } from "../../infrastructure/email/templates";
 import type {
   EnqueueEmailInput,
   EnqueueEmailResult,
@@ -37,6 +38,7 @@ export type CampaignOrganisationSender = {
   officeEmail: string;
   /** Reply-to for campaigns; falls back to officeEmail when unset. */
   campaignEmail?: string;
+  emailBranding?: EmailBranding;
 };
 
 export type CampaignOrganisationPort = {

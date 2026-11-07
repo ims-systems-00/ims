@@ -25,6 +25,11 @@ export type FilesServiceConfig = {
   /** Production: `${organizationId}${bucketSuffix}`. */
   bucketSuffix: string;
   publicBucket: string;
+  /**
+   * Extra per-org bucket suffixes from V4 (e.g. `-ims-static-resources-bucket`).
+   * View/delete of migrated documents is allowed for these org-scoped names.
+   */
+  legacyBucketSuffixes?: string[];
   uploadUrlTtlSeconds: number;
   viewUrlTtlSeconds: number;
   allowedPaths: string[];
@@ -72,7 +77,10 @@ function requireIdentity(identity: SecurityIdentity | null | undefined): {
 
 function assertFilesAvailable(config: FilesServiceConfig): void {
   if (config.enabled) return;
-  if (config.provider === "memory" || config.provider === "local") return;
+  // Tests / CI may run with FILES_ENABLED=false + FILES_PROVIDER=memory
+  // (fake memory:// URLs). local|s3 require the master switch on — otherwise
+  // uploads appear to succeed while bytes are never stored and preview fails.
+  if (config.provider === "memory") return;
   throw new AppError({
     message:
       "File Handler is disabled. Set FILES_ENABLED=true and configure storage (S3 or local).",
@@ -179,28 +187,72 @@ function assertAllowedPath(
 }
 
 /**
+ * Logical bucket names this organisation has historically used across
+ * provider switches (memory → local → shared S3 → per-org S3). Callers
+ * may only mint signed URLs for these (plus the configured public bucket).
+ */
+export function collectAllowedBuckets(
+  config: FilesServiceConfig,
+  organizationId: string
+): Set<string> {
+  const allowed = new Set<string>();
+  try {
+    allowed.add(resolvePrivateBucket(config, organizationId));
+  } catch {
+    // Private bucket unconfigured — historical / public names may still apply.
+  }
+  if (config.publicBucket.trim()) allowed.add(config.publicBucket.trim());
+  // Production-style org bucket — allow even outside production so files
+  // uploaded under a staging/prod suffix remain viewable after env changes.
+  if (config.bucketSuffix.trim()) {
+    allowed.add(`${organizationId}${config.bucketSuffix.trim()}`);
+  }
+  // Local / memory logical buckets issued by resolvePrivateBucket when
+  // FILES_PROVIDER was local|memory and AWS_PRIVATE_BUCKET was unset.
+  allowed.add(`ims-v5-local-${organizationId}`);
+  allowed.add(`ims-v5-memory-${organizationId}`);
+  // V4 migrated documents keep `{orgId}-ims-static-resources-bucket` (etc.).
+  for (const suffix of config.legacyBucketSuffixes ?? []) {
+    const trimmed = suffix.trim();
+    if (trimmed) allowed.add(`${organizationId}${trimmed}`);
+  }
+  return allowed;
+}
+
+function isEphemeralMemoryBucket(bucket: string, organizationId: string): boolean {
+  return bucket === `ims-v5-memory-${organizationId}`;
+}
+
+/**
  * Buckets a caller may view/delete from: their own organisation bucket
- * (per-org in production, shared/private otherwise) plus the configured
- * public bucket. Arbitrary client-supplied buckets are rejected so a
- * signed URL can never be minted for another organisation's storage.
+ * (per-org in production, shared/private otherwise), historical org-scoped
+ * local/memory names, plus the configured public bucket. Arbitrary
+ * client-supplied buckets are rejected so a signed URL can never be
+ * minted for another organisation's storage.
  */
 function assertAllowedBucket(
   config: FilesServiceConfig,
   organizationId: string,
   bucket: string
 ): void {
-  const allowed = new Set<string>();
-  try {
-    allowed.add(resolvePrivateBucket(config, organizationId));
-  } catch {
-    // Private bucket unconfigured — only the public bucket can be allowed.
-  }
-  if (config.publicBucket.trim()) allowed.add(config.publicBucket.trim());
-  if (!allowed.has(bucket)) {
+  if (!collectAllowedBuckets(config, organizationId).has(bucket)) {
     throw new ForbiddenError(
       "File bucket does not belong to your organisation"
     );
   }
+}
+
+function assertRetrievableBucket(
+  organizationId: string,
+  bucket: string
+): void {
+  if (!isEphemeralMemoryBucket(bucket, organizationId)) return;
+  throw new AppError({
+    message:
+      "This file was uploaded with ephemeral in-memory storage and is no longer available. Re-upload the document to preview it.",
+    statusCode: 410,
+    code: "FILES_EPHEMERAL_GONE",
+  });
 }
 
 function assertValidStorageKey(key: string): void {
@@ -324,6 +376,7 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
         );
       }
       assertAllowedBucket(config, organizationId, bucket);
+      assertRetrievableBucket(organizationId, bucket);
       assertValidStorageKey(key);
 
       const fileName = input.fileName
@@ -360,6 +413,7 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
         ? decodeHeader(input.bucket).trim()
         : resolvePrivateBucket(config, organizationId);
       assertAllowedBucket(config, organizationId, bucket);
+      assertRetrievableBucket(organizationId, bucket);
 
       await storage.deleteObject({ bucket, key });
       return { Bucket: bucket, Key: key };

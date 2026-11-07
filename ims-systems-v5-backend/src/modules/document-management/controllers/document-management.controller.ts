@@ -5,6 +5,7 @@ import {
   addAuthoriserBodySchema,
   addRevisionBodySchema,
   addVersionBodySchema,
+  applyDocumentComplianceBodySchema,
   authorisationParamsSchema,
   changeRepositoryBodySchema,
   copyFolderStructureBodySchema,
@@ -49,8 +50,12 @@ export type DocumentManagementController = {
   getNodePath: RequestHandler;
   updateFolder: RequestHandler;
   updateDocument: RequestHandler;
+  applyComplianceClauses: RequestHandler;
+  clearComplianceLinks: RequestHandler;
   addVersion: RequestHandler;
   addRevision: RequestHandler;
+  createEditorSession: RequestHandler;
+  editorCallback: RequestHandler;
   moveNode: RequestHandler;
   changeRepository: RequestHandler;
   softDeleteNode: RequestHandler;
@@ -71,6 +76,7 @@ export type DocumentManagementController = {
   getPublicSignature: RequestHandler;
   signDocumentPublic: RequestHandler;
   listPublished: RequestHandler;
+  getDocumentTreeNode: RequestHandler;
 };
 
 export function createDocumentManagementController(
@@ -280,6 +286,36 @@ export function createDocumentManagementController(
     }
   };
 
+  const applyComplianceClauses: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const body = parseWithSchema(applyDocumentComplianceBodySchema, req.body);
+      const data = await service.applyComplianceClauses(
+        req.identity,
+        id,
+        nodeId,
+        body
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const clearComplianceLinks: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const data = await service.clearComplianceLinks(
+        req.identity,
+        id,
+        nodeId
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const addVersion: RequestHandler = async (req, res, next) => {
     try {
       const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
@@ -304,6 +340,53 @@ export function createDocumentManagementController(
         storageInfo: normalizeFileMeta(body.storageInfo),
       });
       sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const createEditorSession: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const data = await service.createEditorSession(req.identity, id, nodeId);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  /**
+   * OnlyOffice Document Server callback — responds with `{ error: 0|1 }`
+   * (not the IMS success envelope). Auth is the `imsToken` query JWT.
+   */
+  const editorCallback: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, nodeId } = parseWithSchema(repoNodeParamsSchema, req.params);
+      const imsToken =
+        typeof req.query.imsToken === "string" ? req.query.imsToken : "";
+      if (!imsToken) {
+        res.status(200).json({ error: 1 });
+        return;
+      }
+      const body =
+        req.body && typeof req.body === "object"
+          ? (req.body as Record<string, unknown>)
+          : {};
+      const data = await service.handleEditorCallback(id, nodeId, imsToken, {
+        key: typeof body.key === "string" ? body.key : undefined,
+        status:
+          typeof body.status === "number"
+            ? body.status
+            : typeof body.status === "string"
+              ? Number(body.status)
+              : undefined,
+        url: typeof body.url === "string" ? body.url : undefined,
+        users: Array.isArray(body.users)
+          ? body.users.map(String)
+          : undefined,
+        token: typeof body.token === "string" ? body.token : undefined,
+      });
+      res.status(200).json(data);
     } catch (error) {
       next(error);
     }
@@ -586,6 +669,16 @@ export function createDocumentManagementController(
     }
   };
 
+  const getDocumentTreeNode: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const data = await service.getDocumentTreeNode(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   return {
     overview,
     listRepositories,
@@ -605,8 +698,12 @@ export function createDocumentManagementController(
     getNodePath,
     updateFolder,
     updateDocument,
+    applyComplianceClauses,
+    clearComplianceLinks,
     addVersion,
     addRevision,
+    createEditorSession,
+    editorCallback,
     moveNode,
     changeRepository,
     softDeleteNode,
@@ -627,5 +724,6 @@ export function createDocumentManagementController(
     getPublicSignature,
     signDocumentPublic,
     listPublished,
+    getDocumentTreeNode,
   };
 }

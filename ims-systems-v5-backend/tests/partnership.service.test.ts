@@ -43,11 +43,19 @@ function fakeRepository(existing: Partnership | null = null) {
     })),
     findById: vi.fn(async () => ({ ...pending, status: "iMS Accepted" as const })),
     findForUserOrOrg: vi.fn(async () => existing),
+    findByOrganizationId: vi.fn(async () => existing),
     listByUser: vi.fn(async () => [{ ...pending, status: "iMS Accepted" as const }]),
     findAcceptedByUser: vi.fn(async () => ({
       ...pending,
       status: "iMS Accepted" as const,
     })),
+    findAcceptedByOrganization: vi.fn(async () =>
+      existing === null
+        ? { ...pending, status: "iMS Accepted" as const }
+        : existing.status === "iMS Accepted"
+          ? existing
+          : { ...pending, status: "iMS Accepted" as const }
+    ),
   };
   return repository as unknown as PartnershipRepository & typeof repository;
 }
@@ -96,7 +104,7 @@ describe("createPartnershipService", () => {
     );
   });
 
-  it("blocks duplicate enrolment for the same user or organisation", async () => {
+  it("blocks duplicate enrolment for the same organisation", async () => {
     const repository = fakeRepository({ ...pending });
     const service = createPartnershipService({
       repository,
@@ -109,6 +117,7 @@ describe("createPartnershipService", () => {
       "already enrolled"
     );
     expect(repository.create).not.toHaveBeenCalled();
+    expect(repository.findByOrganizationId).toHaveBeenCalledWith("org-1");
   });
 
   it("requires organisation context and membership", async () => {

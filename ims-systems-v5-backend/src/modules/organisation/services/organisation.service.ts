@@ -39,6 +39,7 @@ import {
   type RequestOrganisationLicenceInput,
   type UpdateDocumentReviewRemindersInput,
   UpdateIncidentResolutionTargetsInput,
+  type UpdateOrganisationEmailBrandingInput,
   type UpdateOrganisationLogoInput,
 } from "../types";
 
@@ -395,6 +396,56 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
       return { ...organisation, membership };
     },
 
+    /**
+     * Ensure Auth0 Organization is linked so the navbar switcher can
+     * acquire an org-scoped token. Best-effort create/link via Management API.
+     */
+    async ensureAuth0Link(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      await assertAllowed(authed, "manage", organizationId);
+      await assertMember(subjectId, organizationId);
+
+      const existing = await organisations.findById(organizationId);
+      if (!existing) {
+        throw new NotFoundError("Organisation not found");
+      }
+      if (existing.auth0OrganizationId?.trim()) {
+        const membership = await memberships.findByUserAndOrg(
+          subjectId,
+          organizationId
+        );
+        return { ...existing, membership };
+      }
+
+      try {
+        await goLiveSideEffects.ensureAuth0Organisation?.({
+          organizationId,
+          failSoft: false,
+          auth0UserId: subjectId,
+        });
+      } catch (error) {
+        const detail =
+          error instanceof Error ? error.message : String(error);
+        throw new ValidationAppError(
+          `Could not link an Auth0 Organisation for this tenant. ${detail}`
+        );
+      }
+      const linked = await organisations.findById(organizationId);
+      if (!linked?.auth0OrganizationId?.trim()) {
+        throw new ValidationAppError(
+          "Could not link an Auth0 Organisation for this tenant. Configure AUTH0_MGMT_CLIENT_ID and AUTH0_MGMT_CLIENT_SECRET on an M2M app authorized for the Auth0 Management API, then restart the backend and retry."
+        );
+      }
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        organizationId
+      );
+      return { ...linked, membership };
+    },
+
     async listMine(
       identity: SecurityIdentity | null | undefined
     ): Promise<Organisation[]> {
@@ -564,6 +615,36 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         authed.organizationId,
         input.logoSrc ?? null,
         input.logoStorage ?? null
+      );
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        updated.id
+      );
+      return { ...updated, membership };
+    },
+
+    async updateEmailBranding(
+      identity: SecurityIdentity | null | undefined,
+      input: UpdateOrganisationEmailBrandingInput
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+
+      const updated = await organisations.updateEmailBranding(
+        authed.organizationId,
+        {
+          enabled: input.enabled,
+          themeId: input.themeId ?? null,
+          colors: input.colors ?? null,
+        }
       );
       if (!updated) {
         throw new NotFoundError("Organisation not found");

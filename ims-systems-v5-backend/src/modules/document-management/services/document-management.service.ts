@@ -7,6 +7,11 @@
  */
 
 import { randomUUID } from "node:crypto";
+import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  renderEmail,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
   ConflictError,
@@ -16,8 +21,10 @@ import {
   ValidationAppError,
 } from "../../../shared";
 import {
+  NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentMembershipAdapter,
   type DocumentActivityPort,
+  type DocumentComplianceLinkPort,
   type DocumentEmailPort,
   type DocumentFilesPort,
   type DocumentMembershipPort,
@@ -37,6 +44,17 @@ import type { DocumentRepositoryStore } from "../repositories/document-repositor
 import type { DocumentTreeStore } from "../repositories/document-tree.repository";
 import { normalizeFileMeta } from "../schemas";
 import {
+  ONLYOFFICE_SAVE_STATUSES,
+  isOnlyOfficeEditableFileName,
+  resolveOnlyOfficeFileInfo,
+  rewriteUrlForOnlyOfficeFetch,
+  signEditorSessionToken,
+  signOnlyOfficePayload,
+  verifyEditorSessionToken,
+  type OnlyOfficeCallbackBody,
+  type OnlyOfficeRuntimeConfig,
+} from "../lib/onlyoffice";
+import {
   DOCUMENT_MANAGEMENT_RESOURCE,
   MAX_DOCUMENT_OWNERS,
   MAX_FOLDER_DEPTH,
@@ -53,6 +71,7 @@ import {
   type CreateFileNodesResult,
   type CreateFolderNodeInput,
   type DecideAuthorisationInput,
+  type DocumentEditorSession,
   type DocumentOverviewCounts,
   type DocumentSignature,
   type InviteSignaturesInput,
@@ -118,8 +137,13 @@ export type DocumentManagementServiceDeps = {
   memberships?: DocumentMembershipPort;
   accessTokens?: DocumentAccessTokenStore;
   signatures?: DocumentSignatureStore;
+  complianceLinks?: DocumentComplianceLinkPort;
   /** Base URL used in emailed links, e.g. https://app.example.com */
   accessLinkBaseUrl?: string;
+  /** Resolves org logo/theme for transactional document emails. */
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
+  /** OnlyOffice Document Server (in-preview Office edit). */
+  onlyOffice?: OnlyOfficeRuntimeConfig;
 };
 
 export type DocumentManagementService = ReturnType<
@@ -149,7 +173,26 @@ export function createDocumentManagementService(
   const accessTokens =
     deps.accessTokens ?? createDocumentAccessTokenStore();
   const signatures = deps.signatures ?? createDocumentSignatureStore();
+  const complianceLinks =
+    deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter();
   const accessLinkBaseUrl = (deps.accessLinkBaseUrl ?? "").replace(/\/+$/, "");
+  const onlyOffice: OnlyOfficeRuntimeConfig = deps.onlyOffice ?? {
+    enabled: false,
+    publicUrl: "",
+    jwtSecret: "",
+    callbackBaseUrl: "",
+  };
+
+  async function brandingFor(
+    organizationId: string
+  ): Promise<EmailBranding> {
+    if (!deps.resolveEmailBranding) return DEFAULT_IMS_EMAIL_BRANDING;
+    try {
+      return await deps.resolveEmailBranding(organizationId);
+    } catch {
+      return DEFAULT_IMS_EMAIL_BRANDING;
+    }
+  }
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -334,7 +377,7 @@ export function createDocumentManagementService(
     }
   }
 
-  return {
+  const api = {
     async overview(
       identity: SecurityIdentity | null | undefined
     ): Promise<DocumentOverviewCounts> {
@@ -748,6 +791,7 @@ export function createDocumentManagementService(
             owners,
             applicableModules: [...new Set(item.applicableModules ?? [])],
             complianceTools: [...new Set(item.complianceTools ?? [])],
+            complianceLinks: [],
             authorisation: authoriserIds.map((userId) => ({
               userId,
               status: "Pending" as const,
@@ -958,6 +1002,139 @@ export function createDocumentManagementService(
       return updated;
     },
 
+    /**
+     * Compliance Settings: link clause(s)/section to this document, select +
+     * implement (including descendants for sections), and attach evidence.
+     * Only one toolkit may be linked per document.
+     */
+    async applyComplianceClauses(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string,
+      input: { toolkitId: string; clauseIds: string[] }
+    ): Promise<DocumentTreeNode> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "update");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new ValidationAppError(
+          "Node is not a document in this repository"
+        );
+      }
+      if (!node.documentData) {
+        throw new ValidationAppError("Document metadata is missing");
+      }
+
+      const toolkitId = input.toolkitId.trim();
+      const clauseIds = [
+        ...new Set(
+          input.clauseIds.map((clause) => clause.trim()).filter(Boolean)
+        ),
+      ];
+      if (!toolkitId) {
+        throw new ValidationAppError("Toolkit is required");
+      }
+      if (clauseIds.length === 0) {
+        throw new ValidationAppError("Select at least one clause or section");
+      }
+
+      const previousLinks = node.documentData.complianceLinks ?? [];
+      if (
+        previousLinks.length > 0 &&
+        previousLinks.some((link) => link.toolkitId !== toolkitId)
+      ) {
+        throw new ValidationAppError(
+          "This document is already linked to another compliance toolkit. Remove that link before selecting a different toolkit."
+        );
+      }
+
+      const applied = await complianceLinks.applyClauses({
+        organizationId,
+        actorId: subjectId,
+        documentId: node.id,
+        toolkitId,
+        clauseIds,
+      });
+
+      const existing =
+        previousLinks.find((link) => link.toolkitId === toolkitId)?.clauseIds ??
+        [];
+      const nextClauseIds = [
+        ...new Set([...existing, ...clauseIds, ...applied.appliedClauseIds]),
+      ];
+      const nextLinks = [{ toolkitId, clauseIds: nextClauseIds }];
+
+      const updated = await trees.updateDocumentData(organizationId, nodeId, {
+        complianceLinks: nextLinks,
+      });
+      if (!updated) throw new NotFoundError("Document node not found");
+
+      try {
+        await complianceLinks.syncLinks({
+          organizationId,
+          actorId: subjectId,
+          documentId: node.id,
+          previousLinks,
+          nextLinks,
+        });
+      } catch {
+        // Evidence sync is best-effort after apply already attached rows.
+      }
+
+      await activities.record({
+        organizationId,
+        moduleId: node.id,
+        value: `Compliance linked: ${toolkitId} (${clauseIds.join(", ")})`,
+        createdBy: subjectId,
+        threadId: node.documentData.threadId || undefined,
+      });
+
+      return updated;
+    },
+
+    async clearComplianceLinks(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<DocumentTreeNode> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "update");
+      await requireRepository(organizationId, repositoryId);
+      const node = await requireNode(organizationId, nodeId);
+      if (node.repositoryId !== repositoryId || node.type !== "document") {
+        throw new ValidationAppError(
+          "Node is not a document in this repository"
+        );
+      }
+
+      const previousLinks = node.documentData?.complianceLinks ?? [];
+      const updated = await trees.updateDocumentData(organizationId, nodeId, {
+        complianceLinks: [],
+      });
+      if (!updated) throw new NotFoundError("Document node not found");
+
+      try {
+        await complianceLinks.clearLinks({
+          organizationId,
+          documentId: node.id,
+        });
+        await complianceLinks.syncLinks({
+          organizationId,
+          actorId: subjectId,
+          documentId: node.id,
+          previousLinks,
+          nextLinks: [],
+        });
+      } catch {
+        // Best-effort evidence cleanup.
+      }
+
+      return updated;
+    },
+
     async addVersion(
       identity: SecurityIdentity | null | undefined,
       repositoryId: string,
@@ -1018,6 +1195,7 @@ export function createDocumentManagementService(
           owners,
           applicableModules: [...base.applicableModules],
           complianceTools: [...base.complianceTools],
+          complianceLinks: [...(base.complianceLinks ?? [])],
           authorisation: authoriserIds.map((userId) => ({
             userId,
             status: "Pending" as const,
@@ -1114,6 +1292,241 @@ export function createDocumentManagementService(
         node.documentData?.threadId
       );
       return updated;
+    },
+
+    /**
+     * Mint an OnlyOffice DocsAPI editor session for a published Office document.
+     * Saves create a new version via the editor-callback (never overwrite in place).
+     */
+    async createEditorSession(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeId: string
+    ): Promise<DocumentEditorSession> {
+      if (!onlyOffice.enabled) {
+        throw new ValidationAppError("In-browser Office editing is not enabled");
+      }
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "create");
+      await requireRepository(organizationId, repositoryId);
+      const published = await requireNode(organizationId, nodeId);
+      if (
+        published.repositoryId !== repositoryId ||
+        published.type !== "document" ||
+        published.status !== "Published"
+      ) {
+        throw new ValidationAppError(
+          "Only published documents can be edited in the preview"
+        );
+      }
+      const storageInfo = published.documentData?.storageInfo;
+      if (!storageInfo?.Bucket || !(storageInfo.Key || storageInfo.key)) {
+        throw new ValidationAppError("Document file metadata is missing");
+      }
+      if (!isOnlyOfficeEditableFileName(published.name)) {
+        throw new ValidationAppError(
+          "This file type cannot be edited in the preview"
+        );
+      }
+      const officeInfo = resolveOnlyOfficeFileInfo(published.name);
+      if (!officeInfo) {
+        throw new ValidationAppError(
+          "This file type cannot be edited in the preview"
+        );
+      }
+
+      const pending = await trees.findPendingByName(
+        organizationId,
+        repositoryId,
+        published.parentNodeId,
+        published.name
+      );
+      if (pending) {
+        throw new ConflictError(
+          "A pending authorisation already exists for this document."
+        );
+      }
+
+      const browserDocumentUrl = await files.createViewUrl(storageInfo);
+      if (browserDocumentUrl.startsWith("memory://")) {
+        throw new ValidationAppError(
+          "File storage is not available for in-browser editing"
+        );
+      }
+
+      const callbackBase = onlyOffice.callbackBaseUrl.replace(/\/+$/, "");
+      // OnlyOffice DS fetches this URL server-side (from Docker). Rewrite
+      // localhost/127.0.0.1 to the callback host so OO does not hit itself.
+      const documentUrl = rewriteUrlForOnlyOfficeFetch(
+        browserDocumentUrl,
+        callbackBase
+      );
+
+      const base = published.documentData!;
+      // OnlyOffice allows key chars: 0-9 a-z A-Z -._= (no ":"). Colons
+      // produce 403 on /downloadfile and crash the PDF extended check.
+      const documentKey = [
+        base.threadId || published.id,
+        String(base.dvID ?? 0),
+        published.id,
+      ]
+        .join("_")
+        .replace(/[^0-9A-Za-z\-._=]/g, "_")
+        .slice(0, 128);
+
+      const sessionToken = await signEditorSessionToken(onlyOffice.jwtSecret, {
+        organizationId,
+        repositoryId,
+        nodeId: published.id,
+        userId: subjectId,
+        fileName: published.name,
+        bucket: storageInfo.Bucket,
+      });
+
+      const callbackUrl =
+        `${callbackBase}/document-repositories/${encodeURIComponent(repositoryId)}` +
+        `/nodes/${encodeURIComponent(published.id)}/editor-callback` +
+        `?imsToken=${encodeURIComponent(sessionToken)}`;
+
+      const userName =
+        actor.email?.trim() || actor.subjectId || "Document editor";
+
+      const configPayload = {
+        documentType: officeInfo.documentType,
+        document: {
+          fileType: officeInfo.extension,
+          key: documentKey,
+          title: published.name,
+          url: documentUrl,
+          // Skip OnlyOffice's internal PDF probe (checkExtendedPDF →
+          // /downloadfile) which 403s when key/JWT are wrong; open as
+          // a regular PDF, not a fillable form.
+          ...(officeInfo.documentType === "pdf" ? { isForm: false } : {}),
+        },
+        editorConfig: {
+          mode: "edit" as const,
+          callbackUrl,
+          user: { id: subjectId, name: userName },
+          customization: { forcesave: true, autosave: true },
+        },
+      };
+
+      const token = await signOnlyOfficePayload(
+        onlyOffice.jwtSecret,
+        configPayload
+      );
+
+      return {
+        documentServerUrl: onlyOffice.publicUrl.replace(/\/+$/, ""),
+        config: { ...configPayload, token },
+      };
+    },
+
+    /**
+     * OnlyOffice Document Server save callback. Verifies the session JWT,
+     * stores the saved bytes, and creates a new version via addVersion.
+     * Returns OnlyOffice's `{ error: 0 | 1 }` shape (not the IMS envelope).
+     */
+    async handleEditorCallback(
+      repositoryId: string,
+      nodeId: string,
+      imsToken: string,
+      body: OnlyOfficeCallbackBody
+    ): Promise<{ error: number }> {
+      if (!onlyOffice.enabled) {
+        return { error: 1 };
+      }
+
+      let claims;
+      try {
+        claims = await verifyEditorSessionToken(
+          onlyOffice.jwtSecret,
+          imsToken
+        );
+      } catch {
+        return { error: 1 };
+      }
+
+      if (claims.repositoryId !== repositoryId || claims.nodeId !== nodeId) {
+        return { error: 1 };
+      }
+
+      const status = Number(body.status ?? 0);
+      if (!ONLYOFFICE_SAVE_STATUSES.has(status)) {
+        return { error: 0 };
+      }
+
+      const downloadUrl = typeof body.url === "string" ? body.url.trim() : "";
+      if (!downloadUrl) {
+        return { error: 1 };
+      }
+
+      const officeInfo = resolveOnlyOfficeFileInfo(claims.fileName);
+      if (!officeInfo) {
+        return { error: 1 };
+      }
+
+      let bytes: Buffer;
+      try {
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          return { error: 1 };
+        }
+        bytes = Buffer.from(await response.arrayBuffer());
+      } catch {
+        return { error: 1 };
+      }
+
+      let storageInfo;
+      try {
+        storageInfo = await files.writeStoredFile({
+          fileName: claims.fileName,
+          bucket: claims.bucket,
+          contentType: officeInfo.contentType,
+          body: bytes,
+        });
+      } catch {
+        return { error: 1 };
+      }
+
+      const actorIdentity: SecurityIdentity = {
+        subjectId: claims.userId,
+        organizationId: claims.organizationId,
+      };
+
+      const published = await trees.findById(
+        claims.organizationId,
+        claims.nodeId
+      );
+      if (!published?.documentData) {
+        return { error: 1 };
+      }
+
+      const priorAuthorisers =
+        published.documentData.authorisation
+          ?.map((entry) => entry.userId)
+          .filter(Boolean) ?? [];
+      const authorisation =
+        priorAuthorisers.length > 0 ? priorAuthorisers : [claims.userId];
+
+      try {
+        await api.addVersion(actorIdentity, repositoryId, nodeId, {
+          parentNodeId: published.parentNodeId,
+          storageInfo,
+          owners: published.documentData.owners,
+          authorisation,
+        });
+      } catch {
+        try {
+          await files.deleteStoredFile(storageInfo);
+        } catch {
+          // Non-fatal cleanup.
+        }
+        return { error: 1 };
+      }
+
+      return { error: 0 };
     },
 
     async moveNode(
@@ -1558,6 +1971,23 @@ export function createDocumentManagementService(
       return node;
     },
 
+    /**
+     * Resolve a document tree node by id (any status) for deep-links from
+     * compliance evidence and similar cross-module references.
+     */
+    async getDocumentTreeNode(
+      identity: SecurityIdentity | null | undefined,
+      id: string
+    ): Promise<DocumentTreeNode> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const node = await trees.findById(organizationId, id);
+      if (!node || node.type !== "document") {
+        throw new NotFoundError("Document not found");
+      }
+      return node;
+    },
+
     async listPublishedForOrganization(
       organizationId: string,
       query: ListPublishedDocumentsQuery
@@ -1605,17 +2035,20 @@ export function createDocumentManagementService(
         const link = `${accessLinkBaseUrl}/api/v1/document-shares/${rawToken}`;
         if (deps.email) {
           try {
+            const rendered = renderEmail(
+              "document-shared",
+              {
+                documentName: node.name,
+                ...(input.message ? { message: input.message } : {}),
+                viewUrl: link,
+              },
+              { branding: await brandingFor(organizationId) }
+            );
             await deps.email.sendDocumentEmail({
               to: [email],
-              subject: `Document shared with you: ${node.name}`,
-              text: [
-                `A document has been shared with you: ${node.name}`,
-                input.message ? `\n${input.message}` : "",
-                `\nOpen it here (link valid until ${expiresAt.toISOString()}): ${link}`,
-              ].join("\n"),
-              html: `<p>A document has been shared with you: <strong>${node.name}</strong></p>${
-                input.message ? `<p>${input.message}</p>` : ""
-              }<p><a href="${link}">Open document</a> (link valid until ${expiresAt.toISOString()})</p>`,
+              subject: rendered.subject,
+              text: rendered.text,
+              html: rendered.html,
               organizationId,
             });
           } catch {
@@ -1715,11 +2148,16 @@ export function createDocumentManagementService(
         );
         if (user.email && deps.email) {
           try {
+            const rendered = renderEmail(
+              "document-signature-requested",
+              { documentName: node.name },
+              { branding: await brandingFor(organizationId) }
+            );
             await deps.email.sendDocumentEmail({
               to: [user.email],
-              subject: `Signature requested: ${node.name}`,
-              text: `You have been invited to sign "${node.name}". Sign in to iMS to review and sign it.`,
-              html: `<p>You have been invited to sign <strong>${node.name}</strong>.</p><p>Sign in to iMS to review and sign it.</p>`,
+              subject: rendered.subject,
+              text: rendered.text,
+              html: rendered.html,
               organizationId,
             });
           } catch {
@@ -1927,6 +2365,8 @@ export function createDocumentManagementService(
     },
   };
 
+  return api;
+
   async function sendExternalInviteEmail(
     record: DocumentSignature,
     documentName: string,
@@ -1947,11 +2387,21 @@ export function createDocumentManagementService(
     });
     const link = `${accessLinkBaseUrl}/documents/sign/${rawToken}`;
     try {
+      const rendered = renderEmail(
+        "document-signature-requested",
+        {
+          documentName,
+          ...(record.message ? { message: record.message } : {}),
+          signUrl: link,
+          expiresAt,
+        },
+        { branding: await brandingFor(record.organizationId) }
+      );
       await deps.email.sendDocumentEmail({
         to: [record.email],
-        subject: `Signature requested: ${documentName}`,
-        text: `You have been invited to sign "${documentName}".\n${record.message ? `${record.message}\n` : ""}Sign here (link valid until ${expiresAt.toISOString()}): ${link}`,
-        html: `<p>You have been invited to sign <strong>${documentName}</strong>.</p>${record.message ? `<p>${record.message}</p>` : ""}<p><a href="${link}">Review and sign</a> (link valid until ${expiresAt.toISOString()})</p>`,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
         organizationId: record.organizationId,
       });
     } catch {
@@ -2079,11 +2529,19 @@ export function createDocumentManagementService(
     if (deps.email && record.email) {
       try {
         const viewUrl = await files.createViewUrl(signedCopy);
+        const rendered = renderEmail(
+          "document-signed-copy",
+          {
+            documentName: node.name,
+            viewUrl,
+          },
+          { branding: await brandingFor(record.organizationId) }
+        );
         await deps.email.sendDocumentEmail({
           to: [record.email],
-          subject: `Signed copy: ${node.name}`,
-          text: `You signed "${node.name}". Download your signed copy: ${viewUrl}`,
-          html: `<p>You signed <strong>${node.name}</strong>.</p><p><a href="${viewUrl}">Download your signed copy</a></p>`,
+          subject: rendered.subject,
+          text: rendered.text,
+          html: rendered.html,
           organizationId: record.organizationId,
         });
       } catch {

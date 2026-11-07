@@ -12,6 +12,7 @@ import type {
   OrganisationProfile,
   PaginatedLicenceRequests,
   RequestOrganisationLicenceInput,
+  UpdateOrganisationEmailBrandingInput,
 } from "../types";
 
 export function createOrganisation(
@@ -42,6 +43,16 @@ export function getCurrentOrganisation(): Promise<OrganisationProfile> {
 
 export function getOrganisation(id: string): Promise<OrganisationProfile> {
   return apiRequest<OrganisationProfile>(`/organisations/${id}`);
+}
+
+/** Create/link Auth0 Organization so org switch can acquire an org-scoped token. */
+export function ensureOrganisationAuth0Link(
+  organizationId: string
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    `/organisations/${organizationId}/ensure-auth0-link`,
+    { method: "POST" }
+  );
 }
 
 export function listMyOrganisations(): Promise<Organisation[]> {
@@ -94,6 +105,18 @@ export function updateOrganisationLogo(body: {
     method: "PUT",
     body,
   });
+}
+
+export function updateOrganisationEmailBranding(
+  body: UpdateOrganisationEmailBrandingInput
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    "/organisations/current/email-branding",
+    {
+      method: "PUT",
+      body,
+    }
+  );
 }
 
 export function updateIncidentResolutionTargets(

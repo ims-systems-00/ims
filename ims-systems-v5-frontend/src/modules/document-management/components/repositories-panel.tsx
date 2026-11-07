@@ -7,6 +7,7 @@ import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { SearchInput } from "@/shared/components/search-input";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
+import { plainTextFromPossiblyRich } from "@/shared/lib/plain-text";
 import { notify } from "@/shared/lib/toast";
 import {
   useDocumentRepositoriesQuery,
@@ -177,11 +178,16 @@ export function RepositoriesPanel({ deleted = false }: RepositoriesPanelProps) {
                   </td>
                   <td className="px-3 py-2.5">
                     <div className="font-medium text-foreground">{repo.name}</div>
-                    {repo.description ? (
-                      <div className="line-clamp-1 text-[0.75rem] text-muted-foreground">
-                        {repo.description}
-                      </div>
-                    ) : null}
+                    {(() => {
+                      const description = plainTextFromPossiblyRich(
+                        repo.description
+                      );
+                      return description ? (
+                        <div className="line-clamp-1 text-[0.75rem] text-muted-foreground">
+                          {description}
+                        </div>
+                      ) : null;
+                    })()}
                   </td>
                   <td className="px-3 py-2.5">
                     <StatusBadge tone="neutral">{repo.privacy}</StatusBadge>

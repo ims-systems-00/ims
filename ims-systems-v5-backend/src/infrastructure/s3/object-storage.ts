@@ -9,6 +9,10 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { AppConfig } from "../../config";
 import type { Logger } from "../logging/logger";
 import {
+  LocalWithLegacyS3FallbackStorage,
+  S3WithLocalFallbackStorage,
+} from "../../modules/files/local-fallback-storage";
+import {
   createLocalObjectStorageAdapter,
   type LocalObjectStorageAdapter,
 } from "../../modules/files/local-object-storage";
@@ -152,6 +156,8 @@ function localObjectEndpoint(config: AppConfig): string {
 /**
  * Build the object-storage port from app config.
  * Uses the in-memory adapter when FILES_PROVIDER=memory or FILES_ENABLED=false.
+ * When provider is s3, wraps with a local-disk fallback so historical
+ * `ims-v5-local-*` uploads remain previewable after switching providers.
  */
 export function createObjectStorageFromConfig(options: {
   config: AppConfig;
@@ -167,16 +173,53 @@ export function createObjectStorageFromConfig(options: {
     return new MemoryObjectStorageAdapter();
   }
 
+  const local = createLocalObjectStorageAdapter({
+    rootDir: config.FILES_LOCAL_ROOT,
+    objectEndpointUrl: localObjectEndpoint(config),
+    signingSecret: config.FILES_LOCAL_SIGNING_SECRET,
+  });
+
   if (config.FILES_PROVIDER === "local") {
+    const legacyAccessKey =
+      config.AWS_LEGACY_ACCESS_KEY_ID.trim() ||
+      config.AWS_ACCESS_KEY_ID.trim();
+    const legacySecret =
+      config.AWS_LEGACY_SECRET_ACCESS_KEY.trim() ||
+      config.AWS_SECRET_ACCESS_KEY.trim();
+    const legacyRegion =
+      config.AWS_LEGACY_REGION.trim() || config.AWS_REGION.trim() || "eu-west-2";
+    const legacySuffixes = config.AWS_LEGACY_BUCKET_SUFFIXES ?? [];
+
+    if (legacyAccessKey && legacySecret && legacySuffixes.length > 0) {
+      const legacyClient = createS3Client({
+        region: legacyRegion,
+        accessKeyId: legacyAccessKey,
+        secretAccessKey: legacySecret,
+      });
+      const legacyS3 = createS3ObjectStorageAdapter({
+        client: legacyClient,
+        logger,
+      });
+      logger.info(
+        {
+          rootDir: config.FILES_LOCAL_ROOT,
+          legacySuffixes,
+          legacyRegion,
+        },
+        "Using local disk file storage with S3 fallback for V4 legacy buckets"
+      );
+      return new LocalWithLegacyS3FallbackStorage(
+        local,
+        legacyS3,
+        legacySuffixes
+      );
+    }
+
     logger.info(
       { rootDir: config.FILES_LOCAL_ROOT },
       "Using local disk file storage (demo / dev)"
     );
-    return createLocalObjectStorageAdapter({
-      rootDir: config.FILES_LOCAL_ROOT,
-      objectEndpointUrl: localObjectEndpoint(config),
-      signingSecret: config.FILES_LOCAL_SIGNING_SECRET,
-    });
+    return local;
   }
 
   const client = createS3Client({
@@ -185,7 +228,17 @@ export function createObjectStorageFromConfig(options: {
     secretAccessKey: config.AWS_SECRET_ACCESS_KEY,
   });
 
-  return createS3ObjectStorageAdapter({ client, logger });
+  const s3 = createS3ObjectStorageAdapter({ client, logger });
+  logger.info(
+    { rootDir: config.FILES_LOCAL_ROOT },
+    "Using S3 file storage with local-disk fallback for ims-v5-local-* buckets"
+  );
+  return new S3WithLocalFallbackStorage(s3, local);
 }
 
 export type { ObjectStoragePort, LocalObjectStorageAdapter };
+export {
+  S3WithLocalFallbackStorage,
+  LocalWithLegacyS3FallbackStorage,
+  getLocalObjectStorage,
+} from "../../modules/files/local-fallback-storage";

@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createTestApp, type TestContext } from "./helpers/create-test-app";
+import { getAiResponseModel } from "../src/modules/ai/repositories/ai-response.model";
 import { createOwnershipIntegrityAdapter } from "../src/modules/users";
 import { getRiskModel } from "../src/modules/risks/repositories/risk.model";
 import { getTaskModel } from "../src/modules/tasks/repositories/task.model";
@@ -33,6 +34,27 @@ async function seedTask(name: string, assigneeIds: string[]) {
   });
 }
 
+async function seedAiResponse(createdBy: string) {
+  await getAiResponseModel().create({
+    organizationId: ORG,
+    source: { moduleType: "risks", moduleId: "risk-owned-1" },
+    template: {
+      dataDisplay: "# Risk",
+      context: "Alice context",
+      reportStructure: [
+        {
+          name: "Impact",
+          description: null,
+          prompt: "Assess impact",
+          response: "High",
+        },
+      ],
+    },
+    createdBy,
+    createdOn: new Date(),
+  });
+}
+
 const ORG = "org-ownership";
 
 describe("OwnershipIntegrityAdapter (U-06)", () => {
@@ -49,6 +71,7 @@ describe("OwnershipIntegrityAdapter (U-06)", () => {
   beforeEach(async () => {
     await getRiskModel().deleteMany({});
     await getTaskModel().deleteMany({});
+    await getAiResponseModel().deleteMany({});
   });
 
   it("reports no owned data for a user with no records", async () => {
@@ -64,14 +87,17 @@ describe("OwnershipIntegrityAdapter (U-06)", () => {
     });
   });
 
-  it("detects owned risks and task assignments, scoped to the organisation", async () => {
+  it("detects owned risks, task assignments, and AI analyses, scoped to the organisation", async () => {
     await seedRisk("RSK-OWN-1", "user-a");
     await seedTask("Owned task", ["user-a"]);
+    await seedAiResponse("user-a");
 
     const adapter = createOwnershipIntegrityAdapter();
     const inOrg = await adapter.check({ organizationId: ORG, userId: "user-a" });
     expect(inOrg.hasOwnedData).toBe(true);
-    expect(inOrg.modules).toEqual(expect.arrayContaining(["Risks", "Tasks"]));
+    expect(inOrg.modules).toEqual(
+      expect.arrayContaining(["Risks", "Tasks", "AI Responses"])
+    );
 
     const otherOrg = await adapter.check({
       organizationId: "org-other",
@@ -80,9 +106,10 @@ describe("OwnershipIntegrityAdapter (U-06)", () => {
     expect(otherOrg.hasOwnedData).toBe(false);
   });
 
-  it("transfers risk owners and task assignees to the destination user", async () => {
+  it("transfers risk owners, task assignees, and AI analyses to the destination user", async () => {
     await seedRisk("RSK-OWN-2", "user-a");
     await seedTask("Transfer task", ["user-a", "user-c"]);
+    await seedAiResponse("user-a");
 
     const adapter = createOwnershipIntegrityAdapter();
     await adapter.transfer({
@@ -96,8 +123,9 @@ describe("OwnershipIntegrityAdapter (U-06)", () => {
     expect(after.hasOwnedData).toBe(false);
 
     const dest = await adapter.check({ organizationId: ORG, userId: "user-b" });
-    expect(dest.modules).toEqual(expect.arrayContaining(["Risks", "Tasks"]));
-
+    expect(dest.modules).toEqual(
+      expect.arrayContaining(["Risks", "Tasks", "AI Responses"])
+    );
     const tasks = await getTaskModel().find({ organizationId: ORG }).lean();
     const assigneeIds = (tasks[0]?.assignees ?? []).map((a) => a.userId);
     expect(assigneeIds).toEqual(["user-b", "user-c"]);

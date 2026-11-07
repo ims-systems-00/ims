@@ -175,6 +175,37 @@ export type ComplianceApplicationPort = {
     organizationId: string;
     ofiId: string;
   }): Promise<void>;
+  /**
+   * Document Compliance Settings: select+implement clause (and descendants
+   * when it is a section), attach the document as evidence, update overview.
+   */
+  applyDocumentComplianceClauses(
+    input: DocumentComplianceApplyInput
+  ): Promise<{ appliedClauseIds: string[] }>;
+  syncDocumentComplianceLinks(
+    input: DocumentComplianceLinkSyncInput
+  ): Promise<void>;
+  clearDocumentComplianceEvidence(input: {
+    organizationId: string;
+    documentId: string;
+  }): Promise<void>;
+};
+
+export type DocumentComplianceApplyInput = {
+  organizationId: string;
+  actorId: string;
+  documentId: string;
+  toolkitId: string;
+  /** Root clause(s) the user clicked — sections expand to all descendants. */
+  clauseIds: string[];
+};
+
+export type DocumentComplianceLinkSyncInput = {
+  organizationId: string;
+  actorId: string;
+  documentId: string;
+  previousLinks: Array<{ toolkitId: string; clauseIds: string[] }>;
+  nextLinks: Array<{ toolkitId: string; clauseIds: string[] }>;
 };
 
 export type IncidentComplianceLinkSyncInput = {
@@ -1220,6 +1251,145 @@ export function createComplianceService(deps: ComplianceServiceDeps) {
       await evidence.softDeleteForRelatedCip(
         input.organizationId,
         input.ofiId
+      );
+    },
+
+    async applyDocumentComplianceClauses(
+      input: DocumentComplianceApplyInput
+    ): Promise<{ appliedClauseIds: string[] }> {
+      if (!isComplianceToolkitName(input.toolkitId)) {
+        throw new ValidationAppError(
+          `Unsupported compliance toolkit: ${input.toolkitId}`
+        );
+      }
+      const toolkit = input.toolkitId;
+      await ensureToolkitProvisioned(
+        input.organizationId,
+        toolkit,
+        input.actorId
+      );
+
+      const all = await statuses.listAllForToolkit(
+        input.organizationId,
+        toolkit
+      );
+      const byClause = new Map(all.map((row) => [row.clause, row]));
+
+      function expandClause(root: string, into: Set<string>): void {
+        const trimmed = root.trim();
+        if (!trimmed || into.has(trimmed)) return;
+        into.add(trimmed);
+        const node = byClause.get(trimmed);
+        if (!node) return;
+        for (const child of node.childrenClauses) {
+          expandClause(child, into);
+        }
+      }
+
+      const expanded = new Set<string>();
+      for (const clause of input.clauseIds) {
+        expandClause(clause, expanded);
+      }
+      if (expanded.size === 0) {
+        return { appliedClauseIds: [] };
+      }
+
+      const mutable = toMutable(all);
+      for (const clause of expanded) {
+        const node = byClause.get(clause);
+        if (!node || node.isLocked) continue;
+        applyStatusUpdateForToolkit(
+          toolkit,
+          clause,
+          "Selected",
+          "Implemented",
+          mutable,
+          input.actorId
+        );
+      }
+
+      const dirty = mutable.filter((node) => node.dirty);
+      if (dirty.length > 0) {
+        await statuses.patchMany(
+          input.organizationId,
+          dirty.map((node) => ({
+            id: node.id,
+            patch: {
+              selected: node.selected,
+              state: node.state,
+              compliancePercentage: node.compliancePercentage,
+              numberOfCompliantChildren: node.numberOfCompliantChildren,
+              updatedBy: node.updatedBy,
+              updatedOn: node.updatedOn,
+            },
+          }))
+        );
+      }
+
+      const totals = calculateOverviewForToolkit(toolkit, mutable);
+      await overviews.updateTotals(input.organizationId, toolkit, totals);
+
+      for (const clause of expanded) {
+        const control = byClause.get(clause);
+        if (!control) continue;
+        const duplicate = await evidence.findDuplicate(
+          input.organizationId,
+          control.id,
+          {
+            evidenceType: "document-management",
+            relatedDocumentId: input.documentId,
+          }
+        );
+        if (duplicate) continue;
+        await evidence.create(input.organizationId, control.id, {
+          evidenceType: "document-management",
+          relatedRiskId: null,
+          relatedIncidentId: null,
+          relatedCipId: null,
+          relatedDocumentId: input.documentId,
+          textContent: null,
+          fileStorage: null,
+          groupId: null,
+          updatedBy: input.actorId,
+        });
+      }
+
+      return { appliedClauseIds: [...expanded] };
+    },
+
+    async syncDocumentComplianceLinks(
+      input: DocumentComplianceLinkSyncInput
+    ): Promise<void> {
+      const desired = linkPairs(input.nextLinks);
+      const previous = linkPairs(input.previousLinks);
+
+      for (const key of previous) {
+        if (desired.has(key)) continue;
+        const [toolkitId, clause] = key.split("\u0000");
+        if (!toolkitId || !clause || !isComplianceToolkitName(toolkitId)) {
+          continue;
+        }
+        const control = await statuses.findByToolkitAndClause(
+          input.organizationId,
+          toolkitId,
+          clause
+        );
+        if (!control) continue;
+        await evidence.softDeleteForRelatedDocumentAndControl(
+          input.organizationId,
+          control.id,
+          input.documentId
+        );
+      }
+    },
+
+    async clearDocumentComplianceEvidence(input: {
+      organizationId: string;
+      documentId: string;
+    }): Promise<void> {
+      await evidence.softDeleteForRelatedDocument(
+        input.organizationId,
+        input.documentId
       );
     },
 

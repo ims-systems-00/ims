@@ -5,6 +5,10 @@
  * attached as an HTML file. NoOps only when no EmailSystem is composed.
  */
 
+import {
+  renderEmailForOrganisation,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { Audit } from "../types";
 import { NoOpAuditReportAdapter, type AuditReportPort } from "../ports";
@@ -77,23 +81,40 @@ ${ofis}
 }
 
 export function createAuditReportAdapter(
-  email: EmailSystem | undefined
+  email: EmailSystem | undefined,
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>
 ): AuditReportPort {
   if (!email) return new NoOpAuditReportAdapter();
 
   return {
-    async enqueueExtractReport({ audit, recipientName, recipientEmail }) {
-      const html = buildAuditReportHtml(audit);
+    async enqueueExtractReport({
+      audit,
+      recipientName,
+      recipientEmail,
+      organizationId,
+    }) {
+      const summaryHtml = buildAuditReportHtml(audit);
+      const rendered = await renderEmailForOrganisation(
+        "audit-report",
+        {
+          recipientName,
+          reference: audit.reference,
+          title: audit.title,
+          summaryHtml,
+        },
+        { organizationId, resolveBranding: resolveEmailBranding }
+      );
       await email.sendTransactional({
         to: recipientEmail,
-        subject: `Audit report ${audit.reference}: ${audit.title}`,
-        html: `<p>Hi ${esc(recipientName)},</p><p>The extract report for audit <strong>${esc(audit.reference)}: ${esc(audit.title)}</strong> is attached and summarised below.</p>${html}`,
-        text: `Hi ${recipientName}, the extract report for audit ${audit.reference}: ${audit.title} is attached. Identifications: ${audit.identifications.length}, embedded risks: ${audit.risks.length}, opportunities for improvement: ${audit.ofis.length}.`,
+        subject: rendered.subject,
+        html: rendered.html,
+        text: rendered.text,
         category: "transactional",
+        organizationId,
         attachments: [
           {
             filename: `audit-report-${audit.reference}.html`,
-            contentBase64: Buffer.from(html, "utf8").toString("base64"),
+            contentBase64: Buffer.from(summaryHtml, "utf8").toString("base64"),
             type: "text/html",
           },
         ],

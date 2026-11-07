@@ -3,10 +3,12 @@ import type { Authorizer } from "../../../security";
 import { createDocumentManagementController } from "../controllers/document-management.controller";
 import {
   NoOpDocumentActivityAdapter,
+  NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentEmailAdapter,
   NoOpDocumentFilesAdapter,
   NoOpDocumentNotificationAdapter,
   type DocumentActivityPort,
+  type DocumentComplianceLinkPort,
   type DocumentEmailPort,
   type DocumentFilesPort,
   type DocumentMembershipPort,
@@ -14,10 +16,12 @@ import {
 } from "../ports";
 import { createDocumentRepositoryStore } from "../repositories/document-repository.repository";
 import { createDocumentTreeStore } from "../repositories/document-tree.repository";
+import type { OnlyOfficeRuntimeConfig } from "../lib/onlyoffice";
 import {
   createDocumentManagementService,
   type DocumentManagementApplicationPort,
   type DocumentManagementService,
+  type DocumentManagementServiceDeps,
 } from "../services/document-management.service";
 import {
   createDocumentReviewReminderService,
@@ -31,8 +35,11 @@ export type DocumentManagementRouterDeps = {
   notifications?: DocumentNotificationPort;
   email?: DocumentEmailPort;
   memberships?: DocumentMembershipPort;
+  complianceLinks?: DocumentComplianceLinkPort;
   /** Base URL for emailed access links (share / signature). */
   accessLinkBaseUrl?: string;
+  resolveEmailBranding?: DocumentManagementServiceDeps["resolveEmailBranding"];
+  onlyOffice?: OnlyOfficeRuntimeConfig;
 };
 
 /**
@@ -68,7 +75,11 @@ export function createDocumentManagementModule(
     notifications: notificationsPort,
     email: deps.email ?? new NoOpDocumentEmailAdapter(),
     memberships: deps.memberships,
+    complianceLinks:
+      deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter(),
     accessLinkBaseUrl: deps.accessLinkBaseUrl,
+    resolveEmailBranding: deps.resolveEmailBranding,
+    onlyOffice: deps.onlyOffice,
   });
   const reviewReminders = createDocumentReviewReminderService({
     trees,
@@ -115,12 +126,28 @@ export function createDocumentManagementModule(
     controller.updateDocument
   );
   repositoriesRouter.post(
+    "/:id/file-nodes/:nodeId/compliance-apply",
+    controller.applyComplianceClauses
+  );
+  repositoriesRouter.delete(
+    "/:id/file-nodes/:nodeId/compliance-links",
+    controller.clearComplianceLinks
+  );
+  repositoriesRouter.post(
     "/:id/nodes/:nodeId/new-version",
     controller.addVersion
   );
   repositoriesRouter.put(
     "/:id/nodes/:nodeId/revision",
     controller.addRevision
+  );
+  repositoriesRouter.post(
+    "/:id/nodes/:nodeId/editor-session",
+    controller.createEditorSession
+  );
+  repositoriesRouter.post(
+    "/:id/nodes/:nodeId/editor-callback",
+    controller.editorCallback
   );
   repositoriesRouter.put("/:id/nodes/:nodeId/move-node", controller.moveNode);
   repositoriesRouter.put(
@@ -181,6 +208,7 @@ export function createDocumentManagementModule(
 
   const treesRouter = Router();
   treesRouter.get("/", controller.listPublished);
+  treesRouter.get("/:id", controller.getDocumentTreeNode);
 
   /** Public token-gated share links (no identity; token is the credential). */
   const sharesRouter = Router();

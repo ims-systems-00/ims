@@ -12,6 +12,7 @@ import {
   requestOrganisationLicence,
   updateDocumentReviewReminders,
   updateIncidentResolutionTargets,
+  updateOrganisationEmailBranding,
   updateOrganisationLogo,
 } from "../api/organisations";
 import type {
@@ -21,6 +22,7 @@ import type {
   IncidentResolutionTargets,
   Organisation,
   RequestOrganisationLicenceInput,
+  UpdateOrganisationEmailBrandingInput,
 } from "../types";
 import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
 
@@ -154,6 +156,17 @@ export function useUpdateOrganisationLogoMutation() {
   return useMutation({
     mutationFn: (body: Parameters<typeof updateOrganisationLogo>[0]) =>
       updateOrganisationLogo(body),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
+}
+
+export function useUpdateOrganisationEmailBrandingMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateOrganisationEmailBrandingInput) =>
+      updateOrganisationEmailBranding(body),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },

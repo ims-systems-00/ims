@@ -20,7 +20,11 @@ RUN corepack enable && corepack prepare pnpm@9.15.0 --activate
 WORKDIR /app
 
 ENV NODE_ENV=development \
-    PORT=3001
+    PORT=3001 \
+    FILES_LOCAL_ROOT=/data/local-files
+
+# Compose mounts a named volume here so uploads survive container recreate.
+RUN mkdir -p /data/local-files
 
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 COPY ims-systems-v5-backend/package.json ./ims-systems-v5-backend/

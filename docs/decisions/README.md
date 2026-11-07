@@ -35,7 +35,8 @@ This folder stores formalized decisions for the V5 rebuild.
 | D-15 | TanStack Query for server state | Accepted | [0015-tanstack-query-server-state.md](./0015-tanstack-query-server-state.md) |
 | D-16 | Auth0 Vite SPA integration (org-user) | Accepted | [0016-auth0-nextjs-deferred.md](./0016-auth0-nextjs-deferred.md) |
 | D-17 | Mongoose ODM | Accepted | [0017-mongoose-odm.md](./0017-mongoose-odm.md) |
-| D-18 | Production data migration tooling | Deferred | [0018-production-migrations-deferred.md](./0018-production-migrations-deferred.md) |
+| D-18 | Production data migration tooling | Superseded by D-26 | [0018-production-migrations-deferred.md](./0018-production-migrations-deferred.md) |
+| D-26 | V4→V5 core domain migration tooling | Accepted | [0026-v4-v5-core-migration-tooling.md](./0026-v4-v5-core-migration-tooling.md) |
 | D-19 | Query-driven MongoDB indexes | Accepted | [0019-query-driven-indexes.md](./0019-query-driven-indexes.md) |
 | D-20 | Org-user session transport (Bearer) | Accepted | [0020-session-transport-deferred.md](./0020-session-transport-deferred.md) |
 | D-21 | OpenFGA model ownership and write paths | Accepted | [0021-openfga-model-deferred.md](./0021-openfga-model-deferred.md) |
@@ -43,6 +44,7 @@ This folder stores formalized decisions for the V5 rebuild.
 | D-23 | ESLint and Prettier | Accepted | [0023-eslint-prettier.md](./0023-eslint-prettier.md) |
 | D-24 | Vite + React + TypeScript frontend | Accepted | [D-24-vite-react-frontend.md](./D-24-vite-react-frontend.md) |
 | D-25 | Document Management deferred-item decisions | Accepted | [0025-document-management-deferred-decisions.md](./0025-document-management-deferred-decisions.md) |
+| D-27 | OnlyOffice in-preview PDF/Office editing | Accepted | [0027-onlyoffice-in-preview-editing.md](./0027-onlyoffice-in-preview-editing.md) |
 
 ---
 
@@ -52,4 +54,5 @@ This folder stores formalized decisions for the V5 rebuild.
 | ------ | ------- |
 | **Accepted** | Engineering baseline — follow this ADR |
 | **Deferred** | Explicitly postponed; do not implement until a later task/ADR revisits it |
+| **Superseded** | Replaced by a later ADR (see link in the row / ADR body) |
 | **Pending** | Not yet decided (none remaining in this baseline set) |

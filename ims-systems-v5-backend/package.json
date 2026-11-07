@@ -15,10 +15,13 @@
     "test:watch": "vitest",
     "seed:demo": "tsx scripts/seed-demo-data.ts",
     "seed:compliance-catalogues": "tsx scripts/seed-compliance-catalogues.ts",
+    "migrate:v4": "tsx scripts/migrate-v4/index.ts",
     "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts",
+    "backfill:auth0-identities": "tsx scripts/backfill-auth0-identities.ts",
     "provision:files-buckets": "tsx scripts/ensure-files-bucket.ts",
     "preflight:prod": "tsx scripts/preflight-prod.ts",
-    "smoke:files-s3": "tsx scripts/smoke-files-s3.ts"
+    "smoke:files-s3": "tsx scripts/smoke-files-s3.ts",
+    "email:preview": "tsx scripts/email-preview.ts"
   },
   "engines": {
     "node": ">=20"

@@ -175,12 +175,36 @@ export type Organisation = {
     key: string;
     fileName?: string;
   } | null;
+  /**
+   * When enabled, org-scoped emails use the organisation logo + theme colors.
+   * When disabled/absent, emails use iMS Systems branding.
+   */
+  emailBranding?: OrganisationEmailBranding;
   /** Auth0 Organization id when linked; null until auth rollout links it. */
   auth0OrganizationId?: string | null;
   createdBy: string;
   createdOn: string;
   createdAt: string;
   updatedAt: string;
+};
+
+export type OrganisationEmailBrandColors = {
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  primaryExtraLight: string;
+};
+
+export type OrganisationEmailBranding = {
+  enabled: boolean;
+  themeId: string | null;
+  colors: OrganisationEmailBrandColors | null;
+};
+
+export type UpdateOrganisationEmailBrandingInput = {
+  enabled: boolean;
+  themeId?: string | null;
+  colors?: OrganisationEmailBrandColors | null;
 };
 
 export type OrganisationProfile = Organisation & {

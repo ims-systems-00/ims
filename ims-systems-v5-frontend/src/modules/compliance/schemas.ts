@@ -69,11 +69,13 @@ export const createControlEvidenceSchema = z
         }
         break;
       case "document-management":
-        ctx.addIssue({
-          code: "custom",
-          message: "Document Management is not available yet",
-          path: ["evidenceType"],
-        });
+        if (!value.relatedDocumentId) {
+          ctx.addIssue({
+            code: "custom",
+            message: "Select a document",
+            path: ["relatedDocumentId"],
+          });
+        }
         break;
       case "raw-file":
         if (!value.fileName?.trim()) {

@@ -4,6 +4,7 @@ import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
+import { loadPublicEnv } from "@/shared/lib/env";
 import { notify } from "@/shared/lib/toast";
 import {
   ActivityTimeline,
@@ -14,6 +15,10 @@ import {
   buildRiskAssistantContext,
 } from "@/modules/ai";
 import { useCurrentOrganisationQuery } from "@/modules/organisation";
+import {
+  permissionAllowed,
+  useSecurityCapabilitiesQuery,
+} from "@/modules/security/hooks/use-security-capabilities";
 import {
   useCreateRiskMutation,
   useDeleteRiskMutation,
@@ -66,6 +71,7 @@ export function RiskSheet({
 
   const riskQuery = useRiskQuery(mode === "create" ? undefined : (riskId ?? undefined));
   const orgQuery = useCurrentOrganisationQuery(open && mode === "view");
+  const capabilitiesQuery = useSecurityCapabilitiesQuery(open);
   const createMutation = useCreateRiskMutation();
   const updateMutation = useUpdateRiskMutation(riskId ?? "");
   const deleteMutation = useDeleteRiskMutation();
@@ -90,6 +96,14 @@ export function RiskSheet({
     escalateMutation.isPending ||
     nudgeMutation.isPending;
 
+  // Capabilities API only emits `*:read` keys (nav preflight). BE still
+  // authorizes AI create on `/ai`. Hide Analyse only when the user cannot
+  // access Risks at all.
+  const canAnalyse = permissionAllowed(
+    "risks:read",
+    capabilitiesQuery.data?.permissions,
+    loadPublicEnv().VITE_SECURITY_PROVIDER
+  );
   const mitigated = Boolean(risk?.mitigated.status);
   const escalated = Boolean(risk?.escalated.status);
   const nudgeCooling =
@@ -206,15 +220,17 @@ export function RiskSheet({
               </Button>
               {!mitigated ? (
                 <>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    disabled={pending}
-                    onClick={() => setAliceOpen(true)}
-                  >
-                    <Sparkles className="size-4" />
-                    Analyse
-                  </Button>
+                  {canAnalyse ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={pending}
+                      onClick={() => setAliceOpen(true)}
+                    >
+                      <Sparkles className="size-4" />
+                      Analyse
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     variant="outline"

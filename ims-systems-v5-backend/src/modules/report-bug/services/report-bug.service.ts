@@ -1,3 +1,4 @@
+import type { EmailBranding } from "../../../infrastructure/email/templates";
 import type { SecurityIdentity } from "../../../security";
 import {
   ForbiddenError,
@@ -29,6 +30,7 @@ export type ReportBugServiceDeps = {
    * Mailtrap free testing plans often allow only ~1 message/second.
    */
   confirmationDelayMs?: number;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 function requireIdentity(identity: SecurityIdentity | null | undefined): {
@@ -61,7 +63,12 @@ function sleep(ms: number): Promise<void> {
 export function createReportBugService(
   deps: ReportBugServiceDeps
 ): ReportBugService {
-  const { email, supportEmails, confirmationDelayMs = 1_200 } = deps;
+  const {
+    email,
+    supportEmails,
+    confirmationDelayMs = 1_200,
+    resolveEmailBranding,
+  } = deps;
 
   return {
     async submit(identity, input) {
@@ -81,11 +88,18 @@ export function createReportBugService(
         organizationId: reporter.organizationId,
       };
 
-      const support = buildSupportBugReportEmail(mailCtx);
-      const confirmation = buildReporterConfirmationEmail({
-        reporterName: reporter.name,
-        title: input.title,
-      });
+      const support = await buildSupportBugReportEmail(
+        mailCtx,
+        resolveEmailBranding
+      );
+      const confirmation = await buildReporterConfirmationEmail(
+        {
+          reporterName: reporter.name,
+          title: input.title,
+          organizationId: reporter.organizationId,
+        },
+        resolveEmailBranding
+      );
 
       const supportResult = await email.sendTransactional({
         to: supportEmails,
@@ -117,17 +131,14 @@ export function createReportBugService(
       } catch {
         // Support mail already accepted the report — do not fail the request
         // if confirmation is rate-limited or otherwise undeliverable.
-        confirmEmailed = false;
       }
-
-      const emailed =
-        supportResult.mode !== "disabled" || confirmEmailed;
 
       return {
         accepted: true,
         category: input.category,
         title: input.title,
-        emailed,
+        emailed:
+          supportResult.mode !== "disabled" || confirmEmailed,
       };
     },
   };

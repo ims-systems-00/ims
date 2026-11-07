@@ -37,12 +37,18 @@ export type AiResponseSource = {
   moduleId: string;
 };
 
+export type AiCreator = {
+  id: string;
+  name: string;
+  avatarUrl?: string | null;
+};
+
 export type AiResponse = {
   id: string;
   organizationId: string;
   source: AiResponseSource;
   template: AiAnalyserTemplate;
-  createdBy: string;
+  createdBy: AiCreator;
   createdOn: string;
   createdAt: string;
   updatedAt: string;

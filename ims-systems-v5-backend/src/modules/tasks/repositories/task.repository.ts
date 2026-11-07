@@ -145,7 +145,8 @@ export type TaskRepository = {
   listForSubject: (
     organizationId: string,
     subjectId: string,
-    query: ListTasksQuery
+    query: ListTasksQuery,
+    options?: { scope?: "personal" | "organization" }
   ) => Promise<PaginatedTasks>;
   update: (
     organizationId: string,
@@ -199,12 +200,15 @@ export function createTaskRepository(): TaskRepository {
       return doc ? toDomain(doc) : null;
     },
 
-    async listForSubject(organizationId, subjectId, query) {
+    async listForSubject(organizationId, subjectId, query, options = {}) {
       const filter: Record<string, unknown> = {
         organizationId,
         deletedAt: null,
-        ...visibilityFilter(subjectId),
       };
+      // Org-wide scope (Super Admin / manage) skips personal visibility.
+      if (options.scope !== "organization") {
+        Object.assign(filter, visibilityFilter(subjectId));
+      }
 
       applyStatusPreset(filter, query.statusPreset, subjectId);
 

@@ -17,12 +17,15 @@ import {
 import type {
   AiActivityPort,
   AiActorDirectoryPort,
+  AiActorProfile,
   AiGptPort,
 } from "../ports";
 import type { AiResponseRepository } from "../repositories/ai-response.repository";
 import {
   AI_RESOURCE,
+  type AiCreator,
   type AiResponse,
+  type AiResponseRecord,
   type CreateAiResponseInput,
   type GptGenerateInput,
   type ListAiResponsesQuery,
@@ -71,6 +74,24 @@ function toActivityModuleType(
     : null;
 }
 
+function toCreator(profile: AiActorProfile): AiCreator {
+  return {
+    id: profile.id,
+    name: profile.name,
+    avatarUrl: profile.avatarUrl,
+  };
+}
+
+function enrichRecord(
+  record: AiResponseRecord,
+  profile: AiActorProfile
+): AiResponse {
+  return {
+    ...record,
+    createdBy: toCreator(profile),
+  };
+}
+
 export type AiServiceDeps = {
   repository: AiResponseRepository;
   authorizer: Authorizer;
@@ -104,12 +125,36 @@ export function createAiService(deps: AiServiceDeps) {
   async function requireResponse(
     organizationId: string,
     id: string
-  ): Promise<AiResponse> {
+  ): Promise<AiResponseRecord> {
     const response = await repository.findById(organizationId, id);
     if (!response) {
       throw new NotFoundError("AI response not found");
     }
     return response;
+  }
+
+  async function enrichOne(record: AiResponseRecord): Promise<AiResponse> {
+    const profile = await actors.getProfile(record.createdBy);
+    return enrichRecord(record, profile);
+  }
+
+  async function enrichMany(
+    records: AiResponseRecord[]
+  ): Promise<AiResponse[]> {
+    if (records.length === 0) return [];
+    const profiles = await actors.getProfiles(
+      records.map((row) => row.createdBy)
+    );
+    return records.map((row) => {
+      const profile =
+        profiles.get(row.createdBy) ??
+        ({
+          id: row.createdBy,
+          name: row.createdBy,
+          avatarUrl: null,
+        } satisfies AiActorProfile);
+      return enrichRecord(row, profile);
+    });
   }
 
   return {
@@ -188,7 +233,7 @@ export function createAiService(deps: AiServiceDeps) {
         }
       }
 
-      return created;
+      return enrichOne(created);
     },
 
     async list(
@@ -197,7 +242,11 @@ export function createAiService(deps: AiServiceDeps) {
     ): Promise<PaginatedAiResponses> {
       const { identity: actor, organizationId } = requireOrgIdentity(identity);
       await assertAllowed(actor, "read");
-      return repository.list(organizationId, query);
+      const page = await repository.list(organizationId, query);
+      return {
+        ...page,
+        items: await enrichMany(page.items),
+      };
     },
 
     async getById(
@@ -206,7 +255,7 @@ export function createAiService(deps: AiServiceDeps) {
     ): Promise<AiResponse> {
       const { identity: actor, organizationId } = requireOrgIdentity(identity);
       await assertAllowed(actor, "read", id);
-      return requireResponse(organizationId, id);
+      return enrichOne(await requireResponse(organizationId, id));
     },
 
     async update(
@@ -236,7 +285,7 @@ export function createAiService(deps: AiServiceDeps) {
       if (!updated) {
         throw new NotFoundError("AI response not found");
       }
-      return updated;
+      return enrichOne(updated);
     },
 
     async remove(
@@ -275,7 +324,7 @@ export function createAiService(deps: AiServiceDeps) {
         }
       }
 
-      return existing;
+      return enrichOne(existing);
     },
   };
 }

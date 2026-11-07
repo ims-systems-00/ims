@@ -104,6 +104,12 @@ const organisationSchema = new Schema(
       },
       default: null,
     },
+    emailBranding: {
+      enabled: { type: Boolean, default: false },
+      themeId: { type: String, default: null },
+      // Mixed avoids nested-subdoc quirks when $set-ing the full palette.
+      colors: { type: mongoose.Schema.Types.Mixed, default: null },
+    },
     /** Auth0 Organization id (`org_…`); omit until linked. */
     auth0OrganizationId: { type: String, default: null, trim: true },
     createdBy: { type: String, required: true },

@@ -211,22 +211,43 @@ export class NoOpSessionAdapter implements SessionPort {
 }
 
 export interface UserNotificationPort {
-  sendWelcome(email: string, name: string): Promise<void>;
-  sendAccessRevoked(email: string, name: string): Promise<void>;
-  resendEmailVerification(email: string, name: string): Promise<void>;
+  sendWelcome(
+    email: string,
+    name: string,
+    organizationId?: string
+  ): Promise<void>;
+  sendAccessRevoked(
+    email: string,
+    name: string,
+    organizationId?: string
+  ): Promise<void>;
+  resendEmailVerification(
+    email: string,
+    name: string,
+    organizationId?: string
+  ): Promise<void>;
 }
 
 /** Development adapter — email delivery not available yet. */
 export class NoOpUserNotificationAdapter implements UserNotificationPort {
-  async sendWelcome(_email: string, _name: string): Promise<void> {
+  async sendWelcome(
+    _email: string,
+    _name: string,
+    _organizationId?: string
+  ): Promise<void> {
     return;
   }
-  async sendAccessRevoked(_email: string, _name: string): Promise<void> {
+  async sendAccessRevoked(
+    _email: string,
+    _name: string,
+    _organizationId?: string
+  ): Promise<void> {
     return;
   }
   async resendEmailVerification(
     _email: string,
-    _name: string
+    _name: string,
+    _organizationId?: string
   ): Promise<void> {
     return;
   }

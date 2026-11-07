@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { EmailBranding } from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import { createReportBugEmailAdapter } from "../adapters/email.adapter";
 import type { ReportBugEmailPort } from "../ports";
@@ -17,6 +18,7 @@ export type ReportBugRouterDeps = {
   supportEmails: string[];
   /** Delay between support + confirmation emails (Mailtrap rate limits). */
   confirmationDelayMs?: number;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 /**
@@ -35,6 +37,7 @@ export function createReportBugModule(deps: ReportBugRouterDeps): {
         : new NoOpReportBugEmailAdapter()),
     supportEmails: deps.supportEmails,
     confirmationDelayMs: deps.confirmationDelayMs,
+    resolveEmailBranding: deps.resolveEmailBranding,
   });
   const controller = createReportBugController(service);
   const router = Router();

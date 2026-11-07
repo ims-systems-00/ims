@@ -18,12 +18,15 @@ import {
   createDocumentEmailAdapter,
   createDocumentMembershipAdapter,
   startDocumentReviewReminderSchedule,
+  NoOpDocumentComplianceLinkAdapter,
+  type DocumentComplianceLinkPort,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
 import { createContactImsModule } from "../../../modules/contact-ims";
 import { createRegisterPublicInterestModule } from "../../../modules/register-public-interest";
 import {
   composeGoLiveSideEffects,
+  createOrganisationEmailBrandingResolver,
   createOrganisationModule,
   NoOpOrganisationGoLiveSideEffectsAdapter,
   type OrganisationGoLiveSideEffectsPort,
@@ -111,6 +114,7 @@ import {
   type CustomerTaskPort,
 } from "../../../modules/customers";
 import {
+  createCampaignOrganisationAdapter,
   createEmailCampaignModule,
   createCustomerCampaignStatsAdapter,
 } from "../../../modules/email-campaign";
@@ -146,7 +150,9 @@ import {
   createAiModule,
   createAiActivityAdapter,
   createAiActorDirectoryAdapter,
+  createAiContextAdapter,
   createOpenAiGptAdapter,
+  GROQ_OPENAI_COMPAT_BASE_URL,
   NoOpAiGptAdapter,
 } from "../../../modules/ai";
 import { createInvoiceModule } from "../../../modules/invoices";
@@ -192,6 +198,7 @@ import {
   createComplianceRiskMirrorAdapter,
   createIncidentComplianceLinkAdapter,
   createOfiComplianceLinkAdapter,
+  createDocumentComplianceLinkAdapter,
   createOrganisationComplianceLicenceAdapter,
   createRiskComplianceLinkAdapter,
 } from "../../../modules/compliance";
@@ -243,16 +250,6 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     router.use("/auth", createAuthRouter({ config, auth0Api }));
   }
 
-  const reportBug = createReportBugModule({
-    email,
-    supportEmails: config?.REPORT_BUG_SUPPORT_EMAILS ?? [
-      "support@imssystems.tech",
-    ],
-    // Mailtrap free testing limits ~1 msg/sec; skip delay in automated tests.
-    confirmationDelayMs: config?.NODE_ENV === "test" ? 0 : 1_200,
-  });
-  router.use("/report-bug", reportBug.router);
-
   // Public marketing endpoints (no authorizer): email-only enquiries and
   // persisted product-interest registrations.
   const contactIms = createContactImsModule({
@@ -285,6 +282,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         privateBucket: config.AWS_PRIVATE_BUCKET,
         bucketSuffix: config.AWS_BUCKET_SUFFIX,
         publicBucket: config.AWS_PUBLIC_BUCKET,
+        legacyBucketSuffixes: config.AWS_LEGACY_BUCKET_SUFFIXES,
         uploadUrlTtlSeconds: config.FILES_UPLOAD_URL_TTL_SECONDS,
         viewUrlTtlSeconds: config.FILES_VIEW_URL_TTL_SECONDS,
         allowedPaths: config.ALLOWED_FILE_PATHS,
@@ -293,6 +291,23 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     });
     router.use("/files", files.router);
   }
+
+  const resolveEmailBranding = createOrganisationEmailBrandingResolver({
+    files: objectStorage,
+  });
+
+  // Org-scoped transactional mail (report-bug) must resolve branding after
+  // the logo storage port is available.
+  const reportBug = createReportBugModule({
+    email,
+    supportEmails: config?.REPORT_BUG_SUPPORT_EMAILS ?? [
+      "support@imssystems.tech",
+    ],
+    // Mailtrap free testing limits ~1 msg/sec; skip delay in automated tests.
+    confirmationDelayMs: config?.NODE_ENV === "test" ? 0 : 1_200,
+    resolveEmailBranding,
+  });
+  router.use("/report-bug", reportBug.router);
 
   const organisationMembershipLookup =
     config?.SECURITY_PROVIDER === "auth0-openfga"
@@ -345,7 +360,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     supportEmails: config?.REPORT_BUG_SUPPORT_EMAILS ?? [
       "support@imssystems.tech",
     ],
-    recipients: createLicenceRequestRecipientsAdapter(),
+    recipients: createLicenceRequestRecipientsAdapter({
+      resolveEmailBranding,
+    }),
     logger,
   });
   router.use("/licence-requests", licenceRequests.router);
@@ -354,6 +371,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     email,
     clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
     logger,
+    resolveEmailBranding,
   });
   router.use("/partnerships", partnerships.router);
 
@@ -385,7 +403,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const users = createUsersModule({
     authorizer: security.authorizer,
     // N-12: account lifecycle emails via EmailSystem (NoOp only if absent).
-    notifications: createUserNotificationAdapter(email),
+    notifications: createUserNotificationAdapter(email, resolveEmailBranding),
     // N-13: revoke Auth0 grants/sessions on access revoke/delete when
     // the Management API M2M app is configured (else NoOp + preflight warn).
     ...(auth0Mgmt
@@ -414,6 +432,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     email,
     membershipProjection: security.membershipProjection,
     clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
+    resolveEmailBranding,
   });
   router.use("/invitations", invitations.router);
 
@@ -440,6 +459,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       const org = await createOrganisationRepository().findById(organizationId);
       return org?.name ?? "iMS Systems";
     },
+    resolveEmailBranding,
   });
   router.use("/invoices", invoices.router);
 
@@ -686,13 +706,38 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     },
   });
 
+  const aiProvider = config?.AI_PROVIDER ?? "openai";
+  const groqKey = config?.GROQ_API_KEY?.trim() ?? "";
+  const openAiKey = config?.OPEN_AI_API_KEY?.trim() ?? "";
   const aiGpt =
-    config?.OPEN_AI_API_KEY?.trim()
+    aiProvider === "groq" && groqKey
       ? createOpenAiGptAdapter({
-          apiKey: config.OPEN_AI_API_KEY.trim(),
-          model: config.OPEN_AI_MODEL,
+          apiKey: groqKey,
+          model: config?.GROQ_MODEL,
+          baseURL: GROQ_OPENAI_COMPAT_BASE_URL,
+          providerLabel: "groq",
         })
-      : new NoOpAiGptAdapter();
+      : aiProvider === "openai" && openAiKey
+        ? createOpenAiGptAdapter({
+            apiKey: openAiKey,
+            model: config?.OPEN_AI_MODEL,
+            providerLabel: "openai",
+          })
+        : new NoOpAiGptAdapter();
+  const chatModelId =
+    aiProvider === "groq"
+      ? config?.GROQ_MODEL?.trim() || undefined
+      : config?.OPEN_AI_CHAT_MODEL?.trim() ||
+        config?.OPEN_AI_MODEL?.trim() ||
+        undefined;
+  const aiChatGpt =
+    aiProvider === "openai" && openAiKey && chatModelId
+      ? createOpenAiGptAdapter({
+          apiKey: openAiKey,
+          model: chatModelId,
+          providerLabel: "openai",
+        })
+      : aiGpt;
 
   const activities = createActivitiesModule({
     authorizer: security.authorizer,
@@ -706,9 +751,21 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const ai = createAiModule({
     authorizer: security.authorizer,
     gpt: aiGpt,
+    chatGpt: aiChatGpt,
+    chatModelId,
     activities: createAiActivityAdapter(activities.application),
     actors: createAiActorDirectoryAdapter(),
+    context: createAiContextAdapter({
+      authorizer: security.authorizer,
+      search: search.service,
+    }),
   });
+
+  const documentComplianceLinkHolder: {
+    current: DocumentComplianceLinkPort;
+  } = {
+    current: new NoOpDocumentComplianceLinkAdapter(),
+  };
 
   const documentManagement = createDocumentManagementModule({
     authorizer: security.authorizer,
@@ -719,7 +776,24 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     notifications: createDocumentNotificationAdapter(notifications.application),
     email: createDocumentEmailAdapter(email),
     memberships: createDocumentMembershipAdapter(),
+    complianceLinks: {
+      applyClauses: (input) =>
+        documentComplianceLinkHolder.current.applyClauses(input),
+      syncLinks: (input) =>
+        documentComplianceLinkHolder.current.syncLinks(input),
+      clearLinks: (input) =>
+        documentComplianceLinkHolder.current.clearLinks(input),
+    },
     accessLinkBaseUrl: config?.CLIENT_URL,
+    resolveEmailBranding,
+    onlyOffice: config
+      ? {
+          enabled: config.ONLYOFFICE_ENABLED,
+          publicUrl: config.ONLYOFFICE_URL,
+          jwtSecret: config.ONLYOFFICE_JWT_SECRET,
+          callbackBaseUrl: config.ONLYOFFICE_CALLBACK_BASE_URL,
+        }
+      : undefined,
   });
   router.use("/document-management", documentManagement.managementRouter);
   router.use("/document-repositories", documentManagement.repositoriesRouter);
@@ -812,6 +886,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   ofiComplianceLinkHolder.current = createOfiComplianceLinkAdapter(
     compliance.application
   );
+  documentComplianceLinkHolder.current = createDocumentComplianceLinkAdapter(
+    compliance.application
+  );
 
   const suppliers = createSupplierModule({
     authorizer: security.authorizer,
@@ -828,6 +905,9 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const emailCampaigns = createEmailCampaignModule({
     authorizer: security.authorizer,
     email,
+    organisation: createCampaignOrganisationAdapter({
+      resolveEmailBranding,
+    }),
   });
 
   const customers = createCustomerModule({
@@ -955,7 +1035,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     calendar: createAuditCalendarAdapter(calendar.service),
     notifications: createAuditNotificationAdapter(notifications.application),
     // N-14: extract reports generated + emailed via EmailSystem.
-    reports: createAuditReportAdapter(email),
+    reports: createAuditReportAdapter(email, resolveEmailBranding),
   });
 
   const managementReviews = createManagementReviewModule({

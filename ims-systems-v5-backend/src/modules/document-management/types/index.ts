@@ -142,12 +142,20 @@ export type DocumentTreeNode = {
   updatedAt: Date;
 };
 
+/** Compliance toolkit ↔ clause links stored on a document (single toolkit). */
+export type DocumentComplianceLink = {
+  toolkitId: string;
+  clauseIds: string[];
+};
+
 export type DocumentNodeData = {
   storageInfo: DocumentFileMeta;
   purpose: DocumentPurpose;
   owners: string[];
   applicableModules: DocumentApplicableModule[];
   complianceTools: DocumentComplianceTool[];
+  /** Linked compliance clauses (at most one toolkit). */
+  complianceLinks: DocumentComplianceLink[];
   authorisation: AuthorisationEntry[];
   classification: string;
   dvID: number;
@@ -393,3 +401,26 @@ export const MAX_FOLDER_DEPTH = 20;
 export const MAX_SIBLING_NAMES = 100;
 export const MAX_REPO_NAME_LENGTH = 200;
 export const MAX_NODE_NAME_LENGTH = 255;
+
+/** OnlyOffice DocsAPI config returned by editor-session. */
+export type DocumentEditorSession = {
+  documentServerUrl: string;
+  config: {
+    documentType: "word" | "cell" | "slide" | "pdf";
+    document: {
+      fileType: string;
+      key: string;
+      title: string;
+      url: string;
+      /** PDFs: skip checkExtendedPDF when set (OnlyOffice internal probe). */
+      isForm?: boolean;
+    };
+    editorConfig: {
+      mode: "edit";
+      callbackUrl: string;
+      user: { id: string; name: string };
+      customization: { forcesave: boolean; autosave: boolean };
+    };
+    token: string;
+  };
+};

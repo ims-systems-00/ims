@@ -6,6 +6,7 @@ import {
   organisationIdParamSchema,
   updateDocumentReviewRemindersBodySchema,
   updateIncidentResolutionTargetsBodySchema,
+  updateOrganisationEmailBrandingBodySchema,
   updateOrganisationLogoBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
@@ -15,12 +16,14 @@ export type OrganisationController = {
   goLive: RequestHandler;
   getCurrent: RequestHandler;
   getById: RequestHandler;
+  ensureAuth0Link: RequestHandler;
   listMine: RequestHandler;
   createCardPaymentSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
   updateIncidentResolutionTargets: RequestHandler;
   updateLogo: RequestHandler;
+  updateEmailBranding: RequestHandler;
 };
 
 export function createOrganisationController(
@@ -66,6 +69,16 @@ export function createOrganisationController(
     }
   };
 
+  const ensureAuth0Link: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.ensureAuth0Link(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const listMine: RequestHandler = async (req, res, next) => {
     try {
       const data = await service.listMine(req.identity);
@@ -103,6 +116,19 @@ export function createOrganisationController(
     try {
       const body = parseWithSchema(updateOrganisationLogoBodySchema, req.body);
       const data = await service.updateLogo(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const updateEmailBranding: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(
+        updateOrganisationEmailBrandingBodySchema,
+        req.body
+      );
+      const data = await service.updateEmailBranding(req.identity, body);
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -154,11 +180,13 @@ export function createOrganisationController(
     goLive,
     getCurrent,
     getById,
+    ensureAuth0Link,
     listMine,
     createCardPaymentSession,
     createBillingPortalSession,
     updateDocumentReviewReminders,
     updateIncidentResolutionTargets,
     updateLogo,
+    updateEmailBranding,
   };
 }

@@ -194,6 +194,27 @@ export function createOfiComplianceLinkAdapter(
   };
 }
 
+export function createDocumentComplianceLinkAdapter(
+  compliance: Pick<
+    ComplianceApplicationPort,
+    | "applyDocumentComplianceClauses"
+    | "syncDocumentComplianceLinks"
+    | "clearDocumentComplianceEvidence"
+  >
+): import("../../document-management/ports").DocumentComplianceLinkPort {
+  return {
+    async applyClauses(input) {
+      return compliance.applyDocumentComplianceClauses(input);
+    },
+    async syncLinks(input) {
+      await compliance.syncDocumentComplianceLinks(input);
+    },
+    async clearLinks(input) {
+      await compliance.clearDocumentComplianceEvidence(input);
+    },
+  };
+}
+
 export function createComplianceOfiMirrorAdapter(
   ofis: Pick<
     OfiService,

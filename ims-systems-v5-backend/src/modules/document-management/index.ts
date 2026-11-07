@@ -36,11 +36,13 @@ export {
   NoOpDocumentActivityAdapter,
   NoOpDocumentNotificationAdapter,
   NoOpDocumentEmailAdapter,
+  NoOpDocumentComplianceLinkAdapter,
   type DocumentFilesPort,
   type DocumentActivityPort,
   type DocumentNotificationPort,
   type DocumentEmailPort,
   type DocumentMembershipPort,
+  type DocumentComplianceLinkPort,
 } from "./ports";
 
 export {

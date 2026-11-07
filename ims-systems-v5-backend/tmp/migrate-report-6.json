@@ -1,0 +1,439 @@
+[
+  {
+    "wave": 6,
+    "tenantDb": "ims_v4_db",
+    "organizationId": "65c213d24f390a8f01fb8632",
+    "dryRun": false,
+    "startedAt": "2026-11-02T06:43:13.005Z",
+    "finishedAt": "2026-11-02T06:46:36.522Z",
+    "entities": [
+      {
+        "collection": "evidences→legacy_evidences",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "roles→legacy_roles",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformfields→legacy_imsformfields",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectmaterials→legacy_imsprojectmaterials",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqcoverviews→legacy_cqcoverviews",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqctools→legacy_cqctools",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "txnemails→legacy_txnemails",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqcreports→legacy_cqcreports",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqcwhistleblows→legacy_cqcwhistleblows",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformresponses→legacy_imsformresponses",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cccarbonreductioninitiatives→legacy_cccarbonreductioninitiatives",
+        "v4Count": 13,
+        "migrated": 13,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "identitycounters→legacy_identitycounters",
+        "v4Count": 40,
+        "migrated": 40,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cccustomfactors→legacy_cccustomfactors",
+        "v4Count": 48,
+        "migrated": 48,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformattachments→legacy_imsformattachments",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectworkpackageassignments→legacy_imsprojectworkpackageassignments",
+        "v4Count": 92,
+        "migrated": 92,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "expensereports→legacy_expensereports",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "ccsignatures→legacy_ccsignatures",
+        "v4Count": 2,
+        "migrated": 2,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformelements→legacy_imsformelements",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "airesponses→legacy_airesponses",
+        "v4Count": 147,
+        "migrated": 147,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqcsignificantevents→legacy_cqcsignificantevents",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectworkpackages→legacy_imsprojectworkpackages",
+        "v4Count": 205,
+        "migrated": 205,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectworkpackagerelationships→legacy_imsprojectworkpackagerelationships",
+        "v4Count": 17,
+        "migrated": 17,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "publicaccesstokens→legacy_publicaccesstokens",
+        "v4Count": 45,
+        "migrated": 45,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "groupdashboards→legacy_groupdashboards",
+        "v4Count": 12106,
+        "migrated": 12106,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "ccparameters→legacy_ccparameters",
+        "v4Count": 25,
+        "migrated": 25,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "accesspolicies→legacy_accesspolicies",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqcsafeguardings→legacy_cqcsafeguardings",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectreports→legacy_imsprojectreports",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformsubmissions→legacy_imsformsubmissions",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cclocations→legacy_cclocations",
+        "v4Count": 67,
+        "migrated": 67,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsforms→legacy_imsforms",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "sessions→legacy_sessions",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "ims_admins→legacy_ims_admins",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "complaints→legacy_complaints",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "attachments→legacy_attachments",
+        "v4Count": 415,
+        "migrated": 415,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformimages→legacy_imsformimages",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "tagsandcategories→legacy_tagsandcategories",
+        "v4Count": 64,
+        "migrated": 64,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cqcdetails→legacy_cqcdetails",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectmemberships→legacy_imsprojectmemberships",
+        "v4Count": 28,
+        "migrated": 28,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cccalculations→legacy_cccalculations",
+        "v4Count": 4786,
+        "migrated": 4786,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectworkpackagedocumentrelationships→legacy_imsprojectworkpackagedocumentrelationships",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "registerpublicinterests→legacy_registerpublicinterests",
+        "v4Count": 19,
+        "migrated": 19,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "ccreports→legacy_ccreports",
+        "v4Count": 122,
+        "migrated": 122,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "ccfactors→legacy_ccfactors",
+        "v4Count": 27527,
+        "migrated": 27527,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsformsections→legacy_imsformsections",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojects→legacy_imsprojects",
+        "v4Count": 294,
+        "migrated": 294,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectemailschedules→legacy_imsprojectemailschedules",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "worklogs→legacy_worklogs",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "dashboards→legacy_dashboards",
+        "v4Count": 271,
+        "migrated": 271,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "imsprojectbudgets→legacy_imsprojectbudgets",
+        "v4Count": 7,
+        "migrated": 7,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      }
+    ],
+    "orphanFks": [],
+    "notes": [
+      "Wave 6 archives parked/non-core collections as legacy_* (no V5 domain models).",
+      "Candidate archive collections (50): evidences, roles, imsformfields, imsprojectmaterials, cqcoverviews, cqctools, txnemails, cqcreports, cqcwhistleblows, imsformresponses, cccarbonreductioninitiatives, identitycounters, cccustomfactors, imsformattachments, imsprojectworkpackageassignments, expensereports, ccsignatures, imsformelements, airesponses, cqcsignificantevents, imsprojectworkpackages, imsprojectworkpackagerelationships, publicaccesstokens, groupdashboards, ccparameters, accesspolicies, cqcsafeguardings, imsprojectreports, imsformsubmissions, cclocations…",
+      "checkpoint cccarbonreductioninitiatives: v4=13 archived=13 failed=0",
+      "checkpoint identitycounters: v4=40 archived=40 failed=0",
+      "checkpoint cccustomfactors: v4=48 archived=48 failed=0",
+      "checkpoint imsprojectworkpackageassignments: v4=92 archived=92 failed=0",
+      "checkpoint ccsignatures: v4=2 archived=2 failed=0",
+      "checkpoint airesponses: v4=147 archived=147 failed=0",
+      "checkpoint imsprojectworkpackages: v4=205 archived=205 failed=0",
+      "checkpoint imsprojectworkpackagerelationships: v4=17 archived=17 failed=0",
+      "checkpoint publicaccesstokens: v4=45 archived=45 failed=0",
+      "checkpoint groupdashboards: v4=12106 archived=12106 failed=0",
+      "checkpoint ccparameters: v4=25 archived=25 failed=0",
+      "checkpoint cclocations: v4=67 archived=67 failed=0",
+      "checkpoint attachments: v4=415 archived=415 failed=0",
+      "checkpoint tagsandcategories: v4=64 archived=64 failed=0",
+      "checkpoint imsprojectmemberships: v4=28 archived=28 failed=0",
+      "checkpoint cccalculations: v4=4786 archived=4786 failed=0",
+      "checkpoint registerpublicinterests: v4=19 archived=19 failed=0",
+      "checkpoint ccreports: v4=122 archived=122 failed=0",
+      "checkpoint ccfactors: v4=27527 archived=27527 failed=0",
+      "checkpoint imsprojects: v4=294 archived=294 failed=0",
+      "checkpoint dashboards: v4=271 archived=271 failed=0",
+      "checkpoint imsprojectbudgets: v4=7 archived=7 failed=0"
+    ]
+  }
+]

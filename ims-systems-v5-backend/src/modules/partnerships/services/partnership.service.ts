@@ -3,9 +3,14 @@
  *
  * Apply: record saved Pending → immediately accepted (organisation
  * isPartner = true) → emails to the applicant (received + accepted with
- * partner code and signup link). Duplicate user/org enrolment blocked.
+ * partner code and signup link). Duplicate enrolment blocked per organisation
+ * (same user may partner separately for another org).
  */
 
+import {
+  renderEmailForOrganisation,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { Logger } from "../../../infrastructure/logging/logger";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { SecurityIdentity } from "../../../security";
@@ -34,6 +39,7 @@ export type PartnershipServiceDeps = {
   email?: EmailSystem;
   clientUrl: string;
   logger?: Logger;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
 };
 
 export function createPartnershipService(deps: PartnershipServiceDeps) {
@@ -57,6 +63,7 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
     to: string;
     subject: string;
     html: string;
+    text: string;
     organizationId: string;
     label: string;
   }): Promise<void> {
@@ -66,7 +73,7 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
         to: input.to,
         subject: input.subject,
         html: input.html,
-        text: input.subject,
+        text: input.text,
         category: "customer-communication",
         organizationId: input.organizationId,
       });
@@ -94,24 +101,38 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
       );
       return;
     }
+    const brandOpts = {
+      organizationId: partnership.organizationId,
+      resolveBranding: deps.resolveEmailBranding,
+    };
+    const received = await renderEmailForOrganisation(
+      "partnership-application-received",
+      { organisationName: orgName },
+      brandOpts
+    );
     await sendSafe({
       to: actorEmail,
-      subject: "Welcome to the iMS Partnership programme",
-      html: `<p>Thanks for applying to the iMS Partnership programme for ${orgName}. Your application has been received.</p>`,
+      subject: received.subject,
+      html: received.html,
+      text: received.text,
       organizationId: partnership.organizationId,
       label: "partnership-received",
     });
+    const link = signupUrl(partnership.id);
+    const codeReady = await renderEmailForOrganisation(
+      "partnership-code-ready",
+      {
+        organisationName: orgName,
+        partnerCode: partnership.id,
+        htmlExtra: `<p style="margin:0 0 14px;font-size:15px;line-height:1.55;">Share your code or link — organisations that sign up with it will appear on your partner dashboard.</p><p style="margin:0 0 14px;font-size:14px;"><a href="${link}">${link}</a></p>`,
+      },
+      brandOpts
+    );
     await sendSafe({
       to: actorEmail,
-      subject: "Your iMS partner code is ready",
-      html: `
-        <p>Your partnership for ${orgName} is now active.</p>
-        <ul>
-          <li>Partner code: <strong>${partnership.id}</strong></li>
-          <li>Signup link: <a href="${signupUrl(partnership.id)}">${signupUrl(partnership.id)}</a></li>
-        </ul>
-        <p>Share your code or link — organisations that sign up with it will appear on your partner dashboard.</p>
-      `.trim(),
+      subject: codeReady.subject,
+      html: codeReady.html,
+      text: `${codeReady.text}\nSignup link: ${link}`,
       organizationId: partnership.organizationId,
       label: "partnership-accepted",
     });
@@ -139,13 +160,14 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
         );
       }
 
-      const existing = await repository.findForUserOrOrg(
-        actor.subjectId,
+      // Partnership is per organisation: a user may partner for org A and
+      // later apply separately for referred org B. Do not block on userId.
+      const existing = await repository.findByOrganizationId(
         actor.organizationId
       );
       if (existing) {
         throw new ConflictError(
-          "User or organization is already enrolled in a partnership programme."
+          "This organisation is already enrolled in a partnership programme."
         );
       }
 
@@ -198,10 +220,19 @@ export function createPartnershipService(deps: PartnershipServiceDeps) {
       identity: SecurityIdentity | null | undefined
     ): Promise<PartnershipDashboard> {
       const actor = requireIdentity(identity);
-      const partnership = await repository.findAcceptedByUser(actor.subjectId);
+      if (!actor.organizationId) {
+        throw new ForbiddenError(
+          "Organisation context is required for the partner dashboard."
+        );
+      }
+      // Dashboard is org-scoped: the active org's partnership only — not
+      // another org the same user may partner for.
+      const partnership = await repository.findAcceptedByOrganization(
+        actor.organizationId
+      );
       if (!partnership) {
         throw new NotFoundError(
-          "No accepted partnership found for this user"
+          "No accepted partnership found for this organisation"
         );
       }
 

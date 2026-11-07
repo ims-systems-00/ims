@@ -16,6 +16,10 @@ export {
 export { composeGoLiveSideEffects } from "./adapters/compose-go-live-side-effects";
 export { createGoLiveNotifySideEffectsAdapter } from "./adapters/go-live-notify.adapter";
 export {
+  createOrganisationEmailBrandingResolver,
+  type EmailBrandingResolver,
+} from "./adapters/email-branding.adapter";
+export {
   createFilesBucketSideEffectsAdapter,
   resolveProvisioningBucket,
 } from "./adapters/files-bucket.adapter";

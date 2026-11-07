@@ -45,7 +45,7 @@ const aiResponseSchema = new Schema(
     createdBy: { type: String, required: true },
     createdOn: { type: Date, required: true },
   },
-  { timestamps: true }
+  { timestamps: true, collection: "aiResponses" }
 );
 
 aiResponseSchema.index({
