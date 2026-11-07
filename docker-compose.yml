@@ -124,6 +124,12 @@ services:
       OPENFGA_API_URL: ${OPENFGA_API_URL:-http://openfga:8080}
       OPENFGA_STORE_ID: ${OPENFGA_STORE_ID:-}
       OPENFGA_MODEL_ID: ${OPENFGA_MODEL_ID:-}
+      # Preferred Auth0 FGA / Okta FGA OAuth client credentials
+      OPENFGA_CLIENT_ID: ${OPENFGA_CLIENT_ID:-}
+      OPENFGA_CLIENT_SECRET: ${OPENFGA_CLIENT_SECRET:-}
+      OPENFGA_API_TOKEN_ISSUER: ${OPENFGA_API_TOKEN_ISSUER:-}
+      OPENFGA_API_AUDIENCE: ${OPENFGA_API_AUDIENCE:-}
+      # Legacy static token — only used when client credentials are unset
       OPENFGA_API_TOKEN: ${OPENFGA_API_TOKEN:-}
       # Auth0 (required when SECURITY_PROVIDER=auth0-openfga) — from .env
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
