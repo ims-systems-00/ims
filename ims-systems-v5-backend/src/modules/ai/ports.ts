@@ -162,6 +162,16 @@ export type AiContextPort = {
       /** Compliance list filters. */
       selectedOnly?: boolean;
       notImplementedOnly?: boolean;
+      /** Person / unit ObjectId filters (resolved upstream). */
+      raisedByIds?: string[];
+      ownerIds?: string[];
+      assigneeIds?: string[];
+      businessUnitIds?: string[];
+      /**
+       * Person involved in any common role (risks: raisedBy OR ownerId).
+       * Used for vague “by Name” / multi-role retrieval.
+       */
+      involvedPersonIds?: string[];
     };
   }): Promise<AiContextCard[]>;
 

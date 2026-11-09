@@ -21,6 +21,9 @@ export type AiIntentFilters = {
   priorityHigh?: boolean;
   openOnly?: boolean;
   overdue?: boolean;
+  /** involved = vague multi-role person match */
+  personRole?: "raisedBy" | "owner" | "assignee" | "unit" | "involved";
+  personName?: string;
 };
 
 export type AiChatIntent = {
@@ -84,6 +87,60 @@ const OPEN_RE =
 
 const OVERDUE_RE = /\b(overdue|past due|late)\b/i;
 
+const PERSON_PATTERNS: Array<{
+  role: NonNullable<AiIntentFilters["personRole"]>;
+  re: RegExp;
+}> = [
+  {
+    role: "raisedBy",
+    re: /\b(?:raised|created|logged|reported)\s+by\s+([A-Za-z][A-Za-z0-9.' -]{1,60})/i,
+  },
+  {
+    role: "owner",
+    re: /\b(?:owned|owner)\s+by\s+([A-Za-z][A-Za-z0-9.' -]{1,60})/i,
+  },
+  {
+    role: "assignee",
+    re: /\b(?:assigned\s+to|assignee)\s+([A-Za-z][A-Za-z0-9.' -]{1,60})/i,
+  },
+  {
+    role: "unit",
+    re: /\b(?:for|in|from)\s+(?:the\s+)?(?:functional\s+)?unit\s+([A-Za-z][A-Za-z0-9.' -]{1,60})/i,
+  },
+  // Vague involvement — after precise patterns.
+  {
+    role: "involved",
+    re: /\b(?:risks?|incidents?|tasks?|ofis?)\s+(?:by|from|for)\s+([A-Za-z][A-Za-z0-9.' -]{1,60})/i,
+  },
+  {
+    role: "involved",
+    // Single-token possessive — avoid capturing leading verbs ("Show Sam's risks").
+    re: /\b([A-Za-z][A-Za-z0-9.']{0,39})(?:'s|’s)\s+(?:risks?|incidents?|tasks?|ofis?)\b/i,
+  },
+];
+
+function detectPersonFilter(message: string): {
+  personRole: NonNullable<AiIntentFilters["personRole"]>;
+  personName: string;
+} | null {
+  for (const row of PERSON_PATTERNS) {
+    const match = message.match(row.re);
+    if (!match?.[1]) continue;
+    const personName = match[1].replace(/[?.!,;:]+$/g, "").trim();
+    if (personName.length < 2) continue;
+    // Avoid capturing module words as names.
+    if (
+      /^(risks?|incidents?|tasks?|ofis?|audits?|compliance|any|all|open|my)$/i.test(
+        personName
+      )
+    ) {
+      continue;
+    }
+    return { personRole: row.role, personName };
+  }
+  return null;
+}
+
 const PAGE_HINT_MAP: Record<string, AiIntentModule> = {
   tasks: "tasks",
   risks: "risks",
@@ -126,26 +183,39 @@ export function routeChatIntent(input: {
   const primaryModule: AiIntentModule =
     explicit ?? pageModule ?? priorModule ?? "general";
 
+  const person = detectPersonFilter(message);
   const filters: AiIntentFilters = {
     priorityHigh: HIGH_PRIORITY_RE.test(message),
     openOnly: OPEN_RE.test(message) || HIGH_PRIORITY_RE.test(message),
     overdue: OVERDUE_RE.test(message),
+    ...(person ?? {}),
   };
 
   let mode: AiIntentMode = "cross_search";
-  if (DETAIL_RE.test(message) && !LIST_RE.test(message)) {
+  if (DETAIL_RE.test(message) && !LIST_RE.test(message) && !person) {
     mode = "detail";
   } else if (
     LIST_RE.test(message) ||
     filters.priorityHigh ||
     filters.openOnly ||
-    filters.overdue
+    filters.overdue ||
+    Boolean(person)
   ) {
-    mode = primaryModule === "general" ? "cross_search" : "list";
+    mode = primaryModule === "general" && !person ? "cross_search" : "list";
   } else if (explicit || pageModule) {
     mode = "cross_search";
   } else if (message.length < 12) {
     mode = "clarify";
+  }
+
+  if (person && primaryModule === "general") {
+    // Person-qualified asks without a module word default to risks (common).
+    return {
+      primaryModule: "risks",
+      mode: "list",
+      filters,
+      pageHint,
+    };
   }
 
   // "high priority tasks" style: force tasks list even if page is risks.

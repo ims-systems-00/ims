@@ -1,6 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
+import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
+  GripHorizontal,
   History,
   Loader2,
   Pin,
@@ -28,6 +36,13 @@ import {
   suggestedPromptsGeneral,
 } from "../lib/page-context";
 import { useAliceChatStore } from "../store/use-alice-chat-store";
+import {
+  ALICE_FLOAT_Z_INDEX,
+  clampPanelPosition,
+  clampPanelWidth,
+  defaultPanelPosition,
+  useAliceFloatLayoutStore,
+} from "../store/use-alice-float-layout-store";
 import type { AiChatProposal } from "../types-chat";
 import { AliceCitationChip } from "./alice-citation-chip";
 import { AliceMarkdown } from "./alice-markdown";
@@ -74,6 +89,27 @@ export function AliceChatPanel() {
   const [rendered, setRendered] = useState(open);
   const [entered, setEntered] = useState(false);
   const listRef = useRef<HTMLDivElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const dragRef = useRef<{
+    pointerId: number;
+    startX: number;
+    startY: number;
+    originX: number;
+    originY: number;
+  } | null>(null);
+  const resizeRef = useRef<{
+    pointerId: number;
+    edge: "left" | "right";
+    startX: number;
+    originX: number;
+    originWidth: number;
+  } | null>(null);
+
+  const fab = useAliceFloatLayoutStore((s) => s.fab);
+  const panelPos = useAliceFloatLayoutStore((s) => s.panel);
+  const panelWidth = useAliceFloatLayoutStore((s) => s.panelWidth);
+  const setPanel = useAliceFloatLayoutStore((s) => s.setPanel);
+  const setPanelWidth = useAliceFloatLayoutStore((s) => s.setPanelWidth);
 
   const pageContext = useMemo(
     () => buildPageContext(location.pathname, location.search),
@@ -83,6 +119,15 @@ export function AliceChatPanel() {
 
   const threadsQuery = useAiChatThreadsQuery(open && historyOpen);
   const deleteThreadMutation = useDeleteAiChatThreadMutation();
+
+  const resolvedWidth = clampPanelWidth(panelWidth);
+  const panelHeightCap = Math.min(
+    typeof window !== "undefined" ? window.innerHeight * 0.72 : 600,
+    608
+  );
+  const resolvedPosition =
+    panelPos ??
+    defaultPanelPosition(resolvedWidth, panelHeightCap, fab);
 
   useEffect(() => {
     if (open) {
@@ -101,6 +146,132 @@ export function AliceChatPanel() {
     if (!listRef.current) return;
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, open, entered, pendingProposals]);
+
+  useEffect(() => {
+    if (!open) return;
+    function keepInViewport() {
+      const el = panelRef.current;
+      const height = el?.offsetHeight ?? panelHeightCap;
+      const width = clampPanelWidth(
+        useAliceFloatLayoutStore.getState().panelWidth
+      );
+      setPanelWidth(width);
+      const current =
+        useAliceFloatLayoutStore.getState().panel ??
+        defaultPanelPosition(
+          width,
+          height,
+          useAliceFloatLayoutStore.getState().fab
+        );
+      setPanel(clampPanelPosition(current.x, current.y, width, height));
+    }
+    keepInViewport();
+    window.addEventListener("resize", keepInViewport);
+    return () => window.removeEventListener("resize", keepInViewport);
+  }, [open, panelHeightCap, setPanel, setPanelWidth]);
+
+  function onDragHandlePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+    if (event.button !== 0) return;
+    const el = panelRef.current;
+    const height = el?.offsetHeight ?? panelHeightCap;
+    const origin =
+      panelPos ?? defaultPanelPosition(resolvedWidth, height, fab);
+    dragRef.current = {
+      pointerId: event.pointerId,
+      startX: event.clientX,
+      startY: event.clientY,
+      originX: origin.x,
+      originY: origin.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function onDragHandlePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const el = panelRef.current;
+    const height = el?.offsetHeight ?? panelHeightCap;
+    setPanel(
+      clampPanelPosition(
+        drag.originX + (event.clientX - drag.startX),
+        drag.originY + (event.clientY - drag.startY),
+        resolvedWidth,
+        height
+      )
+    );
+  }
+
+  function onDragHandlePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    dragRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* already released */
+    }
+  }
+
+  function onResizePointerDown(
+    edge: "left" | "right",
+    event: ReactPointerEvent<HTMLDivElement>
+  ) {
+    if (event.button !== 0) return;
+    const el = panelRef.current;
+    const height = el?.offsetHeight ?? panelHeightCap;
+    const origin =
+      panelPos ?? defaultPanelPosition(resolvedWidth, height, fab);
+    resizeRef.current = {
+      pointerId: event.pointerId,
+      edge,
+      startX: event.clientX,
+      originX: origin.x,
+      originWidth: resolvedWidth,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  function onResizePointerMove(event: ReactPointerEvent<HTMLDivElement>) {
+    const resize = resizeRef.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    const el = panelRef.current;
+    const height = el?.offsetHeight ?? panelHeightCap;
+    const dx = event.clientX - resize.startX;
+    const currentY = panelPos?.y ?? resolvedPosition.y;
+    if (resize.edge === "right") {
+      const nextWidth = clampPanelWidth(resize.originWidth + dx);
+      setPanelWidth(nextWidth);
+      setPanel(
+        clampPanelPosition(resize.originX, currentY, nextWidth, height)
+      );
+      return;
+    }
+    const nextWidth = clampPanelWidth(resize.originWidth - dx);
+    const widthDelta = nextWidth - resize.originWidth;
+    setPanelWidth(nextWidth);
+    setPanel(
+      clampPanelPosition(
+        resize.originX - widthDelta,
+        currentY,
+        nextWidth,
+        height
+      )
+    );
+  }
+
+  function onResizePointerUp(event: ReactPointerEvent<HTMLDivElement>) {
+    const resize = resizeRef.current;
+    if (!resize || resize.pointerId !== event.pointerId) return;
+    resizeRef.current = null;
+    try {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    } catch {
+      /* already released */
+    }
+  }
 
   function handleCreateTaskFromListItem(text: string) {
     setPendingTaskText(text);
@@ -162,16 +333,23 @@ export function AliceChatPanel() {
 
   if (!rendered) return null;
 
-  return (
-    <>
+  const panel = (
       <div
+        ref={panelRef}
         className={cn(
-          "fixed bottom-24 right-5 z-40 flex w-[min(100vw-1.25rem,24.5rem)] origin-bottom-right flex-col overflow-hidden",
+          "pointer-events-auto fixed flex flex-col overflow-hidden",
           "max-h-[min(72dvh,38rem)] rounded-2xl border border-white/10",
           "bg-surface/95 shadow-[0_24px_64px_-12px_rgb(0_0_0_/0.35)] backdrop-blur-xl",
           "ring-1 ring-border/60 dark:bg-surface/90"
         )}
         style={{
+          zIndex: ALICE_FLOAT_Z_INDEX,
+          pointerEvents: "auto",
+          left: resolvedPosition.x,
+          top: resolvedPosition.y,
+          width: resolvedWidth,
+          right: "auto",
+          bottom: "auto",
           animation: entered
             ? "ims-alice-panel-in 320ms cubic-bezier(0.16, 1, 0.3, 1) both"
             : "ims-alice-panel-out 240ms cubic-bezier(0.4, 0, 1, 1) both",
@@ -179,7 +357,43 @@ export function AliceChatPanel() {
         role="dialog"
         aria-label="Alice AI org-wide chat"
         aria-hidden={!open}
+        data-alice-float="panel"
       >
+        <div
+          className="absolute inset-y-0 left-0 z-20 w-1.5 cursor-ew-resize touch-none hover:bg-primary/30"
+          aria-label="Resize Alice chat width from left"
+          onPointerDown={(e) => onResizePointerDown("left", e)}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+          onPointerCancel={onResizePointerUp}
+        />
+        <div
+          className="absolute inset-y-0 right-0 z-20 w-1.5 cursor-ew-resize touch-none hover:bg-primary/30"
+          aria-label="Resize Alice chat width from right"
+          onPointerDown={(e) => onResizePointerDown("right", e)}
+          onPointerMove={onResizePointerMove}
+          onPointerUp={onResizePointerUp}
+          onPointerCancel={onResizePointerUp}
+        />
+
+        <div
+          className={cn(
+            "flex shrink-0 cursor-grab touch-none select-none items-center justify-center gap-1.5",
+            "border-b border-border-subtle/60 bg-muted/40 px-3 py-2.5 active:cursor-grabbing"
+          )}
+          aria-label="Drag Alice chat"
+          title="Drag to move"
+          onPointerDown={onDragHandlePointerDown}
+          onPointerMove={onDragHandlePointerMove}
+          onPointerUp={onDragHandlePointerUp}
+          onPointerCancel={onDragHandlePointerUp}
+        >
+          <GripHorizontal className="size-4 text-muted-foreground" />
+          <span className="text-[0.7rem] font-medium tracking-wide text-muted-foreground">
+            Drag to move
+          </span>
+        </div>
+
         <header className="relative flex shrink-0 items-center gap-2.5 border-b border-border-subtle/80 px-4 py-3">
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <div className="min-w-0 flex-1">
@@ -187,13 +401,13 @@ export function AliceChatPanel() {
               src={aliceHorizontal}
               alt="Alice"
               className="h-7 w-auto max-w-[9.5rem] object-contain object-left"
+              draggable={false}
             />
-            <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
-              Org-wide assistant · Beta
-            </p>
-            <p className="mt-0.5 text-[0.6rem] leading-snug text-muted-foreground/90">
-              Answers use live IMS records. Treat advice as guidance — verify
-              citations before acting.
+            {/* <p className="mt-0.5 text-[0.65rem] text-muted-foreground">
+            Alice adapts using your organisation’s knowledge in a secure, private environment within iMS OS.
+            </p> */}
+            <p className="mt-2 text-[0.6rem] leading-snug text-muted-foreground/90">
+            Alice adapts using your organisation’s knowledge in a secure, private environment within iMS OS.
             </p>
           </div>
           <div className="flex items-center gap-0.5">
@@ -469,6 +683,13 @@ export function AliceChatPanel() {
           </>
         )}
       </div>
+  );
+
+  return (
+    <>
+      {typeof document !== "undefined"
+        ? createPortal(panel, document.body)
+        : null}
 
       <ConfirmDialog
         open={Boolean(pendingDeleteThreadId)}

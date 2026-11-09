@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Loader2, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
-import { Textarea } from "@/shared/components/ui/textarea";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import { useSessionSubjectId } from "@/security";
@@ -16,6 +15,11 @@ import {
 import { createActivityFormSchema } from "../schemas";
 import type { Activity, ActivityModuleType } from "../types";
 import { formatDate, formatDateTime } from "@/shared/lib/format-date";
+import {
+  ActivityRichTextEditor,
+  ActivityRichTextView,
+  isActivityValueEmpty,
+} from "./activity-rich-text";
 
 type ActivityTimelineProps = {
   moduleType: ActivityModuleType;
@@ -82,9 +86,7 @@ function ManualEntry({
           {formatRelative(activity.createdOn)}
         </time>
       </header>
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
-        {activity.value}
-      </p>
+      <ActivityRichTextView value={activity.value} />
       {canManage ? (
         <footer className="mt-3 flex gap-2">
           <Button
@@ -289,20 +291,22 @@ export function ActivityTimeline({
 
       {!readOnly ? (
         <form className="mb-4 space-y-2" onSubmit={(e) => void handleCreate(e)}>
-          <Textarea
-            rows={3}
+          <ActivityRichTextEditor
             value={draft}
             disabled={pending}
-            placeholder="Write a comment…"
-            aria-label="Comment"
-            onChange={(event) => setDraft(event.target.value)}
+            placeholder="Write a comment… Use the toolbar to format text or attach files."
+            onChange={setDraft}
           />
           {formError ? (
             <p className="text-xs text-destructive" role="alert">
               {formError}
             </p>
           ) : null}
-          <Button type="submit" size="sm" disabled={pending || !draft.trim()}>
+          <Button
+            type="submit"
+            size="sm"
+            disabled={pending || isActivityValueEmpty(draft)}
+          >
             {createMutation.isPending ? (
               <>
                 <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -351,14 +355,17 @@ export function ActivityTimeline({
                   className="space-y-2 rounded-md border border-border-subtle p-3"
                   onSubmit={(e) => void handleUpdate(e)}
                 >
-                  <Textarea
-                    rows={3}
+                  <ActivityRichTextEditor
                     value={editDraft}
                     disabled={pending}
-                    onChange={(event) => setEditDraft(event.target.value)}
+                    onChange={setEditDraft}
                   />
                   <div className="flex gap-2">
-                    <Button type="submit" size="sm" disabled={pending}>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={pending || isActivityValueEmpty(editDraft)}
+                    >
                       Update
                     </Button>
                     <Button

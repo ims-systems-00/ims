@@ -23,6 +23,11 @@ import {
   toListCard,
   truncate,
 } from "../lib/context-cards";
+import {
+  enrichAliceCard,
+  enrichAliceCards,
+  enrichAliceText,
+} from "../lib/resolve-entity-labels";
 import type { AiContextPort } from "../ports";
 import type { AiContextCard } from "../types/chat";
 
@@ -88,7 +93,10 @@ export function createAiContextAdapter(deps: {
         input.query,
         input.limit ?? 6
       );
-      return results.items.map(mapSearchItem);
+      return enrichAliceCards(
+        input.organizationId,
+        results.items.map(mapSearchItem)
+      );
     },
 
     async getRecordCard(input) {
@@ -110,19 +118,28 @@ export function createAiContextAdapter(deps: {
         const doc = await getRiskModel()
           .findOne({ _id: id, organizationId, deletedAt: null })
           .lean();
-        return doc ? riskCard(doc as Record<string, unknown>) : null;
+        return enrichAliceCard(
+          organizationId,
+          doc ? riskCard(doc as Record<string, unknown>) : null
+        );
       }
       if (module === "incidents") {
         const doc = await getIncidentModel()
           .findOne({ _id: id, organizationId, deletedAt: null })
           .lean();
-        return doc ? incidentCard(doc as Record<string, unknown>) : null;
+        return enrichAliceCard(
+          organizationId,
+          doc ? incidentCard(doc as Record<string, unknown>) : null
+        );
       }
       if (module === "audits") {
         const doc = await getAuditModel()
           .findOne({ _id: id, organizationId, deletedAt: null })
           .lean();
-        return doc ? auditCard(doc as Record<string, unknown>) : null;
+        return enrichAliceCard(
+          organizationId,
+          doc ? auditCard(doc as Record<string, unknown>) : null
+        );
       }
       if (module === "documents" || module === "documenttrees") {
         const doc = await getDocumentTreeModel()
@@ -144,27 +161,34 @@ export function createAiContextAdapter(deps: {
         card.summary = truncate(
           `${card.summary}\nFile: ${fileName}. Full-file text extraction is not enabled; use document metadata and linked compliance evidence.`
         );
-        return card;
+        return enrichAliceCard(organizationId, card);
       }
       if (module === "ofi" || module === "cips") {
         const doc = await getOfiModel()
           .findOne({ _id: id, organizationId, deletedAt: null })
           .lean();
-        return doc ? ofiCard(doc as Record<string, unknown>) : null;
+        return enrichAliceCard(
+          organizationId,
+          doc ? ofiCard(doc as Record<string, unknown>) : null
+        );
       }
       if (module === "compliance") {
         const doc = await getControlStatusModel()
           .findOne({ _id: id, organizationId })
           .lean();
-        return doc
-          ? complianceControlCard(doc as Record<string, unknown>)
-          : null;
+        return enrichAliceCard(
+          organizationId,
+          doc ? complianceControlCard(doc as Record<string, unknown>) : null
+        );
       }
       if (module === "tasks") {
         const doc = await getTaskModel()
           .findOne({ _id: id, organizationId, deletedAt: null })
           .lean();
-        return doc ? taskCard(doc as Record<string, unknown>) : null;
+        return enrichAliceCard(
+          organizationId,
+          doc ? taskCard(doc as Record<string, unknown>) : null
+        );
       }
       return null;
     },
@@ -185,7 +209,8 @@ export function createAiContextAdapter(deps: {
         return [];
       }
 
-      const asList = (cards: AiContextCard[]) => cards.map(toListCard);
+      const asList = async (cards: AiContextCard[]) =>
+        enrichAliceCards(organizationId, cards.map(toListCard));
 
       if (module === "tasks") {
         const filter: Record<string, unknown> = {
@@ -212,6 +237,12 @@ export function createAiContextAdapter(deps: {
           since.setUTCDate(since.getUTCDate() - filters.updatedSinceDays);
           filter.updatedAt = { $gte: since };
         }
+        if (filters.assigneeIds && filters.assigneeIds.length > 0) {
+          filter["assignees.userId"] = { $in: filters.assigneeIds };
+        }
+        if (filters.businessUnitIds && filters.businessUnitIds.length > 0) {
+          filter.businessUnitId = { $in: filters.businessUnitIds };
+        }
         const docs = await getTaskModel()
           .find(filter)
           .sort({ priority: 1, dueDate: 1, updatedAt: -1 })
@@ -234,7 +265,7 @@ export function createAiContextAdapter(deps: {
             : Number.POSITIVE_INFINITY;
           return da - db;
         });
-        return asList(ranked.map((d) => taskCard(d as Record<string, unknown>)));
+        return await asList(ranked.map((d) => taskCard(d as Record<string, unknown>)));
       }
 
       if (module === "risks") {
@@ -277,6 +308,22 @@ export function createAiContextAdapter(deps: {
           since.setUTCDate(since.getUTCDate() - filters.updatedSinceDays);
           filter.updatedAt = { $gte: since };
         }
+        if (filters.involvedPersonIds && filters.involvedPersonIds.length > 0) {
+          filter.$or = [
+            { raisedBy: { $in: filters.involvedPersonIds } },
+            { ownerId: { $in: filters.involvedPersonIds } },
+          ];
+        } else {
+          if (filters.raisedByIds && filters.raisedByIds.length > 0) {
+            filter.raisedBy = { $in: filters.raisedByIds };
+          }
+          if (filters.ownerIds && filters.ownerIds.length > 0) {
+            filter.ownerId = { $in: filters.ownerIds };
+          }
+        }
+        if (filters.businessUnitIds && filters.businessUnitIds.length > 0) {
+          filter.businessUnitId = { $in: filters.businessUnitIds };
+        }
         const sortDir = filters.sortDir === "asc" ? 1 : -1;
         const sortBy = filters.sortBy ?? "updatedAt";
         let docs: Record<string, unknown>[];
@@ -306,7 +353,7 @@ export function createAiContextAdapter(deps: {
             .limit(limit)
             .lean()) as Record<string, unknown>[];
         }
-        return asList(docs.map((d) => riskCard(d)));
+        return await asList(docs.map((d) => riskCard(d)));
       }
       if (module === "incidents") {
         const incidentFilter: Record<string, unknown> = {
@@ -317,12 +364,18 @@ export function createAiContextAdapter(deps: {
         if (filters.priorityHigh) {
           incidentFilter.priority = { $in: ["P1", "Critical", "High"] };
         }
+        if (filters.ownerIds && filters.ownerIds.length > 0) {
+          incidentFilter.ownerId = { $in: filters.ownerIds };
+        }
+        if (filters.businessUnitIds && filters.businessUnitIds.length > 0) {
+          incidentFilter.businessUnitId = { $in: filters.businessUnitIds };
+        }
         const docs = await getIncidentModel()
           .find(incidentFilter)
           .sort({ updatedAt: -1 })
           .limit(limit)
           .lean();
-        return asList(
+        return await asList(
           docs.map((d) => incidentCard(d as Record<string, unknown>))
         );
       }
@@ -336,19 +389,26 @@ export function createAiContextAdapter(deps: {
           .sort({ updatedAt: -1 })
           .limit(limit)
           .lean();
-        return asList(docs.map((d) => auditCard(d as Record<string, unknown>)));
+        return await asList(docs.map((d) => auditCard(d as Record<string, unknown>)));
       }
       if (module === "ofi" || module === "cips") {
+        const ofiFilter: Record<string, unknown> = {
+          organizationId,
+          deletedAt: null,
+          status: { $nin: ["Completed", "Closed", "Cancelled"] },
+        };
+        if (filters.ownerIds && filters.ownerIds.length > 0) {
+          ofiFilter.ownerId = { $in: filters.ownerIds };
+        }
+        if (filters.businessUnitIds && filters.businessUnitIds.length > 0) {
+          ofiFilter.businessUnitId = { $in: filters.businessUnitIds };
+        }
         const docs = await getOfiModel()
-          .find({
-            organizationId,
-            deletedAt: null,
-            status: { $nin: ["Completed", "Closed", "Cancelled"] },
-          })
+          .find(ofiFilter)
           .sort({ updatedAt: -1 })
           .limit(limit)
           .lean();
-        return asList(docs.map((d) => ofiCard(d as Record<string, unknown>)));
+        return await asList(docs.map((d) => ofiCard(d as Record<string, unknown>)));
       }
       if (module === "documents") {
         const docs = await getDocumentTreeModel()
@@ -361,7 +421,7 @@ export function createAiContextAdapter(deps: {
           .sort({ updatedAt: -1 })
           .limit(limit)
           .lean();
-        return asList(
+        return await asList(
           docs.map((d) => documentCard(d as Record<string, unknown>))
         );
       }
@@ -381,7 +441,7 @@ export function createAiContextAdapter(deps: {
           .sort({ compliancePercentage: 1, updatedAt: -1 })
           .limit(limit)
           .lean();
-        return asList(
+        return await asList(
           docs.map((d) =>
             complianceControlCard(d as Record<string, unknown>)
           )
@@ -461,7 +521,10 @@ export function createAiContextAdapter(deps: {
           })
           .slice(0, limit);
         return {
-          cards: ranked.map((d) => toListCard(riskCard(d))),
+          cards: await enrichAliceCards(
+            input.organizationId,
+            ranked.map((d) => toListCard(riskCard(d)))
+          ),
           meta: {
             status: "ok",
             metric: input.metric,
@@ -472,8 +535,9 @@ export function createAiContextAdapter(deps: {
 
       const docs = await Model.find(filter).sort(sort).limit(limit).lean();
       return {
-        cards: docs.map((d) =>
-          toListCard(riskCard(d as Record<string, unknown>))
+        cards: await enrichAliceCards(
+          input.organizationId,
+          docs.map((d) => toListCard(riskCard(d as Record<string, unknown>)))
         ),
         meta: {
           status: "ok",
@@ -514,8 +578,11 @@ export function createAiContextAdapter(deps: {
         isLocked: false,
         state: "Implemented",
       });
-      const cards = gaps.map((d) =>
-        toListCard(complianceControlCard(d as Record<string, unknown>))
+      const cards = await enrichAliceCards(
+        orgId,
+        gaps.map((d) =>
+          toListCard(complianceControlCard(d as Record<string, unknown>))
+        )
       );
       return {
         cards,
@@ -610,7 +677,10 @@ export function createAiContextAdapter(deps: {
       }
 
       return {
-        cards: cards.slice(0, limit * 4),
+        cards: await enrichAliceCards(
+          input.organizationId,
+          cards.slice(0, limit * 4)
+        ),
         meta: {
           status: "ok",
           sections,
@@ -648,8 +718,11 @@ export function createAiContextAdapter(deps: {
         .limit(input.limit ?? 5)
         .lean()
         .catch(() => []);
-      return docs.map((row) =>
+      const lines = docs.map((row) =>
         truncate(String((row as { value?: string }).value ?? ""), 160)
+      );
+      return Promise.all(
+        lines.map((line) => enrichAliceText(input.organizationId, line))
       );
     },
 
@@ -685,8 +758,11 @@ export function createAiContextAdapter(deps: {
         .limit(limit)
         .lean()
         .catch(() => []);
-      return docs.map((d) =>
-        toListCard(documentCard(d as Record<string, unknown>))
+      return enrichAliceCards(
+        input.organizationId,
+        docs.map((d) =>
+          toListCard(documentCard(d as Record<string, unknown>))
+        )
       );
     },
   };

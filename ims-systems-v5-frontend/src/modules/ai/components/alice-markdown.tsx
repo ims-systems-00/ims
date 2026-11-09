@@ -2,9 +2,17 @@ import type { ReactNode } from "react";
 import type { Components } from "react-markdown";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Link } from "react-router-dom";
 import { ListTodo } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import {
+  aliceAppPath,
+  aliceLinkLabel,
+  getAliceAppOrigin,
+  resolveAliceHref,
+  rewriteAliceMarkdownAppUrls,
+} from "../lib/resolve-alice-href";
 
 type AliceMarkdownProps = {
   children: string;
@@ -32,6 +40,9 @@ export function AliceMarkdown({
   className,
   onCreateTaskFromListItem,
 }: AliceMarkdownProps) {
+  const origin = getAliceAppOrigin();
+  const markdown = rewriteAliceMarkdownAppUrls(children, origin);
+
   const components: Components = {
     h1: ({ children: c }) => (
       <h3 className="mt-3 break-words text-[0.95rem] font-semibold tracking-tight first:mt-0">
@@ -90,16 +101,32 @@ export function AliceMarkdown({
     strong: ({ children: c }) => (
       <strong className="font-semibold text-foreground">{c}</strong>
     ),
-    a: ({ href, children: c }) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noreferrer"
-        className="break-all font-medium text-primary underline-offset-2 hover:underline"
-      >
-        {c}
-      </a>
-    ),
+    a: ({ href, children: c }) => {
+      const text = extractText(c).trim();
+      const label = aliceLinkLabel(href, text, origin);
+      const className =
+        "inline font-medium text-primary underline-offset-2 hover:underline";
+      const appPath = aliceAppPath(href, origin);
+      if (appPath) {
+        return (
+          <Link to={appPath} className={className} title={appPath}>
+            {label}
+          </Link>
+        );
+      }
+      const resolved = resolveAliceHref(href, origin);
+      return (
+        <a
+          href={resolved}
+          target="_blank"
+          rel="noreferrer"
+          className={className}
+          title={resolved}
+        >
+          {label}
+        </a>
+      );
+    },
     table: ({ children: c }) => (
       <div className="mt-2 max-w-full overflow-x-auto rounded-md border border-border-subtle">
         <table className="w-full min-w-0 border-collapse text-left text-[0.75rem]">
@@ -111,11 +138,16 @@ export function AliceMarkdown({
     th: ({ children: c }) => (
       <th className="break-words px-2 py-1.5 font-semibold">{c}</th>
     ),
-    td: ({ children: c }) => (
-      <td className="break-words border-t border-border-subtle px-2 py-1.5 align-top">
-        {c}
-      </td>
-    ),
+    td: ({ children: c }) => {
+      const text = extractText(c).trim();
+      // Unresolved ids should stay visible as an explicit placeholder, not blank.
+      const display = /^[a-f0-9]{24}$/i.test(text) ? "Unknown user" : c;
+      return (
+        <td className="break-words border-t border-border-subtle px-2 py-1.5 align-top">
+          {display}
+        </td>
+      );
+    },
     pre: ({ children: c }) => (
       <pre className="mt-2 max-w-full overflow-x-auto rounded-md bg-muted/80 p-2.5 text-[0.7rem] leading-relaxed">
         {c}
@@ -148,7 +180,7 @@ export function AliceMarkdown({
       )}
     >
       <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-        {children}
+        {markdown}
       </ReactMarkdown>
     </div>
   );

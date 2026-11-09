@@ -290,6 +290,10 @@ export function createRiskRepository(): RiskRepository {
         filter.ownerId = { $in: query.ownerIds };
       }
 
+      if (query.raisedByIds && query.raisedByIds.length > 0) {
+        filter.raisedBy = { $in: query.raisedByIds };
+      }
+
       if (query.categoryIds && query.categoryIds.length > 0) {
         filter.categoryId = { $in: query.categoryIds };
       }

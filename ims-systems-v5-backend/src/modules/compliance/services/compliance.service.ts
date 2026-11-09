@@ -15,6 +15,7 @@ import {
 import {
   applyStatusUpdateForToolkit,
   calculateOverviewForToolkit,
+  compareClauses,
   sectionKeyFromClause,
   type MutableStatusNode,
 } from "../lib/compliance-algorithms";
@@ -89,7 +90,7 @@ function buildSections(controls: ControlStatus[]): SectionProgress[] {
   }
 
   return [...bySection.entries()]
-    .sort(([a], [b]) => a.localeCompare(b, undefined, { numeric: true }))
+    .sort(([a], [b]) => compareClauses(a, b))
     .map(([section, rows]) => {
       const title =
         rows.find((row) => row.clause === section)?.title ??

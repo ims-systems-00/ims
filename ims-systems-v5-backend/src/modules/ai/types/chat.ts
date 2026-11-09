@@ -16,6 +16,12 @@ export const AI_CHAT_MODULE_HINTS = [
 ] as const;
 export type AiChatModuleHint = (typeof AI_CHAT_MODULE_HINTS)[number];
 
+/** Joined identity for tool/UI display — name is always set after enrich. */
+export type AiResolvedRef = {
+  id: string;
+  name: string;
+};
+
 export type AiContextCard = {
   module: string;
   id: string;
@@ -24,6 +30,11 @@ export type AiContextCard = {
   status: string | null;
   summary: string;
   href: string;
+  /** Resolved people/units for grounded answers (ids internal; names for display). */
+  owner?: AiResolvedRef | null;
+  raisedBy?: AiResolvedRef | null;
+  functionalUnit?: AiResolvedRef | null;
+  assignees?: AiResolvedRef[];
 };
 
 export type AiChatPageContext = {

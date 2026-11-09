@@ -5,6 +5,7 @@
 import type {
   CatalogueSeedRow,
 } from "../lib/catalogue-builder";
+import { CLAUSE_SORT_COLLATION } from "../lib/compliance-algorithms";
 import type {
   CatalogueControlItem,
   ComplianceControlTemplate,
@@ -46,7 +47,10 @@ export function createComplianceControlRepository() {
     async listByToolkit(
       name: ComplianceToolkitName
     ): Promise<ComplianceControlTemplate[]> {
-      const docs = await Model.find({ name }).sort({ clause: 1 }).exec();
+      const docs = await Model.find({ name })
+        .collation(CLAUSE_SORT_COLLATION)
+        .sort({ clause: 1 })
+        .exec();
       return docs.map(mapDoc);
     },
 
@@ -67,6 +71,7 @@ export function createComplianceControlRepository() {
       const totalPages = Math.max(1, Math.ceil(total / query.pageSize));
       const page = Math.min(query.page, totalPages);
       const docs = await Model.find(filter)
+        .collation(CLAUSE_SORT_COLLATION)
         .sort({ clause: 1 })
         .skip((page - 1) * query.pageSize)
         .limit(query.pageSize)

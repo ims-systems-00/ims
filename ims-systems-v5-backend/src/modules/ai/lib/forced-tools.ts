@@ -11,6 +11,7 @@ export type AliceAnalyticsKind =
   | "risk_counts"
   | "compliance_concerns"
   | "org_health"
+  | "person_filter"
   | null;
 
 export type ForcedAliceTool = {
@@ -63,10 +64,79 @@ export function detectAnalyticsKind(
   return null;
 }
 
+function resolvePersonForcedTool(
+  intent: AiChatIntent
+): ForcedAliceTool | null {
+  const name = intent.filters.personName?.trim();
+  const role = intent.filters.personRole;
+  if (!name || !role) return null;
+
+  if (role === "unit") {
+    const tool =
+      intent.primaryModule === "tasks"
+        ? "list_tasks"
+        : intent.primaryModule === "incidents"
+          ? "list_incidents"
+          : intent.primaryModule === "ofi"
+            ? "list_ofi"
+            : "list_risks";
+    return {
+      name: tool,
+      args: { unitName: name, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
+
+  if (intent.primaryModule === "tasks" || role === "assignee") {
+    return {
+      name: "list_tasks",
+      args: { assigneeName: name, incomplete: true, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
+  if (intent.primaryModule === "incidents") {
+    return {
+      name: "list_incidents",
+      args: { ownerName: name, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
+  if (intent.primaryModule === "ofi") {
+    return {
+      name: "list_ofi",
+      args: { ownerName: name, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
+  if (role === "involved") {
+    return {
+      name: "list_risks",
+      args: { personName: name, includeClosed: true, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
+  if (role === "raisedBy") {
+    // Precise raiser language — execute path still falls back to owner if empty.
+    return {
+      name: "list_risks",
+      args: { raisedByName: name, includeClosed: true, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
+  return {
+    name: "list_risks",
+    args: { ownerName: name, includeClosed: true, limit: 8 },
+    analyticsKind: "person_filter",
+  };
+}
+
 export function resolveForcedTool(
   message: string,
   intent: AiChatIntent
 ): ForcedAliceTool | null {
+  const personTool = resolvePersonForcedTool(intent);
+  if (personTool) return personTool;
+
   const kind = detectAnalyticsKind(message, intent);
   if (!kind) return null;
 
@@ -117,6 +187,23 @@ export function emptyRetryTool(
   forced: ForcedAliceTool | null,
   intent: AiChatIntent
 ): ForcedAliceTool | null {
+  if (forced?.analyticsKind === "person_filter") {
+    const name =
+      (typeof forced.args.raisedByName === "string" &&
+        forced.args.raisedByName) ||
+      (typeof forced.args.ownerName === "string" && forced.args.ownerName) ||
+      (typeof forced.args.personName === "string" && forced.args.personName) ||
+      intent.filters.personName;
+    if (!name || typeof name !== "string") return null;
+    // Precise role already empty (execute also tries sibling once) — broaden
+    // to multi-role involvement. Avoid raiser↔owner ping-pong.
+    if (forced.args.personName) return null;
+    return {
+      name: "list_risks",
+      args: { personName: name, includeClosed: true, limit: 8 },
+      analyticsKind: "person_filter",
+    };
+  }
   if (forced?.name === "analytics_compliance") {
     return {
       name: "list_compliance",

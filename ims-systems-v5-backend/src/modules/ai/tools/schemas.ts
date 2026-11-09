@@ -15,6 +15,11 @@ export const listRisksArgsSchema = z.object({
   sortBy: z.enum(["raisedOn", "updatedAt", "score"]).optional(),
   sortDir: z.enum(["asc", "desc"]).optional(),
   includeClosed: z.boolean().optional(),
+  raisedByName: z.string().trim().min(2).max(80).optional(),
+  ownerName: z.string().trim().min(2).max(80).optional(),
+  /** Vague involvement: match raiser OR owner (and sibling fallbacks). */
+  personName: z.string().trim().min(2).max(80).optional(),
+  unitName: z.string().trim().min(2).max(80).optional(),
   limit: z.number().int().min(1).max(25).optional().default(6),
 });
 
@@ -23,16 +28,31 @@ export const listTasksArgsSchema = z.object({
   incomplete: z.boolean().optional().default(true),
   overdue: z.boolean().optional(),
   updatedSinceDays: z.number().int().min(1).max(365).optional(),
+  assigneeName: z.string().trim().min(2).max(80).optional(),
+  unitName: z.string().trim().min(2).max(80).optional(),
   limit: limitSchema,
 });
 
 export const listIncidentsArgsSchema = z.object({
   priorityHigh: z.boolean().optional(),
+  ownerName: z.string().trim().min(2).max(80).optional(),
+  unitName: z.string().trim().min(2).max(80).optional(),
+  limit: limitSchema,
+});
+
+export const listOfiArgsSchema = z.object({
+  ownerName: z.string().trim().min(2).max(80).optional(),
+  unitName: z.string().trim().min(2).max(80).optional(),
   limit: limitSchema,
 });
 
 export const listLimitOnlySchema = z.object({
   limit: limitSchema,
+});
+
+export const resolveDirectoryArgsSchema = z.object({
+  query: z.string().trim().min(2).max(80),
+  kind: z.enum(["people", "units", "both"]).optional().default("both"),
 });
 
 export const listComplianceArgsSchema = z.object({

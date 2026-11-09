@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   applyStatusUpdateForToolkit,
   calculateOverviewForToolkit,
+  compareClauses,
   type MutableStatusNode,
 } from "../src/modules/compliance/lib/compliance-algorithms";
 import { buildCatalogueFromJson } from "../src/modules/compliance/lib/catalogue-builder";
@@ -105,5 +106,17 @@ describe("compliance algorithms", () => {
     expect(calculateOverviewForToolkit("ISO 27002", controls).totalPercentage).toBe(
       50
     );
+  });
+
+  it("orders clauses numerically instead of lexicographically", () => {
+    const clauses = ["10", "3", "4", "4.10", "4.2", "9"];
+    expect([...clauses].sort(compareClauses)).toEqual([
+      "3",
+      "4",
+      "4.2",
+      "4.10",
+      "9",
+      "10",
+    ]);
   });
 });

@@ -1,0 +1,128 @@
+import { useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { Loader2 } from "lucide-react";
+import { EmptyState } from "@/shared/components/empty-state";
+import {
+  useFormQuery,
+  useFormSubmissionQuery,
+  useFormSubmissionsQuery,
+} from "../hooks/use-forms";
+import { getElementDefinition } from "../build-form/registry";
+import { formThemeCssVars, normalizeFormTheme, themeImageSrc } from "../lib/form-theme";
+
+export function FormResponsePage() {
+  const { formId = "" } = useParams();
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const formQuery = useFormQuery(formId);
+  const listQuery = useFormSubmissionsQuery(formId, { page: 1, pageSize: 50 });
+  const detailQuery = useFormSubmissionQuery(
+    formId,
+    selectedId ?? undefined
+  );
+  const theme = useMemo(
+    () => normalizeFormTheme(formQuery.data?.theme),
+    [formQuery.data?.theme]
+  );
+  const logoSrc = themeImageSrc(theme.logo);
+  const coverSrc = themeImageSrc(theme.coverImage);
+
+  const items = listQuery.data?.items ?? [];
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <aside className="rounded-lg border border-border bg-card p-3">
+        <h2 className="mb-2 text-sm font-semibold">Submissions</h2>
+        {listQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading…
+          </div>
+        ) : items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No submissions yet.</p>
+        ) : (
+          <ul className="space-y-1">
+            {items.map((row) => (
+              <li key={row.id}>
+                <button
+                  type="button"
+                  className={`w-full rounded-md px-2 py-2 text-left text-sm ${
+                    selectedId === row.id
+                      ? "bg-primary/10 text-foreground"
+                      : "hover:bg-muted/60"
+                  }`}
+                  onClick={() => setSelectedId(row.id)}
+                >
+                  <div className="font-medium">
+                    {new Date(row.createdAt).toLocaleString()}
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    by {row.submittedBy.slice(0, 12)}…
+                  </div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+
+      <section className="rounded-lg border border-border bg-card p-4">
+        {!selectedId ? (
+          <EmptyState
+            title="Select a submission"
+            description="Choose a submission on the left to review answers."
+          />
+        ) : detailQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading responses…
+          </div>
+        ) : !detailQuery.data ? (
+          <EmptyState title="Submission not found" />
+        ) : (
+          <div
+            className="overflow-hidden rounded-lg border border-black/10"
+            style={formThemeCssVars(theme)}
+          >
+            {coverSrc ? (
+              <div
+                className="h-24 w-full bg-cover bg-center"
+                style={{ backgroundImage: `url(${coverSrc})` }}
+              />
+            ) : null}
+            <div className="space-y-4 p-4">
+              {logoSrc ? (
+                <img
+                  src={logoSrc}
+                  alt=""
+                  className="h-8 w-auto max-w-[140px] object-contain"
+                />
+              ) : null}
+              {detailQuery.data.responses.map((row) => {
+                const type = row.element?.type ?? "TextInput";
+                const def = getElementDefinition(type);
+                if (!def) {
+                  return (
+                    <pre
+                      key={row.id}
+                      className="overflow-x-auto rounded bg-black/5 p-2 text-xs"
+                    >
+                      {JSON.stringify(row.responseValue, null, 2)}
+                    </pre>
+                  );
+                }
+                return (
+                  <div key={row.id}>
+                    <def.Response
+                      attributes={row.element?.attributes ?? {}}
+                      value={row.responseValue}
+                      onChange={() => undefined}
+                      disabled
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  );
+}
