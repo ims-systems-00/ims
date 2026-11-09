@@ -109,7 +109,15 @@ Edit `ims-systems-v5-backend/.env` only:
 OPENFGA_API_URL=http://127.0.0.1:18080
 OPENFGA_STORE_ID=PASTE_STORE_ID
 OPENFGA_MODEL_ID=PASTE_MODEL_ID
-OPENFGA_API_TOKEN=
+# Leave empty for local Docker (no auth). For Auth0 FGA / Okta FGA cloud:
+# OPENFGA_CLIENT_ID=...
+# OPENFGA_CLIENT_SECRET=...
+# OPENFGA_API_TOKEN_ISSUER=auth.fga.dev
+# OPENFGA_API_AUDIENCE=https://api.us1.fga.dev/
+OPENFGA_CLIENT_ID=
+OPENFGA_CLIENT_SECRET=
+OPENFGA_API_TOKEN_ISSUER=
+OPENFGA_API_AUDIENCE=
 ```
 
 #### 5. Backfill membership tuples

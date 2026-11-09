@@ -4,6 +4,10 @@ import { createS3Client } from "../s3/object-storage";
 import { createStripeClient } from "../stripe/create-stripe-client";
 import { resolveProvisioningBucket } from "../../modules/organisation/adapters/files-bucket.adapter";
 import type { AppConfig } from "../../config/env";
+import {
+  fetchOpenFgaAccessToken,
+  resolveOpenFgaCredentials,
+} from "../../security/openfga/credentials";
 
 /**
  * Production / staging preflight (LIC-01, DEV_STUB_PRODUCTION_CUTOVER).
@@ -291,11 +295,15 @@ export const runConnectivityChecks = async (
   // OpenFGA model read
   if (config.OPENFGA_API_URL && config.OPENFGA_STORE_ID && config.OPENFGA_MODEL_ID) {
     try {
+      const credentials = resolveOpenFgaCredentials(config);
+      const accessToken = await fetchOpenFgaAccessToken(credentials, {
+        timeoutMs,
+      });
       const base = config.OPENFGA_API_URL.replace(/\/$/, "");
       const url = `${base}/stores/${config.OPENFGA_STORE_ID}/authorization-models/${config.OPENFGA_MODEL_ID}`;
       const res = await fetch(url, {
-        headers: config.OPENFGA_API_TOKEN
-          ? { Authorization: `Bearer ${config.OPENFGA_API_TOKEN}` }
+        headers: accessToken
+          ? { Authorization: `Bearer ${accessToken}` }
           : {},
         signal: AbortSignal.timeout(timeoutMs),
       });
@@ -305,7 +313,7 @@ export const runConnectivityChecks = async (
           : fail(
               "net.openfga-model",
               "security",
-              `OpenFGA model read returned HTTP ${res.status} (store/model id or token wrong) — authorization would fail closed`,
+              `OpenFGA model read returned HTTP ${res.status} (store/model id or credentials wrong) — authorization would fail closed`,
             ),
       );
     } catch (error) {

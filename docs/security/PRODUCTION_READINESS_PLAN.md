@@ -126,7 +126,7 @@ Access token **must** include: `sub` (Auth0 user id) and `org_id` (Auth0 Organiz
 | 2.1 | Stand up OpenFGA store (self-hosted or Auth0 FGA) | [x] |
 | 2.2 | Write model from `docs/security/openfga/authorization-model.fga` | [x] |
 | 2.3 | Record `OPENFGA_STORE_ID` + `OPENFGA_MODEL_ID` (ULIDs) | [x] |
-| 2.4 | Backend-only secrets: `OPENFGA_API_URL`, `OPENFGA_API_TOKEN` | [x] |
+| 2.4 | Backend-only secrets: `OPENFGA_API_URL`, `OPENFGA_CLIENT_ID` / `OPENFGA_CLIENT_SECRET` | [x] |
 | 2.5 | Manual Check against store succeeds for a test tuple | [x] |
 
 **Exit:** Check API returns expected allow/deny for the test tuple.
@@ -145,7 +145,7 @@ Access token **must** include: `sub` (Auth0 user id) and `org_id` (Auth0 Organiz
 | `OPENFGA_API_URL` | `http://127.0.0.1:18080` (local Docker host map) |
 | `OPENFGA_STORE_ID` | _(ULID from create store)_ |
 | `OPENFGA_MODEL_ID` | _(ULID from write model)_ |
-| `OPENFGA_API_TOKEN` | empty for local default (no auth) |
+| `OPENFGA_CLIENT_ID` / `OPENFGA_CLIENT_SECRET` / `OPENFGA_API_TOKEN_ISSUER` / `OPENFGA_API_AUDIENCE` | empty for local default (no auth); set for Auth0 FGA |
 
 **With Cursor:** model write/verify; interpret OpenFGA errors; env shape.
 
