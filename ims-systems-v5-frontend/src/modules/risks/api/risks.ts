@@ -1,6 +1,4 @@
-import { loadPublicEnv } from "@/shared/lib/env";
-import { apiRequest } from "@/shared/lib/http";
-import { ApiClientError, mapStatusToCode } from "@/shared/lib/http/errors";
+import { apiBlobRequest, apiRequest } from "@/shared/lib/http";
 import type {
   CreateRiskInput,
   ListRisksParams,
@@ -106,39 +104,5 @@ export function setRiskComplianceLinks(
  * CSV report is returned as raw text (not the JSON success envelope).
  */
 export async function downloadRisksReport(): Promise<Blob> {
-  const env = loadPublicEnv();
-  const correlationId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `fe-${Date.now()}`;
-
-  let response: Response;
-  try {
-    response = await fetch(`${env.VITE_API_BASE_URL}/risks/report`, {
-      method: "GET",
-      headers: {
-        Accept: "text/csv",
-        "x-correlation-id": correlationId,
-      },
-    });
-  } catch (error) {
-    throw new ApiClientError({
-      message: "Network request failed",
-      status: 0,
-      code: "NETWORK_ERROR",
-      details: error instanceof Error ? error.message : undefined,
-      correlationId,
-    });
-  }
-
-  if (!response.ok) {
-    throw new ApiClientError({
-      message: `Unable to download risks report (${response.status})`,
-      status: response.status,
-      code: mapStatusToCode(response.status),
-      correlationId: response.headers.get("x-correlation-id") ?? correlationId,
-    });
-  }
-
-  return response.blob();
+  return apiBlobRequest("/risks/report", { accept: "text/csv" });
 }

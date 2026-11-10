@@ -84,7 +84,7 @@ export function FunctionalUnitsListPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Functional units"
+        title="Functional Units"
         description="Organisation subdivisions used to scope people, access, and licensing."
         actions={
           <Button type="button" onClick={openCreate}>

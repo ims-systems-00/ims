@@ -191,7 +191,7 @@ export function OrganisationDashboardPage() {
     <div className="space-y-6">
       <PageHeader
         title="Organisation Live Dashboard"
-        description="Operational command view for the current organisation — posture first, trends second, module detail third."
+        description="Operational command view for the current organisation."
         actions={
           <div className="flex flex-wrap items-center gap-2">
             {accurateAs ? (
@@ -332,8 +332,8 @@ export function OrganisationDashboardPage() {
       <div className="grid grid-cols-12 gap-3">
         <div className="col-span-12 lg:col-span-8">
           <DashboardPanel
-            title="Todo List"
-            description="Incomplete tasks across the organisation — complete them here or open the full Tasks module."
+            title="To-Do List"
+            description="Incomplete tasks across the organisation. Complete them here or within the full Tasks module."
             href="/tasks"
             hrefLabel="Open Tasks"
             emphasis="featured"
@@ -387,8 +387,8 @@ export function OrganisationDashboardPage() {
         <div className="col-span-12 lg:col-span-7">
           <DashboardPanel
             title="Risk trends"
-            description="Volume by risk type across the last 12 months — primary trend signal."
-            href="/risks"
+            description="Volume by risk type across the last 12 months."
+            href="/risks" 
             hrefLabel="Risks"
             isLoading={riskStatsQuery.isLoading}
             isError={riskStatsQuery.isError}
@@ -431,7 +431,7 @@ export function OrganisationDashboardPage() {
                   </p>
                   <DashboardBarList
                     ariaLabel="Top business units by risk count"
-                    emptyTitle="No business-unit risk totals in sample"
+                    emptyTitle="No business unit risk data available"
                     items={riskStatsQuery.data.topBusinessFunctions.map(
                       (row) => ({
                         label: row.name,
@@ -461,7 +461,7 @@ export function OrganisationDashboardPage() {
               incidentStatsQuery.data.byBusinessFunction.length === 0 ? (
                 <DashboardEmptyState
                   title="No incident data"
-                  description="No business-unit incidents were returned for the current sample."
+                  description="No business unit incident data available."
                 />
               ) : (
                 <DashboardCategoryBarChart
@@ -483,7 +483,7 @@ export function OrganisationDashboardPage() {
         <div className="col-span-12 md:col-span-6">
           <DashboardPanel
             title="Audits"
-            description="Schedule mix and non-conformities."
+            description="Audit Schedule."
             href="/audits/internal"
             hrefLabel="Audits"
             isLoading={auditStatsQuery.isLoading}
@@ -514,7 +514,7 @@ export function OrganisationDashboardPage() {
                   </p>
                   <DashboardBarList
                     ariaLabel="Non-conformities by business unit"
-                    emptyTitle="No non-conformities in sample"
+                    emptyTitle="No non-conformity data available."
                     items={auditStatsQuery.data.nonConformitiesByBusinessUnit.map(
                       (row) => ({
                         label: row.name,
@@ -606,7 +606,7 @@ export function OrganisationDashboardPage() {
           >
             {cipStatsQuery.data ? (
               cipStatsQuery.data.byBusinessUnit.length === 0 ? (
-                <DashboardEmptyState title="No OFI data for business units" />
+                <DashboardEmptyState title="No OFI business unit data available." />
               ) : (
                 <DashboardCategoryBarChart
                   ariaLabel="OFI opportunities by business unit"
@@ -740,7 +740,7 @@ export function OrganisationDashboardPage() {
                 </div>
                 <DashboardCategoryBarChart
                   ariaLabel="Contract value by stage"
-                  emptyTitle="No customers in sample"
+                  emptyTitle="No customer data available."
                   height={180}
                   valueFormat="currency"
                   items={crmStatsQuery.data.byStage.map((row) => ({
@@ -756,7 +756,7 @@ export function OrganisationDashboardPage() {
                   {crmStatsQuery.data.invoicesUnavailable ? (
                     <DashboardUnavailableState
                       title="Invoice statistics unavailable"
-                      description="The Invoices capability is not available in V5 yet. Contract values above are still live from Customers."
+                      description="The Invoice capability is currently in progress."
                     />
                   ) : (
                     <DashboardSeriesChart

@@ -65,7 +65,7 @@ export function UsersListPage() {
     <div className="space-y-5">
       <PageHeader
         title="Users"
-        description="Organisation directory of people with Active system access."
+        description="Organisation directory of people with active system access."
         actions={
           <Button type="button" onClick={() => setInviteOpen(true)}>
             <UserPlus className="size-4" />

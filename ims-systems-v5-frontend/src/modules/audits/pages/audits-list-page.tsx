@@ -165,7 +165,7 @@ export function AuditsListPage({ auditType }: AuditsListPageProps) {
   return (
     <div className="space-y-5">
       <PageHeader
-        title={`${auditType} audits`}
+        title={`${auditType} Audits`}
         description={`Organisation ${auditType.toLowerCase()} audit register — schedule, conduct, and complete audits.`}
         actions={
           <Button type="button" onClick={openCreate}>

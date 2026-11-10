@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthClient } from "@/security";
+import { clearSessionCaches } from "@/security/clear-session-caches";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +17,7 @@ import { registerSchema, type RegisterFormValues } from "../schemas";
 export function RegisterPage() {
   const env = loadPublicEnv();
   const authClient = useAuthClient();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [checking, setChecking] = useState(
     env.VITE_SECURITY_PROVIDER === "auth0-openfga"
@@ -86,6 +89,7 @@ export function RegisterPage() {
       const { confirmPassword: _c, ...credentials } = parsed.data;
       void _c;
       await authClient.register(credentials);
+      clearSessionCaches(queryClient);
       navigate("/", { replace: true });
     } catch (error) {
       setFormError(

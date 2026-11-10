@@ -6,17 +6,21 @@ export function renderDocumentShared(data: {
   message?: string;
   viewUrl?: string;
 }): RenderedEmail {
-  return renderEmailLayout(`Document shared with you: ${data.documentName}`, {
-    eyebrow: "Document management",
-    title: "A document has been shared with you",
+  return renderEmailLayout(`Document shared: ${data.documentName}`, {
+    mode: "action",
+    eyebrow: "Documents",
+    statusChip: { label: "Shared with you", tone: "info" },
+    title: "A document was shared with you",
+    hero: data.documentName,
     paragraphs: [
-      `A document has been shared with you: ${data.documentName}.`,
-      ...(data.message?.trim() ? [data.message.trim()] : []),
+      `“${data.documentName}” has been shared with you on iMS.`,
+      ...(data.message ? [`Message from the sender: ${data.message}`] : []),
     ],
     meta: [{ label: "Document", value: data.documentName }],
     ...(data.viewUrl
       ? { cta: { label: "Open document", href: data.viewUrl } }
       : {}),
+    closing: ["Use the secure link above — do not forward it to others."],
   });
 }
 
@@ -27,19 +31,19 @@ export function renderDocumentSignatureRequested(data: {
   expiresAt?: Date;
 }): RenderedEmail {
   return renderEmailLayout(`Signature requested: ${data.documentName}`, {
+    mode: "action",
     eyebrow: "Signature request",
-    title: "You have been invited to sign a document",
+    statusChip: { label: "Action required", tone: "warning" },
+    title: "Please review and sign",
+    hero: data.documentName,
     paragraphs: [
-      `You have been invited to sign ${data.documentName}.`,
-      ...(data.message?.trim() ? [data.message.trim()] : []),
-      ...(data.signUrl
-        ? []
-        : ["Sign in to iMS to review and sign it."]),
+      `You have been asked to sign “${data.documentName}”.`,
+      ...(data.message ? [`Message: ${data.message}`] : []),
     ],
     meta: [
       { label: "Document", value: data.documentName },
       ...(data.expiresAt
-        ? [{ label: "Link valid until", value: data.expiresAt.toISOString() }]
+        ? [{ label: "Expires", value: data.expiresAt.toUTCString() }]
         : []),
     ],
     ...(data.signUrl
@@ -53,9 +57,13 @@ export function renderDocumentSignedCopy(data: {
   viewUrl: string;
 }): RenderedEmail {
   return renderEmailLayout(`Signed copy: ${data.documentName}`, {
-    eyebrow: "Signed document",
+    mode: "success",
+    eyebrow: "Signature complete",
+    statusChip: { label: "Signed", tone: "success" },
     title: "Your signed copy is ready",
-    paragraphs: [`You signed ${data.documentName}.`],
+    paragraphs: [
+      `The signed copy of “${data.documentName}” is ready for you to download.`,
+    ],
     meta: [{ label: "Document", value: data.documentName }],
     cta: { label: "Download signed copy", href: data.viewUrl },
   });

@@ -12,6 +12,8 @@ import type {
   OrganisationProfile,
   PaginatedLicenceRequests,
   RequestOrganisationLicenceInput,
+  EmailBrandingPreviewResult,
+  PreviewOrganisationEmailBrandingInput,
   UpdateOrganisationEmailBrandingInput,
 } from "../types";
 
@@ -114,6 +116,18 @@ export function updateOrganisationEmailBranding(
     "/organisations/current/email-branding",
     {
       method: "PUT",
+      body,
+    }
+  );
+}
+
+export function previewOrganisationEmailBranding(
+  body: PreviewOrganisationEmailBrandingInput
+): Promise<EmailBrandingPreviewResult> {
+  return apiRequest<EmailBrandingPreviewResult>(
+    "/organisations/current/email-branding/preview",
+    {
+      method: "POST",
       body,
     }
   );

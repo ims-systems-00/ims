@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2, Mail } from "lucide-react";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
@@ -18,11 +19,15 @@ import {
   type ThemeColors,
   type ThemeId,
 } from "@/shared/theme";
+import { previewOrganisationEmailBranding } from "../api/organisations";
 import {
   useUpdateOrganisationEmailBrandingMutation,
   useUpdateOrganisationLogoMutation,
 } from "../hooks/use-organisations";
-import type { OrganisationProfile } from "../types";
+import type {
+  EmailBrandingPreviewTemplateId,
+  OrganisationProfile,
+} from "../types";
 
 type EmailCustomisePanelProps = {
   organisation: OrganisationProfile;
@@ -30,105 +35,103 @@ type EmailCustomisePanelProps = {
   canManage: boolean;
 };
 
-function EmailPreview({
+const PREVIEW_TABS: Array<{
+  id: EmailBrandingPreviewTemplateId;
+  label: string;
+}> = [
+  { id: "invitation", label: "Invitation" },
+  { id: "document-shared", label: "Document" },
+  { id: "campaign-wrap", label: "Campaign" },
+];
+
+function LiveEmailPreview({
   brandName,
   logoUrl,
   colors,
+  enabled,
   active,
 }: {
   brandName: string;
   logoUrl: string | null;
   colors: ThemeColors;
+  enabled: boolean;
   active: boolean;
 }) {
-  const monogram = brandName
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("");
+  const [templateId, setTemplateId] =
+    useState<EmailBrandingPreviewTemplateId>("invitation");
+
+  const previewQuery = useQuery({
+    queryKey: [
+      "organisations",
+      "email-branding-preview",
+      templateId,
+      enabled,
+      colors.primary,
+      colors.primaryDark,
+      colors.primaryLight,
+      colors.primaryExtraLight,
+      logoUrl,
+      brandName,
+    ],
+    queryFn: () =>
+      previewOrganisationEmailBranding({
+        templateId,
+        enabled,
+        themeId: "custom",
+        colors: enabled ? colors : null,
+        logoUrl: logoUrl || null,
+      }),
+    staleTime: 15_000,
+  });
 
   return (
-    <div
-      className="overflow-hidden rounded-xl border border-border"
-      style={{ backgroundColor: colors.primaryExtraLight }}
-      aria-hidden
-    >
-      <div className="mx-auto max-w-[340px] p-4">
-        <div className="mb-2 text-center text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-          {active ? "Active on org emails" : "Preview (not saved yet)"}
-        </div>
-        <div className="overflow-hidden rounded-[12px] border border-black/5 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.08)]">
-          <div
-            className="h-1.5 w-full"
-            style={{ backgroundColor: colors.primary }}
-          />
-          <div
-            className="border-b border-border px-5 py-4"
-            style={{
-              background: `linear-gradient(180deg, ${colors.primaryExtraLight} 0%, #ffffff 72%)`,
-            }}
-          >
-            {logoUrl ? (
-              <img
-                src={logoUrl}
-                alt=""
-                className="h-10 max-w-[140px] object-contain object-left"
-              />
-            ) : (
-              <div className="flex items-center gap-3">
-                <span
-                  className="inline-flex size-10 items-center justify-center rounded-xl text-[0.7rem] font-extrabold tracking-wide text-white"
-                  style={{ backgroundColor: colors.primary }}
-                >
-                  {monogram || "iMS"}
-                </span>
-                <span
-                  className="text-[0.95rem] font-semibold tracking-tight"
-                  style={{ color: colors.primaryDark }}
-                >
-                  {brandName}
-                </span>
-              </div>
-            )}
-          </div>
-          <div className="space-y-3 px-5 py-5">
-            <p
-              className="text-[10px] font-bold uppercase tracking-[0.08em]"
-              style={{ color: colors.primary }}
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+          {active ? "Active on org emails" : "Draft preview (save to apply)"}
+        </p>
+        <div className="flex flex-wrap gap-1">
+          {PREVIEW_TABS.map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setTemplateId(tab.id)}
+              className={cn(
+                "rounded-md px-2 py-1 text-[11px] font-semibold transition-colors",
+                templateId === tab.id
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:text-foreground"
+              )}
             >
-              Preview
-            </p>
-            <p className="text-[0.95rem] font-semibold tracking-tight text-foreground">
-              Document shared with you
-            </p>
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              Header, accent colour, and button match how recipients will see
-              your mail after you save.
-            </p>
-            <div
-              className="inline-flex rounded-[10px] px-3.5 py-2 text-xs font-bold text-white shadow-sm"
-              style={{ backgroundColor: colors.primary }}
-            >
-              Open document
-            </div>
-          </div>
-          <div
-            className="border-t border-border px-5 py-4"
-            style={{ backgroundColor: colors.primaryExtraLight }}
-          >
-            <p
-              className="text-xs font-bold"
-              style={{ color: colors.primaryDark }}
-            >
-              {brandName}
-            </p>
-            <p className="mt-1 text-[10px] leading-snug text-muted-foreground">
-              Sent via iMS Systems
-            </p>
-          </div>
+              {tab.label}
+            </button>
+          ))}
         </div>
       </div>
+
+      {previewQuery.isLoading ? (
+        <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-border bg-surface-muted/40">
+          <Loader2 className="size-5 animate-spin text-muted-foreground" />
+        </div>
+      ) : previewQuery.isError ? (
+        <p className="rounded-xl border border-border bg-surface-muted/40 p-4 text-xs text-muted-foreground">
+          Live preview unavailable. Your colour draft still applies after save.
+        </p>
+      ) : (
+        <div className="overflow-hidden rounded-xl border border-border bg-[#e8edf5]">
+          <div className="border-b border-border/60 bg-white/80 px-3 py-2">
+            <p className="truncate text-[11px] font-medium text-foreground">
+              {previewQuery.data?.subject}
+            </p>
+          </div>
+          <iframe
+            title={`${templateId} email preview`}
+            sandbox=""
+            srcDoc={previewQuery.data?.html ?? ""}
+            className="h-[420px] w-full bg-transparent"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -279,7 +282,7 @@ export function EmailCustomisePanel({
           )}
         </div>
       </div>
-      <div className="grid gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(260px,0.9fr)]">
+      <div className="grid gap-5 px-4 py-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(280px,0.9fr)]">
         <div className="space-y-5">
           <p className="text-sm text-muted-foreground">
             Upload a logo and choose colours, then click{" "}
@@ -313,7 +316,6 @@ export function EmailCustomisePanel({
                       fileName: meta.Name,
                     },
                   });
-                  // Activate branding immediately so the logo is used on send.
                   await persistBranding({
                     enabled: true,
                     themeId,
@@ -494,10 +496,11 @@ export function EmailCustomisePanel({
           )}
         </div>
 
-        <EmailPreview
+        <LiveEmailPreview
           brandName={organisation.name}
           logoUrl={logoUrl}
           colors={previewColors}
+          enabled={true}
           active={savedActive}
         />
       </div>

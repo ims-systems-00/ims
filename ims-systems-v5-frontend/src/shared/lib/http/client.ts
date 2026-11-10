@@ -133,3 +133,67 @@ export async function apiRequest<T>(
 
   return parsedSuccess.data.data as T;
 }
+
+/**
+ * Authenticated binary/CSV download helper.
+ * Same auth + org headers as {@link apiRequest}, but returns a Blob instead of
+ * parsing the JSON success envelope (report endpoints stream raw CSV).
+ */
+export async function apiBlobRequest(
+  path: string,
+  options: Omit<ApiRequestOptions, "body"> & {
+    accept?: string;
+  } = {}
+): Promise<Blob> {
+  const env = loadPublicEnv();
+  const method = options.method ?? "GET";
+  const correlationId = createCorrelationId();
+  const url = `${env.VITE_API_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+
+  const headers: Record<string, string> = {
+    Accept: options.accept ?? "*/*",
+    "x-correlation-id": correlationId,
+    ...options.headers,
+  };
+
+  const activeOrgId = getActiveOrganisationId();
+  if (activeOrgId && !headers["x-org-id"]) {
+    headers["x-org-id"] = activeOrgId;
+  }
+
+  const authClient = options.authClient ?? getActiveAuthClient();
+  if (authClient && !headers.Authorization && !headers.authorization) {
+    const token = await authClient.getAccessToken();
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
+    }
+  }
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method,
+      headers,
+      signal: options.signal,
+    });
+  } catch (error) {
+    throw new ApiClientError({
+      message: "Network request failed",
+      status: 0,
+      code: "NETWORK_ERROR",
+      details: error instanceof Error ? error.message : undefined,
+      correlationId,
+    });
+  }
+
+  if (!response.ok) {
+    throw new ApiClientError({
+      message: `Unable to download file (${response.status})`,
+      status: response.status,
+      code: mapStatusToCode(response.status),
+      correlationId: response.headers.get("x-correlation-id") ?? correlationId,
+    });
+  }
+
+  return response.blob();
+}

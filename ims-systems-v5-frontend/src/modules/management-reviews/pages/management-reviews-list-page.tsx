@@ -172,7 +172,7 @@ export function ManagementReviewsListPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Management reviews"
+        title="Management Reviews"
         description="Organisation management review schedule — plan meetings, attach agenda, and mark reviews complete."
         actions={
           <Button type="button" onClick={openCreate}>

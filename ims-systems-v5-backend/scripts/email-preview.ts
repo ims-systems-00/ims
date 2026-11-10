@@ -2,11 +2,13 @@
  * Preview a V5 email template as HTML.
  *
  * Usage:
- *   pnpm email:preview bug-report-support
  *   pnpm email:preview invitation --out /tmp/invite.html
+ *   pnpm email:preview invitation --branded
+ *   pnpm email:preview --gallery --out-dir tmp/email-previews
  */
 
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import {
   listEmailTemplateIds,
   renderEmail,
@@ -81,6 +83,10 @@ const SAMPLE: Record<string, unknown> = {
     organisationName: "Acme Care Ltd",
     meta: [{ label: "Users", value: "10" }],
   },
+  "licence-request-cancelled": {
+    reference: "LR-1001",
+    organisationName: "Acme Care Ltd",
+  },
   "partnership-application-received": { organisationName: "Acme Partners" },
   "partnership-code-ready": {
     organisationName: "Acme Partners",
@@ -140,19 +146,76 @@ const SAMPLE: Record<string, unknown> = {
     groups: 3,
     complianceTools: ["ISO 27001"],
   },
+  "account-past-due": {
+    organisationName: "Acme Care Ltd",
+    amountLabel: "£480.00",
+    dueDateLabel: "01-11-2026",
+    payUrl: "https://app.example.com/billing",
+  },
+  "account-blocked": {
+    organisationName: "Acme Care Ltd",
+    reason: "Payment remains outstanding after the past-due notice.",
+  },
+  "account-reactivated": { organisationName: "Acme Care Ltd" },
+  "txn-email-invitation": {
+    organisationName: "Acme Care Ltd",
+    acceptUrl: "https://app.example.com/txn-emails/accept?token=demo",
+    expiresAt: new Date("2026-11-01T12:00:00Z"),
+  },
 };
+
+function demoBranding() {
+  return resolveOrganisationEmailBranding({
+    name: "Acme Care Ltd",
+    logoSrc: "https://placehold.co/280x96/png?text=Acme+Care",
+    emailBranding: {
+      enabled: true,
+      themeId: "forest",
+      colors: {
+        primary: "#15803D",
+        primaryDark: "#166534",
+        primaryLight: "#BBF7D0",
+        primaryExtraLight: "#F0FDF4",
+      },
+    },
+  });
+}
+
+function renderOne(id: EmailTemplateId, branded: boolean) {
+  const data = (SAMPLE[id] ?? {}) as never;
+  return renderEmail(id, data, branded ? { branding: demoBranding() } : undefined);
+}
 
 function main() {
   const args = process.argv.slice(2);
-  const id = args.find((a) => !a.startsWith("--")) as EmailTemplateId | undefined;
+  const gallery = args.includes("--gallery");
+  const branded = args.includes("--branded");
   const outFlag = args.indexOf("--out");
   const outPath = outFlag >= 0 ? args[outFlag + 1] : undefined;
-  const branded = args.includes("--branded");
+  const outDirFlag = args.indexOf("--out-dir");
+  const outDir =
+    outDirFlag >= 0 ? args[outDirFlag + 1] : "tmp/email-previews";
+  const id = args.find((a) => !a.startsWith("--")) as EmailTemplateId | undefined;
+
+  if (gallery) {
+    mkdirSync(outDir, { recursive: true });
+    for (const templateId of listEmailTemplateIds()) {
+      const rendered = renderOne(templateId, branded);
+      const file = path.join(
+        outDir,
+        `${templateId}${branded ? ".branded" : ""}.html`
+      );
+      writeFileSync(file, rendered.html, "utf8");
+      console.log(`${templateId} → ${file} (${rendered.subject})`);
+    }
+    return;
+  }
 
   if (!id) {
     console.error(
       "Usage: pnpm email:preview <templateId> [--out file.html] [--branded]"
     );
+    console.error("       pnpm email:preview --gallery [--out-dir dir] [--branded]");
     console.error("Available:", listEmailTemplateIds().join(", "));
     process.exit(1);
   }
@@ -163,24 +226,7 @@ function main() {
     process.exit(1);
   }
 
-  const data = (SAMPLE[id] ?? {}) as never;
-  const branding = branded
-    ? resolveOrganisationEmailBranding({
-        name: "Acme Care Ltd",
-        logoSrc: "https://placehold.co/280x96/png?text=Acme+Care",
-        emailBranding: {
-          enabled: true,
-          themeId: "forest",
-          colors: {
-            primary: "#15803D",
-            primaryDark: "#166534",
-            primaryLight: "#BBF7D0",
-            primaryExtraLight: "#F0FDF4",
-          },
-        },
-      })
-    : undefined;
-  const rendered = renderEmail(id, data, branding ? { branding } : undefined);
+  const rendered = renderOne(id, branded);
   console.log("Subject:", rendered.subject);
   console.log("--- text ---");
   console.log(rendered.text);

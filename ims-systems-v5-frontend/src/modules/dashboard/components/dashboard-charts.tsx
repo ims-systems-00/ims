@@ -409,7 +409,7 @@ export function DashboardDonutChart({
   if (total === 0) {
     return (
       <p className="py-8 text-center text-sm text-muted-foreground">
-        No values to chart.
+        No audit data available.
       </p>
     );
   }

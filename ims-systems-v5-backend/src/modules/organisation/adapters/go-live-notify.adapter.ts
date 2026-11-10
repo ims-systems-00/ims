@@ -88,19 +88,16 @@ export function createGoLiveNotifySideEffectsAdapter(deps: {
       return;
     }
 
-    const rendered = renderEmail(
-      "go-live-invoice-internal",
-      {
-        organizationId: input.organizationId,
-        actorId: input.actorId,
-        ...(input.actorEmail ? { actorEmail: input.actorEmail } : {}),
-        superUser: input.licences.superUser,
-        users: input.licences.users,
-        groups: input.licences.groups,
-        complianceTools: input.licences.complianceTools,
-      },
-      { branding: await brandingFor(input.organizationId) }
-    );
+    // Internal ops mail — always iMS default branding, not customer theme.
+    const rendered = renderEmail("go-live-invoice-internal", {
+      organizationId: input.organizationId,
+      actorId: input.actorId,
+      ...(input.actorEmail ? { actorEmail: input.actorEmail } : {}),
+      superUser: input.licences.superUser,
+      users: input.licences.users,
+      groups: input.licences.groups,
+      complianceTools: input.licences.complianceTools,
+    });
 
     try {
       await email.sendTransactional({

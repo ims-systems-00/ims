@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAuthClient } from "@/security";
+import { clearSessionCaches } from "@/security/clear-session-caches";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +17,7 @@ import { loginSchema, type LoginFormValues } from "../schemas";
 export function LoginPage() {
   const env = loadPublicEnv();
   const authClient = useAuthClient();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const returnTo =
@@ -84,6 +87,7 @@ export function LoginPage() {
     setPending(true);
     try {
       await authClient.loginWithPassword(parsed.data);
+      clearSessionCaches(queryClient);
       navigate(returnTo || "/", { replace: true });
     } catch (error) {
       setFormError(
