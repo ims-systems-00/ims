@@ -25,14 +25,16 @@ export function PostLoginMembershipGate() {
   const orgsQuery = useMyOrganisationsQuery(!isStub);
 
   useEffect(() => {
-    if (isStub || !orgsQuery.data?.length) return;
+    // Only bind after a fresh fetch for this session — never from leftover cache.
+    if (isStub || orgsQuery.isFetching || !orgsQuery.isSuccess) return;
+    if (!orgsQuery.data?.length) return;
     if (getActiveOrganisationId()) return;
     const first = orgsQuery.data[0]!;
     setActiveOrganisationContext({
       organizationId: first.id,
       auth0OrganizationId: first.auth0OrganizationId,
     });
-  }, [isStub, orgsQuery.data]);
+  }, [isStub, orgsQuery.isFetching, orgsQuery.isSuccess, orgsQuery.data]);
 
   useEffect(() => {
     if (isStub || !orgsQuery.isSuccess) return;

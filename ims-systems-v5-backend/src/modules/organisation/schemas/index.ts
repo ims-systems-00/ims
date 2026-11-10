@@ -135,6 +135,14 @@ export const updateOrganisationEmailBrandingBodySchema = z
     }
   });
 
+export const previewOrganisationEmailBrandingBodySchema = z.object({
+  templateId: z.enum(["invitation", "document-shared", "campaign-wrap"]),
+  enabled: z.boolean(),
+  themeId: z.string().trim().min(1).max(64).nullable().optional(),
+  colors: emailBrandColorsSchema.nullable().optional(),
+  logoUrl: z.union([z.string().trim().url().max(2000), z.null()]).optional(),
+});
+
 const targetHoursSchema = z.number().positive().max(24 * 365).nullable();
 
 export const updateIncidentResolutionTargetsBodySchema = z.object({

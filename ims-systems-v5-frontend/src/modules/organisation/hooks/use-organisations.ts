@@ -46,6 +46,10 @@ export function useMyOrganisationsQuery(enabled = true) {
     queryKey: organisationKeys.mine(),
     queryFn: listMyOrganisations,
     enabled,
+    // Always re-check after login/register so a previous account's orgs
+    // cannot leak into the membership gate / onboard flow.
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

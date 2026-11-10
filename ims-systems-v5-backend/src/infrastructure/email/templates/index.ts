@@ -8,6 +8,7 @@ import {
   renderEmailVerification,
   renderInvitation,
   renderRegisterInterestConfirmation,
+  renderTxnEmailInvitation,
   renderWelcome,
 } from "./catalog/access";
 import {
@@ -28,12 +29,16 @@ import {
   renderDocumentSignedCopy,
 } from "./catalog/documents";
 import {
+  renderLicenceRequestCancelled,
   renderLicenceRequestGranted,
   renderLicenceRequestReceived,
   renderLicenceRequestSupport,
   type LicenceRequestEmailData,
 } from "./catalog/licence";
 import {
+  renderAccountBlocked,
+  renderAccountPastDue,
+  renderAccountReactivated,
   renderAuditReport,
   renderCampaignWrap,
   renderGoLiveInvoiceInternal,
@@ -51,7 +56,15 @@ import {
 } from "./branding";
 import type { EmailTemplateId, RenderedEmail } from "./types";
 
-export type { EmailTemplateId, RenderedEmail, EmailLayoutInput, EmailMetaRow, EmailCta } from "./types";
+export type {
+  EmailTemplateId,
+  RenderedEmail,
+  EmailLayoutInput,
+  EmailLayoutMode,
+  EmailMetaRow,
+  EmailCta,
+  EmailStatusChip,
+} from "./types";
 export { renderEmailLayout } from "./layout";
 export { escapeHtml, nl2br } from "./primitives";
 export {
@@ -91,6 +104,7 @@ export type EmailTemplateDataMap = {
   "licence-request-support": LicenceRequestEmailData;
   "licence-request-received": LicenceRequestEmailData;
   "licence-request-granted": LicenceRequestEmailData;
+  "licence-request-cancelled": LicenceRequestEmailData;
   "partnership-application-received": { organisationName: string };
   "partnership-code-ready": {
     organisationName: string;
@@ -145,6 +159,19 @@ export type EmailTemplateDataMap = {
     groups: number;
     complianceTools: string[];
   };
+  "account-past-due": {
+    organisationName: string;
+    amountLabel?: string;
+    dueDateLabel?: string;
+    payUrl?: string;
+  };
+  "account-blocked": { organisationName: string; reason?: string };
+  "account-reactivated": { organisationName: string };
+  "txn-email-invitation": {
+    organisationName: string;
+    acceptUrl: string;
+    expiresAt?: Date;
+  };
 };
 
 type TemplateRenderer<K extends EmailTemplateId> = (
@@ -165,6 +192,7 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "licence-request-support": renderLicenceRequestSupport,
   "licence-request-received": renderLicenceRequestReceived,
   "licence-request-granted": renderLicenceRequestGranted,
+  "licence-request-cancelled": renderLicenceRequestCancelled,
   "partnership-application-received": renderPartnershipApplicationReceived,
   "partnership-code-ready": renderPartnershipCodeReady,
   invoice: renderInvoice,
@@ -176,6 +204,10 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "campaign-wrap": renderCampaignWrap,
   "go-live-onboard-success": renderGoLiveOnboardSuccess,
   "go-live-invoice-internal": renderGoLiveInvoiceInternal,
+  "account-past-due": renderAccountPastDue,
+  "account-blocked": renderAccountBlocked,
+  "account-reactivated": renderAccountReactivated,
+  "txn-email-invitation": renderTxnEmailInvitation,
 };
 
 export function renderEmail<K extends EmailTemplateId>(

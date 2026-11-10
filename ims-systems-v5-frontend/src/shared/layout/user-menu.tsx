@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Building2,
   KeyRound,
@@ -25,6 +26,7 @@ import {
   resolveProfileUserId,
   useAuthClient,
 } from "@/security";
+import { clearSessionCaches } from "@/security/clear-session-caches";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { notify } from "@/shared/lib/toast";
@@ -34,6 +36,7 @@ import { notify } from "@/shared/lib/toast";
  */
 export function UserMenu() {
   const authClient = useAuthClient();
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
@@ -41,6 +44,7 @@ export function UserMenu() {
 
   async function handleLogout() {
     await authClient.logout();
+    clearSessionCaches(queryClient);
     navigate("/login", { replace: true });
   }
 

@@ -174,9 +174,8 @@ export function createLicenceRequestService(
       meta,
     };
 
-    const support = renderEmail("licence-request-support", payload, {
-      branding,
-    });
+    // Support inbox — iMS default branding (internal ops).
+    const support = renderEmail("licence-request-support", payload);
     await sendSafe({
       to: supportEmails,
       subject: support.subject,

@@ -3,7 +3,7 @@
  * organisation / user repositories and the shared EmailSystem.
  */
 
-import { renderEmail } from "../../../infrastructure/email/templates";
+import { renderEmailForOrganisation } from "../../../infrastructure/email/templates";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import { createOrganisationMembershipRepository } from "../../organisation/repositories/organisation-membership.repository";
 import { createOrganisationRepository } from "../../organisation/repositories/organisation.repository";
@@ -83,11 +83,7 @@ export function createInvitationEmailAdapter(
   if (!email) return new NoOpInvitationEmailAdapter();
   return {
     async sendInvitation(input) {
-      const branding =
-        input.organizationId && resolveBranding
-          ? await resolveBranding(input.organizationId).catch(() => undefined)
-          : undefined;
-      const rendered = renderEmail(
+      const rendered = await renderEmailForOrganisation(
         "invitation",
         {
           inviterName: input.inviterName,
@@ -96,7 +92,10 @@ export function createInvitationEmailAdapter(
           acceptUrl: input.acceptUrl,
           expiresAt: input.expiresAt,
         },
-        branding ? { branding } : undefined
+        {
+          organizationId: input.organizationId,
+          resolveBranding,
+        }
       );
       await email.sendTransactional({
         to: input.to,

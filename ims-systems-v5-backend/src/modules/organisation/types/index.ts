@@ -179,6 +179,20 @@ export type UpdateOrganisationEmailBrandingInput = {
   colors?: OrganisationEmailBrandColors | null;
 };
 
+export type PreviewOrganisationEmailBrandingInput = {
+  templateId: "invitation" | "document-shared" | "campaign-wrap";
+  enabled: boolean;
+  themeId?: string | null;
+  colors?: OrganisationEmailBrandColors | null;
+  logoUrl?: string | null;
+};
+
+export type EmailBrandingPreviewResult = {
+  templateId: PreviewOrganisationEmailBrandingInput["templateId"];
+  subject: string;
+  html: string;
+};
+
 export type MembershipDayHours = {
   start: string;
   end: string;

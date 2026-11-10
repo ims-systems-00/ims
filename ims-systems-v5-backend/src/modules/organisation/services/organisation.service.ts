@@ -29,13 +29,20 @@ import {
 import type { OrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import type { OrganisationRepository } from "../repositories/organisation.repository";
 import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  renderEmail,
+  resolveOrganisationEmailBranding,
+} from "../../../infrastructure/email/templates";
+import {
   ORGANISATION_RESOURCE,
   type CreateOrganisationInput,
   type CreateOrganisationResult,
+  type EmailBrandingPreviewResult,
   type GoLiveOrganisationInput,
   type GoLiveOrganisationResult,
   type Organisation,
   type OrganisationProfile,
+  type PreviewOrganisationEmailBrandingInput,
   type RequestOrganisationLicenceInput,
   type UpdateDocumentReviewRemindersInput,
   UpdateIncidentResolutionTargetsInput,
@@ -655,6 +662,75 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         updated.id
       );
       return { ...updated, membership };
+    },
+
+    async previewEmailBranding(
+      identity: SecurityIdentity | null | undefined,
+      input: PreviewOrganisationEmailBrandingInput
+    ): Promise<EmailBrandingPreviewResult> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+      const org = await organisations.findById(authed.organizationId);
+      if (!org) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const branding = input.enabled
+        ? resolveOrganisationEmailBranding({
+            name: org.name,
+            logoSrc: input.logoUrl?.trim() || org.logoSrc,
+            emailBranding: {
+              enabled: true,
+              themeId: input.themeId ?? "custom",
+              colors: input.colors ?? null,
+            },
+          })
+        : DEFAULT_IMS_EMAIL_BRANDING;
+
+      const sampleExpires = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000);
+      let rendered;
+      if (input.templateId === "invitation") {
+        rendered = renderEmail(
+          "invitation",
+          {
+            inviterName: "Sam Admin",
+            organisationName: org.name,
+            role: "User",
+            acceptUrl: "https://app.example.com/invitations/accept?token=preview",
+            expiresAt: sampleExpires,
+          },
+          { branding }
+        );
+      } else if (input.templateId === "document-shared") {
+        rendered = renderEmail(
+          "document-shared",
+          {
+            documentName: "Information Security Policy.pdf",
+            message: "Please review the updated policy.",
+            viewUrl: "https://app.example.com/documents/preview",
+          },
+          { branding }
+        );
+      } else {
+        rendered = renderEmail(
+          "campaign-wrap",
+          {
+            subject: "Quarterly update from " + org.name,
+            bodyHtml: `<p>Dear Customer,</p><p>This is a preview of how your campaign emails will look with the selected branding.</p><p>Kind regards,<br/>${org.name}</p>`,
+          },
+          { branding }
+        );
+      }
+
+      return {
+        templateId: input.templateId,
+        subject: rendered.subject,
+        html: rendered.html,
+      };
     },
 
     async updateIncidentResolutionTargets(

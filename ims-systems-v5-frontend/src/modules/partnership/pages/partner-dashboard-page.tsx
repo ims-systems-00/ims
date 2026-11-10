@@ -196,7 +196,7 @@ export function PartnerDashboardPage() {
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Partner programme"
+        title="Partner Programme"
         description="Your referral code, signup link, and the organisations you've referred to iMS."
       />
 

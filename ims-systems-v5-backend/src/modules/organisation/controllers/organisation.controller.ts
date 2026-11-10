@@ -6,6 +6,7 @@ import {
   organisationIdParamSchema,
   updateDocumentReviewRemindersBodySchema,
   updateIncidentResolutionTargetsBodySchema,
+  previewOrganisationEmailBrandingBodySchema,
   updateOrganisationEmailBrandingBodySchema,
   updateOrganisationLogoBodySchema,
 } from "../schemas";
@@ -24,6 +25,7 @@ export type OrganisationController = {
   updateIncidentResolutionTargets: RequestHandler;
   updateLogo: RequestHandler;
   updateEmailBranding: RequestHandler;
+  previewEmailBranding: RequestHandler;
 };
 
 export function createOrganisationController(
@@ -135,6 +137,19 @@ export function createOrganisationController(
     }
   };
 
+  const previewEmailBranding: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(
+        previewOrganisationEmailBrandingBodySchema,
+        req.body
+      );
+      const data = await service.previewEmailBranding(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const updateDocumentReviewReminders: RequestHandler = async (
     req,
     res,
@@ -188,5 +203,6 @@ export function createOrganisationController(
     updateIncidentResolutionTargets,
     updateLogo,
     updateEmailBranding,
+    previewEmailBranding,
   };
 }

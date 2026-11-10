@@ -142,10 +142,25 @@ services:
       AUTH0_MGMT_CLIENT_ID: ${AUTH0_MGMT_CLIENT_ID:-}
       AUTH0_MGMT_CLIENT_SECRET: ${AUTH0_MGMT_CLIENT_SECRET:-}
       CLIENT_URL: ${CLIENT_URL:-http://localhost:7864}
-      # Keep Compose demo off real SMTP — host .env often has EMAIL_ENABLED=true
-      # for Mailtrap, which would fail boot without MAILTRAP_* in the container.
-      EMAIL_ENABLED: "false"
-      EMAIL_PROVIDER: logging
+      # Email: default logging (safe). For Mailtrap locally, set in repo-root .env:
+      #   EMAIL_ENABLED=true
+      #   EMAIL_PROVIDER=mailtrap
+      #   MAILTRAP_USER=...
+      #   MAILTRAP_PASS=...
+      #   MAIL_FROM=hello@imssystems.tech
+      # Boot fails if EMAIL_ENABLED=true and credentials are missing.
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-logging}
+      MAILTRAP_HOST: ${MAILTRAP_HOST:-sandbox.smtp.mailtrap.io}
+      MAILTRAP_PORT: ${MAILTRAP_PORT:-2525}
+      MAILTRAP_USER: ${MAILTRAP_USER:-}
+      MAILTRAP_PASS: ${MAILTRAP_PASS:-}
+      MAIL_FROM: ${MAIL_FROM:-}
+      MAIL_FROM_NAME: ${MAIL_FROM_NAME:-iMS Systems}
+      REPORT_BUG_SUPPORT_EMAILS: ${REPORT_BUG_SUPPORT_EMAILS:-support@imssystems.tech}
+      CONTACT_IMS_SUPPORT_EMAILS: ${CONTACT_IMS_SUPPORT_EMAILS:-support@imssystems.tech}
+      EMAIL_QUEUE_ENABLED: ${EMAIL_QUEUE_ENABLED:-false}
+      EMAIL_WORKER_IN_API: ${EMAIL_WORKER_IN_API:-false}
       # Alice AI — openai needs OPEN_AI_API_KEY; groq needs GROQ_API_KEY.
       AI_PROVIDER: ${AI_PROVIDER:-openai}
       OPEN_AI_API_KEY: ${OPEN_AI_API_KEY:-}

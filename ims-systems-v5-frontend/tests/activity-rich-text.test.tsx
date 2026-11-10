@@ -1,17 +1,22 @@
-import { describe, expect, it } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import { render, screen } from "@testing-library/react";
 import { ActivityRichTextEditor } from "../src/modules/activities/components/activity-rich-text";
 
+vi.mock("@/modules/files/api/files", () => ({
+  createViewUrl: vi.fn(),
+  uploadFileViaHandler: vi.fn(),
+  downloadFile: vi.fn(),
+}));
+
 describe("ActivityRichTextEditor", () => {
-  it("mounts without throwing duplicate-extension errors", async () => {
+  it("mounts a lightweight contentEditable composer without TipTap", () => {
     render(
-      <ActivityRichTextEditor value="" onChange={() => undefined} />
+      <ActivityRichTextEditor value="hello" onChange={() => undefined} />
     );
-    await waitFor(() => {
-      expect(
-        screen.queryByText("Loading editor…")
-      ).not.toBeInTheDocument();
-    });
-    expect(document.querySelector(".ProseMirror")).toBeTruthy();
+    const editor = screen.getByLabelText("Comment");
+    expect(editor).toHaveAttribute("contenteditable", "true");
+    expect(document.querySelector(".ProseMirror")).toBeNull();
+    expect(screen.getByLabelText("Bold")).toBeInTheDocument();
+    expect(screen.getByLabelText("Attach image")).toBeInTheDocument();
   });
 });

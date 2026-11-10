@@ -26,8 +26,8 @@ createRoot(rootElement).render(
             Something went wrong
           </h1>
           <p style={{ color: "#555", marginBottom: "1rem" }}>
-            The page crashed while rendering. If you were opening the document
-            editor, confirm OnlyOffice is running, then reload.
+            The page crashed while rendering. Reload to continue. If this keeps
+            happening on a document editor, confirm OnlyOffice is running.
           </p>
           <button type="button" onClick={() => window.location.reload()}>
             Reload

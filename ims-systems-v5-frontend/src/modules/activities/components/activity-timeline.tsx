@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Loader2, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
+import { ErrorBoundary } from "@/shared/components/error-boundary";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import { useSessionSubjectId } from "@/security";
@@ -15,11 +16,9 @@ import {
 import { createActivityFormSchema } from "../schemas";
 import type { Activity, ActivityModuleType } from "../types";
 import { formatDate, formatDateTime } from "@/shared/lib/format-date";
-import {
-  ActivityRichTextEditor,
-  ActivityRichTextView,
-  isActivityValueEmpty,
-} from "./activity-rich-text";
+import { isActivityValueEmpty } from "../lib/activity-html";
+import { ActivityComposer } from "./activity-composer";
+import { ActivityContentView } from "./activity-content-view";
 
 type ActivityTimelineProps = {
   moduleType: ActivityModuleType;
@@ -50,9 +49,10 @@ function formatRelative(value: string): string {
 }
 
 function AuthorLabel({ userId }: { userId: string }) {
-  const query = useUserQuery(userId, /^[a-fA-F0-9]{24}$/.test(userId));
-  if (!/^[a-fA-F0-9]{24}$/.test(userId)) {
-    return <span className="font-medium">{userId}</span>;
+  const valid = /^[a-fA-F0-9]{24}$/.test(userId);
+  const query = useUserQuery(userId, valid);
+  if (!valid) {
+    return <span className="font-medium">{userId || "Unknown"}</span>;
   }
   return (
     <span className="font-medium">
@@ -77,7 +77,7 @@ function ManualEntry({
   return (
     <article className="rounded-md border border-border-subtle bg-surface-muted/30 p-3">
       <header className="mb-2 flex flex-wrap items-baseline justify-between gap-2">
-        <AuthorLabel userId={activity.createdBy} />
+        <AuthorLabel userId={activity.createdBy ?? ""} />
         <time
           className="ims-text-meta"
           dateTime={activity.createdOn}
@@ -86,7 +86,7 @@ function ManualEntry({
           {formatRelative(activity.createdOn)}
         </time>
       </header>
-      <ActivityRichTextView value={activity.value} />
+      <ActivityContentView value={activity.value ?? ""} />
       {canManage ? (
         <footer className="mt-3 flex gap-2">
           <Button
@@ -117,6 +117,7 @@ function ManualEntry({
 }
 
 function AutomatedEntry({ activity }: { activity: Activity }) {
+  const extraLogs = Array.isArray(activity.extraLogs) ? activity.extraLogs : [];
   return (
     <article className="rounded-md border border-dashed border-border-subtle p-3">
       <header className="mb-1 flex flex-wrap items-start gap-2">
@@ -143,9 +144,9 @@ function AutomatedEntry({ activity }: { activity: Activity }) {
           </time>
         </div>
       </header>
-      {activity.extraLogs.length > 0 ? (
+      {extraLogs.length > 0 ? (
         <ul className="mt-2 space-y-2 border-t border-border-subtle pt-2">
-          {activity.extraLogs.map((log, index) => (
+          {extraLogs.map((log, index) => (
             <li
               key={`${activity.id}-log-${index}`}
               className="rounded bg-surface-muted/50 px-2.5 py-2"
@@ -164,10 +165,7 @@ function AutomatedEntry({ activity }: { activity: Activity }) {
   );
 }
 
-/**
- * Embedded activity / interactions / comments timeline for parent record sheets.
- */
-export function ActivityTimeline({
+function ActivityTimelineInner({
   moduleType,
   moduleId,
   readOnly = false,
@@ -217,11 +215,21 @@ export function ActivityTimeline({
   }, [moduleType, moduleId]);
 
   useEffect(() => {
-    if (!listQuery.data) return;
+    const pageData = listQuery.data;
+    if (!pageData) return;
     setItems((current) => {
-      if (listQuery.data.page === 1) return listQuery.data.items;
+      if (pageData.page === 1) {
+        if (
+          current.length === pageData.items.length &&
+          current.every((row, index) => row.id === pageData.items[index]?.id)
+        ) {
+          return current;
+        }
+        return pageData.items;
+      }
       const seen = new Set(current.map((row) => row.id));
-      const appended = listQuery.data.items.filter((row) => !seen.has(row.id));
+      const appended = pageData.items.filter((row) => !seen.has(row.id));
+      if (appended.length === 0) return current;
       return [...current, ...appended];
     });
   }, [listQuery.data]);
@@ -277,7 +285,7 @@ export function ActivityTimeline({
     try {
       await deleteMutation.mutateAsync(activity.id);
       notify.success("Comment deleted successfully");
-      setItems((current) => current.filter((row) => row.id !== activity.id));
+      setItems((current) => current.filter((row) => !row.id || row.id !== activity.id));
     } catch (error) {
       notify.fromError(error, "Failed to delete comment");
     }
@@ -291,10 +299,10 @@ export function ActivityTimeline({
 
       {!readOnly ? (
         <form className="mb-4 space-y-2" onSubmit={(e) => void handleCreate(e)}>
-          <ActivityRichTextEditor
+          <ActivityComposer
             value={draft}
             disabled={pending}
-            placeholder="Write a comment… Use the toolbar to format text or attach files."
+            placeholder="Write a comment… Use the toolbar to format or attach files."
             onChange={setDraft}
           />
           {formError ? (
@@ -330,17 +338,17 @@ export function ActivityTimeline({
         </div>
       ) : null}
 
-      {listQuery.isError && items.length === 0 ? (
+      {listQuery.isError ? (
         <p className="ims-alert ims-alert-error" role="alert">
           {isApiClientError(listQuery.error)
             ? listQuery.error.message
-            : "Failed to load activities"}
+            : "Unable to load activities"}
         </p>
       ) : null}
 
       {!listQuery.isLoading && !listQuery.isError && items.length === 0 ? (
         <EmptyState
-          icon={<MessageSquare />}
+          icon={<MessageSquare aria-hidden />}
           title={emptyTitle}
           description={emptyDescription}
         />
@@ -352,21 +360,17 @@ export function ActivityTimeline({
             <li key={activity.id}>
               {editingId === activity.id ? (
                 <form
-                  className="space-y-2 rounded-md border border-border-subtle p-3"
+                  className="space-y-2 rounded-md border border-border p-3"
                   onSubmit={(e) => void handleUpdate(e)}
                 >
-                  <ActivityRichTextEditor
+                  <ActivityComposer
                     value={editDraft}
                     disabled={pending}
                     onChange={setEditDraft}
                   />
                   <div className="flex gap-2">
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={pending || isActivityValueEmpty(editDraft)}
-                    >
-                      Update
+                    <Button type="submit" size="sm" disabled={pending}>
+                      Save
                     </Button>
                     <Button
                       type="button"
@@ -387,13 +391,11 @@ export function ActivityTimeline({
               ) : (
                 <ManualEntry
                   activity={activity}
-                  canManage={
-                    !readOnly && activity.createdBy === subjectId
-                  }
+                  canManage={!readOnly && activity.createdBy === subjectId}
                   pending={pending}
                   onEdit={(row) => {
                     setEditingId(row.id);
-                    setEditDraft(row.value);
+                    setEditDraft(row.value ?? "");
                   }}
                   onDelete={(row) => void handleDelete(row)}
                 />
@@ -424,5 +426,28 @@ export function ActivityTimeline({
         </div>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * Embedded activity / interactions / comments timeline for parent record sheets.
+ * Outer ErrorBoundary so hook/render failures cannot blank the whole app.
+ */
+export function ActivityTimeline(props: ActivityTimelineProps) {
+  return (
+    <ErrorBoundary
+      resetKey={`${props.moduleType}-${props.moduleId}`}
+      fallback={
+        <div className={props.className}>
+          <h3 className="ims-text-section mb-3">{props.title ?? "Activity"}</h3>
+          <p className="text-sm text-muted-foreground" role="alert">
+            Activity panel failed to render. Close and reopen this record, or
+            reload the page.
+          </p>
+        </div>
+      }
+    >
+      <ActivityTimelineInner {...props} />
+    </ErrorBoundary>
   );
 }

@@ -65,7 +65,7 @@ export function PartnerApplyPage() {
   return (
     <div className="mx-auto w-full max-w-3xl space-y-6">
       <OnboardHeader
-        eyebrow="Partner programme"
+        eyebrow="Partner Programme"
         title="Become an iMS partner"
         description="Refer and support iMS customers. Tell us about your organisation — your partner code activates immediately."
       />

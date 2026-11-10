@@ -1,6 +1,4 @@
-import { loadPublicEnv } from "@/shared/lib/env";
-import { apiRequest } from "@/shared/lib/http";
-import { ApiClientError, mapStatusToCode } from "@/shared/lib/http/errors";
+import { apiBlobRequest, apiRequest } from "@/shared/lib/http";
 import type {
   CreateIncidentInput,
   Incident,
@@ -107,39 +105,5 @@ export function setIncidentComplianceLinks(
 }
 
 export async function downloadIncidentsReport(): Promise<Blob> {
-  const env = loadPublicEnv();
-  const correlationId =
-    typeof crypto !== "undefined" && "randomUUID" in crypto
-      ? crypto.randomUUID()
-      : `fe-${Date.now()}`;
-
-  let response: Response;
-  try {
-    response = await fetch(`${env.VITE_API_BASE_URL}/incidents/report`, {
-      method: "GET",
-      headers: {
-        Accept: "text/csv",
-        "x-correlation-id": correlationId,
-      },
-    });
-  } catch (error) {
-    throw new ApiClientError({
-      message: "Network request failed",
-      status: 0,
-      code: "NETWORK_ERROR",
-      details: error instanceof Error ? error.message : undefined,
-      correlationId,
-    });
-  }
-
-  if (!response.ok) {
-    throw new ApiClientError({
-      message: `Unable to download incidents report (${response.status})`,
-      status: response.status,
-      code: mapStatusToCode(response.status),
-      correlationId: response.headers.get("x-correlation-id") ?? correlationId,
-    });
-  }
-
-  return response.blob();
+  return apiBlobRequest("/incidents/report", { accept: "text/csv" });
 }

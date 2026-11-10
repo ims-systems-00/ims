@@ -13,6 +13,7 @@ export {
   getStoredSession,
   setStoredSession,
 } from "./token-store";
+export { clearSessionCaches } from "./clear-session-caches";
 export type { AuthzClient, ClientAuthorizationCheck } from "./authz-client";
 export { ApiAuthzClient } from "./api-authz-client";
 export {

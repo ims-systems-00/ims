@@ -37,6 +37,8 @@ export function useSessionUserQuery(fallbackUserId?: string) {
     queryKey: useMe ? userKeys.me() : userKeys.detail(fallbackUserId ?? ""),
     queryFn: () => (useMe ? getCurrentUser() : getUser(fallbackUserId!)),
     enabled: useMe || Boolean(fallbackUserId),
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 }
 

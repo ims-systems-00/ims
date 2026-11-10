@@ -207,6 +207,25 @@ export type UpdateOrganisationEmailBrandingInput = {
   colors?: OrganisationEmailBrandColors | null;
 };
 
+export type EmailBrandingPreviewTemplateId =
+  | "invitation"
+  | "document-shared"
+  | "campaign-wrap";
+
+export type PreviewOrganisationEmailBrandingInput = {
+  templateId: EmailBrandingPreviewTemplateId;
+  enabled: boolean;
+  themeId?: string | null;
+  colors?: OrganisationEmailBrandColors | null;
+  logoUrl?: string | null;
+};
+
+export type EmailBrandingPreviewResult = {
+  templateId: EmailBrandingPreviewTemplateId;
+  subject: string;
+  html: string;
+};
+
 export type OrganisationProfile = Organisation & {
   membership: OrganisationMembership | null;
 };

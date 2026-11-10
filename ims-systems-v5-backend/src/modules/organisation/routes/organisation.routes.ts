@@ -50,6 +50,10 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   // (POST /api/v1/licence-requests) so every request gets a record.
   router.put("/current/logo", controller.updateLogo);
   router.put("/current/email-branding", controller.updateEmailBranding);
+  router.post(
+    "/current/email-branding/preview",
+    controller.previewEmailBranding
+  );
   router.put(
     "/current/document-review-reminders",
     controller.updateDocumentReviewReminders
