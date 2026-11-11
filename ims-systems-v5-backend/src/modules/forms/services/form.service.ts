@@ -377,8 +377,15 @@ export function createFormService(deps: FormServiceDeps) {
       input: CreateFormSubmissionInput
     ): Promise<FormSubmissionDetail> {
       const actor = requireOrgIdentity(identity);
-      await assertAllowed(actor.identity, "create", formId);
-      await requireForm(actor.organizationId, formId);
+      // Any authenticated org member may submit a published form (share-link model).
+      // Builder CRUD stays on create/update/delete for admins.
+      await assertAllowed(actor.identity, "read", formId);
+      const form = await requireForm(actor.organizationId, formId);
+      if (form.status !== "published") {
+        throw new ValidationAppError(
+          "Only published forms can accept submissions"
+        );
+      }
       const ordered = await elements.listOrdered(actor.organizationId, formId);
       const validIds = new Set(ordered.map((el) => el.id));
       for (const row of input.responses) {

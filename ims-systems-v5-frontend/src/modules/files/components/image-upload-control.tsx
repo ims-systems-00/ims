@@ -19,6 +19,8 @@ type ImageUploadControlProps = {
   uploadPath?: string;
   uploadLabel?: string;
   changeLabel?: string;
+  /** `row` = preview beside actions (default). `column` = actions under preview. */
+  layout?: "row" | "column";
   disabled?: boolean;
   onUploaded: (meta: FileMetaInfo, viewUrl: string) => void | Promise<void>;
   onRemove?: () => void | Promise<void>;
@@ -38,6 +40,7 @@ export function ImageUploadControl({
   uploadPath = "profile",
   uploadLabel = "Upload photo",
   changeLabel = "Change photo",
+  layout = "row",
   disabled = false,
   onUploaded,
   onRemove,
@@ -119,7 +122,12 @@ export function ImageUploadControl({
   }
 
   return (
-    <div className="flex items-center gap-3">
+    <div
+      className={cn(
+        "flex gap-3",
+        layout === "column" ? "flex-col items-stretch" : "items-center"
+      )}
+    >
       <div
         className={cn(
           "relative shrink-0 overflow-hidden bg-primary/10 font-semibold text-primary",
@@ -141,12 +149,23 @@ export function ImageUploadControl({
         ) : null}
       </div>
 
-      <div className="flex flex-col items-start gap-1.5">
-        <div className="flex flex-wrap items-center gap-2">
+      <div
+        className={cn(
+          "flex flex-col gap-1.5",
+          layout === "column" ? "items-stretch" : "items-start"
+        )}
+      >
+        <div
+          className={cn(
+            "flex flex-wrap gap-2",
+            layout === "column" ? "w-full" : "items-center"
+          )}
+        >
           <Button
             type="button"
             size="sm"
             variant="outline"
+            className={cn(layout === "column" && "w-full sm:w-auto")}
             disabled={disabled || isBusy}
             onClick={() => inputRef.current?.click()}
           >
@@ -158,7 +177,10 @@ export function ImageUploadControl({
               type="button"
               size="sm"
               variant="ghost"
-              className="text-destructive hover:text-destructive"
+              className={cn(
+                "text-destructive hover:text-destructive",
+                layout === "column" && "w-full sm:w-auto"
+              )}
               disabled={disabled || isBusy}
               onClick={() => void handleRemove()}
             >
