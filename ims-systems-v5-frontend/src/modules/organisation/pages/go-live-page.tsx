@@ -95,7 +95,7 @@ export function GoLivePage() {
       complianceTools: toolkits,
       additionalModules,
       carbocalc: false,
-      imsforms: false,
+      imsforms: true,
       projectims: false,
     });
     if (!parsed.success) {

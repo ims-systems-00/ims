@@ -169,6 +169,17 @@ services:
       OPEN_AI_MODEL: ${OPEN_AI_MODEL:-gpt-4o-mini}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-openai/gpt-oss-120b}
+      # Stripe (Go Live / licence upgrades). From repo-root .env — backend/.env
+      # is NOT loaded by Compose.
+      STRIPE_ENABLED: ${STRIPE_ENABLED:-false}
+      STRIPE_PRIVATE_KEY: ${STRIPE_PRIVATE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_BU_PRICE: ${STRIPE_BU_PRICE:-}
+      STRIPE_SA_PRICE: ${STRIPE_SA_PRICE:-}
+      STRIPE_USER_PRICE: ${STRIPE_USER_PRICE:-}
+      STRIPE_COMPLIANCE_PRICE: ${STRIPE_COMPLIANCE_PRICE:-}
+      STRIPE_ADD_MODULE_PRICE: ${STRIPE_ADD_MODULE_PRICE:-}
+      STRIPE_SUPPORT_PRICE: ${STRIPE_SUPPORT_PRICE:-}
     volumes:
       - ims_v5_backend_files:/data/local-files
     ports:

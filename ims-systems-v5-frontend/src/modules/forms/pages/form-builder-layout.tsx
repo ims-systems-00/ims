@@ -1,5 +1,15 @@
+import { useState } from "react";
 import { NavLink, Outlet, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Eye, Loader2, Palette, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  Check,
+  Copy,
+  Eye,
+  ExternalLink,
+  Loader2,
+  Palette,
+  Send,
+} from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
 import {
@@ -23,6 +33,10 @@ import {
 } from "../build-form/form-builder-context";
 import { FormBrandPanel } from "../components/form-brand-panel";
 
+function formShareUrl(formId: string): string {
+  return `${window.location.origin}/documents/forms/${formId}/submission`;
+}
+
 const TABS = [
   { to: "build-form", label: "Build Form" },
   { to: "settings", label: "Settings" },
@@ -37,15 +51,32 @@ function BuilderChrome() {
   const updateMutation = useUpdateFormMutation(formId);
   const { preview, setPreview, brandOpen, setBrandOpen } = useFormBuilder();
   const form = formQuery.data;
+  const [copied, setCopied] = useState(false);
+  const isPublished = form?.status === "published";
 
   async function publish() {
     try {
       await updateMutation.mutateAsync({ status: "published" });
-      notify.success("Form published");
+      notify.success("Form published — share link is ready");
     } catch (error) {
       notify.error(
         isApiClientError(error) ? error.message : "Could not publish form"
       );
+    }
+  }
+
+  async function copyShareLink() {
+    if (!isPublished) {
+      notify.error("Publish the form before sharing the link");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(formShareUrl(formId));
+      setCopied(true);
+      notify.success("Share link copied — org members can open and submit");
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      notify.error("Could not copy share link");
     }
   }
 
@@ -103,7 +134,7 @@ function BuilderChrome() {
           <Button
             type="button"
             size="sm"
-            disabled={updateMutation.isPending || form?.status === "published"}
+            disabled={updateMutation.isPending || isPublished}
             onClick={() => void publish()}
           >
             {updateMutation.isPending ? (
@@ -115,11 +146,27 @@ function BuilderChrome() {
           </Button>
           <Button
             type="button"
+            variant="outline"
+            size="sm"
+            disabled={!isPublished}
+            onClick={() => void copyShareLink()}
+          >
+            {copied ? (
+              <Check className="size-4" />
+            ) : (
+              <Copy className="size-4" />
+            )}
+            {copied ? "Copied" : "Copy share link"}
+          </Button>
+          <Button
+            type="button"
             variant="ghost"
             size="sm"
+            disabled={!isPublished}
             onClick={() => navigate(`/documents/forms/${formId}/submission`)}
           >
-            Open submission
+            <ExternalLink className="size-4" />
+            Open fill page
           </Button>
         </div>
       </div>
@@ -183,7 +230,7 @@ export function FormBuilderLayout() {
   if (formQuery.isError || !formQuery.data) {
     return (
       <div className="rounded-md border border-border p-6 text-sm text-muted-foreground">
-        Form not found or IMS Forms is not licensed for this organisation.
+        Form not found, or you do not have access in this organisation.
       </div>
     );
   }

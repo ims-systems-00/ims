@@ -2,7 +2,6 @@
  * IMS Forms application service.
  */
 
-import mongoose from "mongoose";
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
   ForbiddenError,
@@ -10,11 +9,6 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
-import { getOrganisationModel } from "../../organisation/repositories/organisation.model";
-
-function mongooseIsObjectId(value: string): boolean {
-  return mongoose.Types.ObjectId.isValid(value);
-}
 import {
   createUserRepository,
   type UserIdentitySummary,
@@ -123,25 +117,6 @@ export function createFormService(deps: FormServiceDeps) {
     }
   }
 
-  async function assertFormsLicence(organizationId: string): Promise<void> {
-    const Model = getOrganisationModel();
-    const filter = mongooseIsObjectId(organizationId)
-      ? {
-          $or: [
-            { _id: organizationId },
-            { auth0OrganizationId: organizationId },
-          ],
-        }
-      : { auth0OrganizationId: organizationId };
-    const org = await Model.findOne(filter).select({ licences: 1 }).lean();
-    const licences = (org as { licences?: { imsforms?: boolean } } | null)
-      ?.licences;
-    if (!licences?.imsforms) {
-      throw new ForbiddenError(
-        "IMS Forms is not enabled for this organisation"
-      );
-    }
-  }
 
   async function requireForm(
     organizationId: string,
@@ -161,7 +136,6 @@ export function createFormService(deps: FormServiceDeps) {
       query: ListFormsQuery
     ): Promise<PaginatedForms> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read");
       return forms.list(actor.organizationId, query);
     },
@@ -171,7 +145,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<Form> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read", id);
       return requireForm(actor.organizationId, id);
     },
@@ -181,7 +154,6 @@ export function createFormService(deps: FormServiceDeps) {
       input: CreateFormInput
     ): Promise<{ form: Form; elements: FormElement[] }> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "create");
       if (!input.title?.trim()) {
         throw new ValidationAppError("Title is required");
@@ -208,7 +180,6 @@ export function createFormService(deps: FormServiceDeps) {
       input: UpdateFormInput
     ): Promise<Form> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", id);
       await requireForm(actor.organizationId, id);
       const updated = await forms.update(actor.organizationId, id, input);
@@ -221,7 +192,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<void> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "delete", id);
       await requireForm(actor.organizationId, id);
       const ok = await forms.softDelete(actor.organizationId, id);
@@ -233,7 +203,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<Form> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", id);
       const restored = await forms.restore(actor.organizationId, id);
       if (!restored) throw new NotFoundError("Form not found");
@@ -245,7 +214,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<void> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "delete", id);
       await requireForm(actor.organizationId, id, { includeDeleted: true });
       await responses.hardDeleteByForm(actor.organizationId, id);
@@ -260,7 +228,6 @@ export function createFormService(deps: FormServiceDeps) {
       formId: string
     ): Promise<FormElement[]> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read", formId);
       await requireForm(actor.organizationId, formId);
       return elements.listOrdered(actor.organizationId, formId);
@@ -272,7 +239,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<FormElement> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read", formId);
       await requireForm(actor.organizationId, formId);
       const el = await elements.findById(actor.organizationId, formId, id);
@@ -286,7 +252,6 @@ export function createFormService(deps: FormServiceDeps) {
       input: CreateFormElementInput
     ): Promise<FormElement> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", formId);
       await requireForm(actor.organizationId, formId);
       try {
@@ -305,7 +270,6 @@ export function createFormService(deps: FormServiceDeps) {
       input: UpdateFormElementInput
     ): Promise<FormElement> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", formId);
       await requireForm(actor.organizationId, formId);
       const updated = await elements.update(
@@ -325,7 +289,6 @@ export function createFormService(deps: FormServiceDeps) {
       input: ReorderFormElementInput
     ): Promise<FormElement> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", formId);
       await requireForm(actor.organizationId, formId);
       try {
@@ -351,7 +314,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<void> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", formId);
       await requireForm(actor.organizationId, formId);
       const ok = await elements.hardDelete(actor.organizationId, formId, id);
@@ -364,7 +326,6 @@ export function createFormService(deps: FormServiceDeps) {
       query: ListSubmissionsQuery
     ): Promise<PaginatedSubmissions> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read", formId);
       await requireForm(actor.organizationId, formId);
       const page = await submissions.list(actor.organizationId, formId, query);
@@ -378,7 +339,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<FormSubmissionDetail> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read", formId);
       await requireForm(actor.organizationId, formId);
       const submission = await submissions.findById(
@@ -417,9 +377,15 @@ export function createFormService(deps: FormServiceDeps) {
       input: CreateFormSubmissionInput
     ): Promise<FormSubmissionDetail> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
-      await assertAllowed(actor.identity, "create", formId);
-      await requireForm(actor.organizationId, formId);
+      // Any authenticated org member may submit a published form (share-link model).
+      // Builder CRUD stays on create/update/delete for admins.
+      await assertAllowed(actor.identity, "read", formId);
+      const form = await requireForm(actor.organizationId, formId);
+      if (form.status !== "published") {
+        throw new ValidationAppError(
+          "Only published forms can accept submissions"
+        );
+      }
       const ordered = await elements.listOrdered(actor.organizationId, formId);
       const validIds = new Set(ordered.map((el) => el.id));
       for (const row of input.responses) {
@@ -469,7 +435,6 @@ export function createFormService(deps: FormServiceDeps) {
       input: UpdateFormSubmissionInput
     ): Promise<FormSubmissionDetail> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "update", formId);
       await requireForm(actor.organizationId, formId);
       const existing = await submissions.findById(
@@ -508,7 +473,6 @@ export function createFormService(deps: FormServiceDeps) {
       id: string
     ): Promise<void> {
       const actor = requireOrgIdentity(identity);
-      await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "delete", formId);
       await requireForm(actor.organizationId, formId);
       const existing = await submissions.findById(

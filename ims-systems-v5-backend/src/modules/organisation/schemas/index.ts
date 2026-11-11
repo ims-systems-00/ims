@@ -50,7 +50,8 @@ export const goLiveOrganisationBodySchema = z.object({
     .optional()
     .default([]),
   carbocalc: z.boolean().optional().default(false),
-  imsforms: z.boolean().optional().default(false),
+  // IMS Forms is free — always enabled for go-live payloads.
+  imsforms: z.boolean().optional().default(true),
   projectims: z.boolean().optional().default(false),
 });
 

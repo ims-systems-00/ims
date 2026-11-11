@@ -72,7 +72,8 @@ export function transformOrganisation(
       complianceTools: licences.complianceTools ?? [],
       additionalModules: licences.additionalModules ?? [],
       carbocalc: Boolean(licences.carbocalc),
-      imsforms: Boolean(licences.imsforms),
+      // IMS Forms is free for every organisation.
+      imsforms: true,
       projectims: Boolean(licences.projectims),
     },
     paymentSystem: doc.paymentSystem ?? {

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { Link, useParams } from "react-router-dom";
+import { CheckCircle2, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
@@ -11,17 +11,26 @@ import {
 } from "../hooks/use-forms";
 import { getElementDefinition } from "../build-form/registry";
 import { FormLogo } from "../components/form-logo";
-import { formThemeCssVars, normalizeFormTheme, themeImageSrc } from "../lib/form-theme";
+import {
+  formThemeCssVars,
+  normalizeFormTheme,
+  themeImageSrc,
+} from "../lib/form-theme";
 
+/**
+ * Org-member fill page for shared form links.
+ * Requires login + same-org membership (route sits under RequireAuth).
+ * Only published forms accept submissions.
+ */
 export function FormSubmissionPage() {
   const { formId = "" } = useParams();
-  const navigate = useNavigate();
   const formQuery = useFormQuery(formId);
   const elementsQuery = useFormElementsQuery(formId);
   const submitMutation = useCreateFormSubmissionMutation(formId);
   const elements = elementsQuery.data ?? [];
   const [values, setValues] = useState<Record<string, unknown>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitted, setSubmitted] = useState(false);
 
   const theme = useMemo(
     () => normalizeFormTheme(formQuery.data?.theme),
@@ -29,8 +38,13 @@ export function FormSubmissionPage() {
   );
   const coverSrc = themeImageSrc(theme.coverImage);
   const logoAtTop = theme.logoVertical !== "bottom";
+  const isPublished = formQuery.data?.status === "published";
 
   async function submit() {
+    if (!isPublished) {
+      notify.error("Only published forms can accept submissions");
+      return;
+    }
     const nextErrors: Record<string, string> = {};
     for (const el of elements) {
       const def = getElementDefinition(el.type);
@@ -51,7 +65,7 @@ export function FormSubmissionPage() {
         })),
       });
       notify.success("Form submitted");
-      navigate(`/documents/forms/${formId}/response`);
+      setSubmitted(true);
     } catch (error) {
       notify.error(
         isApiClientError(error) ? error.message : "Could not submit form"
@@ -68,20 +82,48 @@ export function FormSubmissionPage() {
   }
 
   if (!formQuery.data) {
-    return <p className="text-sm text-muted-foreground">Form not found.</p>;
+    return (
+      <div className="mx-auto max-w-lg rounded-lg border border-border p-6 text-sm text-muted-foreground">
+        Form not found, or you do not have access in this organisation.
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 rounded-xl border border-border bg-card p-8 text-center">
+        <CheckCircle2 className="mx-auto size-10 text-emerald-600" aria-hidden />
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold">Thank you</h1>
+          <p className="text-sm text-muted-foreground">
+            Your response to <span className="font-medium text-foreground">{formQuery.data.title}</span>{" "}
+            was submitted successfully.
+          </p>
+        </div>
+        <Button asChild variant="outline">
+          <Link to="/documents/forms">Back to forms</Link>
+        </Button>
+      </div>
+    );
+  }
+
+  if (!isPublished) {
+    return (
+      <div className="mx-auto max-w-lg space-y-3 rounded-xl border border-border bg-card p-6">
+        <h1 className="text-lg font-semibold">{formQuery.data.title}</h1>
+        <p className="text-sm text-muted-foreground">
+          This form is not published yet, so it cannot accept submissions.
+          Ask a form owner to publish it, then open the share link again.
+        </p>
+        <Button asChild variant="outline" size="sm">
+          <Link to="/documents/forms">Back to forms</Link>
+        </Button>
+      </div>
+    );
   }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4">
-      <div className="flex items-center gap-2">
-        <Link
-          to={`/documents/forms/${formId}/build-form`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
-        >
-          <ArrowLeft className="size-4" />
-          Back to builder
-        </Link>
-      </div>
       <div
         className="overflow-hidden rounded-xl border border-black/10 shadow-sm"
         style={formThemeCssVars(theme)}

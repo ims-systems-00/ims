@@ -230,7 +230,8 @@ export function FormBrandPanel({
           imageUrl={theme.coverImage?.src}
           alt="Form cover"
           shape="rounded"
-          tileClassName="h-20 w-full max-w-full text-sm"
+          layout="column"
+          tileClassName="h-28 w-full max-w-full text-sm"
           uploadPath="forms"
           uploadLabel="Upload cover"
           changeLabel="Change cover"

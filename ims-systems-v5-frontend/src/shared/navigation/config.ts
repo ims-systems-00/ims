@@ -251,7 +251,7 @@ export function buildNavigationSections(
             href: "/documents/forms",
             icon: ClipboardList,
             // Same as other Documents children so the item is visible whenever
-            // the user can open Documents; API still enforces forms + licence.
+            // the user can open Documents. IMS Forms is free (no licence gate).
             requiredPermission: "document-management:read",
           }
         ],

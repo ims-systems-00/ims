@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ClipboardList,
+  Copy,
   LayoutGrid,
   List,
   Loader2,
@@ -29,6 +30,11 @@ function statusTone(status: FormStatus) {
   if (status === "published") return "success" as const;
   if (status === "archived") return "neutral" as const;
   return "warning" as const;
+}
+
+async function copyFormShareLink(formId: string) {
+  const url = `${window.location.origin}/documents/forms/${formId}/submission`;
+  await navigator.clipboard.writeText(url);
 }
 
 export function FormsLibraryPage() {
@@ -246,16 +252,39 @@ export function FormsLibraryPage() {
                     {new Date(form.updatedAt).toLocaleDateString()}
                   </td>
                   <td className="px-3 py-2 text-right">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() =>
-                        setPendingDelete({ id: form.id, title: form.title })
-                      }
-                    >
-                      <Trash2 className="size-4" />
-                    </Button>
+                    <div className="inline-flex items-center gap-1">
+                      {form.status === "published" ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          title="Copy share link"
+                          onClick={() =>
+                            void copyFormShareLink(form.id)
+                              .then(() =>
+                                notify.success(
+                                  "Share link copied — org members can open and submit"
+                                )
+                              )
+                              .catch(() =>
+                                notify.error("Could not copy share link")
+                              )
+                          }
+                        >
+                          <Copy className="size-4" />
+                        </Button>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() =>
+                          setPendingDelete({ id: form.id, title: form.title })
+                        }
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
                   </td>
                 </tr>
               ))}

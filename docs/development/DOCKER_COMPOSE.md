@@ -38,10 +38,12 @@ Yes — this is supported. Stub was only the safe default. Use Auth0 in Compose 
 cp .env.docker.example .env
 ```
 
-Copy Auth0 values from:
+Copy Auth0 / Stripe values from:
 
-- `ims-systems-v5-backend/.env` → `AUTH0_*`, secrets
+- `ims-systems-v5-backend/.env` → `AUTH0_*`, `STRIPE_*`, secrets
 - `ims-systems-v5-frontend/.env.local` → `VITE_AUTH0_*`
+
+Compose only reads the **repo-root** `.env`. Package-level backend/frontend `.env` files are not mounted into containers.
 
 ### 2. Start infra + bootstrap OpenFGA
 

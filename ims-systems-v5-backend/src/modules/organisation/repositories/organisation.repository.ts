@@ -123,7 +123,8 @@ function toDomain(doc: OrganisationDocument): Organisation {
       complianceTools: [...(licences.complianceTools ?? [])],
       additionalModules: [...(licences.additionalModules ?? [])],
       carbocalc: Boolean(licences.carbocalc),
-      imsforms: Boolean(licences.imsforms),
+      // Free module: missing/falsey historical values still expose as enabled.
+      imsforms: licences.imsforms !== false,
       projectims: Boolean(licences.projectims),
     },
     paymentSystem: {
@@ -210,7 +211,7 @@ export function createOrganisationRepository() {
           complianceTools: [],
           additionalModules: [],
           carbocalc: false,
-          imsforms: false,
+          imsforms: true,
           projectims: false,
         },
         paymentSystem: {
@@ -260,7 +261,7 @@ export function createOrganisationRepository() {
               ...(input.data.additionalModules ?? []),
             ],
             "licences.carbocalc": Boolean(input.data.carbocalc),
-            "licences.imsforms": Boolean(input.data.imsforms),
+            "licences.imsforms": true,
             "licences.projectims": Boolean(input.data.projectims),
             "paymentSystem.type": input.data.paymentType,
             "paymentSystem.status": input.paymentStatus,
@@ -504,7 +505,7 @@ export function createOrganisationRepository() {
               complianceTools: [],
               additionalModules: [],
               carbocalc: false,
-              imsforms: false,
+              imsforms: true,
               projectims: false,
             },
             paymentSystem: {
