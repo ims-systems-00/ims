@@ -62,7 +62,8 @@ const organisationSchema = new Schema(
       complianceTools: { type: [String], default: [] },
       additionalModules: { type: [String], default: [] },
       carbocalc: { type: Boolean, default: false },
-      imsforms: { type: Boolean, default: false },
+      // IMS Forms is free for every organisation.
+      imsforms: { type: Boolean, default: true },
       projectims: { type: Boolean, default: false },
     },
     paymentSystem: {

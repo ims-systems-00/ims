@@ -45,7 +45,7 @@ export const goLiveOrganisationSchema = z.object({
   complianceTools: z.array(z.string().trim().min(1)).optional().default([]),
   additionalModules: z.array(z.string().trim().min(1)).optional().default([]),
   carbocalc: z.boolean().optional().default(false),
-  imsforms: z.boolean().optional().default(false),
+  imsforms: z.boolean().optional().default(true),
   projectims: z.boolean().optional().default(false),
 });
 
