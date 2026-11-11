@@ -133,19 +133,30 @@ export function createdByOn(doc: Record<string, unknown>): {
 }
 
 export function mapOrgRole(role: unknown): string {
-  const r = String(role ?? "Basic").trim();
+  const r = String(role ?? "Basic User").trim();
   const allowed = [
     "Super Admin",
     "Head of Service",
+    "Basic User",
+    "Internal Auditor",
+    "External Auditor",
+    "External User",
     "Basic",
     "Auditor",
   ];
-  if (allowed.includes(r)) return r;
+  if (allowed.includes(r)) {
+    if (r === "Basic") return "Basic User";
+    if (r === "Auditor") return "Internal Auditor";
+    return r;
+  }
   const lower = r.toLowerCase();
   if (lower.includes("super")) return "Super Admin";
   if (lower.includes("head") || lower.includes("hos")) return "Head of Service";
-  if (lower.includes("audit")) return "Auditor";
-  return "Basic";
+  if (lower.includes("external") && lower.includes("audit")) return "External Auditor";
+  if (lower.includes("external")) return "External User";
+  if (lower.includes("audit")) return "Internal Auditor";
+  if (lower.includes("basic")) return "Basic User";
+  return "Basic User";
 }
 
 export function mapEmailVerifiedStatus(status: unknown): string {

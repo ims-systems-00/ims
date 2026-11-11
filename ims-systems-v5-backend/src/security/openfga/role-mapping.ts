@@ -20,6 +20,11 @@ export type OpenFgaOrgPermissionRelation =
 const ROLE_TO_RELATION: Record<OrganisationRole, OpenFgaOrgRoleRelation> = {
   "Super Admin": "super_admin",
   "Head of Service": "head_of_service",
+  "Basic User": "basic",
+  "Internal Auditor": "auditor",
+  "External Auditor": "auditor",
+  "External User": "basic",
+  // Legacy short names still present on some memberships
   Basic: "basic",
   Auditor: "auditor",
 };

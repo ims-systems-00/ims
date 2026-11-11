@@ -15,6 +15,11 @@ import { getOrganisationModel } from "../../organisation/repositories/organisati
 function mongooseIsObjectId(value: string): boolean {
   return mongoose.Types.ObjectId.isValid(value);
 }
+import {
+  createUserRepository,
+  type UserIdentitySummary,
+  type UserRepository,
+} from "../../users";
 import type { FormElementRepository } from "../repositories/form-element.repository";
 import type { FormRepository } from "../repositories/form.repository";
 import type { FormResponseRepository } from "../repositories/form-response.repository";
@@ -26,7 +31,9 @@ import {
   type CreateFormSubmissionInput,
   type Form,
   type FormElement,
+  type FormSubmission,
   type FormSubmissionDetail,
+  type FormSubmissionSubmitter,
   type ListFormsQuery,
   type ListSubmissionsQuery,
   type PaginatedForms,
@@ -56,12 +63,46 @@ export type FormServiceDeps = {
   submissions: FormSubmissionRepository;
   responses: FormResponseRepository;
   authorizer: Authorizer;
+  users?: UserRepository;
 };
 
 export type FormService = ReturnType<typeof createFormService>;
 
+function toSubmitter(
+  summary: UserIdentitySummary | undefined,
+  fallbackId: string
+): FormSubmissionSubmitter {
+  if (!summary) {
+    return { id: fallbackId, name: "Unknown user", email: "" };
+  }
+  return {
+    id: summary.id,
+    name: summary.name || summary.email || "Unknown user",
+    email: summary.email,
+  };
+}
+
 export function createFormService(deps: FormServiceDeps) {
-  const { forms, elements, submissions, responses, authorizer } = deps;
+  const {
+    forms,
+    elements,
+    submissions,
+    responses,
+    authorizer,
+    users = createUserRepository(),
+  } = deps;
+
+  async function attachSubmitters<T extends FormSubmission>(
+    rows: T[]
+  ): Promise<Array<T & { submittedByUser: FormSubmissionSubmitter }>> {
+    const ids = rows.map((row) => row.submittedBy);
+    const summaries = await users.findIdentitySummariesByIds(ids);
+    const byId = new Map(summaries.map((row) => [row.id, row]));
+    return rows.map((row) => ({
+      ...row,
+      submittedByUser: toSubmitter(byId.get(row.submittedBy), row.submittedBy),
+    }));
+  }
 
   async function assertAllowed(
     identity: SecurityIdentity,
@@ -326,7 +367,9 @@ export function createFormService(deps: FormServiceDeps) {
       await assertFormsLicence(actor.organizationId);
       await assertAllowed(actor.identity, "read", formId);
       await requireForm(actor.organizationId, formId);
-      return submissions.list(actor.organizationId, formId, query);
+      const page = await submissions.list(actor.organizationId, formId, query);
+      const items = await attachSubmitters(page.items);
+      return { ...page, items };
     },
 
     async getSubmission(
@@ -344,13 +387,18 @@ export function createFormService(deps: FormServiceDeps) {
         id
       );
       if (!submission) throw new NotFoundError("Submission not found");
-      const [responseRows, orderedElements] = await Promise.all([
+      const [responseRows, orderedElements, enrichedRows] = await Promise.all([
         responses.listBySubmission(actor.organizationId, id),
         elements.listOrdered(actor.organizationId, formId),
+        attachSubmitters([submission]),
       ]);
+      const enriched = enrichedRows[0] ?? {
+        ...submission,
+        submittedByUser: toSubmitter(undefined, submission.submittedBy),
+      };
       const elementById = new Map(orderedElements.map((el) => [el.id, el]));
       return {
-        ...submission,
+        ...enriched,
         responses: responseRows.map((row) => {
           const el = elementById.get(row.formElementId);
           return {
@@ -395,8 +443,13 @@ export function createFormService(deps: FormServiceDeps) {
       );
       await forms.incrementSubmissionCount(actor.organizationId, formId);
       const elementById = new Map(ordered.map((el) => [el.id, el]));
-      return {
+      const enrichedRows = await attachSubmitters([submission]);
+      const enriched = enrichedRows[0] ?? {
         ...submission,
+        submittedByUser: toSubmitter(undefined, submission.submittedBy),
+      };
+      return {
+        ...enriched,
         responses: responseRows.map((row) => {
           const el = elementById.get(row.formElementId);
           return {

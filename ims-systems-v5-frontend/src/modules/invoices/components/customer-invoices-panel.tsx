@@ -21,7 +21,8 @@ const STATUS_VARIANT: Record<InvoiceStatus, "destructive" | "secondary" | "defau
   Paid: "default",
 };
 
-const gbp = (n: number) => `£${n.toFixed(2)}`;
+const gbp = (n: number | null | undefined) =>
+  `£${Number(n ?? 0).toFixed(2)}`;
 
 /**
  * Customer Invoice panel (spec: invoice.md §8) — list, create with
@@ -109,9 +110,11 @@ export function CustomerInvoicesPanel({ customerId }: { customerId: string }) {
           {invoices.map((inv) => (
             <li key={inv.id} className="flex flex-wrap items-center gap-2 px-3 py-2.5">
               <span className="text-sm font-medium">{inv.reference}</span>
-              <Badge variant={STATUS_VARIANT[inv.status]}>{inv.status}</Badge>
+              <Badge variant={STATUS_VARIANT[inv.status] ?? "secondary"}>
+                {inv.status}
+              </Badge>
               <span className="text-sm text-muted-foreground">
-                {gbp(inv.calculations.total)} · due {formatDate(inv.dueDate)}
+                {gbp(inv.calculations?.total)} · due {formatDate(inv.dueDate)}
               </span>
               <span className="ml-auto flex gap-1">
                 {inv.status === "Draft" ? (

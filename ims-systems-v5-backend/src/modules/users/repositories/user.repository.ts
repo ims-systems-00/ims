@@ -99,6 +99,12 @@ export type SoftDeletePayload = {
   email: string;
 };
 
+export type UserIdentitySummary = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export type UserRepository = {
   create: (
     input: ProvisionUserInput & {
@@ -110,6 +116,8 @@ export type UserRepository = {
   ) => Promise<User>;
   findById: (id: string) => Promise<User | null>;
   findByIdIncludingDeleted: (id: string) => Promise<User | null>;
+  /** Batch resolve display identity (includes soft-deleted / inactive users). */
+  findIdentitySummariesByIds: (ids: string[]) => Promise<UserIdentitySummary[]>;
   findByEmail: (email: string) => Promise<User | null>;
   /** Resolve Auth0 `sub` → active IMS user (auth rollout M2+). */
   findByAuth0SubjectId: (auth0SubjectId: string) => Promise<User | null>;
@@ -211,6 +219,32 @@ export function createUserRepository(): UserRepository {
       }
       const doc = await model.findById(id).exec();
       return doc ? toDomain(doc) : null;
+    },
+
+    async findIdentitySummariesByIds(ids) {
+      const unique = [
+        ...new Set(
+          ids.filter((id) => typeof id === "string" && /^[a-fA-F0-9]{24}$/.test(id))
+        ),
+      ];
+      if (unique.length === 0) return [];
+      const docs = await model
+        .find({ _id: { $in: unique } })
+        .select({ name: 1, email: 1, firstName: 1, lastName: 1 })
+        .lean()
+        .exec();
+      return docs.map((doc) => {
+        const name =
+          (typeof doc.name === "string" && doc.name.trim()) ||
+          `${doc.firstName ?? ""} ${doc.lastName ?? ""}`.trim() ||
+          (typeof doc.email === "string" ? doc.email : "") ||
+          String(doc._id);
+        return {
+          id: String(doc._id),
+          name,
+          email: typeof doc.email === "string" ? doc.email : "",
+        };
+      });
     },
 
     async findByEmail(email) {

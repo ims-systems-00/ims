@@ -28,7 +28,7 @@ export function renderPartnershipCodeReady(data: {
     statusChip: { label: "Code ready", tone: "success" },
     title: "Your partner code",
     paragraphs: [
-      `Great news — the partner code for ${data.organisationName} is ready to use.`,
+      `Great news: the partner code for ${data.organisationName} is ready to use.`,
     ],
     codeBlock: { label: "Partner code", value: data.partnerCode },
     meta: [{ label: "Organisation", value: data.organisationName }],
@@ -127,14 +127,14 @@ export function renderGoLiveOnboardSuccess(data: {
   groups: number;
   complianceTools: string[];
 }): RenderedEmail {
-  return renderEmailLayout("Welcome to iMS — your workspace is live", {
+  return renderEmailLayout("Welcome to iMS: your workspace is live", {
     mode: "success",
     eyebrow: "Go live",
     statusChip: { label: "Activated", tone: "success" },
     title: "Your organisation is live",
-    hero: "Welcome aboard — your adoption pack is attached.",
+    hero: "Welcome aboard. Your adoption pack is attached.",
     paragraphs: [
-      "Congratulations — your iMS workspace is active. Use the attached adoption pack and service charter to get your team started.",
+      "Congratulations. Your iMS workspace is active. Use the attached adoption pack and service charter to get your team started.",
     ],
     meta: [
       { label: "Payment", value: data.paymentType },
@@ -163,7 +163,7 @@ export function renderGoLiveInvoiceInternal(data: {
   complianceTools: string[];
 }): RenderedEmail {
   return renderEmailLayout(
-    `New monthly-invoice signup — ${data.organizationId}`,
+    `New monthly-invoice signup: ${data.organizationId}`,
     {
       mode: "internal",
       eyebrow: "Go live · internal",
@@ -200,7 +200,7 @@ export function renderAccountPastDue(data: {
   payUrl?: string;
 }): RenderedEmail {
   return renderEmailLayout(
-    `Payment past due — ${data.organisationName}`,
+    `Payment past due: ${data.organisationName}`,
     {
       mode: "alert",
       eyebrow: "Billing",
@@ -230,7 +230,7 @@ export function renderAccountBlocked(data: {
   organisationName: string;
   reason?: string;
 }): RenderedEmail {
-  return renderEmailLayout(`Account blocked — ${data.organisationName}`, {
+  return renderEmailLayout(`Account blocked: ${data.organisationName}`, {
     mode: "alert",
     eyebrow: "Billing",
     statusChip: { label: "Blocked", tone: "danger" },
@@ -249,14 +249,14 @@ export function renderAccountReactivated(data: {
   organisationName: string;
 }): RenderedEmail {
   return renderEmailLayout(
-    `Account reactivated — ${data.organisationName}`,
+    `Account reactivated: ${data.organisationName}`,
     {
       mode: "success",
       eyebrow: "Billing",
       statusChip: { label: "Reactivated", tone: "success" },
       title: "Your organisation is active again",
       paragraphs: [
-        `Good news — access for ${data.organisationName} has been restored.`,
+        `Good news: access for ${data.organisationName} has been restored.`,
         "You can sign in and continue using iMS as usual.",
       ],
       meta: [{ label: "Organisation", value: data.organisationName }],

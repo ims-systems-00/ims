@@ -2,9 +2,11 @@
  * Real list scopes for auth0-openfga (L-01…L-10).
  *
  * One canonical resolution shared by every module's *ListScopePort:
- *  - Super Admin / Auditor        → { mode: "all" }
- *  - Head of Service / Basic      → own functional units + unassigned
- *  - no membership / other / error → own functional units only (fail closed)
+ *  - Super Admin / Internal|External Auditor (and legacy Auditor)
+ *      → { mode: "all" }
+ *  - Head of Service / Basic User (and legacy Basic)
+ *      → own functional units + unassigned
+ *  - External User / no membership / error → own units only (fail closed)
  *
  * Records store `businessUnitId`; unit memberships store
  * `functionalUnitId`. They are the same id space (business unit =
@@ -45,12 +47,22 @@ export const resolveCanonicalListScope = async (
 ): Promise<CanonicalListScope> => {
   try {
     const role = await sources.findRole(input.organizationId, input.subjectId);
-    if (role === "Super Admin" || role === "Auditor") return { mode: "all" };
+    if (
+      role === "Super Admin" ||
+      role === "Auditor" ||
+      role === "Internal Auditor" ||
+      role === "External Auditor"
+    ) {
+      return { mode: "all" };
+    }
     const unitIds = await sources.listUnitIds(input.organizationId, input.subjectId);
     return {
       mode: "scoped",
       unitIds,
-      includeUnassigned: role === "Head of Service" || role === "Basic",
+      includeUnassigned:
+        role === "Head of Service" ||
+        role === "Basic" ||
+        role === "Basic User",
     };
   } catch {
     // Fail closed: an error must never widen visibility.

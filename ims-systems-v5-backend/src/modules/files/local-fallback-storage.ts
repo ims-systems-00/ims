@@ -80,6 +80,15 @@ export class S3WithLocalFallbackStorage implements ObjectStoragePort {
   async deleteObject(input: { bucket: string; key: string }): Promise<void> {
     await this.forBucket(input.bucket).deleteObject(input);
   }
+
+  async readObject(input: { bucket: string; key: string }): Promise<Buffer> {
+    if (this.prefersLocal(input.bucket)) {
+      return this.local.readObject(input);
+    }
+    throw new Error(
+      `readObject is only available for local buckets (got ${input.bucket})`
+    );
+  }
 }
 
 /**
@@ -136,6 +145,15 @@ export class LocalWithLegacyS3FallbackStorage implements ObjectStoragePort {
 
   async deleteObject(input: { bucket: string; key: string }): Promise<void> {
     await this.forBucket(input.bucket).deleteObject(input);
+  }
+
+  async readObject(input: { bucket: string; key: string }): Promise<Buffer> {
+    if (this.prefersLegacyS3(input.bucket)) {
+      throw new Error(
+        `readObject is not available for legacy S3 buckets (got ${input.bucket})`
+      );
+    }
+    return this.local.readObject(input);
   }
 }
 

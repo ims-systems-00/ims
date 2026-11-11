@@ -1,5 +1,5 @@
 /**
- * Shared V5 transactional email layout — premium branded header + footer + card.
+ * Shared V5 transactional email layout: colorful branded header + body + footer.
  */
 
 import { getActiveEmailBranding } from "./branding";
@@ -32,7 +32,7 @@ function defaultHeroForMode(mode: EmailLayoutInput["mode"]): string | undefined 
     case "receipt":
       return "Here’s a summary of your request.";
     case "alert":
-      return "Important account update — please review.";
+      return "Important account update. Please review.";
     case "success":
       return "You’re all set.";
     case "internal":
@@ -51,9 +51,9 @@ export function renderEmailLayout(
   const paragraphs = input.paragraphs ?? [];
   const closing = input.closing ?? [];
   const footerNote = input.footerNote ?? brand.footerNote;
-  const pageBg = brand.primaryExtraLight || EMAIL_PAGE_BG;
   const preheader = input.preheader ?? input.title;
   const hero = input.hero ?? defaultHeroForMode(mode);
+  const pageBg = brand.primaryExtraLight || EMAIL_PAGE_BG;
 
   const bodyHtml = [
     input.eyebrow ? renderEyebrow(input.eyebrow) : "",
@@ -61,7 +61,7 @@ export function renderEmailLayout(
     renderTitle(input.title),
     mode === "alert" && !input.hero ? renderHeroPanel(defaultHeroForMode("alert")!) : "",
     input.greeting
-      ? `<p style="margin:0 0 16px;font-size:15px;line-height:1.65;color:#334155;">${escapeHtml(input.greeting)}</p>`
+      ? `<p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#334155;">${escapeHtml(input.greeting)}</p>`
       : "",
     ...paragraphs.map(renderParagraph),
     input.meta?.length ? renderMetaList(input.meta) : "",
@@ -90,15 +90,15 @@ export function renderEmailLayout(
   </div>
   <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:${pageBg};">
     <tr>
-      <td align="center" style="padding:36px 16px;">
-        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;background:${EMAIL_CARD_BG};border:1px solid rgba(15,23,42,0.08);border-radius:16px;overflow:hidden;box-shadow:0 22px 48px rgba(15,23,42,0.1);">
+      <td align="center" style="padding:28px 16px;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="max-width:600px;background:${EMAIL_CARD_BG};overflow:hidden;">
           <tr>
             <td>
               ${renderBrandHeader(hero)}
             </td>
           </tr>
           <tr>
-            <td style="padding:34px 34px 14px;font-family:${EMAIL_FONT};color:${EMAIL_TEXT};">
+            <td style="padding:28px 28px 12px;font-family:${EMAIL_FONT};color:${EMAIL_TEXT};background:${EMAIL_CARD_BG};">
               ${bodyHtml}
             </td>
           </tr>
@@ -108,9 +108,6 @@ export function renderEmailLayout(
             </td>
           </tr>
         </table>
-        <p style="margin:18px 0 0;font-family:${EMAIL_FONT};font-size:11px;line-height:1.4;color:#94a3b8;">
-          You’re receiving this email from ${escapeHtml(brand.brandName)}.
-        </p>
       </td>
     </tr>
   </table>

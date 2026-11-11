@@ -35,12 +35,22 @@ export type FormThemeImage = {
   } | null;
 };
 
+export const FORM_LOGO_VERTICAL = ["top", "bottom"] as const;
+export type FormLogoVertical = (typeof FORM_LOGO_VERTICAL)[number];
+
+export const FORM_LOGO_HORIZONTAL = ["left", "center", "right"] as const;
+export type FormLogoHorizontal = (typeof FORM_LOGO_HORIZONTAL)[number];
+
 export type FormTheme = {
   foregroundColor: string;
   backgroundColor: string;
   accentColor: string;
   logo?: FormThemeImage | null;
   coverImage?: FormThemeImage | null;
+  /** Where the logo sits vertically on the form paper. */
+  logoVertical?: FormLogoVertical;
+  /** Horizontal alignment for the logo. */
+  logoHorizontal?: FormLogoHorizontal;
 };
 
 export type Form = {
@@ -73,11 +83,18 @@ export type FormElement = {
   updatedAt: string;
 };
 
+export type FormSubmissionSubmitter = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export type FormSubmission = {
   id: string;
   organizationId: string;
   formId: string;
   submittedBy: string;
+  submittedByUser?: FormSubmissionSubmitter | null;
   collectionName: string | null;
   collectionDocument: string | null;
   deletedAt: string | null;

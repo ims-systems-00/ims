@@ -15,6 +15,16 @@ const formSchema = new Schema(
       foregroundColor: { type: String, default: "#111827" },
       backgroundColor: { type: String, default: "#F9FAFB" },
       accentColor: { type: String, default: "#0F766E" },
+      logoVertical: {
+        type: String,
+        enum: ["top", "bottom"],
+        default: "top",
+      },
+      logoHorizontal: {
+        type: String,
+        enum: ["left", "center", "right"],
+        default: "left",
+      },
       logo: {
         type: {
           src: { type: String },

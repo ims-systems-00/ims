@@ -20,7 +20,7 @@ export function renderDocumentShared(data: {
     ...(data.viewUrl
       ? { cta: { label: "Open document", href: data.viewUrl } }
       : {}),
-    closing: ["Use the secure link above — do not forward it to others."],
+    closing: ["Use the secure link above. Do not forward it to others."],
   });
 }
 

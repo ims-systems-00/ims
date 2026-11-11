@@ -283,8 +283,7 @@ export function GoLivePage() {
               <fieldset className="space-y-2.5">
                 <legend className="text-sm font-medium">Compliance toolkits</legend>
                 <p className="text-[0.75rem] text-muted-foreground">
-                  Optional — each selected standard is licensed and billed per
-                  toolkit.
+                Optional - each selected standard is licensed and billed per toolkit.
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {COMPLIANCE_TOOLKIT_NAMES.map((name) => {
@@ -447,7 +446,7 @@ export function GoLivePage() {
               <p className="rounded-lg bg-surface-muted/60 px-3 py-2.5 text-[0.75rem] leading-relaxed text-muted-foreground">
                 {paymentType === "Card"
                   ? "Next, you'll complete payment securely in Stripe. Your subscription starts when payment succeeds."
-                  : "Your workspace activates immediately. Our accounts team will invoice you monthly."}
+                  : "Complete your payment securely in Stripe. Your subscription starts when payment succeeds."}
               </p>
 
               <Button type="submit" className="w-full" disabled={mutation.isPending}>

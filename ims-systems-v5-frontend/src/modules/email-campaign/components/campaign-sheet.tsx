@@ -213,12 +213,12 @@ export function CampaignSheet({
             mode="edit"
             pending={pending}
             initialValues={{
-              name: campaign.name,
-              businessUnitId: campaign.businessUnitId,
-              target: campaign.target,
-              customAudience: campaign.customAudience,
-              subject: campaign.subject,
-              message: campaign.message,
+              name: campaign.name ?? "",
+              businessUnitId: campaign.businessUnitId ?? "",
+              target: campaign.target ?? [],
+              customAudience: campaign.customAudience ?? [],
+              subject: campaign.subject ?? "",
+              message: campaign.message ?? "",
             }}
             onCancel={() => onModeChange("view")}
             onSubmit={(values, action) =>

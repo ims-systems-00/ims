@@ -11,7 +11,7 @@ export function renderLicenceRequestSupport(
   data: LicenceRequestEmailData
 ): RenderedEmail {
   return renderEmailLayout(
-    `New licence request ${data.reference} — ${data.organisationName}`,
+    `New licence request ${data.reference}: ${data.organisationName}`,
     {
       mode: "internal",
       eyebrow: "Licence request",
@@ -38,7 +38,7 @@ export function renderLicenceRequestReceived(
     statusChip: { label: "Received", tone: "info" },
     title: "We received your licence request",
     paragraphs: [
-      `Thanks — licence request ${data.reference} for ${data.organisationName} is now with our team.`,
+      `Thanks. Licence request ${data.reference} for ${data.organisationName} is now with our team.`,
       "You will receive another email when it has been processed.",
     ],
     meta: [

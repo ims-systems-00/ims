@@ -81,7 +81,9 @@ describe("email templates", () => {
     expect(rendered.html).toContain("Accept invitation");
     expect(rendered.html).toContain("https://app.example.com/accept");
     expect(rendered.html).toContain("Action required");
-    expect(rendered.html).toContain("border-radius:16px");
+    expect(rendered.html).toContain("data:image/png;base64,");
+    expect(rendered.html).toContain(DEFAULT_IMS_EMAIL_BRANDING.primaryDark);
+    expect(rendered.html).not.toContain("linear-gradient");
   });
 
   it("renders document signature request and campaign wrap", () => {
@@ -106,15 +108,18 @@ describe("email templates", () => {
     const defaulted = renderEmail("welcome", { name: "Alex" });
     expect(defaulted.html).toContain("iMS Systems");
     expect(defaulted.html).toContain(DEFAULT_IMS_EMAIL_BRANDING.primary);
-    expect(defaulted.html).toContain("border-radius:16px");
+    expect(defaulted.html).toContain("data:image/png;base64,");
+    expect(defaulted.html).toContain(DEFAULT_IMS_EMAIL_BRANDING.primaryDark);
+    expect(defaulted.html).not.toContain("linear-gradient");
 
     const branded = renderEmail("welcome", { name: "Alex" }, { branding: ORG_BRANDING });
     expect(branded.html).toContain("Acme Care");
     expect(branded.html).toContain("#15803D");
+    expect(branded.html).toContain("#166534");
     expect(branded.html).toContain('src="https://cdn.example.com/logo.png"');
     expect(branded.html).toContain("Powered by iMS Systems");
     expect(branded.html).not.toContain(
-      "iMS Systems — this message was sent automatically"
+      "iMS Systems. This message was sent automatically"
     );
   });
 

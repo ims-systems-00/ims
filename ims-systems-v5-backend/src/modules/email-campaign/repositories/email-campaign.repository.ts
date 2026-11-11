@@ -51,29 +51,30 @@ function toCustomAudience(value: unknown): CustomAudienceEntry[] {
 }
 
 function toDomain(doc: EmailCampaignDocument): EmailCampaign {
-  const sentFrom = doc.sentFrom as SentFrom;
+  const sentFrom = doc.sentFrom as SentFrom | undefined;
   return {
     id: String(doc._id),
     organizationId: doc.organizationId,
-    reference: doc.reference,
-    name: doc.name,
-    businessUnitId: doc.businessUnitId,
+    reference: doc.reference ?? "",
+    name: doc.name ?? "",
+    // Migrated V4 campaigns may omit business unit / content fields.
+    businessUnitId: doc.businessUnitId ?? "",
     target: (doc.target ?? []) as CustomerStage[],
     customAudience: toCustomAudience(doc.customAudience),
-    subject: doc.subject,
-    message: doc.message,
+    subject: doc.subject ?? "",
+    message: doc.message ?? "",
     attachments: toAttachments(doc.attachments),
-    status: doc.status as CampaignStatus,
+    status: (doc.status as CampaignStatus) ?? "Draft",
     closed: Boolean(doc.closed),
     rootCampaign: Boolean(doc.rootCampaign),
-    bundleId: doc.bundleId,
+    bundleId: doc.bundleId ?? "",
     sentFrom: {
       name: sentFrom?.name ?? "",
       email: sentFrom?.email ?? "",
     },
     launchedAt: doc.launchedAt ?? null,
     totalCustomers: doc.totalCustomers ?? 0,
-    createdBy: doc.createdBy,
+    createdBy: doc.createdBy ?? "",
     createdOn: doc.createdOn,
     updatedBy: doc.updatedBy ?? null,
     updatedOn: doc.updatedOn ?? null,

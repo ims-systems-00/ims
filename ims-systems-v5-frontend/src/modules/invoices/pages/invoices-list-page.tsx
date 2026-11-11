@@ -34,7 +34,8 @@ import {
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
 
-const gbp = (n: number) => `£${n.toFixed(2)}`;
+const gbp = (n: number | null | undefined) =>
+  `£${Number(n ?? 0).toFixed(2)}`;
 
 type PendingDelete = { id: string; label: string };
 
@@ -207,7 +208,7 @@ export function InvoicesListPage() {
                     <InvoiceStatusBadge status={inv.status} />
                   </td>
                   <td className="px-4 py-3 tabular-nums">
-                    {gbp(inv.calculations.total)}
+                    {gbp(inv.calculations?.total)}
                   </td>
                   <td className="px-4 py-3">{formatDate(inv.dueDate)}</td>
                   <td className="px-4 py-3">{formatDate(inv.createdOn)}</td>

@@ -1,5 +1,10 @@
 import type { CSSProperties } from "react";
-import type { FormTheme, FormThemeImage } from "../types";
+import type {
+  FormLogoHorizontal,
+  FormLogoVertical,
+  FormTheme,
+  FormThemeImage,
+} from "../types";
 
 export const DEFAULT_FORM_THEME: FormTheme = {
   foregroundColor: "#111827",
@@ -7,7 +12,22 @@ export const DEFAULT_FORM_THEME: FormTheme = {
   accentColor: "#0F766E",
   logo: null,
   coverImage: null,
+  logoVertical: "top",
+  logoHorizontal: "left",
 };
+
+function normalizeLogoVertical(
+  value: FormTheme["logoVertical"] | undefined
+): FormLogoVertical {
+  return value === "bottom" ? "bottom" : "top";
+}
+
+function normalizeLogoHorizontal(
+  value: FormTheme["logoHorizontal"] | undefined
+): FormLogoHorizontal {
+  if (value === "center" || value === "right") return value;
+  return "left";
+}
 
 export function normalizeFormTheme(
   theme?: Partial<FormTheme> | null
@@ -20,6 +40,8 @@ export function normalizeFormTheme(
     accentColor: theme?.accentColor ?? DEFAULT_FORM_THEME.accentColor,
     logo: theme?.logo ?? null,
     coverImage: theme?.coverImage ?? null,
+    logoVertical: normalizeLogoVertical(theme?.logoVertical),
+    logoHorizontal: normalizeLogoHorizontal(theme?.logoHorizontal),
   };
 }
 

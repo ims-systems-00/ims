@@ -197,7 +197,7 @@ export function PartnerDashboardPage() {
     <div className="space-y-5">
       <PageHeader
         title="Partner Programme"
-        description="Your referral code, signup link, and the organisations you've referred to iMS."
+        description="Your referral code, sign-up link, and the organisations you've referred to iMS."
       />
 
       {dashboardQuery.isPending ? (
@@ -258,7 +258,7 @@ export function PartnerDashboardPage() {
                 </h2>
                 <p className="mt-1.5 max-w-md text-sm leading-relaxed text-primary-foreground/80">
                   Share your signup link or partner code. Every organisation
-                  that joins through you appears below, with its licences and
+                  that joins through you appears below, with its licenses and
                   toolkits.
                 </p>
 

@@ -11,5 +11,7 @@ const STATUS_VARIANT: Record<
 };
 
 export function InvoiceStatusBadge({ status }: { status: InvoiceStatus }) {
-  return <Badge variant={STATUS_VARIANT[status]}>{status}</Badge>;
+  return (
+    <Badge variant={STATUS_VARIANT[status] ?? "secondary"}>{status}</Badge>
+  );
 }

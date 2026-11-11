@@ -10,6 +10,7 @@ import {
   useFormQuery,
 } from "../hooks/use-forms";
 import { getElementDefinition } from "../build-form/registry";
+import { FormLogo } from "../components/form-logo";
 import { formThemeCssVars, normalizeFormTheme, themeImageSrc } from "../lib/form-theme";
 
 export function FormSubmissionPage() {
@@ -26,8 +27,8 @@ export function FormSubmissionPage() {
     () => normalizeFormTheme(formQuery.data?.theme),
     [formQuery.data?.theme]
   );
-  const logoSrc = themeImageSrc(theme.logo);
   const coverSrc = themeImageSrc(theme.coverImage);
+  const logoAtTop = theme.logoVertical !== "bottom";
 
   async function submit() {
     const nextErrors: Record<string, string> = {};
@@ -97,13 +98,7 @@ export function FormSubmissionPage() {
           />
         )}
         <div className="space-y-4 p-6">
-          {logoSrc ? (
-            <img
-              src={logoSrc}
-              alt=""
-              className="h-10 w-auto max-w-[180px] object-contain"
-            />
-          ) : null}
+          {logoAtTop ? <FormLogo theme={theme} /> : null}
           <div>
             <h1 className="text-xl font-semibold">{formQuery.data.title}</h1>
             {formQuery.data.description ? (
@@ -130,6 +125,7 @@ export function FormSubmissionPage() {
               </div>
             );
           })}
+          {!logoAtTop ? <FormLogo theme={theme} /> : null}
           <Button
             type="button"
             disabled={submitMutation.isPending}

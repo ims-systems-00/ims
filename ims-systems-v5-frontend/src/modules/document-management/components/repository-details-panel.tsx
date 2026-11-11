@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { StatusBadge } from "@/shared/components/status-badge";
+import { BusinessUnitLabel } from "@/modules/functional-units";
 import type { DocumentRepository, DocumentTreeNode } from "../types";
 import { DOCUMENT_PURPOSE_LABELS } from "../types";
 import { computeRepoReviewDate, formatDocumentDate } from "../lib/format";
@@ -70,9 +71,11 @@ export function RepositoryDetailsPanel({
       </Row>
       <Row label="Privacy">{repository.privacy}</Row>
       <Row label="Business unit">
-        {repository.businessUnitId
-          ? (userNames[repository.businessUnitId] ?? repository.businessUnitId)
-          : "N/A"}
+        {repository.businessUnitId ? (
+          <BusinessUnitLabel id={repository.businessUnitId} />
+        ) : (
+          "N/A"
+        )}
       </Row>
       <Row label="Created Date">
         {formatDocumentDate(repository.createdOn)}

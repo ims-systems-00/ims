@@ -46,7 +46,7 @@ export function renderBugReportConfirmation(
     mode: "receipt",
     eyebrow: "Support",
     statusChip: { label: "Received", tone: "success" },
-    title: "Thanks — we’re looking into it",
+    title: "Thanks. We’re looking into it",
     greeting: `Hi ${data.reporterName},`,
     paragraphs: [
       `We received your report: “${data.title}”.`,

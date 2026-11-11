@@ -8,7 +8,10 @@ export type { UsersRouterDeps } from "./routes/users.routes";
 export { createUsersService } from "./services/users.service";
 export type { UsersService } from "./services/users.service";
 export { createUserRepository } from "./repositories/user.repository";
-export type { UserRepository } from "./repositories/user.repository";
+export type {
+  UserRepository,
+  UserIdentitySummary,
+} from "./repositories/user.repository";
 export {
   DevAllActiveUsersMembershipAdapter,
   NoOpComplianceToolkitAdapter,

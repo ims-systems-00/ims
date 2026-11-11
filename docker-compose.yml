@@ -107,6 +107,8 @@ services:
       # Do not use the Docker hostname `backend` — the browser cannot resolve it.
       FILES_LOCAL_PUBLIC_BASE_URL: ${FILES_LOCAL_PUBLIC_BASE_URL:-http://localhost:7864}
       FILES_LOCAL_SIGNING_SECRET: ${FILES_LOCAL_SIGNING_SECRET:-dev-local-files-signing-secret}
+      # Form builder / brand images use x-file-path "forms".
+      ALLOWED_FILE_PATHS: ${ALLOWED_FILE_PATHS:-agenda,audit_attachments,contract,inventory_software_attachments,minutes,sla,general,onboarding,isoEvidence,profile,cqcReport,cqcEvidence,risks,cips,tasks,incidents,crms,staffwallet,forms}
       AWS_PRIVATE_BUCKET: ${AWS_PRIVATE_BUCKET:-ims-v5-local-demo}
       # Optional: V4 S3 credentials so migrated document previews work while
       # FILES_PROVIDER=local (new uploads stay on disk).

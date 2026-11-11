@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { computeInvoice } from "../services/calculations";
 import type { Invoice } from "../types";
 
 export type InvoiceDocument = mongoose.Document & {
@@ -90,6 +91,32 @@ export const InvoiceCounterModel =
   mongoose.model("InvoiceCounter", counterSchema, "invoice_counters");
 
 export function toInvoice(doc: InvoiceDocument): Invoice {
+  const rawEntries = doc.entries ?? [];
+  const discount = Number(doc.calculations?.discount ?? 0);
+  const needsRecompute =
+    doc.calculations?.total == null ||
+    doc.calculations?.vatFigure == null ||
+    rawEntries.some((e) => e.vatFigure == null || e.subtotal == null);
+
+  const { entries, calculations } = needsRecompute
+    ? computeInvoice(
+        rawEntries.map((e) => ({
+          item: e.item,
+          unitPrice: Number(e.unitPrice ?? 0),
+          units: Number(e.units ?? 0),
+          vatRate: Number(e.vatRate ?? 0),
+        })),
+        discount,
+      )
+    : {
+        entries: rawEntries.map((e) => ({ ...e })),
+        calculations: {
+          total: doc.calculations.total,
+          vatFigure: doc.calculations.vatFigure,
+          discount,
+        },
+      };
+
   return {
     id: String(doc._id),
     number: doc.number,
@@ -101,8 +128,8 @@ export function toInvoice(doc: InvoiceDocument): Invoice {
     accountManagerId: doc.accountManagerId ?? null,
     status: doc.status as Invoice["status"],
     dueDate: doc.dueDate,
-    entries: (doc.entries ?? []).map((e) => ({ ...e })),
-    calculations: { ...doc.calculations },
+    entries,
+    calculations,
     emails: (doc.emails ?? []).map((e) => ({ name: e.name, email: e.email })),
     createdBy: doc.createdBy,
     createdOn: doc.createdOn,

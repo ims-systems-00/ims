@@ -8,10 +8,16 @@
  * the emailed link.
  */
 
-import type { OrganisationRole } from "../../organisation/types";
+import type {
+  InvitableOrganisationRole,
+  OrganisationRole,
+} from "../../organisation/types";
 
-export { ORGANISATION_ROLES } from "../../organisation/types";
-export type { OrganisationRole };
+export {
+  ORGANISATION_ROLES,
+  INVITABLE_ORGANISATION_ROLES,
+} from "../../organisation/types";
+export type { InvitableOrganisationRole, OrganisationRole };
 
 /** Computed from `expiresAt` — no status column is stored. */
 export type InvitationStatus = "Pending" | "Expired";
@@ -40,7 +46,7 @@ export type InvitationView = Invitation & {
 
 export type CreateInvitationInput = {
   email: string;
-  role: OrganisationRole;
+  role: InvitableOrganisationRole;
 };
 
 export type ListInvitationsQuery = {

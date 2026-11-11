@@ -2,6 +2,7 @@ export { UsersListPage } from "./pages/users-list-page";
 export { MyProfilePage } from "./pages/my-profile-page";
 export { UserDetailsSheet } from "./components/user-details-sheet";
 export { UserDetailsContent } from "./components/user-details-content";
+export { UserLabel } from "./components/user-label";
 export {
   listUsers,
   getUser,

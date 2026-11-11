@@ -233,12 +233,17 @@ export function FormBuilderProvider({
         updateMutation.isPending ||
         deleteMutation.isPending ||
         reorderMutation.isPending,
-      async addElement(type, afterElementId = null) {
+      async addElement(type, afterElementId) {
         const def = getElementDefinition(type);
+        // Default: append after the last element. Explicit null still means prepend.
+        const resolvedAfterId =
+          afterElementId === undefined
+            ? (elements[elements.length - 1]?.id ?? null)
+            : afterElementId;
         await createMutation.mutateAsync({
           type,
           attributes: def?.defaultAttributes ?? { label: type },
-          afterElementId,
+          afterElementId: resolvedAfterId,
         });
       },
       async updateElement(id, attributes) {

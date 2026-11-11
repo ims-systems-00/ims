@@ -16,7 +16,7 @@ const stored: Invitation = {
   id: "inv-1",
   organizationId: ORG_ID,
   email: "new@acme.example",
-  role: "Basic",
+  role: "Basic User",
   createdBy: "admin-1",
   inviterName: "Admin One",
   organisationName: "Acme Ltd",
@@ -123,13 +123,13 @@ describe("createInvitationService", () => {
 
     const result = await service.create(admin, {
       email: "New@Acme.example",
-      role: "Basic",
+      role: "Basic User",
     });
 
     expect(result.email).toBe("new@acme.example");
     expect(result.status).toBe("Pending");
     expect(repository.create).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "new@acme.example", role: "Basic" })
+      expect.objectContaining({ email: "new@acme.example", role: "Basic User" })
     );
     expect(sent).toHaveLength(1);
     expect(sent[0]?.to).toBe("new@acme.example");
@@ -147,25 +147,25 @@ describe("createInvitationService", () => {
       repository: fakeRepository(stored),
     });
     await expect(
-      duplicate.service.create(admin, { email: stored.email, role: "Basic" })
+      duplicate.service.create(admin, { email: stored.email, role: "Basic User" })
     ).rejects.toThrow("already invited");
 
     const member = makeService({
       existingUser: { id: "user-9", email: stored.email, name: "Existing" },
-      members: [{ userId: "user-9", role: "Basic" }],
+      members: [{ userId: "user-9", role: "Basic User" }],
     });
     await expect(
-      member.service.create(admin, { email: stored.email, role: "Basic" })
+      member.service.create(admin, { email: stored.email, role: "Basic User" })
     ).rejects.toThrow("already is a member");
   });
 
   it("blocks invites when the configured licence seats are taken", async () => {
     const { service } = makeService({
       allocatedUsers: 1,
-      members: [{ userId: "user-1", role: "Basic" }],
+      members: [{ userId: "user-1", role: "Basic User" }],
     });
     await expect(
-      service.create(admin, { email: "other@acme.example", role: "Basic" })
+      service.create(admin, { email: "other@acme.example", role: "Basic User" })
     ).rejects.toThrow("No available licences");
   });
 
@@ -208,11 +208,11 @@ describe("createInvitationService", () => {
     expect(result).toEqual({
       organizationId: ORG_ID,
       organisationName: "Acme Ltd",
-      role: "Basic",
+      role: "Basic User",
       userId: "user-9",
     });
     expect(membershipsCreated).toEqual([
-      { organizationId: ORG_ID, userId: "user-9", role: "Basic" },
+      { organizationId: ORG_ID, userId: "user-9", role: "Basic User" },
     ]);
     expect(projected).toHaveLength(1);
     expect(repository.remove).toHaveBeenCalledWith(stored.id);

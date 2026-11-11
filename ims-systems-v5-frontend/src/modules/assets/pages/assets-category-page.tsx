@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Eye, Loader2, Package, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
@@ -10,6 +10,7 @@ import { SearchInput } from "@/shared/components/search-input";
 import { PageHeader } from "@/shared/layout";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { UserLabel } from "@/modules/users";
 import {
   CategoryMultiFilter,
   ModuleViewTabs,
@@ -372,11 +373,17 @@ function columnsFor(category: AssetCategory): string[] {
   }
 }
 
-function rowCells(category: AssetCategory, asset: AnyAsset): string[] {
+function rowCells(category: AssetCategory, asset: AnyAsset): ReactNode[] {
   switch (category) {
     case "hardware": {
       const a = asset as HardwareAsset;
-      return [a.reference, a.name, a.tag ?? "—", a.ownerId, String(a.cost)];
+      return [
+        a.reference,
+        a.name,
+        a.tag ?? "—",
+        <UserLabel key="owner" userId={a.ownerId} />,
+        String(a.cost),
+      ];
     }
     case "software": {
       const a = asset as SoftwareAsset;
@@ -409,7 +416,7 @@ function rowCells(category: AssetCategory, asset: AnyAsset): string[] {
         assetDisplayName(a),
         a.informationInventory ?? "—",
         a.storageLocation ?? "—",
-        a.ownerId ?? "—",
+        <UserLabel key="owner" userId={a.ownerId} />,
       ];
     }
   }

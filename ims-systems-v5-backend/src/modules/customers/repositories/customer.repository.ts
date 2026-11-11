@@ -224,6 +224,10 @@ export type CustomerRepository = {
     id: string,
     options?: { includeDeleted?: boolean }
   ) => Promise<Customer | null>;
+  findNamesByIds: (
+    organizationId: string,
+    ids: string[]
+  ) => Promise<Map<string, string>>;
   list: (
     organizationId: string,
     query: ListCustomersQuery,
@@ -292,6 +296,19 @@ export function createCustomerRepository(): CustomerRepository {
       if (!options.includeDeleted) filter.deletedAt = null;
       const doc = await model.findOne(filter).exec();
       return doc ? toDomain(doc) : null;
+    },
+
+    async findNamesByIds(organizationId, ids) {
+      const unique = [...new Set(ids.filter(Boolean))];
+      if (unique.length === 0) return new Map();
+      const docs = await model
+        .find({ organizationId, _id: { $in: unique } })
+        .select({ name: 1 })
+        .lean()
+        .exec();
+      return new Map(
+        docs.map((doc) => [String(doc._id), String(doc.name ?? "").trim()])
+      );
     },
 
     async list(organizationId, query, scope) {

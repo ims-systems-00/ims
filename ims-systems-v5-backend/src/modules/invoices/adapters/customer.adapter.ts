@@ -10,7 +10,9 @@ export function createInvoiceCustomerAdapter(): InvoiceCustomerPort {
   const customers = createCustomerRepository();
   return {
     async getCustomer(organizationId, customerId) {
-      const c = await customers.findById(organizationId, customerId);
+      const c = await customers.findById(organizationId, customerId, {
+        includeDeleted: true,
+      });
       if (!c) return null;
       return {
         id: c.id,
@@ -22,6 +24,9 @@ export function createInvoiceCustomerAdapter(): InvoiceCustomerPort {
         secondaryContact: c.secondaryContact ?? null,
         secondaryEmail: c.secondaryEmail ?? null,
       };
+    },
+    async getCustomerNamesByIds(organizationId, customerIds) {
+      return customers.findNamesByIds(organizationId, customerIds);
     },
   };
 }
