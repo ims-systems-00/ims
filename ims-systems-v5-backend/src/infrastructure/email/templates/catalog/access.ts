@@ -77,7 +77,7 @@ export function renderEmailVerification(data: { name: string }): RenderedEmail {
 }
 
 export function renderRegisterInterestConfirmation(): RenderedEmail {
-  return renderEmailLayout("Interest registered — Carbon Calculator", {
+  return renderEmailLayout("Interest registered: Carbon Calculator", {
     mode: "success",
     eyebrow: "Carbo-Calc",
     statusChip: { label: "Registered", tone: "success" },

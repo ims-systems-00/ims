@@ -1,6 +1,8 @@
 /**
- * Email brand context — default iMS Systems, or organisation-customised.
+ * Email brand context: default iMS Systems, or organisation-customised.
  */
+
+import { DEFAULT_IMS_EMAIL_LOGO_DATA_URI } from "./default-logo";
 
 export type EmailBrandColors = {
   primary: string;
@@ -39,9 +41,10 @@ export const DEFAULT_IMS_BRAND_COLORS: EmailBrandColors = {
 export const DEFAULT_IMS_EMAIL_BRANDING: EmailBranding = {
   brandName: "iMS Systems",
   ...DEFAULT_IMS_BRAND_COLORS,
-  logoUrl: null,
+  /** Embedded PNG so Mailtrap / offline previews show a logo without a public CDN. */
+  logoUrl: DEFAULT_IMS_EMAIL_LOGO_DATA_URI,
   footerNote:
-    "iMS Systems — this message was sent automatically. Please do not reply unless instructed.",
+    "iMS Systems. This message was sent automatically. Please do not reply unless instructed.",
 };
 
 const HEX_RE = /^#([0-9a-fA-F]{6})$/;
@@ -123,12 +126,14 @@ export function resolveOrganisationEmailBranding(org: {
     return DEFAULT_IMS_EMAIL_BRANDING;
   }
   const name = org.name.trim() || "Organisation";
-  const logoUrl = org.logoSrc?.trim() ? org.logoSrc.trim() : null;
+  const logoUrl = org.logoSrc?.trim()
+    ? org.logoSrc.trim()
+    : DEFAULT_IMS_EMAIL_BRANDING.logoUrl;
   return {
     brandName: name,
     ...settings.colors,
     logoUrl,
-    footerNote: `${name} — this message was sent via iMS Systems. Please do not reply unless instructed.`,
+    footerNote: `${name}. This message was sent via iMS Systems. Please do not reply unless instructed.`,
   };
 }
 

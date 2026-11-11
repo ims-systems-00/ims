@@ -26,19 +26,21 @@ import { formatDate } from "@/shared/lib/format-date";
 
 type PendingDelete = { id: string; label: string };
 
-function CreatorCell({ userId }: { userId: string }) {
-  const query = useUserQuery(userId, Boolean(userId));
+function CreatorCell({ userId }: { userId?: string | null }) {
+  const query = useUserQuery(userId ?? "", Boolean(userId));
+  const fallback = userId ? userId.slice(0, 8) : "—";
   return (
-    <span className="truncate">
-      {query.data?.user.name ?? userId.slice(0, 8)}
-    </span>
+    <span className="truncate">{query.data?.user.name ?? fallback}</span>
   );
 }
 
-function UnitCell({ unitId }: { unitId: string }) {
+function UnitCell({ unitId }: { unitId?: string | null }) {
   const unitsQuery = useFunctionalUnitsQuery({ page: 1, pageSize: 100 });
-  const name = unitsQuery.data?.items.find((u) => u.id === unitId)?.name;
-  return <span className="truncate">{name ?? unitId.slice(0, 8)}</span>;
+  const name = unitId
+    ? unitsQuery.data?.items.find((u) => u.id === unitId)?.name
+    : undefined;
+  const fallback = unitId ? unitId.slice(0, 8) : "—";
+  return <span className="truncate">{name ?? fallback}</span>;
 }
 
 /**
@@ -250,7 +252,7 @@ export function EmailCampaignsListPage() {
                     {campaign.subject}
                   </td>
                   <td className="max-w-[10rem] truncate px-4 py-3">
-                    {campaign.target.length > 0
+                    {(campaign.target?.length ?? 0) > 0
                       ? campaign.target.join(", ")
                       : "—"}
                   </td>

@@ -18,12 +18,18 @@ const sources = (role: string | null, units: string[] = []): ListScopeSources =>
 const input = { organizationId: "org1", subjectId: "user1" };
 
 describe("resolveCanonicalListScope (L-01…L-10)", () => {
-  it("Super Admin and Auditor see everything", async () => {
+  it("Super Admin and auditor roles see everything", async () => {
     expect(await resolveCanonicalListScope(sources("Super Admin"), input)).toEqual({ mode: "all" });
     expect(await resolveCanonicalListScope(sources("Auditor"), input)).toEqual({ mode: "all" });
+    expect(await resolveCanonicalListScope(sources("Internal Auditor"), input)).toEqual({
+      mode: "all",
+    });
+    expect(await resolveCanonicalListScope(sources("External Auditor"), input)).toEqual({
+      mode: "all",
+    });
   });
 
-  it("Head of Service / Basic are scoped to their units + unassigned", async () => {
+  it("Head of Service / Basic User are scoped to their units + unassigned", async () => {
     expect(await resolveCanonicalListScope(sources("Head of Service", ["u1", "u2"]), input)).toEqual({
       mode: "scoped",
       unitIds: ["u1", "u2"],
@@ -34,9 +40,19 @@ describe("resolveCanonicalListScope (L-01…L-10)", () => {
       unitIds: ["u1"],
       includeUnassigned: true,
     });
+    expect(await resolveCanonicalListScope(sources("Basic User", ["u1"]), input)).toEqual({
+      mode: "scoped",
+      unitIds: ["u1"],
+      includeUnassigned: true,
+    });
   });
 
-  it("no membership is scoped to units only, without unassigned", async () => {
+  it("External User / no membership are scoped without unassigned", async () => {
+    expect(await resolveCanonicalListScope(sources("External User", ["u9"]), input)).toEqual({
+      mode: "scoped",
+      unitIds: ["u9"],
+      includeUnassigned: false,
+    });
     expect(await resolveCanonicalListScope(sources(null, ["u9"]), input)).toEqual({
       mode: "scoped",
       unitIds: ["u9"],

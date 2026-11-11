@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Loader2 } from "lucide-react";
+import { BusinessUnitLabel } from "@/modules/functional-units";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
-import { useUserQuery } from "@/modules/users/hooks/use-users";
+import { UserLabel } from "@/modules/users";
 import type { BusinessPremise } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
 
@@ -20,20 +21,6 @@ function Item({
   );
 }
 
-function CreatorLabel({ userId }: { userId: string }) {
-  const isObjectId = /^[a-fA-F0-9]{24}$/.test(userId);
-  const query = useUserQuery(userId, isObjectId);
-  if (!isObjectId) {
-    return <span className="truncate">{userId}</span>;
-  }
-  if (query.isLoading) {
-    return <span className="text-muted-foreground">Loading…</span>;
-  }
-  return (
-    <span className="truncate">{query.data?.user.name ?? userId.slice(0, 8)}</span>
-  );
-}
-
 type BusinessPremiseDetailsProps = {
   premise: BusinessPremise;
 };
@@ -47,7 +34,7 @@ export function BusinessPremiseDetails({ premise }: BusinessPremiseDetailsProps)
     );
     return premise.functionalUnitIds.map((id) => ({
       id,
-      name: byId.get(id)?.name ?? id.slice(0, 8),
+      name: byId.get(id)?.name ?? null,
       location: byId.get(id)?.operatingLocation,
     }));
   }, [premise.functionalUnitIds, unitsQuery.data]);
@@ -86,7 +73,9 @@ export function BusinessPremiseDetails({ premise }: BusinessPremiseDetailsProps)
                 key={unit.id}
                 className="rounded-sm border border-border-subtle px-3 py-2 text-sm"
               >
-                <p className="font-medium">{unit.name}</p>
+                <p className="font-medium">
+                  {unit.name ?? <BusinessUnitLabel id={unit.id} />}
+                </p>
                 {unit.location ? (
                   <p className="text-[0.75rem] text-muted-foreground">
                     {unit.location}
@@ -105,7 +94,7 @@ export function BusinessPremiseDetails({ premise }: BusinessPremiseDetailsProps)
         <dl className="ims-detail-grid">
           <Item
             label="Created by"
-            value={<CreatorLabel userId={premise.createdBy} />}
+            value={<UserLabel userId={premise.createdBy} />}
           />
           <Item label="Created" value={formatDate(premise.createdOn)} />
           <Item label="Updated" value={formatDate(premise.updatedOn)} />

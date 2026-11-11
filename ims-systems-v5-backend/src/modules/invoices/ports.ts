@@ -22,6 +22,11 @@ export interface InvoiceCustomerPort {
     organizationId: string,
     customerId: string,
   ): Promise<InvoiceCustomerSnapshot | null>;
+  /** Batch name lookup (includes soft-deleted customers). */
+  getCustomerNamesByIds(
+    organizationId: string,
+    customerIds: string[],
+  ): Promise<Map<string, string>>;
 }
 
 export interface InvoiceMailerPort {

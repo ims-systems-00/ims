@@ -1,5 +1,7 @@
 import type { ReactNode } from "react";
 import { CategoryLabel } from "@/modules/tags-and-categories";
+import { UserLabel } from "@/modules/users";
+import { BusinessUnitLabel } from "@/modules/functional-units";
 import { formatDate, formatDateTime } from "@/shared/lib/format-date";
 import type {
   AnyAsset,
@@ -37,7 +39,10 @@ export function AssetDetails({
   return (
     <dl className="ims-detail-grid">
       <Item label="Reference" value={asset.reference} />
-      <Item label="Business unit" value={asset.businessUnitId} />
+      <Item
+        label="Business unit"
+        value={<BusinessUnitLabel id={asset.businessUnitId} />}
+      />
       <Item
         label="Category"
         value={
@@ -74,7 +79,7 @@ function HardwareDetails({ asset }: { asset: HardwareAsset }) {
     <>
       <Item label="Name" value={asset.name} />
       <Item label="Tag" value={asset.tag} />
-      <Item label="Owner" value={asset.ownerId} />
+      <Item label="Owner" value={<UserLabel userId={asset.ownerId} />} />
       <Item
         label="Assigned"
         value={
@@ -147,7 +152,7 @@ function InformationDetails({ asset }: { asset: InformationAsset }) {
       <Item label="Inventory" value={asset.informationInventory} />
       <Item label="Format" value={asset.format} />
       <Item label="Storage" value={asset.storageLocation} />
-      <Item label="Owner" value={asset.ownerId} />
+      <Item label="Owner" value={<UserLabel userId={asset.ownerId} />} />
       <Item label="Link" value={asset.link} />
     </>
   );

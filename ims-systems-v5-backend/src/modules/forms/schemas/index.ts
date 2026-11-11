@@ -25,6 +25,8 @@ const themeSchema = z.object({
   accentColor: z.string().trim().min(1).max(32).optional(),
   logo: themeImageSchema.optional(),
   coverImage: themeImageSchema.optional(),
+  logoVertical: z.enum(["top", "bottom"]).optional(),
+  logoHorizontal: z.enum(["left", "center", "right"]).optional(),
 });
 
 const elementSeedSchema = z.object({

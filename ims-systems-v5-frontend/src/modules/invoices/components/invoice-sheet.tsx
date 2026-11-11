@@ -24,7 +24,8 @@ import {
 } from "../hooks/use-invoices";
 import { InvoiceStatusBadge } from "./invoice-status-badge";
 
-const gbp = (n: number) => `£${n.toFixed(2)}`;
+const gbp = (n: number | null | undefined) =>
+  `£${Number(n ?? 0).toFixed(2)}`;
 
 export type InvoiceSheetMode = "create" | "view";
 

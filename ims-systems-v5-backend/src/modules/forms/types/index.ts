@@ -41,12 +41,20 @@ export type FormThemeImage = {
   } | null;
 };
 
+export const FORM_LOGO_VERTICAL = ["top", "bottom"] as const;
+export type FormLogoVertical = (typeof FORM_LOGO_VERTICAL)[number];
+
+export const FORM_LOGO_HORIZONTAL = ["left", "center", "right"] as const;
+export type FormLogoHorizontal = (typeof FORM_LOGO_HORIZONTAL)[number];
+
 export type FormTheme = {
   foregroundColor: string;
   backgroundColor: string;
   accentColor: string;
   logo?: FormThemeImage | null;
   coverImage?: FormThemeImage | null;
+  logoVertical?: FormLogoVertical;
+  logoHorizontal?: FormLogoHorizontal;
 };
 
 export type Form = {
@@ -79,11 +87,19 @@ export type FormElement = {
   updatedAt: Date;
 };
 
+export type FormSubmissionSubmitter = {
+  id: string;
+  name: string;
+  email: string;
+};
+
 export type FormSubmission = {
   id: string;
   organizationId: string;
   formId: string;
   submittedBy: string;
+  /** Resolved display identity for `submittedBy` when available. */
+  submittedByUser?: FormSubmissionSubmitter | null;
   collectionName: string | null;
   collectionDocument: string | null;
   deletedAt: Date | null;

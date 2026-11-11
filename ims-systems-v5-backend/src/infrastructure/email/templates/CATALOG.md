@@ -2,9 +2,9 @@
 
 Code-owned TypeScript templates under `infrastructure/email/templates`. Modules call `renderEmail(id, data, { branding? })` or `renderEmailForOrganisation(...)` and pass the result to `EmailSystem`. There is no admin CMS for email **content**.
 
-**Branding:** every template shares one premium header + footer. Default brand is iMS Systems. Organisations set logo + hex/presets under **My organisation → Customise email** (`PUT /organisations/current/logo` + `PUT /organisations/current/email-branding`). Preview drafts with `POST /organisations/current/email-branding/preview`. At send time, logo URLs are freshly signed from `logoStorage` when available (≈14-day TTL — live deploys need a public HTTPS `FILES_LOCAL_PUBLIC_BASE_URL` or S3).
+**Branding:** every template shares a colorful brand header (dark brand band for the logo) + tinted page/footer accents (no gradients). Default brand is iMS Systems with an embedded PNG logo so Mailtrap / offline previews always show an image. Organisations set logo + hex/presets under **My organisation → Customise email** (`PUT /organisations/current/logo` + `PUT /organisations/current/email-branding`). Preview drafts with `POST /organisations/current/email-branding/preview`. At send time, public HTTPS logo URLs are preferred; local/dev signed URLs are inlined as data URIs so sandboxes can render them.
 
-**Layout modes:** `invite` | `action` | `receipt` | `alert` | `success` | `internal` | `default` — purpose chrome on a shared brand-token design system.
+**Layout modes:** `invite` | `action` | `receipt` | `alert` | `success` | `internal` | `default`. Purpose chrome on a shared brand-token design system.
 
 Preview locally:
 

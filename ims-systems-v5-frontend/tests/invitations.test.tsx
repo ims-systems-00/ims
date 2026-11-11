@@ -44,7 +44,7 @@ const invitationFixture = {
   id: "inv-1",
   organizationId: "org-1",
   email: "invited@example.com",
-  role: "Basic" as const,
+  role: "Basic User" as const,
   createdBy: "admin-1",
   inviterName: "Admin One",
   organisationName: "Acme Ltd",
@@ -171,7 +171,7 @@ describe("AcceptInvitationPage", () => {
     const user = userEvent.setup();
     api.getInvitationPreview.mockResolvedValue({
       email: "invited@example.com",
-      role: "Basic",
+      role: "Basic User",
       organizationId: "org-1",
       organisationName: "Acme Ltd",
       inviterName: "Admin One",
@@ -181,7 +181,7 @@ describe("AcceptInvitationPage", () => {
     api.acceptInvitation.mockResolvedValue({
       organizationId: "org-1",
       organisationName: "Acme Ltd",
-      role: "Basic",
+      role: "Basic User",
       userId: "user-1",
     });
 
@@ -219,7 +219,7 @@ describe("AcceptInvitationPage", () => {
   it("prompts registration when the invitee has no account", async () => {
     api.getInvitationPreview.mockResolvedValue({
       email: "invited@example.com",
-      role: "Basic",
+      role: "Basic User",
       organizationId: "org-1",
       organisationName: "Acme Ltd",
       inviterName: "Admin One",

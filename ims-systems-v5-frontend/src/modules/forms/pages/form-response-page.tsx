@@ -8,6 +8,7 @@ import {
   useFormSubmissionsQuery,
 } from "../hooks/use-forms";
 import { getElementDefinition } from "../build-form/registry";
+import { FormLogo } from "../components/form-logo";
 import { formThemeCssVars, normalizeFormTheme, themeImageSrc } from "../lib/form-theme";
 
 export function FormResponsePage() {
@@ -23,8 +24,8 @@ export function FormResponsePage() {
     () => normalizeFormTheme(formQuery.data?.theme),
     [formQuery.data?.theme]
   );
-  const logoSrc = themeImageSrc(theme.logo);
   const coverSrc = themeImageSrc(theme.coverImage);
+  const logoAtTop = theme.logoVertical !== "bottom";
 
   const items = listQuery.data?.items ?? [];
 
@@ -55,7 +56,13 @@ export function FormResponsePage() {
                     {new Date(row.createdAt).toLocaleString()}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    by {row.submittedBy.slice(0, 12)}…
+                    by{" "}
+                    {row.submittedByUser?.name?.trim() ||
+                      row.submittedByUser?.email?.trim() ||
+                      "Unknown user"}
+                    {row.submittedByUser?.email
+                      ? ` · ${row.submittedByUser.email}`
+                      : ""}
                   </div>
                 </button>
               </li>
@@ -88,13 +95,27 @@ export function FormResponsePage() {
               />
             ) : null}
             <div className="space-y-4 p-4">
-              {logoSrc ? (
-                <img
-                  src={logoSrc}
-                  alt=""
-                  className="h-8 w-auto max-w-[140px] object-contain"
+              {logoAtTop ? (
+                <FormLogo
+                  theme={theme}
+                  imageClassName="h-8 w-auto max-w-[140px] object-contain"
                 />
               ) : null}
+              <div className="rounded-md bg-black/5 px-3 py-2 text-sm">
+                <p className="font-medium">
+                  {detailQuery.data.submittedByUser?.name?.trim() ||
+                    detailQuery.data.submittedByUser?.email?.trim() ||
+                    "Unknown user"}
+                </p>
+                {detailQuery.data.submittedByUser?.email ? (
+                  <p className="text-xs opacity-70">
+                    {detailQuery.data.submittedByUser.email}
+                  </p>
+                ) : null}
+                <p className="mt-1 text-xs opacity-70">
+                  Submitted {new Date(detailQuery.data.createdAt).toLocaleString()}
+                </p>
+              </div>
               {detailQuery.data.responses.map((row) => {
                 const type = row.element?.type ?? "TextInput";
                 const def = getElementDefinition(type);
@@ -119,6 +140,12 @@ export function FormResponsePage() {
                   </div>
                 );
               })}
+              {!logoAtTop ? (
+                <FormLogo
+                  theme={theme}
+                  imageClassName="h-8 w-auto max-w-[140px] object-contain"
+                />
+              ) : null}
             </div>
           </div>
         )}

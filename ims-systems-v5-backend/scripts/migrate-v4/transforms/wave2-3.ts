@@ -310,13 +310,23 @@ export function transformInvoice(
     number = parseInt(id.slice(-8), 16) % 1_000_000_000 || 1;
   }
   const customerId = asId(doc.customer ?? doc.customerId) ?? "migration-unknown-customer";
+  // V4 often stored only a customer ObjectId — never persist that as the display name.
+  const rawName = doc.customerName ?? doc.companyName ?? doc.customerLabel;
+  const candidate =
+    rawName != null && typeof rawName !== "object" ? String(rawName).trim() : "";
+  const customerName =
+    candidate &&
+    candidate !== customerId &&
+    !/^[a-f\d]{24}$/i.test(candidate)
+      ? candidate
+      : "Migrated customer";
   return {
     _id: id,
     organizationId: orgId(doc, organizationId),
     reference: String(doc.reference ?? `INV-${id.slice(-6)}`),
     number,
     customerId,
-    customerName: String(doc.customerName ?? doc.customer ?? "Migrated customer"),
+    customerName,
     groupId: buId(doc) ?? null,
     accountManagerId: resolveUserId(
       doc.accountManager ?? doc.accountManagerId,

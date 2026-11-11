@@ -68,6 +68,7 @@ function makeService() {
         secondaryContact: null,
         secondaryEmail: null,
       }),
+      getCustomerNamesByIds: async () => new Map([["cust1", "Acme Care"]]),
     },
     mailer,
     notifications: { notifyAccountManager: vi.fn().mockResolvedValue(undefined) },
@@ -115,5 +116,151 @@ describe("Invoice service lifecycle", () => {
     expect(Buffer.from(pdf).subarray(0, 4).toString()).toBe("%PDF");
     const dl = await service.downloadPdf(identity, created.id);
     expect(dl.filename).toContain("Invoice#001");
+  });
+
+  it("resolves ObjectId customerName snapshots from the customer record", async () => {
+    const store = new Map<string, Invoice>();
+    const customerId = "66d96987f58c40b0133d139a";
+    store.set("inv1", {
+      id: "inv1",
+      number: 1,
+      reference: "INV-1",
+      organizationId: "org1",
+      customerId,
+      customerName: customerId,
+      groupId: null,
+      accountManagerId: null,
+      status: "Sent",
+      dueDate: new Date("2026-11-01"),
+      entries: [{ item: "Service", unitPrice: 10, units: 1, vatRate: 0, vatFigure: 0, subtotal: 10 }],
+      calculations: { total: 10, vatFigure: 0, discount: 0 },
+      emails: [],
+      createdBy: "user1",
+      createdOn: new Date(),
+      updatedBy: null,
+      updatedOn: null,
+      deletedAt: null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    const repository = {
+      async nextNumber() {
+        return 1;
+      },
+      async create() {
+        throw new Error("unused");
+      },
+      async findById(_org: string, id: string) {
+        return store.get(id) ?? null;
+      },
+      async list() {
+        return { items: [...store.values()], page: 1, pageSize: 10, total: store.size };
+      },
+      async update(_org: string, id: string, patch: Partial<Invoice>) {
+        const cur = store.get(id)!;
+        const next = { ...cur, ...patch };
+        store.set(id, next);
+        return next;
+      },
+      async remove() {
+        return false;
+      },
+    };
+    const service = createInvoiceService({
+      repository: repository as never,
+      authorizer: { allow: async () => true } as never,
+      customers: {
+        getCustomer: async () => null,
+        getCustomerNamesByIds: async () =>
+          new Map([[customerId, "Green Energy Solutions Ltd"]]),
+      },
+      mailer: { sendInvoice: async () => undefined },
+      notifications: { notifyAccountManager: async () => undefined },
+    });
+
+    const listed = await service.list(identity, { page: 1, pageSize: 10 });
+    expect(listed.items[0]?.customerName).toBe("Green Energy Solutions Ltd");
+    const fetched = await service.getById(identity, "inv1");
+    expect(fetched.customerName).toBe("Green Energy Solutions Ltd");
+  });
+
+  it("falls back to Unknown customer when the customer record is missing", async () => {
+    const customerId = "631dbbd73b4f48217b194d8d";
+    const store = new Map<string, Invoice>([
+      [
+        "inv2",
+        {
+          id: "inv2",
+          number: 2,
+          reference: "INV-2",
+          organizationId: "org1",
+          customerId,
+          customerName: customerId,
+          groupId: null,
+          accountManagerId: null,
+          status: "Sent",
+          dueDate: new Date("2026-11-01"),
+          entries: [
+            {
+              item: "Service",
+              unitPrice: 10,
+              units: 1,
+              vatRate: 0,
+              vatFigure: 0,
+              subtotal: 10,
+            },
+          ],
+          calculations: { total: 10, vatFigure: 0, discount: 0 },
+          emails: [],
+          createdBy: "user1",
+          createdOn: new Date(),
+          updatedBy: null,
+          updatedOn: null,
+          deletedAt: null,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ],
+    ]);
+    const service = createInvoiceService({
+      repository: {
+        async nextNumber() {
+          return 1;
+        },
+        async create() {
+          throw new Error("unused");
+        },
+        async findById(_org: string, id: string) {
+          return store.get(id) ?? null;
+        },
+        async list() {
+          return {
+            items: [...store.values()],
+            page: 1,
+            pageSize: 10,
+            total: store.size,
+          };
+        },
+        async update(_org: string, id: string, patch: Partial<Invoice>) {
+          const cur = store.get(id)!;
+          const next = { ...cur, ...patch };
+          store.set(id, next);
+          return next;
+        },
+        async remove() {
+          return false;
+        },
+      } as never,
+      authorizer: { allow: async () => true } as never,
+      customers: {
+        getCustomer: async () => null,
+        getCustomerNamesByIds: async () => new Map(),
+      },
+      mailer: { sendInvoice: async () => undefined },
+      notifications: { notifyAccountManager: async () => undefined },
+    });
+
+    const listed = await service.list(identity, { page: 1, pageSize: 10 });
+    expect(listed.items[0]?.customerName).toBe("Unknown customer");
   });
 });

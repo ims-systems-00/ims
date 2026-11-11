@@ -1,9 +1,11 @@
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import { Button } from "@/shared/components/ui/button";
 import {
   CategorySelectField,
   assetCategoryToTagModule,
 } from "@/modules/tags-and-categories";
+import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
+import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import {
   hardwareFormSchema,
   informationFormSchema,
@@ -77,6 +79,24 @@ export function AssetForm({
     return next;
   });
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
+  const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
+  const unitsQuery = useFunctionalUnitsQuery({ page: 1, pageSize: 100 });
+  const ownerOptions = useMemo(
+    () =>
+      (usersQuery.data?.items ?? []).map((row) => ({
+        id: row.user.id,
+        label: row.user.name || row.user.email,
+      })),
+    [usersQuery.data?.items]
+  );
+  const unitOptions = useMemo(
+    () =>
+      (unitsQuery.data?.items ?? []).map((unit) => ({
+        id: unit.id,
+        label: unit.name,
+      })),
+    [unitsQuery.data?.items]
+  );
 
   function setField(key: string, value: string) {
     setValues((current) => ({ ...current, [key]: value }));
@@ -173,13 +193,20 @@ export function AssetForm({
               onChange={(e) => setField("name", e.target.value)}
             />
           </Field>
-          <Field label="Owner id" error={fieldErrors.ownerId}>
-            <input
-              className={inputClass}
+          <Field label="Owner" error={fieldErrors.ownerId}>
+            <select
+              className="ims-select"
               value={values.ownerId ?? ""}
               disabled={pending}
               onChange={(e) => setField("ownerId", e.target.value)}
-            />
+            >
+              <option value="">Select owner</option>
+              {ownerOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </Field>
           <Field label="Asset tag" error={fieldErrors.tag}>
             <input
@@ -190,13 +217,20 @@ export function AssetForm({
             />
           </Field>
           {mode === "create" ? (
-            <Field label="Business unit id" error={fieldErrors.businessUnitId}>
-              <input
-                className={inputClass}
+            <Field label="Business unit" error={fieldErrors.businessUnitId}>
+              <select
+                className="ims-select"
                 value={values.businessUnitId ?? ""}
                 disabled={pending}
                 onChange={(e) => setField("businessUnitId", e.target.value)}
-              />
+              >
+                <option value="">No business unit</option>
+                {unitOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           ) : null}
           <Field label="Assigned date" error={fieldErrors.assignedDate}>
@@ -251,13 +285,20 @@ export function AssetForm({
             />
           </Field>
           {mode === "create" ? (
-            <Field label="Business unit id" error={fieldErrors.businessUnitId}>
-              <input
-                className={inputClass}
+            <Field label="Business unit" error={fieldErrors.businessUnitId}>
+              <select
+                className="ims-select"
                 value={values.businessUnitId ?? ""}
                 disabled={pending}
                 onChange={(e) => setField("businessUnitId", e.target.value)}
-              />
+              >
+                <option value="">No business unit</option>
+                {unitOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           ) : null}
           <Field label="Licence count" error={fieldErrors.licenceCount}>
@@ -329,13 +370,20 @@ export function AssetForm({
             />
           </Field>
           {mode === "create" ? (
-            <Field label="Business unit id" error={fieldErrors.businessUnitId}>
-              <input
-                className={inputClass}
+            <Field label="Business unit" error={fieldErrors.businessUnitId}>
+              <select
+                className="ims-select"
                 value={values.businessUnitId ?? ""}
                 disabled={pending}
                 onChange={(e) => setField("businessUnitId", e.target.value)}
-              />
+              >
+                <option value="">No business unit</option>
+                {unitOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           ) : null}
         </>
@@ -368,13 +416,20 @@ export function AssetForm({
             />
           </Field>
           {mode === "create" ? (
-            <Field label="Business unit id" error={fieldErrors.businessUnitId}>
-              <input
-                className={inputClass}
+            <Field label="Business unit" error={fieldErrors.businessUnitId}>
+              <select
+                className="ims-select"
                 value={values.businessUnitId ?? ""}
                 disabled={pending}
                 onChange={(e) => setField("businessUnitId", e.target.value)}
-              />
+              >
+                <option value="">No business unit</option>
+                {unitOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           ) : null}
           <Field label="Cost" error={fieldErrors.cost}>
@@ -436,22 +491,36 @@ export function AssetForm({
               onChange={(e) => setField("link", e.target.value)}
             />
           </Field>
-          <Field label="Owner id" error={fieldErrors.ownerId}>
-            <input
-              className={inputClass}
+          <Field label="Owner" error={fieldErrors.ownerId}>
+            <select
+              className="ims-select"
               value={values.ownerId ?? ""}
               disabled={pending}
               onChange={(e) => setField("ownerId", e.target.value)}
-            />
+            >
+              <option value="">Select owner</option>
+              {ownerOptions.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </Field>
           {mode === "create" ? (
-            <Field label="Business unit id" error={fieldErrors.businessUnitId}>
-              <input
-                className={inputClass}
+            <Field label="Business unit" error={fieldErrors.businessUnitId}>
+              <select
+                className="ims-select"
                 value={values.businessUnitId ?? ""}
                 disabled={pending}
                 onChange={(e) => setField("businessUnitId", e.target.value)}
-              />
+              >
+                <option value="">No business unit</option>
+                {unitOptions.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
             </Field>
           ) : null}
           <Field label="Cost" error={fieldErrors.cost}>

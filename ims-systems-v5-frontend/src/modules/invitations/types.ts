@@ -1,14 +1,16 @@
 /**
  * Invitations frontend types — mirrors the backend module
- * (ims-systems-v5-backend/src/modules/invitations). Roles are the V5
- * organisation roles, not the legacy spec names.
+ * (ims-systems-v5-backend/src/modules/invitations).
+ * Invite dropdown matches V4 ROLES minus the unused `Auditor` label.
  */
 
 export const INVITATION_ROLES = [
   "Super Admin",
   "Head of Service",
-  "Basic",
-  "Auditor",
+  "Basic User",
+  "Internal Auditor",
+  "External Auditor",
+  "External User",
 ] as const;
 
 export type InvitationRole = (typeof INVITATION_ROLES)[number];

@@ -28,10 +28,21 @@ export function CampaignDetails({
   tab = "details",
 }: CampaignDetailsProps) {
   const unitsQuery = useFunctionalUnitsQuery({ page: 1, pageSize: 100 });
-  const creatorQuery = useUserQuery(campaign.createdBy, true);
-  const unitName =
-    unitsQuery.data?.items.find((u) => u.id === campaign.businessUnitId)
-      ?.name ?? campaign.businessUnitId.slice(0, 8);
+  const creatorQuery = useUserQuery(
+    campaign.createdBy,
+    Boolean(campaign.createdBy)
+  );
+  const unitName = campaign.businessUnitId
+    ? (unitsQuery.data?.items.find((u) => u.id === campaign.businessUnitId)
+        ?.name ?? campaign.businessUnitId.slice(0, 8))
+    : "—";
+  const creatorFallback = campaign.createdBy
+    ? campaign.createdBy.slice(0, 8)
+    : "—";
+  const target = campaign.target ?? [];
+  const customAudience = campaign.customAudience ?? [];
+  const attachments = campaign.attachments ?? [];
+  const sentFrom = campaign.sentFrom ?? { name: "", email: "" };
 
   if (tab === "overview") {
     return (
@@ -46,15 +57,11 @@ export function CampaignDetails({
         </div>
         <div>
           <dt className="text-muted-foreground">Raised by</dt>
-          <dd>{creatorQuery.data?.user.name ?? campaign.createdBy.slice(0, 8)}</dd>
+          <dd>{creatorQuery.data?.user.name ?? creatorFallback}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Target stages</dt>
-          <dd>
-            {campaign.target.length > 0
-              ? campaign.target.join(", ")
-              : "—"}
-          </dd>
+          <dd>{target.length > 0 ? target.join(", ") : "—"}</dd>
         </div>
         <div>
           <dt className="text-muted-foreground">Status</dt>
@@ -81,11 +88,11 @@ export function CampaignDetails({
     <div className="flex flex-col gap-4 text-sm">
       <div>
         <h3 className="mb-2 font-medium">Additional audience</h3>
-        {campaign.customAudience.length === 0 ? (
+        {customAudience.length === 0 ? (
           <p className="text-muted-foreground">None selected</p>
         ) : (
           <ul className="divide-y divide-border rounded-md border border-border">
-            {campaign.customAudience.map((entry) => (
+            {customAudience.map((entry) => (
               <li key={entry.customerId} className="px-3 py-2">
                 {entry.reference} · {entry.name}
               </li>
@@ -95,19 +102,19 @@ export function CampaignDetails({
       </div>
       <div>
         <h3 className="mb-1 font-medium">Subject</h3>
-        <p>{campaign.subject}</p>
+        <p>{campaign.subject || "—"}</p>
       </div>
       <div>
         <h3 className="mb-1 font-medium">Message</h3>
-        <p className="whitespace-pre-wrap">{campaign.message}</p>
+        <p className="whitespace-pre-wrap">{campaign.message || "—"}</p>
       </div>
       <div>
         <h3 className="mb-1 font-medium">Attachments</h3>
-        {campaign.attachments.length === 0 ? (
+        {attachments.length === 0 ? (
           <p className="text-muted-foreground">No attachments</p>
         ) : (
           <ul className="list-inside list-disc">
-            {campaign.attachments.map((file) => (
+            {attachments.map((file) => (
               <li key={file.id}>{file.fileName}</li>
             ))}
           </ul>
@@ -116,7 +123,9 @@ export function CampaignDetails({
       <div>
         <h3 className="mb-1 font-medium">Sent from</h3>
         <p>
-          {campaign.sentFrom.name} &lt;{campaign.sentFrom.email}&gt;
+          {sentFrom.name || sentFrom.email
+            ? `${sentFrom.name || "—"} <${sentFrom.email || "—"}>`
+            : "—"}
         </p>
       </div>
     </div>

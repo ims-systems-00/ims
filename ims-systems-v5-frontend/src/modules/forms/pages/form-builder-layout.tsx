@@ -147,15 +147,18 @@ function BuilderChrome() {
 
       {form ? (
         <Sheet open={brandOpen} onOpenChange={setBrandOpen}>
-          <SheetContent side="right" className="overflow-y-auto">
+          <SheetContent
+            side="right"
+            className="flex flex-col overflow-hidden p-0 sm:w-[min(100%,36rem)] md:w-[min(100%,40rem)] lg:w-[min(100%,44rem)]"
+          >
             <SheetHeader>
               <SheetTitle>Brand</SheetTitle>
               <SheetDescription>
                 Theme colors and company visuals for this form.
               </SheetDescription>
             </SheetHeader>
-            <div className="mt-6 px-1 pb-6">
-              <FormBrandPanel formId={formId} form={form} />
+            <div className="flex-1 overflow-y-auto px-5 py-5">
+              <FormBrandPanel formId={formId} form={form} compact />
             </div>
           </SheetContent>
         </Sheet>

@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ORGANISATION_ROLES } from "../../organisation/types";
+import { INVITABLE_ORGANISATION_ROLES } from "../../organisation/types";
 
 export const invitationIdParamSchema = z.object({
   id: z.string().regex(/^[a-fA-F0-9]{24}$/, "Invalid id format"),
@@ -15,7 +15,7 @@ export const createInvitationBodySchema = z.object({
     .trim()
     .email("Valid email is required")
     .transform((value) => value.toLowerCase()),
-  role: z.enum(ORGANISATION_ROLES),
+  role: z.enum(INVITABLE_ORGANISATION_ROLES),
 });
 
 export const listInvitationsQuerySchema = z.object({

@@ -14,7 +14,22 @@ const DEFAULT_THEME: FormTheme = {
   accentColor: "#0F766E",
   logo: null,
   coverImage: null,
+  logoVertical: "top",
+  logoHorizontal: "left",
 };
+
+function normalizeLogoVertical(
+  value: FormTheme["logoVertical"] | undefined
+): FormTheme["logoVertical"] {
+  return value === "bottom" ? "bottom" : "top";
+}
+
+function normalizeLogoHorizontal(
+  value: FormTheme["logoHorizontal"] | undefined
+): FormTheme["logoHorizontal"] {
+  if (value === "center" || value === "right") return value;
+  return "left";
+}
 
 function mapThemeImage(
   value: FormTheme["logo"] | undefined
@@ -50,6 +65,8 @@ function mapForm(doc: FormDocument): Form {
       accentColor: theme.accentColor ?? DEFAULT_THEME.accentColor,
       logo: mapThemeImage(theme.logo),
       coverImage: mapThemeImage(theme.coverImage),
+      logoVertical: normalizeLogoVertical(theme.logoVertical),
+      logoHorizontal: normalizeLogoHorizontal(theme.logoHorizontal),
     },
     usagesType: doc.usagesType ?? null,
     availableForStandards: [...(doc.availableForStandards ?? [])],
@@ -86,6 +103,8 @@ export function createFormRepository() {
           accentColor: input.theme?.accentColor ?? DEFAULT_THEME.accentColor,
           logo: input.theme?.logo ?? null,
           coverImage: input.theme?.coverImage ?? null,
+          logoVertical: normalizeLogoVertical(input.theme?.logoVertical),
+          logoHorizontal: normalizeLogoHorizontal(input.theme?.logoHorizontal),
         },
         usagesType: input.usagesType ?? null,
         availableForStandards: input.availableForStandards ?? [],
@@ -173,6 +192,16 @@ export function createFormRepository() {
         }
         if (input.theme.coverImage !== undefined) {
           $set["theme.coverImage"] = input.theme.coverImage;
+        }
+        if (input.theme.logoVertical !== undefined) {
+          $set["theme.logoVertical"] = normalizeLogoVertical(
+            input.theme.logoVertical
+          );
+        }
+        if (input.theme.logoHorizontal !== undefined) {
+          $set["theme.logoHorizontal"] = normalizeLogoHorizontal(
+            input.theme.logoHorizontal
+          );
         }
       }
       const doc = await Model.findOneAndUpdate(

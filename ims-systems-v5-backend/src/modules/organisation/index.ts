@@ -29,6 +29,7 @@ export {
   ORGANISATION_PAYMENT_TYPES,
   ORGANISATION_RESOURCE,
   ORGANISATION_ROLES,
+  INVITABLE_ORGANISATION_ROLES,
   ORGANISATION_STATUSES,
   type CreateOrganisationInput,
   type CreateOrganisationResult,
@@ -41,6 +42,7 @@ export {
   type OrganisationPaymentType,
   type OrganisationProfile,
   type OrganisationRole,
+  type InvitableOrganisationRole,
   type OrganisationStatus,
   type OrganisationSystemDate,
 } from "./types";

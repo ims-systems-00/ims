@@ -3,13 +3,34 @@ export const ORGANISATION_RESOURCE = "organisation";
 export const ORGANISATION_STATUSES = ["Running", "Paused"] as const;
 export type OrganisationStatus = (typeof ORGANISATION_STATUSES)[number];
 
+/**
+ * Organisation membership / invitation roles.
+ * Primary set matches V4 `ROLES` (without the unused legacy `Auditor` label).
+ * `Basic` / `Auditor` remain for existing V5 memberships until migrated.
+ */
 export const ORGANISATION_ROLES = [
   "Super Admin",
   "Head of Service",
+  "Basic User",
+  "Internal Auditor",
+  "External Auditor",
+  "External User",
   "Basic",
   "Auditor",
 ] as const;
 export type OrganisationRole = (typeof ORGANISATION_ROLES)[number];
+
+/** Roles offered when inviting a user (V4 invite dropdown; excludes Auditor). */
+export const INVITABLE_ORGANISATION_ROLES = [
+  "Super Admin",
+  "Head of Service",
+  "Basic User",
+  "Internal Auditor",
+  "External Auditor",
+  "External User",
+] as const;
+export type InvitableOrganisationRole =
+  (typeof INVITABLE_ORGANISATION_ROLES)[number];
 
 export type OrganisationCountry = {
   name: string;

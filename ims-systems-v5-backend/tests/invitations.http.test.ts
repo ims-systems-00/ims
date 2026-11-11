@@ -73,11 +73,11 @@ describe("Invitations HTTP", () => {
   it("POST /api/v1/invitations creates a pending invitation without leaking the token", async () => {
     const response = await request(ctx!.app)
       .post("/api/v1/invitations")
-      .send({ email: "New@Example.com", role: "Basic" });
+      .send({ email: "New@Example.com", role: "Basic User" });
 
     expect(response.status).toBe(201);
     expect(response.body.data.email).toBe("new@example.com");
-    expect(response.body.data.role).toBe("Basic");
+    expect(response.body.data.role).toBe("Basic User");
     expect(response.body.data.status).toBe("Pending");
     expect(response.body.data.hasAccount).toBe(false);
     expect(response.body.data.tokenHash).toBeUndefined();
@@ -87,7 +87,7 @@ describe("Invitations HTTP", () => {
   it("rejects duplicate invitations and invalid roles", async () => {
     await request(ctx!.app)
       .post("/api/v1/invitations")
-      .send({ email: "dup@example.com", role: "Basic" })
+      .send({ email: "dup@example.com", role: "Basic User" })
       .expect(201);
 
     const duplicate = await request(ctx!.app)
@@ -105,7 +105,7 @@ describe("Invitations HTTP", () => {
   it("lists, resends and deletes invitations", async () => {
     const created = await request(ctx!.app)
       .post("/api/v1/invitations")
-      .send({ email: "list@example.com", role: "Auditor" });
+      .send({ email: "list@example.com", role: "Internal Auditor" });
     const id = created.body.data.id as string;
 
     const list = await request(ctx!.app).get("/api/v1/invitations");

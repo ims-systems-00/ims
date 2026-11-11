@@ -26,6 +26,15 @@ export type InvoiceServiceDeps = {
 
 export type InvoiceService = ReturnType<typeof createInvoiceService>;
 
+const OBJECT_ID_RE = /^[a-f\d]{24}$/i;
+
+function looksLikeMissingCustomerName(invoice: Invoice): boolean {
+  const name = invoice.customerName?.trim() ?? "";
+  if (!name) return true;
+  if (name === invoice.customerId) return true;
+  return OBJECT_ID_RE.test(name);
+}
+
 export function createInvoiceService(deps: InvoiceServiceDeps) {
   const { repository, authorizer, customers, mailer, notifications } = deps;
 
@@ -53,10 +62,43 @@ export function createInvoiceService(deps: InvoiceServiceDeps) {
     return { identity, organizationId: identity.organizationId };
   }
 
+  async function withResolvedCustomerNames(
+    organizationId: string,
+    invoices: Invoice[],
+  ): Promise<Invoice[]> {
+    const needsResolve = invoices.filter(looksLikeMissingCustomerName);
+    if (needsResolve.length === 0) return invoices;
+
+    const names = await customers.getCustomerNamesByIds(
+      organizationId,
+      needsResolve.map((invoice) => invoice.customerId),
+    );
+
+    const resolvedById = new Map<string, string>();
+    for (const invoice of needsResolve) {
+      const lookedUp = names.get(invoice.customerId)?.trim();
+      const name =
+        lookedUp && lookedUp !== invoice.customerId && !OBJECT_ID_RE.test(lookedUp)
+          ? lookedUp
+          : "Unknown customer";
+      resolvedById.set(invoice.id, name);
+      // Persist so list search/PDF stay correct without re-resolving forever.
+      void repository
+        .update(organizationId, invoice.id, { customerName: name })
+        .catch(() => undefined);
+    }
+
+    return invoices.map((invoice) => {
+      const customerName = resolvedById.get(invoice.id);
+      return customerName ? { ...invoice, customerName } : invoice;
+    });
+  }
+
   async function requireInvoice(organizationId: string, id: string): Promise<Invoice> {
     const invoice = await repository.findById(organizationId, id);
     if (!invoice) throw new NotFoundError("This invoice has been deleted or removed");
-    return invoice;
+    const [resolved] = await withResolvedCustomerNames(organizationId, [invoice]);
+    return resolved ?? invoice;
   }
 
   async function notify(
@@ -119,7 +161,11 @@ export function createInvoiceService(deps: InvoiceServiceDeps) {
     async list(identity: SecurityIdentity | null | undefined, query: ListInvoicesQuery) {
       const actor = requireOrgIdentity(identity);
       await assertAllowed(actor.identity, "read");
-      return repository.list(actor.organizationId, query);
+      const page = await repository.list(actor.organizationId, query);
+      return {
+        ...page,
+        items: await withResolvedCustomerNames(actor.organizationId, page.items),
+      };
     },
 
     async getById(identity: SecurityIdentity | null | undefined, id: string) {

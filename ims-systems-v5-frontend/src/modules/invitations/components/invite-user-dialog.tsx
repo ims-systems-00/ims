@@ -28,8 +28,10 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ROLE_DESCRIPTIONS: Record<InvitationRole, string> = {
   "Super Admin": "Full access, including organisation settings and billing.",
   "Head of Service": "Manages services, teams and invitations.",
-  Basic: "Standard member access.",
-  Auditor: "Read-focused access for audits and evidence review.",
+  "Basic User": "Standard member access.",
+  "Internal Auditor": "Read-focused access for internal audits and evidence review.",
+  "External Auditor": "Read-focused access for external audits and evidence review.",
+  "External User": "Limited member access for external collaborators.",
 };
 
 /**
@@ -43,7 +45,7 @@ export function InviteUserDialog({
 }: InviteUserDialogProps) {
   const inviteMutation = useCreateInvitationMutation();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<InvitationRole>("Basic");
+  const [role, setRole] = useState<InvitationRole>("Basic User");
   const [emailError, setEmailError] = useState<string | null>(null);
 
   async function handleSubmit() {
@@ -60,7 +62,7 @@ export function InviteUserDialog({
       });
       notify.success(`${created.email} is invited to your organisation.`);
       setEmail("");
-      setRole("Basic");
+      setRole("Basic User");
       onOpenChange(false);
       onInvited?.(created.email);
     } catch (error) {
