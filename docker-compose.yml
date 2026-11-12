@@ -146,15 +146,14 @@ services:
       AUTH0_MGMT_CLIENT_ID: ${AUTH0_MGMT_CLIENT_ID:-}
       AUTH0_MGMT_CLIENT_SECRET: ${AUTH0_MGMT_CLIENT_SECRET:-}
       CLIENT_URL: ${CLIENT_URL:-http://localhost:7864}
-      # Email: default logging (safe). For Mailtrap locally, set in repo-root .env:
-      #   EMAIL_ENABLED=true
-      #   EMAIL_PROVIDER=mailtrap
-      #   MAILTRAP_USER=...
-      #   MAILTRAP_PASS=...
-      #   MAIL_FROM=hello@imssystems.tech
-      # Boot fails if EMAIL_ENABLED=true and credentials are missing.
+      # Email: default logging (safe). From repo-root .env — backend/.env
+      # is NOT loaded by Compose. Boot fails if EMAIL_ENABLED=true and
+      # credentials for the chosen provider are missing.
+      # Mailtrap: EMAIL_PROVIDER=mailtrap + MAILTRAP_USER/PASS
+      # SendGrid: EMAIL_PROVIDER=sendgrid + SENDGRID_API_KEY
       EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
       EMAIL_PROVIDER: ${EMAIL_PROVIDER:-logging}
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY:-}
       MAILTRAP_HOST: ${MAILTRAP_HOST:-sandbox.smtp.mailtrap.io}
       MAILTRAP_PORT: ${MAILTRAP_PORT:-2525}
       MAILTRAP_USER: ${MAILTRAP_USER:-}
