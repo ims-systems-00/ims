@@ -99,10 +99,22 @@ describe("theme presets", () => {
 
   it("maps each preset primary/dark onto button and sidebar tokens", () => {
     for (const theme of themeOptions) {
-      const tokens = buildThemeTokensFromColors(theme.colors);
+      const tokens = buildThemeTokensFromColors(theme.colors, "light");
       expect(tokens["--primary"]).toBe(theme.colors.primary);
       expect(tokens["--sidebar"]).toBe(theme.colors.primaryDark);
       expect(tokens["--sidebar-accent"]).toBe(theme.colors.primary);
+    }
+  });
+
+  it("gives every preset a distinct dark palette different from light", () => {
+    for (const theme of themeOptions) {
+      expect(theme.darkColors).toBeDefined();
+      expect(theme.darkColors.primary).not.toBe(theme.colors.primary);
+      expect(theme.darkColors.primaryDark).not.toBe(theme.colors.primaryDark);
+      const darkTokens = buildThemeTokensFromColors(theme.darkColors, "dark");
+      expect(darkTokens["--background"]).toBe(theme.darkColors.primaryDark);
+      expect(darkTokens["--foreground"]).toBeTruthy();
+      expect(darkTokens["--primary"]).toBe(theme.darkColors.primary);
     }
   });
 });
@@ -212,8 +224,24 @@ describe("appearance mode", () => {
     expect(
       document.documentElement.style.getPropertyValue("--sidebar").trim()
     ).toBe(IMS_OS_DARK_THEME_COLORS.primaryDark);
+    expect(
+      document.documentElement.style.getPropertyValue("--background").trim()
+    ).toBe(IMS_OS_DARK_THEME_COLORS.primaryDark);
     // Light brand palette stays classic even while dark tokens are applied.
     expect(DEFAULT_THEME_COLORS.primaryDark).toBe("#002D72");
     expect(themeOptions[0]?.colors.primaryDark).toBe("#002D72");
+  });
+
+  it("switches forest dark surfaces away from the global indigo shell", () => {
+    applyPresetTheme("forest", document.documentElement, "dark");
+    expect(
+      document.documentElement.style.getPropertyValue("--primary").trim()
+    ).toBe("#4ADE80");
+    expect(
+      document.documentElement.style.getPropertyValue("--background").trim()
+    ).toBe("#06140C");
+    expect(
+      document.documentElement.style.getPropertyValue("--foreground").trim()
+    ).toBeTruthy();
   });
 });

@@ -5,6 +5,7 @@ import {
   composeOrganisationMail,
   createBillingPortalSession,
   createCardPaymentSession,
+  createSmeLicenceCheckoutSession,
   createOrganisation,
   getCurrentOrganisation,
   goLiveOrganisation,
@@ -121,6 +122,13 @@ export function useCardPaymentSessionMutation() {
   return useMutation({
     mutationFn: (organizationId: string) =>
       createCardPaymentSession(organizationId),
+  });
+}
+
+export function useSmeLicenceCheckoutMutation() {
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      createSmeLicenceCheckoutSession(organizationId),
   });
 }
 

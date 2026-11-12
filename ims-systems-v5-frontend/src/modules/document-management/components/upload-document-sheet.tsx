@@ -6,20 +6,31 @@ import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
+import { loadPublicEnv } from "@/shared/lib/env";
 import {
   useSessionProfileUserId,
   useSessionSubjectId,
 } from "@/security";
 import { uploadFileViaHandler } from "@/modules/files";
+import {
+  COMPLIANCE_TOOLKIT_NAMES,
+  isComplianceToolkitName,
+  toolkitDisplayLabel,
+} from "@/modules/compliance";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import { useCreateFileNodesMutation } from "../hooks/use-document-management";
 import { uploadDocumentFormSchema } from "../schemas";
 import {
+  COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL,
   DOCUMENT_APPLICABLE_MODULE_LABELS,
   DOCUMENT_APPLICABLE_MODULES,
+  DOCUMENT_COMPLIANCE_TOOL_LABELS,
   DOCUMENT_PURPOSE_LABELS,
   DOCUMENT_PURPOSES,
   type DocumentApplicableModule,
+  type DocumentComplianceTool,
   type DocumentPurpose,
 } from "../types";
 import { OwnerMultiSelect } from "./owner-multi-select";
@@ -47,15 +58,45 @@ export function UploadDocumentSheet({
   const defaultOwnerId = useSessionProfileUserId() ?? "";
   const createMutation = useCreateFileNodesMutation(repositoryId);
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
+  const isAuth0Mode =
+    loadPublicEnv().VITE_SECURITY_PROVIDER === "auth0-openfga";
+  const orgQuery = useCurrentOrganisationQuery(isAuth0Mode);
 
   const [files, setFiles] = useState<FileList | null>(null);
   const [purpose, setPurpose] = useState<DocumentPurpose>("Document");
   const [modules, setModules] = useState<DocumentApplicableModule[]>([]);
+  const [complianceTools, setComplianceTools] = useState<
+    DocumentComplianceTool[]
+  >([]);
   const [owners, setOwners] = useState<string[]>([]);
   const [reviewDate, setReviewDate] = useState("");
   const [requireAuthorisation, setRequireAuthorisation] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | undefined>();
+
+  const complianceSelected = modules.includes("compliancecontrols");
+
+  const complianceStandardOptions = useMemo(() => {
+    const toolkitNames = isAuth0Mode
+      ? (orgQuery.data?.licences.complianceTools ?? []).filter(
+          (name): name is string => isComplianceToolkitName(name)
+        )
+      : [...COMPLIANCE_TOOLKIT_NAMES];
+
+    const fromToolkits = toolkitNames
+      .map((name) => COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL[name])
+      .filter((code): code is DocumentComplianceTool => Boolean(code));
+
+    // Always include any already-selected codes so the UI stays consistent.
+    const merged = [...new Set([...fromToolkits, ...complianceTools])];
+    return merged.length > 0
+      ? merged
+      : (Object.keys(DOCUMENT_COMPLIANCE_TOOL_LABELS) as DocumentComplianceTool[]);
+  }, [
+    isAuth0Mode,
+    orgQuery.data?.licences.complianceTools,
+    complianceTools,
+  ]);
 
   const userOptions = useMemo(
     () =>
@@ -80,6 +121,7 @@ export function UploadDocumentSheet({
     setFiles(null);
     setPurpose("Document");
     setModules([]);
+    setComplianceTools([]);
     setOwners(defaultOwnerId ? [defaultOwnerId] : []);
     setReviewDate("");
     setRequireAuthorisation(false);
@@ -87,10 +129,22 @@ export function UploadDocumentSheet({
   }
 
   function toggleModule(module: DocumentApplicableModule) {
-    setModules((current) =>
-      current.includes(module)
+    setModules((current) => {
+      const next = current.includes(module)
         ? current.filter((item) => item !== module)
-        : [...current, module]
+        : [...current, module];
+      if (!next.includes("compliancecontrols")) {
+        setComplianceTools([]);
+      }
+      return next;
+    });
+  }
+
+  function toggleComplianceTool(tool: DocumentComplianceTool) {
+    setComplianceTools((current) =>
+      current.includes(tool)
+        ? current.filter((item) => item !== tool)
+        : [...current, tool]
     );
   }
 
@@ -98,6 +152,7 @@ export function UploadDocumentSheet({
     const parsed = uploadDocumentFormSchema.safeParse({
       purpose,
       applicableModules: modules,
+      complianceTools: complianceSelected ? complianceTools : [],
       owners: owners.length > 0 ? owners : [defaultOwnerId],
       reviewDate: reviewDate.trim() ? reviewDate : null,
       requireAuthorisation,
@@ -120,6 +175,7 @@ export function UploadDocumentSheet({
           storageInfo,
           purpose: parsed.data.purpose,
           applicableModules: parsed.data.applicableModules,
+          complianceTools: parsed.data.complianceTools,
           owners: parsed.data.owners,
           reviewDate: fromDateInputValue(parsed.data.reviewDate ?? ""),
           authorisation: parsed.data.requireAuthorisation
@@ -136,6 +192,7 @@ export function UploadDocumentSheet({
       });
 
       if (result.created.length > 0) {
+        signalSetupEvent("docs.document.created");
         notify.success(
           result.created.length === 1
             ? "Document uploaded"
@@ -250,7 +307,10 @@ export function UploadDocumentSheet({
                       ? "border-primary/40 bg-primary/10 text-foreground"
                       : "border-border-subtle text-muted-foreground hover:bg-muted/40"
                   )}
-                  onClick={() => toggleModule(module)}
+                  onClick={() => {
+                    toggleModule(module);
+                    setFormError(undefined);
+                  }}
                 >
                   {DOCUMENT_APPLICABLE_MODULE_LABELS[module]}
                 </button>
@@ -258,6 +318,44 @@ export function UploadDocumentSheet({
             })}
           </div>
         </FormField>
+
+        {complianceSelected ? (
+          <FormField
+            label="Compliance standard"
+            description="Choose the standard(s) this document applies to."
+            required
+            error={
+              formError?.toLowerCase().includes("compliance standard")
+                ? formError
+                : undefined
+            }
+          >
+            <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto rounded-md border border-border-subtle p-2">
+              {complianceStandardOptions.map((tool) => {
+                const selected = complianceTools.includes(tool);
+                return (
+                  <button
+                    key={tool}
+                    type="button"
+                    className={cn(
+                      "rounded-md border px-2.5 py-1 text-[0.6875rem] font-medium transition-colors",
+                      selected
+                        ? "border-primary/40 bg-primary/10 text-foreground"
+                        : "border-border-subtle text-muted-foreground hover:bg-muted/40"
+                    )}
+                    onClick={() => {
+                      toggleComplianceTool(tool);
+                      setFormError(undefined);
+                    }}
+                  >
+                    {DOCUMENT_COMPLIANCE_TOOL_LABELS[tool] ??
+                      toolkitDisplayLabel(tool)}
+                  </button>
+                );
+              })}
+            </div>
+          </FormField>
+        ) : null}
 
         <FormField label="Select owner(s)" required>
           <OwnerMultiSelect

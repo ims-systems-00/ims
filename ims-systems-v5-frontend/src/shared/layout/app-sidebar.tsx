@@ -12,6 +12,7 @@ import {
   useOrganisationLogoUrl,
 } from "@/modules/organisation/hooks/use-organisations";
 import imsOsLogo from "@/assets/images/iMS-OS_horizontal_white.png";
+import { SetupSidebarEntry } from "@/modules/setup-guide";
 import { SidebarBrand } from "./sidebar-brand";
 import {
   permissionAllowed,
@@ -157,6 +158,8 @@ export function AppSidebar({
             </div>
           ))}
         </nav>
+
+        <SetupSidebarEntry collapsed={collapsed} />
 
         <div
           className={cn(

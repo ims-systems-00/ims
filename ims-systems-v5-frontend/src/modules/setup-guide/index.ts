@@ -1,27 +1,33 @@
 /**
- * Setup Guide — in-app guided tours on React Joyride.
+ * Setup Guide — interactive get-set-up (setupux-inspired).
  *
- * - `ModulePickerDialog` + `TourEngine` are mounted once in the app shell.
- * - Modules mark controls with `data-tour="…"` and report user actions with
- *   `useTourAction` / `signalTourAction`.
- * - Tours are authored in `tours/` and registered in `catalog.ts`.
+ * - `SetupChecklistCard` on the organisation dashboard.
+ * - `SetupGuideHost` in the app shell (coach panel, spotlight, Alice assist).
+ * - Modules mark controls with `data-tour="…"` and report outcomes with
+ *   `useSetupSignal` / `signalSetupEvent`.
  */
 
-export { ModulePickerDialog } from "./components/module-picker-dialog";
-export { TourEngine } from "./components/tour-engine";
-export { useTourAction } from "./hooks/use-tour-action";
-export { signalTourAction, useSetupGuideStore } from "./store";
+export { SetupChecklistCard } from "./components/setup-checklist-card";
+export { SetupGuideHost } from "./components/setup-guide-host";
+export { SetupSidebarEntry } from "./components/setup-sidebar-entry";
+export { useSetupSignal, useTourAction } from "./hooks/use-setup-signal";
 export {
-  SETUP_GUIDE_CATALOG,
-  getFlatTour,
-  getTourById,
-  listShippedTours,
+  signalSetupEvent,
+  signalTourAction,
+  useSetupGuideStore,
+  nextUndoneStepId,
+  completedCount,
+} from "./store";
+export {
+  SETUP_STEPS,
+  SETUP_GUIDE_TITLE,
+  getSetupStep,
+  listAvailableSteps,
 } from "./catalog";
 export type {
-  CatalogEntry,
-  FlatTour,
-  GuideStep,
-  TourChapter,
-  TourDefinition,
-  TourPoint,
+  SetupStepDefinition,
+  SetupSubStep,
+  AliceDraftUnit,
+  AliceDraftInvite,
+  AliceDraftPremise,
 } from "./types";

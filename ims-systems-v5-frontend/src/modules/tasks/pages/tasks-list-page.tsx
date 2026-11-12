@@ -121,8 +121,8 @@ export function TasksListPage() {
       dueBefore: dueBefore
         ? new Date(`${dueBefore}T23:59:59.999Z`).toISOString()
         : undefined,
-      sort: "dueDate" as const,
-      sortDir: "asc" as const,
+      sort: "createdOn" as const,
+      sortDir: "desc" as const,
     }),
     [page, search, statusPreset, priority, assigneeId, dueBefore]
   );

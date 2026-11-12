@@ -112,8 +112,9 @@ export function ThemeSelector() {
         <DialogHeader>
           <DialogTitle>Colour theme</DialogTitle>
           <DialogDescription>
-            Choose a template or set the four brand colours — the same model as
-            V4 organisation themes. Preview applies immediately.
+            Each template has its own light and dark palettes. Appearance
+            (light/dark) switches the full app chrome; brand colours below edit
+            the light palette.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,19 +148,29 @@ export function ThemeSelector() {
                     type="button"
                     role="option"
                     aria-selected={selected}
-                    title={theme.label}
-                    aria-label={theme.label}
+                    title={`${theme.label} — light ${theme.colors.primary}, dark ${theme.darkColors.primary}`}
+                    aria-label={`${theme.label} (light and dark palettes)`}
                     className={cn(
-                      "size-9 rounded-full border-2 shadow-xs transition-[transform,box-shadow,border-color]",
+                      "relative size-9 overflow-hidden rounded-full border-2 shadow-xs transition-[transform,box-shadow,border-color]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       "hover:scale-105",
                       selected
                         ? "border-foreground ring-2 ring-ring/30"
-                        : "border-white ring-1 ring-border"
+                        : "border-background ring-1 ring-border"
                     )}
-                    style={{ backgroundColor: theme.colors.primary }}
                     onClick={() => handlePresetSelect(theme.id)}
-                  />
+                  >
+                    <span
+                      className="absolute inset-y-0 left-0 w-1/2"
+                      style={{ backgroundColor: theme.colors.primary }}
+                      aria-hidden
+                    />
+                    <span
+                      className="absolute inset-y-0 right-0 w-1/2"
+                      style={{ backgroundColor: theme.darkColors.primary }}
+                      aria-hidden
+                    />
+                  </button>
                 </li>
               );
             })}

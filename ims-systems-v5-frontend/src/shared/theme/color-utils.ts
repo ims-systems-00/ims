@@ -17,6 +17,8 @@ export type HslColor = {
   l: number;
 };
 
+export type ThemeAppearance = "light" | "dark";
+
 /** Normalize user input to `#RRGGBB` or null when invalid. */
 export function normalizeHexColor(value: string): string | null {
   const trimmed = value.trim();
@@ -126,6 +128,20 @@ export function deriveThemeFromPrimary(primaryHex: string): ThemeColors | null {
   };
 }
 
+/**
+ * Build a dark-mode brand palette from a light custom palette so custom themes
+ * still invert surfaces / chrome when appearance is dark.
+ */
+export function deriveDarkThemeFromColors(light: ThemeColors): ThemeColors {
+  const primary = normalizeHexColor(light.primary) ?? light.primary;
+  return {
+    primary: mixHex(primary, "#FFFFFF", 0.22),
+    primaryDark: mixHex(primary, "#000000", 0.82),
+    primaryLight: mixHex(primary, "#FFFFFF", 0.45),
+    primaryExtraLight: mixHex(primary, "#FFFFFF", 0.82),
+  };
+}
+
 export function normalizeThemeColors(
   colors: Partial<ThemeColors> | null | undefined,
   fallback: ThemeColors
@@ -143,22 +159,76 @@ export function normalizeThemeColors(
   };
 }
 
+function contrastForeground(bg: string, light = "#FAFAFA", dark = "#111827") {
+  return hexLuminance(bg) > 0.45 ? dark : light;
+}
+
 /**
- * Map V4 brand shades onto V5 design tokens.
- * - primary → buttons / active chrome
- * - primaryDark → sidebar background (V4 sidebar base)
- * - primaryLight / primaryExtraLight → soft accents
+ * Map brand shades onto V5 design tokens.
+ * Dark appearance also remaps page surfaces so text/icons invert with the
+ * active preset (not a single global indigo shell).
  */
 export function buildThemeTokensFromColors(
-  colors: ThemeColors
+  colors: ThemeColors,
+  appearance: ThemeAppearance = "light"
 ): Record<string, string> {
   const primary = colors.primary;
   const primaryDark = colors.primaryDark;
   const primaryLight = colors.primaryLight;
   const primaryExtraLight = colors.primaryExtraLight;
 
-  const onPrimary = hexLuminance(primary) > 0.45 ? "#111827" : "#FAFAFA";
-  const onSidebar = hexLuminance(primaryDark) > 0.45 ? "#111827" : "#FAFAFA";
+  if (appearance === "dark") {
+    const background = primaryDark;
+    const foreground = contrastForeground(
+      background,
+      primaryExtraLight,
+      mixHex(primaryDark, "#000000", 0.55)
+    );
+    const card = mixHex(background, "#FFFFFF", 0.07);
+    const muted = mixHex(background, "#FFFFFF", 0.045);
+    const border = mixHex(background, "#FFFFFF", 0.14);
+    const borderSubtle = mixHex(background, "#FFFFFF", 0.09);
+    const onPrimary = contrastForeground(primary);
+    const accent = mixHex(background, primary, 0.28);
+    const secondary = primaryLight;
+    const onSecondary = contrastForeground(secondary);
+
+    return {
+      "--background": background,
+      "--foreground": foreground,
+      "--surface": card,
+      "--surface-elevated": card,
+      "--surface-muted": muted,
+      "--card": card,
+      "--card-foreground": foreground,
+      "--popover": card,
+      "--popover-foreground": foreground,
+      "--primary": primary,
+      "--primary-foreground": onPrimary,
+      "--secondary": secondary,
+      "--secondary-foreground": onSecondary,
+      "--muted": muted,
+      "--muted-foreground": mixHex(foreground, background, 0.35),
+      "--accent": accent,
+      "--accent-foreground": mixHex(primaryLight, "#FFFFFF", 0.15),
+      "--border": border,
+      "--border-subtle": borderSubtle,
+      "--input": border,
+      "--ring": primaryLight,
+      "--sidebar": background,
+      "--sidebar-foreground": foreground,
+      "--sidebar-muted": mixHex(foreground, background, 0.4),
+      "--sidebar-accent": primary,
+      "--sidebar-accent-foreground": onPrimary,
+      "--sidebar-border": mixHex(background, "#FFFFFF", 0.1),
+      "--sidebar-primary": primaryLight,
+      "--info": primaryLight,
+      "--info-foreground": contrastForeground(primaryLight),
+    };
+  }
+
+  const onPrimary = contrastForeground(primary);
+  const onSidebar = contrastForeground(primaryDark);
   const mutedOnSidebar =
     hexLuminance(primaryDark) > 0.45
       ? mixHex(primaryDark, "#000000", 0.35)
@@ -188,16 +258,30 @@ export function buildThemeTokensFromHex(
 ): Record<string, string> | null {
   const palette = deriveThemeFromPrimary(hex);
   if (!palette) return null;
-  return buildThemeTokensFromColors(palette);
+  return buildThemeTokensFromColors(palette, "light");
 }
 
 export const CUSTOM_THEME_CSS_VARS = [
+  "--background",
+  "--foreground",
+  "--surface",
+  "--surface-elevated",
+  "--surface-muted",
+  "--card",
+  "--card-foreground",
+  "--popover",
+  "--popover-foreground",
   "--primary",
   "--primary-foreground",
   "--secondary",
   "--secondary-foreground",
+  "--muted",
+  "--muted-foreground",
   "--accent",
   "--accent-foreground",
+  "--border",
+  "--border-subtle",
+  "--input",
   "--ring",
   "--sidebar",
   "--sidebar-foreground",
@@ -206,6 +290,8 @@ export const CUSTOM_THEME_CSS_VARS = [
   "--sidebar-accent-foreground",
   "--sidebar-border",
   "--sidebar-primary",
+  "--info",
+  "--info-foreground",
 ] as const;
 
 export const THEME_COLOR_FIELDS = [

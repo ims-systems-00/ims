@@ -20,6 +20,10 @@ import type {
 
 const SUPPORT_PERCENTAGE = 0.25;
 
+/** Fixed SME licence monthly amount (GBP). */
+export const SME_LICENCE_AMOUNT_PENCE = 10_000;
+export const SME_LICENCE_MODULE_NAME = "SME";
+
 export type StripePaymentService = ReturnType<typeof createStripePaymentService>;
 
 function stripeErrorMessage(error: unknown, fallback: string): string {
@@ -219,6 +223,90 @@ export function createStripePaymentService(deps: {
       return { url: session.url, id: session.id };
     },
 
+    /**
+     * Monthly £100 SME licence Checkout (subscription mode).
+     * Uses STRIPE_SME_PRICE when set; otherwise inline recurring price_data.
+     */
+    async createSmeLicenceCheckoutSession(input: {
+      organizationId: string;
+    }): Promise<CheckoutSessionResult> {
+      const org = await organisations.findById(input.organizationId);
+      if (!org) throw new NotFoundError("Organisation not found");
+
+      const { customerId, organizationName } = await ensureCustomer(
+        input.organizationId
+      );
+      const clientUrl = config.CLIENT_URL.replace(/\/+$/, "");
+      const smePriceId = config.STRIPE_SME_PRICE?.trim() ?? "";
+
+      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
+        smePriceId
+          ? [{ price: smePriceId, quantity: 1 }]
+          : [
+              {
+                quantity: 1,
+                price_data: {
+                  currency: "gbp",
+                  unit_amount: SME_LICENCE_AMOUNT_PENCE,
+                  recurring: { interval: "month" },
+                  product_data: {
+                    name: "SME Licence",
+                    description:
+                      "iMS Systems SME licence — £100 per month",
+                  },
+                },
+              },
+            ];
+
+      logger?.info(
+        { organizationId: input.organizationId, customerId },
+        "Creating Stripe SME licence checkout session"
+      );
+
+      let session: Stripe.Checkout.Session;
+      try {
+        session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          customer: customerId,
+          line_items: lineItems,
+          success_url: `${clientUrl}/organisation?sme=success`,
+          cancel_url: `${clientUrl}/organisation?sme=cancelled`,
+          metadata: {
+            ims_sme_licence: "true",
+            org_id: input.organizationId,
+            org_name: organizationName,
+          },
+          subscription_data: {
+            metadata: {
+              ims_sme_licence: "true",
+              org_id: input.organizationId,
+            },
+          },
+        });
+      } catch (error) {
+        logger?.error(
+          {
+            organizationId: input.organizationId,
+            err: error instanceof Error ? error.message : String(error),
+          },
+          "Stripe SME licence checkout session create failed"
+        );
+        throw new ValidationAppError(
+          stripeErrorMessage(
+            error,
+            "Unable to create SME licence checkout. Confirm Stripe is configured."
+          )
+        );
+      }
+
+      if (!session.url) {
+        throw new ValidationAppError(
+          "Stripe checkout session did not return a URL"
+        );
+      }
+      return { url: session.url, id: session.id };
+    },
+
     async createBillingPortalSession(organizationId: string): Promise<{
       url: string;
     }> {
@@ -300,9 +388,23 @@ export function createStripePaymentService(deps: {
           );
           break;
         }
-        case "checkout.session.completed":
+        case "checkout.session.completed": {
+          const session = event.data.object as Stripe.Checkout.Session;
           logger?.info({ type: event.type }, "Checkout session completed");
+          if (session.metadata?.ims_sme_licence === "true") {
+            const organizationId = session.metadata.org_id?.trim();
+            if (organizationId) {
+              await organisations.applyLicenceRequest(organizationId, {
+                additionalModules: [SME_LICENCE_MODULE_NAME],
+              });
+              logger?.info(
+                { organizationId, sessionId: session.id },
+                "SME licence allocated after Checkout"
+              );
+            }
+          }
           break;
+        }
         default:
           logger?.warn({ type: event.type }, "Unhandled Stripe webhook event");
       }
@@ -312,72 +414,120 @@ export function createStripePaymentService(deps: {
       subscriptionId: string,
       delta: StripeLicenceDelta
     ): Promise<void> {
-      const org = await organisations.findByStripeSubscriptionId(subscriptionId);
-      if (!org) {
-        throw new NotFoundError(
-          "Organisation not found for Stripe subscription"
-        );
-      }
-      if (!org.paymentSystem.stripeCustomerId) {
-        throw new ConflictError("Organisation missing Stripe customer id");
-      }
-
-      const { data: subscriptionItems } = await stripe.subscriptionItems.list({
-        limit: 20,
-        subscription: subscriptionId,
-      });
-
-      let totalSupportUnit = 0;
-
-      async function bump(priceId: string, addQty: number): Promise<void> {
-        if (addQty <= 0) return;
-        const item = subscriptionItems.find((row) => row.price.id === priceId);
-        if (!item) {
-          throw new ValidationAppError(
-            `Stripe subscription is missing price item ${priceId}`
+      try {
+        const org =
+          await organisations.findByStripeSubscriptionId(subscriptionId);
+        if (!org) {
+          throw new NotFoundError(
+            "Organisation not found for Stripe subscription"
           );
         }
-        totalSupportUnit += ((item.price.unit_amount ?? 0) / 100) * addQty;
-        await stripe.subscriptionItems.update(item.id, {
-          quantity: (item.quantity ?? 0) + addQty,
-        });
-      }
-
-      await bump(config.STRIPE_BU_PRICE, delta.groups);
-      await bump(config.STRIPE_SA_PRICE, delta.superUser);
-      await bump(config.STRIPE_USER_PRICE, delta.users);
-
-      if (totalSupportUnit > 0) {
-        const supportItem = subscriptionItems.find(
-          (row) => row.price.id === config.STRIPE_SUPPORT_PRICE
-        );
-        if (!supportItem) {
-          throw new ValidationAppError(
-            "Stripe subscription is missing support price item"
-          );
+        if (!org.paymentSystem.stripeCustomerId) {
+          throw new ConflictError("Organisation missing Stripe customer id");
         }
-        await stripe.subscriptionItems.update(supportItem.id, {
-          quantity:
-            (supportItem.quantity ?? 0) +
-            Math.ceil(totalSupportUnit * SUPPORT_PERCENTAGE),
-        });
-      }
 
-      if (delta.complianceTools.length > 0) {
-        await stripe.invoiceItems.create({
-          customer: org.paymentSystem.stripeCustomerId,
-          subscription: subscriptionId,
-          pricing: { price: config.STRIPE_COMPLIANCE_PRICE },
-          quantity: delta.complianceTools.length,
-        });
-      }
-      if (delta.additionalModules.length > 0) {
-        await stripe.invoiceItems.create({
-          customer: org.paymentSystem.stripeCustomerId,
-          subscription: subscriptionId,
-          pricing: { price: config.STRIPE_ADD_MODULE_PRICE },
-          quantity: delta.additionalModules.length,
-        });
+        const { data: subscriptionItems } = await stripe.subscriptionItems.list(
+          {
+            limit: 20,
+            subscription: subscriptionId,
+          }
+        );
+
+        let totalSupportUnit = 0;
+
+        async function bump(priceId: string, addQty: number): Promise<void> {
+          if (addQty <= 0) return;
+          if (!priceId.trim()) {
+            throw new ValidationAppError(
+              "Stripe price is not configured for this licence type. Set the STRIPE_*_PRICE env vars and try again."
+            );
+          }
+          const item = subscriptionItems.find(
+            (row) => row.price.id === priceId
+          );
+          if (!item) {
+            throw new ValidationAppError(
+              `Stripe subscription is missing price item ${priceId}`
+            );
+          }
+          totalSupportUnit += ((item.price.unit_amount ?? 0) / 100) * addQty;
+          await stripe.subscriptionItems.update(item.id, {
+            quantity: (item.quantity ?? 0) + addQty,
+          });
+        }
+
+        await bump(config.STRIPE_BU_PRICE, delta.groups);
+        await bump(config.STRIPE_SA_PRICE, delta.superUser);
+        await bump(config.STRIPE_USER_PRICE, delta.users);
+
+        if (totalSupportUnit > 0) {
+          if (!config.STRIPE_SUPPORT_PRICE.trim()) {
+            throw new ValidationAppError(
+              "Stripe support price is not configured (STRIPE_SUPPORT_PRICE)."
+            );
+          }
+          const supportItem = subscriptionItems.find(
+            (row) => row.price.id === config.STRIPE_SUPPORT_PRICE
+          );
+          if (!supportItem) {
+            throw new ValidationAppError(
+              "Stripe subscription is missing support price item"
+            );
+          }
+          await stripe.subscriptionItems.update(supportItem.id, {
+            quantity:
+              (supportItem.quantity ?? 0) +
+              Math.ceil(totalSupportUnit * SUPPORT_PERCENTAGE),
+          });
+        }
+
+        if (delta.complianceTools.length > 0) {
+          if (!config.STRIPE_COMPLIANCE_PRICE.trim()) {
+            throw new ValidationAppError(
+              "Stripe compliance price is not configured (STRIPE_COMPLIANCE_PRICE)."
+            );
+          }
+          await stripe.invoiceItems.create({
+            customer: org.paymentSystem.stripeCustomerId,
+            subscription: subscriptionId,
+            pricing: { price: config.STRIPE_COMPLIANCE_PRICE },
+            quantity: delta.complianceTools.length,
+          });
+        }
+        if (delta.additionalModules.length > 0) {
+          if (!config.STRIPE_ADD_MODULE_PRICE.trim()) {
+            throw new ValidationAppError(
+              "Stripe add-module price is not configured (STRIPE_ADD_MODULE_PRICE)."
+            );
+          }
+          await stripe.invoiceItems.create({
+            customer: org.paymentSystem.stripeCustomerId,
+            subscription: subscriptionId,
+            pricing: { price: config.STRIPE_ADD_MODULE_PRICE },
+            quantity: delta.additionalModules.length,
+          });
+        }
+      } catch (error) {
+        if (
+          error instanceof ValidationAppError ||
+          error instanceof NotFoundError ||
+          error instanceof ConflictError
+        ) {
+          throw error;
+        }
+        logger?.error(
+          {
+            subscriptionId,
+            err: error instanceof Error ? error.message : String(error),
+          },
+          "Stripe subscription upgrade failed"
+        );
+        throw new ValidationAppError(
+          stripeErrorMessage(
+            error,
+            "Unable to upgrade the Stripe subscription for this licence request. Check Stripe keys, price IDs, and the organisation subscription."
+          )
+        );
       }
     },
   };

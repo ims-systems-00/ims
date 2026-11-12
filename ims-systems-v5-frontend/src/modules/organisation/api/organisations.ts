@@ -89,6 +89,14 @@ export function createCardPaymentSession(
   );
 }
 
+export function createSmeLicenceCheckoutSession(
+  organizationId: string
+): Promise<OrganisationPaymentSession> {
+  return apiRequest<OrganisationPaymentSession>(
+    `/organisations/${organizationId}/sme-licence-checkout`
+  );
+}
+
 export function createBillingPortalSession(
   organizationId: string
 ): Promise<OrganisationPaymentSession> {

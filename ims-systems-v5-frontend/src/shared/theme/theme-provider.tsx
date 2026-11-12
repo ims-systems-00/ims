@@ -16,25 +16,29 @@ import {
   applyCustomThemeColors,
   applyPresetTheme,
   DEFAULT_THEME_COLORS,
-  IMS_OS_DARK_THEME_COLORS,
   persistCustomColors,
   persistThemeId,
   readStoredCustomColors,
   readStoredThemeId,
+  resolvePresetColors,
   type AppliedThemeId,
   type ThemeColors,
   type ThemeId,
   themeOptions,
 } from "./presets";
-import { deriveThemeFromPrimary, normalizeHexColor } from "./color-utils";
+import {
+  deriveDarkThemeFromColors,
+  deriveThemeFromPrimary,
+  normalizeHexColor,
+} from "./color-utils";
 
 type ThemeContextValue = {
   themeId: AppliedThemeId;
-  /** Live applied palette (may remap iMS OS shades in dark appearance). */
+  /** Live applied palette for the current appearance. */
   colors: ThemeColors;
   /**
-   * Editable brand palette (light preset / custom). Never swaps in dark-only
-   * iMS OS shades — those are appearance remaps only.
+   * Editable brand palette (light preset / custom). Dark appearance remaps
+   * are not edited here.
    */
   brandColors: ThemeColors;
   /** Convenience: primary hex (custom drafts / legacy). */
@@ -71,10 +75,12 @@ function colorsForTheme(
   custom: ThemeColors,
   appearance: AppearanceMode
 ): ThemeColors {
-  if (appearance === "dark" && themeId === "ims-os") {
-    return IMS_OS_DARK_THEME_COLORS;
+  if (themeId === "custom") {
+    return appearance === "dark"
+      ? deriveDarkThemeFromColors(custom)
+      : custom;
   }
-  return brandColorsForTheme(themeId, custom);
+  return resolvePresetColors(themeId, appearance);
 }
 
 function applyThemeForAppearance(
@@ -83,7 +89,7 @@ function applyThemeForAppearance(
   appearance: AppearanceMode
 ): void {
   if (themeId === "custom") {
-    applyCustomThemeColors(custom);
+    applyCustomThemeColors(custom, document.documentElement, appearance);
     return;
   }
   applyPresetTheme(themeId, document.documentElement, appearance);
@@ -121,15 +127,22 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     [appearance]
   );
 
-  const setCustomColors = useCallback((next: Partial<ThemeColors>) => {
-    const applied = applyCustomThemeColors(next);
-    if (!applied) return false;
-    setCustomColorsState(applied);
-    setThemeIdState("custom");
-    persistThemeId("custom");
-    persistCustomColors(applied);
-    return true;
-  }, []);
+  const setCustomColors = useCallback(
+    (next: Partial<ThemeColors>) => {
+      const applied = applyCustomThemeColors(
+        next,
+        document.documentElement,
+        appearance
+      );
+      if (!applied) return false;
+      setCustomColorsState(applied);
+      setThemeIdState("custom");
+      persistThemeId("custom");
+      persistCustomColors(applied);
+      return true;
+    },
+    [appearance]
+  );
 
   const setCustomHex = useCallback(
     (hex: string) => {

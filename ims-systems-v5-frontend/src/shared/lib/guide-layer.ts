@@ -1,12 +1,13 @@
 /**
- * Guide layer — floating UI that must keep working on top of a modal sheet or
- * dialog (the Setup Guide spotlight and its tooltip).
+ * Floating layers that must keep working on top of a modal sheet or dialog
+ * (Setup Guide spotlight/tooltip, and Alice float panel/FAB).
  *
  * Radix modal layers treat every pointer-down or focus outside their content
- * as a request to dismiss. The guide renders in its own portal, so without this
- * check, pressing "Next" in the guide would close the sheet being explained.
+ * as a request to dismiss. Guide/Alice render in their own portals, so without
+ * this check, clicking them would close the sheet being used alongside.
  */
-export const GUIDE_LAYER_SELECTOR = "[data-guide-layer], #react-joyride-portal";
+export const GUIDE_LAYER_SELECTOR = "[data-guide-layer]";
+export const ALICE_FLOAT_SELECTOR = "[data-alice-float]";
 
 export function isInGuideLayer(
   target: EventTarget | null | undefined
@@ -16,19 +17,50 @@ export function isInGuideLayer(
   );
 }
 
+export function isInAliceFloatLayer(
+  target: EventTarget | null | undefined
+): boolean {
+  return (
+    target instanceof Element && target.closest(ALICE_FLOAT_SELECTOR) !== null
+  );
+}
+
 type OutsideInteractionEvent = {
   target: EventTarget | null;
   detail?: { originalEvent?: { target: EventTarget | null } };
   preventDefault: () => void;
 };
 
+function resolveOutsideTarget(
+  event: OutsideInteractionEvent
+): EventTarget | null {
+  return event.detail?.originalEvent?.target ?? event.target;
+}
+
 /**
  * Use as (part of) `onInteractOutside` on Radix dialog content: interactions
  * that land on the guide layer never dismiss the dialog.
  */
 export function keepOpenForGuideLayer(event: OutsideInteractionEvent): void {
-  const target = event.detail?.originalEvent?.target ?? event.target;
-  if (isInGuideLayer(target)) {
+  if (isInGuideLayer(resolveOutsideTarget(event))) {
     event.preventDefault();
   }
+}
+
+/**
+ * Keep sheets/dialogs open when the user interacts with Alice’s float panel
+ * or FAB (same pattern as the Setup Guide layer).
+ */
+export function keepOpenForAliceFloat(event: OutsideInteractionEvent): void {
+  if (isInAliceFloatLayer(resolveOutsideTarget(event))) {
+    event.preventDefault();
+  }
+}
+
+/** Combined dismiss guard for sheets/dialogs that sit beside Alice / the guide. */
+export function keepOpenForFloatingLayers(
+  event: OutsideInteractionEvent
+): void {
+  keepOpenForGuideLayer(event);
+  keepOpenForAliceFloat(event);
 }

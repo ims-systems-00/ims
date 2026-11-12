@@ -23,6 +23,8 @@ function currentStepIndex(pathname: string): number {
 export function OnboardingShell() {
   const location = useLocation();
   const activeStep = currentStepIndex(location.pathname);
+  // Partner apply is a side path — hide the Go Live progress strip.
+  const showProgress = !location.pathname.startsWith("/onboard/partner");
 
   return (
     <div className="flex min-h-dvh flex-col bg-background text-foreground">
@@ -59,61 +61,70 @@ export function OnboardingShell() {
           </div>
         </div>
 
-        <nav
-          aria-label="Onboarding progress"
-          className="mx-auto w-full max-w-5xl px-4 pb-4 md:px-6"
-        >
-          <ol className="flex items-start">
-            {STEPS.map((step, index) => {
-              const done = index < activeStep;
-              const active = index === activeStep;
-              return (
-                <li
-                  key={step.label}
-                  className={cn("flex items-start", index < STEPS.length - 1 && "flex-1")}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "flex size-7 shrink-0 items-center justify-center rounded-full border text-[0.6875rem] font-semibold transition-colors",
-                        done &&
-                          "border-primary bg-primary text-primary-foreground",
-                        active &&
-                          "border-primary text-primary ring-4 ring-primary/10",
-                        !done && !active && "border-border text-muted-foreground"
-                      )}
-                    >
-                      {done ? <Check className="size-3.5" /> : index + 1}
-                    </span>
-                    <span className="hidden leading-tight sm:block">
+        {showProgress ? (
+          <nav
+            aria-label="Onboarding progress"
+            className="mx-auto w-full max-w-5xl px-4 pb-4 md:px-6"
+          >
+            <ol className="flex items-start">
+              {STEPS.map((step, index) => {
+                const done = index < activeStep;
+                const active = index === activeStep;
+                return (
+                  <li
+                    key={step.label}
+                    className={cn(
+                      "flex items-start",
+                      index < STEPS.length - 1 && "flex-1"
+                    )}
+                  >
+                    <div className="flex items-center gap-2.5">
                       <span
+                        aria-hidden
                         className={cn(
-                          "block text-[0.75rem] font-medium",
-                          active ? "text-foreground" : "text-muted-foreground"
+                          "flex size-7 shrink-0 items-center justify-center rounded-full border text-[0.6875rem] font-semibold transition-colors",
+                          done &&
+                            "border-primary bg-primary text-primary-foreground",
+                          active &&
+                            "border-primary text-primary ring-4 ring-primary/10",
+                          !done &&
+                            !active &&
+                            "border-border text-muted-foreground"
                         )}
                       >
-                        {step.label}
+                        {done ? <Check className="size-3.5" /> : index + 1}
                       </span>
-                      <span className="block text-[0.6875rem] text-muted-foreground">
-                        {step.hint}
+                      <span className="hidden leading-tight sm:block">
+                        <span
+                          className={cn(
+                            "block text-[0.75rem] font-medium",
+                            active
+                              ? "text-foreground"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {step.label}
+                        </span>
+                        <span className="block text-[0.6875rem] text-muted-foreground">
+                          {step.hint}
+                        </span>
                       </span>
-                    </span>
-                  </div>
-                  {index < STEPS.length - 1 ? (
-                    <span
-                      aria-hidden
-                      className={cn(
-                        "mx-3 mt-3.5 h-px flex-1",
-                        done ? "bg-primary" : "bg-border"
-                      )}
-                    />
-                  ) : null}
-                </li>
-              );
-            })}
-          </ol>
-        </nav>
+                    </div>
+                    {index < STEPS.length - 1 ? (
+                      <span
+                        aria-hidden
+                        className={cn(
+                          "mx-3 mt-3.5 h-px flex-1",
+                          done ? "bg-primary" : "bg-border"
+                        )}
+                      />
+                    ) : null}
+                  </li>
+                );
+              })}
+            </ol>
+          </nav>
+        ) : null}
       </header>
 
       <main className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-4 py-8 md:px-6 md:py-10">

@@ -1,0 +1,166 @@
+{
+  "title": "Get set up",
+  "estimate": "about 2 hours",
+  "steps": [
+    {
+      "id": "org",
+      "t": "Set up your organisation",
+      "s": "Business units or whole businesses, feeding the dashboard",
+      "est": "20 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "Create your first business unit. A unit is a team, a site, or a whole business; everything inside it rolls up to the dashboard.",
+        "subs": [
+          "Open Organisation › Functional Units",
+          "Click “Create a function”",
+          "Choose the access type",
+          "Name it and give it a responsibility",
+          "Create it, then invite users and register assets"
+        ]
+      }
+    },
+    {
+      "id": "docs",
+      "t": "Bring your compliance in",
+      "s": "Purpose, owner, review date, authorisation",
+      "est": "30 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "Create a repository for your policies, then upload. Set the purpose, owners and review date; switch on authorisation where sign-off is needed.",
+        "subs": [
+          "Open Documents › Repositories",
+          "Click “Create repository”",
+          "Name it “Policies & Procedures”",
+          "Upload your files with purpose and applicable modules",
+          "Confirm owners, review dates and authorisation"
+        ]
+      }
+    },
+    {
+      "id": "link",
+      "t": "Link documents to the standards",
+      "s": "Compliance Settings; evidence on the clause; the link follows every version",
+      "est": "15 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "Open a document and tie it to the clauses it supports. It becomes evidence on those controls and the link follows every new version.",
+        "subs": [
+          "Open a document",
+          "Go to Compliance Settings",
+          "Select the standards and clauses it supports",
+          "Save"
+        ]
+      }
+    },
+    {
+      "id": "soa",
+      "t": "Statement of Applicability",
+      "s": "Built from your toolkits; select, status, evidence; the score moves",
+      "est": "20 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "iMS OS has built the Statement of Applicability from your licensed toolkits. Confirm what applies, set the status, attach the evidence; the score moves as you go.",
+        "subs": [
+          "Open Compliance › your standard › Controls",
+          "Open a clause",
+          "Select it (or justify why not)",
+          "Set the status",
+          "Attach evidence"
+        ]
+      }
+    },
+    {
+      "id": "risk",
+      "t": "Risk, analysed by Alice",
+      "s": "Raise and score; Alice gives impacts, mitigations, controls",
+      "est": "15 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "Raise a risk against the organisation or an asset, score it, then let Alice analyse it.",
+        "subs": [
+          "Open Risks › Raise risk",
+          "Describe and score it",
+          "Set the owner",
+          "Click Analyse",
+          "Save Alice's response as the treatment"
+        ]
+      }
+    },
+    {
+      "id": "audit",
+      "t": "Internal audits that run themselves",
+      "s": "Interval, compliance body, Alice's audit plan",
+      "est": "5 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "Schedule the audit programme once. The interval creates the series; Alice drafts the plan.",
+        "subs": [
+          "Open Audits › Internal › Schedule audit",
+          "Title, focus area, business unit, compliance body",
+          "Auditor, date, time",
+          "Set the interval",
+          "Click Assist & Verification for the plan"
+        ]
+      }
+    },
+    {
+      "id": "review",
+      "t": "Management review on autopilot",
+      "s": "Series, attendees, agenda, minutes, actions",
+      "est": "5 min",
+      "alice": false,
+      "done": false,
+      "guide": {
+        "text": "Schedule the management review series with attendees. Agenda, minutes and actions attach to each meeting.",
+        "subs": [
+          "Open Reviews › Schedule review",
+          "Title and privacy",
+          "Date, time and interval",
+          "Tick the attendees",
+          "Schedule"
+        ]
+      }
+    },
+    {
+      "id": "remote",
+      "t": "Remote audit ready",
+      "s": "Invite your lead auditor: read-only login, live evidence, no exports",
+      "est": "5 min",
+      "alice": false,
+      "done": false,
+      "guide": {
+        "text": "Make the organisation remote-audit ready: your certification body becomes an external compliance function and your lead auditor gets a read-only login.",
+        "subs": [
+          "Organisation › Functional Units › Create a function",
+          "Access type: External compliance function",
+          "Name the certification body and standards",
+          "Users › Add user › External Auditor",
+          "Send the invitation"
+        ]
+      }
+    },
+    {
+      "id": "alice",
+      "t": "Alice manages it proactively",
+      "s": "Policies due, controls without evidence, audits coming up; she finds, drafts and chases, you decide",
+      "est": "2 min",
+      "alice": true,
+      "done": false,
+      "guide": {
+        "text": "Ask Alice your first question. From now on she reviews your data daily and tells you what needs attention.",
+        "subs": [
+          "Open Alice (bottom right)",
+          "Ask “What needs attention this week?”",
+          "Open one of the records she links",
+          "Pin the Monday question"
+        ]
+      }
+    }
+  ]
+}

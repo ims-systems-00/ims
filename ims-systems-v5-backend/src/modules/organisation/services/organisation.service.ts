@@ -526,6 +526,8 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
 
       const subscriptionId = existing.paymentSystem.stripeSubscriptionId;
       if (subscriptionId && billing) {
+        // Billing errors are mapped to ValidationAppError inside upgradeSubscription
+        // so licence request never surfaces as an opaque 500 after seats are applied.
         await billing.upgradeSubscription(subscriptionId, delta);
       }
 
@@ -534,6 +536,39 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         updated.id
       );
       return { ...updated, membership };
+    },
+
+    /**
+     * Monthly £100 SME licence Stripe Checkout.
+     */
+    async createSmeLicenceCheckoutSession(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string
+    ): Promise<{ url: string }> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId || authed.organizationId !== organizationId) {
+        throw new ForbiddenError(
+          "You don't have permission to purchase an SME licence for this organisation."
+        );
+      }
+      await assertAllowed(authed, "manage", organizationId);
+      await assertMember(subjectId, organizationId);
+
+      const org = await organisations.findById(organizationId);
+      if (!org) {
+        throw new NotFoundError("Organisation not found");
+      }
+      if (!org.isCustomer) {
+        throw new ValidationAppError(
+          "Organisation must complete Go Live before purchasing an SME licence."
+        );
+      }
+
+      const payments = requireBilling();
+      const session = await payments.createSmeLicenceCheckoutSession({
+        organizationId,
+      });
+      return { url: session.url };
     },
 
     /**

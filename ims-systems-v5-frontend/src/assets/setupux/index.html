@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iMS OS Set-up Experience</title>
+<meta name="description" content="Interactive prototype of the in-app set-up journey for iMS OS: welcome, dashboard checklist, guided steps with spotlight, Alice doing steps for you, and completion.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--navy:#0B1020;--side:#0F172A;--ink:#141A3A;--muted:#5B6180;--line:#E3E5F2;--bg:#F6F7FB;--card:#fff;--indigo:#4F39F6;--violet:#8C7DFF;--soft:#EEEBFF;--pink:#E60076;--ok:#1B8F5A;--ok-soft:#E6F6EE;--warn:#B7611B;--f:"DM Sans",system-ui,sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+*{box-sizing:border-box}body{margin:0;font-family:var(--f);color:var(--ink);background:#E9EAF3;line-height:1.45;-webkit-font-smoothing:antialiased}
+/* explainer bar */
+.bar{background:var(--navy);color:#fff;padding:12px 18px;display:flex;gap:14px;align-items:center;flex-wrap:wrap;justify-content:space-between}
+.bar b{font-size:15px}.bar span{color:#C9CBF0;font-size:13.5px}
+.bar .modes{display:flex;gap:6px;flex-wrap:wrap}
+.bar button{appearance:none;border:1px solid rgba(255,255,255,.25);background:transparent;color:#fff;font:600 12.5px var(--f);padding:6px 11px;border-radius:999px;cursor:pointer}
+.bar button[aria-pressed="true"]{background:var(--indigo);border-color:transparent}
+/* app frame */
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:calc(100vh - 46px);position:relative;overflow:hidden}
+@media (max-width:860px){.app{grid-template-columns:minmax(0,1fr)}.side{display:none}}
+.side{background:var(--side);color:#C9CBF0;padding:16px 12px;font-size:14px}
+.side .logo{color:#fff;font-weight:700;font-size:18px;display:flex;align-items:center;gap:8px;padding:6px 8px 18px}
+.side .logo i{width:24px;height:24px;border-radius:7px;background:var(--indigo);display:inline-block}
+.side .sec{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#7C82B3;padding:8px 10px 6px}
+.side a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:inherit;text-decoration:none}
+.side a.on{background:rgba(79,57,246,.35);color:#fff}
+.side a i{width:14px;height:14px;border:1.5px solid currentColor;border-radius:4px;opacity:.7}
+.side .done{margin-left:auto;color:#5ee0a8;font-size:12px}
+.main{background:var(--bg);padding:22px 26px 40px;position:relative}
+.crumb{font-size:13px;color:var(--muted);margin-bottom:10px}
+h1{font-size:24px;margin:0 0 4px;letter-spacing:-.01em}.sub{color:var(--muted);margin:0 0 18px;font-size:14px}
+.grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:16px}
+@media (max-width:1100px){.grid{grid-template-columns:minmax(0,1fr)}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px}
+.card h3{margin:0 0 4px;font-size:16px}.card p{margin:0;color:var(--muted);font-size:13.5px}
+.kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+@media (max-width:700px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi small{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.kpi b{display:block;font-size:26px;margin-top:4px}
+.kpi.empty b{color:#B8BCD9}
+/* setup card */
+.setup{border:1px solid #D9D4FF;background:linear-gradient(135deg,#F4F2FF,#fff)}
+.setup .head{display:flex;gap:16px;align-items:center;margin-bottom:12px}
+.ringp{width:64px;height:64px;border-radius:50%;background:conic-gradient(var(--indigo) var(--p),#E6E4F6 0);display:grid;place-items:center;flex:none}
+.ringp i{width:50px;height:50px;border-radius:50%;background:#fff;display:grid;place-items:center;font:700 14px var(--f);font-style:normal}
+.steps{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.steps li{display:grid;grid-template-columns:26px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 10px;border-radius:10px;border:1px solid transparent}
+.steps li:hover{background:#fff;border-color:var(--line)}
+.steps li.cur{background:#fff;border-color:#C9C2FF;box-shadow:0 6px 20px rgba(79,57,246,.12)}
+.steps .n{width:26px;height:26px;border-radius:50%;border:2px solid #C9C2FF;display:grid;place-items:center;font-size:12px;font-weight:700;color:var(--indigo)}
+.steps li.done .n{background:var(--ok);border-color:var(--ok);color:#fff}
+.steps li.done .t{color:var(--muted);text-decoration:line-through}
+.steps .t{font-weight:600;font-size:14px}.steps .t small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.steps .t .est{display:inline-block;margin-left:6px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.btn{appearance:none;border:1px solid var(--line);background:#fff;color:var(--ink);font:600 13px var(--f);padding:8px 12px;border-radius:9px;cursor:pointer;white-space:nowrap}
+.btn.p{background:var(--indigo);color:#fff;border-color:transparent}
+.btn.a{background:#fff;border-color:#F5B8D8;color:var(--pink);display:inline-flex;gap:6px;align-items:center}
+.btn.a::before{content:"";width:12px;height:12px;border-radius:50%;background:var(--pink)}
+.btn.ghost{background:transparent}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+/* mock module screens */
+.tablebox{border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th{text-align:left;font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--line)}td{padding:10px 12px;border-bottom:1px solid var(--line)}
+.emptyst{text-align:center;padding:38px 20px;color:var(--muted)}
+.emptyst b{display:block;color:var(--ink);font-size:15px;margin-bottom:4px}
+.pill{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--soft);color:var(--indigo)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+/* drawer */
+.drawer{position:absolute;top:0;right:0;bottom:0;width:380px;background:#fff;border-left:1px solid var(--line);box-shadow:-20px 0 50px rgba(7,10,24,.12);padding:20px;display:none;z-index:6;overflow:auto}
+.drawer.on{display:block}
+.drawer label{display:block;font-size:12.5px;font-weight:600;margin:12px 0 4px}
+.drawer input,.drawer select,.drawer textarea{width:100%;border:1px solid var(--line);border-radius:9px;padding:9px 10px;font:14px var(--f);background:#fff}
+.hint{font-size:12px;color:var(--muted);margin-top:4px}
+/* guide panel */
+.guide{position:absolute;right:20px;bottom:20px;width:360px;background:var(--navy);color:#fff;border-radius:16px;padding:16px 16px 14px;box-shadow:0 24px 60px rgba(7,10,24,.4);z-index:8;display:none}
+.guide.on{display:block}
+.main.dopen .guide{right:auto;left:20px}
+.guide .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.guide .av{width:34px;height:34px;border-radius:50%;background:#fff;display:grid;place-items:center;position:relative}
+.guide .av::before{content:"";width:18px;height:16px;border-radius:6px;background:#101828}
+.guide .av::after{content:"";position:absolute;right:6px;top:6px;width:6px;height:6px;border-radius:50%;background:var(--pink)}
+.guide small{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:#9EA2FF;display:block}
+.guide b{font-size:15px}
+.guide p{margin:6px 0 10px;color:#DADCF5;font-size:13.5px}
+.guide .subs{display:grid;gap:5px;margin:0 0 12px;padding:0;list-style:none;font-size:13px}
+.guide .subs li{display:flex;gap:8px;align-items:center;color:#9EA2FF}
+.guide .subs li::before{content:"";width:14px;height:14px;border-radius:50%;border:1.5px solid #5B62A8}
+.guide .subs li.cur{color:#fff}.guide .subs li.cur::before{border-color:#fff;background:#fff;box-shadow:inset 0 0 0 3px var(--navy)}
+.guide .subs li.ok{color:#9EA2FF;text-decoration:line-through}.guide .subs li.ok::before{background:#5ee0a8;border-color:#5ee0a8}
+.guide .prog{height:4px;background:#2A2F66;border-radius:2px;overflow:hidden;margin:0 0 12px}.guide .prog i{display:block;height:100%;background:var(--violet)}
+.guide .btn{background:transparent;color:#fff;border-color:rgba(255,255,255,.3)}
+.guide .btn.p{background:var(--indigo);border-color:transparent}
+.guide .btn.a{background:#fff;color:var(--pink);border-color:transparent}
+/* spotlight */
+.spot{position:absolute;border:2px solid var(--indigo);border-radius:12px;box-shadow:0 0 0 9999px rgba(7,10,24,.45),0 0 0 6px rgba(79,57,246,.25);pointer-events:none;z-index:5;transition:all .35s ease;display:none}
+.spot.on{display:block}
+.spot::after{content:attr(data-l);position:absolute;left:0;top:calc(100% + 10px);background:var(--indigo);color:#fff;font:600 12.5px var(--f);padding:6px 10px;border-radius:8px;white-space:nowrap}
+.spot.up::after{top:auto;bottom:calc(100% + 10px)}
+/* modal */
+.modal{position:absolute;inset:0;background:rgba(7,10,24,.55);display:none;place-items:center;z-index:9;padding:16px}
+.modal.on{display:grid}
+.box{background:#fff;border-radius:18px;max-width:640px;width:100%;padding:28px;box-shadow:0 40px 100px rgba(0,0,0,.4)}
+.box h2{margin:0 0 6px;font-size:26px;letter-spacing:-.01em}.box p{margin:0 0 16px;color:var(--muted)}
+.box .list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:18px}
+@media (max-width:560px){.box .list{grid-template-columns:minmax(0,1fr)}}
+.box .list div{display:flex;gap:10px;align-items:center;font-size:13.5px;padding:8px 10px;border:1px solid var(--line);border-radius:10px}
+.box .list i{width:22px;height:22px;border-radius:50%;background:var(--soft);color:var(--indigo);font-style:normal;font-weight:700;font-size:11px;display:grid;place-items:center;flex:none}
+.celebrate{text-align:center}
+.celebrate .big{width:84px;height:84px;border-radius:50%;background:var(--ok-soft);color:var(--ok);display:grid;place-items:center;margin:0 auto 14px;font-size:38px}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 16px;border-radius:999px;font-size:13.5px;z-index:10;opacity:0;transition:opacity .25s;pointer-events:none}
+.toast.on{opacity:1}
+.notes{max-width:1180px;margin:22px auto 40px;padding:0 18px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:900px){.notes{grid-template-columns:minmax(0,1fr)}}
+.notes .card h3{font-size:14.5px}.notes .card p{font-size:13px}
+</style>
+</head>
+<body>
+<div class="bar" id="proto-bar">
+  <div><b>iMS OS set-up experience</b> <span>· interactive prototype · click through as a new Super Admin would</span></div>
+  <div class="modes"><button type="button" data-go="welcome" aria-pressed="true">1 Welcome</button><button type="button" data-go="dash">2 Dashboard checklist</button><button type="button" data-go="guide">3 Guided step</button><button type="button" data-go="alice">4 Alice does it</button><button type="button" data-go="done">5 Complete</button></div>
+</div>
+
+<div class="app" id="app">
+  <aside class="side">
+    <div class="logo"><i></i>iMS OS</div>
+    <div class="sec">Workspace</div>
+    <a href="#" class="on" data-nav="dash"><i></i>Live Dashboard</a>
+    <a href="#" data-nav="org"><i></i>Organisation <span class="done" id="sd-org"></span></a>
+    <a href="#" data-nav="docs"><i></i>Documents <span class="done" id="sd-docs"></span></a>
+    <a href="#" data-nav="soa"><i></i>Compliance <span class="done" id="sd-soa"></span></a>
+    <a href="#" data-nav="risk"><i></i>Risks <span class="done" id="sd-risk"></span></a>
+    <a href="#" data-nav="audit"><i></i>Audits <span class="done" id="sd-audit"></span></a>
+    <a href="#" data-nav="review"><i></i>Reviews <span class="done" id="sd-review"></span></a>
+    <div class="sec" style="margin-top:12px">Set-up</div>
+    <a href="#" data-nav="dash"><i style="border-radius:50%"></i>Get set up <span class="done" id="sd-all">0/9</span></a>
+  </aside>
+
+  <main class="main" id="main">
+    <!-- DASHBOARD -->
+    <section id="v-dash">
+      <div class="crumb">Dashboard</div>
+      <h1>Good morning, Sam</h1>
+      <p class="sub">Blue Manufacturing · the dashboard fills in as you complete set-up.</p>
+      <div class="kpis">
+        <div class="kpi" id="k-units"><small>Business units</small><b>0</b></div>
+        <div class="kpi" id="k-users"><small>Users</small><b>1</b></div>
+        <div class="kpi empty" id="k-docs"><small>Documents</small><b>—</b></div>
+        <div class="kpi empty" id="k-comp"><small>Compliance</small><b>—</b></div>
+      </div>
+      <div class="grid">
+        <div class="card setup" id="setupcard">
+          <div class="head"><div class="ringp" id="ring" style="--p:0%"><i id="ringt">0/9</i></div>
+            <div><h3>Get Blue Manufacturing set up</h3><p>About two hours in total. Any order; we save where you are. Alice can do several steps for you.</p></div></div>
+          <ul class="steps" id="steplist"></ul>
+          <div class="row" style="margin-top:12px;justify-content:space-between"><span class="hint">Next up is highlighted. Steps unlock nothing: you can skip and come back.</span><button class="btn ghost" type="button" id="hide">Hide for now</button></div>
+        </div>
+        <div style="display:grid;gap:16px;align-content:start">
+          <div class="card"><h3>Organisational pulse</h3><p id="pulse">Not enough data yet. Complete steps 1 to 4 to see your live posture.</p></div>
+          <div class="card"><h3>Alice</h3><p>Hi Sam. I can create your business units from a list, upload a folder of policies, or build your Statement of Applicability from the toolkits you choose. Ask me, or press "Ask Alice" on any step.</p><div class="row" style="margin-top:10px"><button class="btn a" type="button" data-go="alice">Ask Alice to set up my business units</button></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ORGANISATION / FUNCTIONAL UNITS -->
+    <section id="v-org" hidden>
+      <div class="crumb">Organisation / Functional Units</div>
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h1>Functional Units</h1><p class="sub">Teams, sites, or separate businesses. Each one feeds the organisation dashboard.</p></div><button class="btn p" id="b-create" type="button">+ Create a function</button></div>
+      <div class="tablebox"><table><thead><tr><th>Name</th><th>Access type</th><th>Location</th><th>Members</th></tr></thead><tbody id="units"><tr><td colspan="4"><div class="emptyst"><b>No functional units yet</b>Create your first team, site or business, or ask Alice to create several from a list.</div></td></tr></tbody></table></div>
+    </section>
+
+    <!-- DOCUMENTS -->
+    <section id="v-docs" hidden>
+      <div class="crumb">Documents / Repositories</div>
+      <div class="row" style="justify-content:space-between;align-items:flex-start"><div><h1>Repositories</h1><p class="sub">Controlled libraries with owners, versions and review dates.</p></div><button class="btn p" id="b-repo" type="button">+ Create repository</button></div>
+      <div class="tablebox"><table><thead><tr><th>Repository</th><th>Owner</th><th>Review</th><th>Documents</th></tr></thead><tbody id="repos"><tr><td colspan="4"><div class="emptyst"><b>No repositories yet</b>Start with "Policies &amp; Procedures". Drag a folder in and Alice will set purpose, owners and review dates for you to confirm.</div></td></tr></tbody></table></div>
+    </section>
+
+    <!-- generic placeholder -->
+    <section id="v-other" hidden>
+      <div class="crumb" id="o-crumb">Module</div>
+      <h1 id="o-title">Module</h1><p class="sub">In the real product this is the live module. The guided step panel and spotlight work the same way on every screen.</p>
+      <div class="tablebox"><div class="emptyst"><b id="o-empty">Nothing here yet</b><span id="o-hint">Follow the guide panel, or ask Alice.</span></div></div>
+    </section>
+
+    <!-- drawer (create function) -->
+    <div class="drawer" id="drawer">
+      <div class="row" style="justify-content:space-between"><b>Create Functional Unit</b><button class="btn ghost" type="button" id="d-close">✕</button></div>
+      <label>Access type</label><select id="f-type"><option>Internal business function</option><option>Internal compliance function</option><option>External compliance function</option><option>External function</option></select>
+      <div class="hint" id="f-typehint">For your own teams, sites or businesses.</div>
+      <label>Name</label><input id="f-name" placeholder="e.g. HR Team, Oldham Site, or a subsidiary">
+      <label>Operating location</label><input id="f-loc" placeholder="The Hive, Oldham">
+      <label>Responsibility</label><textarea id="f-resp" rows="3" placeholder="What this unit is accountable for"></textarea>
+      <div class="row" style="margin-top:16px;justify-content:flex-end"><button class="btn" type="button" id="d-cancel">Cancel</button><button class="btn p" type="button" id="d-create">Create</button></div>
+    </div>
+
+    <div class="spot" id="spot"></div>
+
+    <!-- guide panel -->
+    <div class="guide" id="guide">
+      <div class="top"><span class="av"></span><div><small id="g-step">Step 1 of 8</small><b id="g-title">Set up your organisation</b></div><button class="btn ghost" type="button" id="g-close" style="margin-left:auto;color:#fff;border:0">✕</button></div>
+      <div class="prog"><i id="g-prog" style="width:12%"></i></div>
+      <p id="g-text"></p>
+      <ul class="subs" id="g-subs"></ul>
+      <div class="row" style="justify-content:space-between"><button class="btn a" type="button" id="g-alice">Ask Alice to do this</button><div class="row"><button class="btn" type="button" id="g-skip">Skip</button><button class="btn p" type="button" id="g-next">Next</button></div></div>
+    </div>
+
+    <!-- modals -->
+    <div class="modal" id="m-welcome">
+      <div class="box">
+        <span class="pill">First sign-in</span>
+        <h2 style="margin-top:10px">Let's set up Blue Manufacturing</h2>
+        <p>Nine steps take you from an empty dashboard to audit-ready. About two hours in total, in any order, and Alice can do several of them for you.</p>
+        <div class="list" id="w-list"></div>
+        <div class="row" style="justify-content:space-between"><button class="btn ghost" type="button" id="w-later">I'll do it later</button><div class="row"><button class="btn a" type="button" id="w-alice">Let Alice start</button><button class="btn p" type="button" id="w-start">Start step 1</button></div></div>
+      </div>
+    </div>
+    <div class="modal" id="m-alice">
+      <div class="box">
+        <div class="row" style="gap:10px"><span class="av" style="width:34px;height:34px;border-radius:50%;background:#101828;display:inline-block"></span><b>Alice · create your business units</b></div>
+        <p style="margin-top:10px">Paste or type your teams, sites or businesses, one per line. I'll create them as internal business functions and you confirm.</p>
+        <textarea id="a-list" rows="5" style="width:100%;border:1px solid var(--line);border-radius:9px;padding:10px;font:14px var(--f)">HR Team — The Hive, Oldham
+Operations — Oldham Site
+Finance — The Hive, Oldham
+Quality &amp; Compliance — The Hive, Oldham</textarea>
+        <div id="a-preview" style="margin:12px 0;display:none"></div>
+        <div class="row" style="justify-content:flex-end;margin-top:12px"><button class="btn" type="button" id="a-cancel">Cancel</button><button class="btn p" type="button" id="a-go">Create 4 units</button></div>
+      </div>
+    </div>
+    <div class="modal" id="m-done">
+      <div class="box celebrate">
+        <div class="big">✓</div>
+        <h2>Blue Manufacturing is set up</h2>
+        <p>Organisation, documents, standards, Statement of Applicability, risks, audits and reviews are in; your auditor has a login. From here Alice reviews your data every day and tells you what needs attention.</p>
+        <div class="list" style="text-align:left"><div><i>1</i>Next internal audit: 20 Nov 2026</div><div><i>2</i>Management review: quarterly, first on 20 Nov</div><div><i>3</i>3 policies due for review this quarter</div><div><i>4</i>External auditor login ready to share</div></div>
+        <div class="row" style="justify-content:center"><button class="btn p" type="button" id="done-dash">Go to the Live Dashboard</button><button class="btn a" type="button">Ask Alice what needs attention</button></div>
+      </div>
+    </div>
+    <div class="toast" id="toast"></div>
+  </main>
+</div>
+
+<section class="notes">
+  <div class="card"><h3>Why it works: it lives on the dashboard, not in a wizard</h3><p>The checklist is a card on the first screen, with a progress ring and the next step highlighted. People can leave and come back; nothing is locked behind it. "Hide for now" moves it to the sidebar as "Get set up 2/8".</p></div>
+  <div class="card"><h3>Guided steps happen on the real screen</h3><p>Pressing Continue opens the module and a small guide panel; a spotlight points at the exact button. Sub-steps tick as the user actually does them, and the empty states teach: "No units yet: create one, or ask Alice".</p></div>
+  <div class="card"><h3>Alice can do the step</h3><p>Every step that is data entry has "Ask Alice to do this": paste a list, drop a folder, choose toolkits. Alice previews what she will create; the user confirms. The dashboard fills as steps complete, so value shows early.</p></div>
+</section>
+
+<script>
+(function(){
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)];
+const STEPS=[
+ {id:'org',t:'Set up your organisation',s:'Business units or whole businesses, feeding the dashboard',est:'20 min',alice:true,done:false},
+ {id:'docs',t:'Bring your compliance in',s:'Purpose, owner, review date, authorisation',est:'30 min',alice:true,done:false},
+ {id:'link',t:'Link documents to the standards',s:'Compliance Settings; evidence on the clause; the link follows every version',est:'15 min',alice:true,done:false},
+ {id:'soa',t:'Statement of Applicability',s:'Built from your toolkits; select, status, evidence; the score moves',est:'20 min',alice:true,done:false},
+ {id:'risk',t:'Risk, analysed by Alice',s:'Raise and score; Alice gives impacts, mitigations, controls',est:'15 min',alice:true,done:false},
+ {id:'audit',t:'Internal audits that run themselves',s:'Interval, compliance body, Alice\'s audit plan',est:'5 min',alice:true,done:false},
+ {id:'review',t:'Management review on autopilot',s:'Series, attendees, agenda, minutes, actions',est:'5 min',alice:false,done:false},
+ {id:'remote',t:'Remote audit ready',s:'Invite your lead auditor: read-only login, live evidence, no exports',est:'5 min',alice:false,done:false},
+ {id:'alice',t:'Alice manages it proactively',s:'Policies due, controls without evidence, audits coming up; she finds, drafts and chases, you decide',est:'2 min',alice:true,done:false}];
+const GUIDE={
+ org:{text:'Create your first business unit. A unit is a team, a site, or a whole business; everything inside it rolls up to the dashboard.',subs:['Open Organisation › Functional Units','Click “Create a function”','Choose the access type','Name it and give it a responsibility','Create it, then invite users and register assets']},
+ docs:{text:'Create a repository for your policies, then upload. Set the purpose, owners and review date; switch on authorisation where sign-off is needed.',subs:['Open Documents › Repositories','Click “Create repository”','Name it “Policies & Procedures”','Upload your files with purpose and applicable modules','Confirm owners, review dates and authorisation']},
+ link:{text:'Open a document and tie it to the clauses it supports. It becomes evidence on those controls and the link follows every new version.',subs:['Open a document','Go to Compliance Settings','Select the standards and clauses it supports','Save']},
+ soa:{text:'iMS OS has built the Statement of Applicability from your licensed toolkits. Confirm what applies, set the status, attach the evidence; the score moves as you go.',subs:['Open Compliance › your standard › Controls','Open a clause','Select it (or justify why not)','Set the status','Attach evidence']},
+ risk:{text:'Raise a risk against the organisation or an asset, score it, then let Alice analyse it.',subs:['Open Risks › Raise risk','Describe and score it','Set the owner','Click Analyse','Save Alice\'s response as the treatment']},
+ audit:{text:'Schedule the audit programme once. The interval creates the series; Alice drafts the plan.',subs:['Open Audits › Internal › Schedule audit','Title, focus area, business unit, compliance body','Auditor, date, time','Set the interval','Click Assist & Verification for the plan']},
+ review:{text:'Schedule the management review series with attendees. Agenda, minutes and actions attach to each meeting.',subs:['Open Reviews › Schedule review','Title and privacy','Date, time and interval','Tick the attendees','Schedule']},
+ remote:{text:'Make the organisation remote-audit ready: your certification body becomes an external compliance function and your lead auditor gets a read-only login.',subs:['Organisation › Functional Units › Create a function','Access type: External compliance function','Name the certification body and standards','Users › Add user › External Auditor','Send the invitation']},
+ alice:{text:'Ask Alice your first question. From now on she reviews your data daily and tells you what needs attention.',subs:['Open Alice (bottom right)','Ask “What needs attention this week?”','Open one of the records she links','Pin the Monday question']},
+ other:{text:'This step works the same way: the panel lists the actions, the spotlight shows where, and Alice can do the data entry.',subs:['Open the module','Press the primary button','Fill the form','Confirm']}};
+let cur=null,sub=0,hidden=false;
+try{const saved=JSON.parse(localStorage.getItem('ims-setup')||'null');if(saved)STEPS.forEach(st=>{st.done=!!saved[st.id]})}catch(e){}
+function persist(){try{const o={};STEPS.forEach(st=>o[st.id]=st.done);localStorage.setItem('ims-setup',JSON.stringify(o))}catch(e){}window.dispatchEvent(new CustomEvent('ims-setup-change',{detail:STEPS.map(st=>({id:st.id,done:st.done}))}))}
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),2200)}
+function renderList(){persist();const done=STEPS.filter(s=>s.done).length;const next=STEPS.find(s=>!s.done);
+ $('#steplist').innerHTML=STEPS.map((s,i)=>`<li class="${s.done?'done':''} ${s===next?'cur':''}" data-id="${s.id}"><span class="n">${s.done?'✓':i+1}</span><span class="t">${s.t}<span class="est">${s.est}</span><small>${s.s}</small></span><span class="row">${s.done?'<span class="pill ok">Done</span>':`${s.alice?'<button class="btn a" data-alice="'+s.id+'" type="button">Ask Alice</button>':''}<button class="btn ${s===next?'p':''}" data-start="${s.id}" type="button">${s===next?'Continue':'Start'}</button>`}</span></li>`).join('');
+ $('#ring').style.setProperty('--p',(done/STEPS.length*100)+'%');$('#ringt').textContent=`${done}/${STEPS.length}`;$('#sd-all').textContent=`${done}/${STEPS.length}`;
+ STEPS.forEach(s=>{const e=$('#sd-'+s.id);if(e)e.textContent=s.done?'✓':''});
+ $('#w-list').innerHTML=STEPS.map((s,i)=>`<div><i>${s.done?'✓':i+1}</i>${s.t}</div>`).join('');
+ const units=$('#units').querySelectorAll('tr[data-u]').length;$('#k-units b').textContent=units;
+ if(done>=3){$('#pulse').textContent='Safe · confidence 62%. Rises as documents and controls come in.'}
+ if(done>=2){const k=$('#k-docs');k.classList.remove('empty');k.querySelector('b').textContent='2'}
+ if(done>=4){const k=$('#k-comp');k.classList.remove('empty');k.querySelector('b').textContent='13%'}
+ if(done===STEPS.length)setTimeout(()=>show('done'),400)}
+function view(v){$$('main > section').forEach(s=>s.hidden=true);$('#v-'+(['dash','org','docs'].includes(v)?v:'other')).hidden=false;$$('.side a').forEach(a=>a.classList.toggle('on',a.dataset.nav===v));
+ if(!['dash','org','docs'].includes(v)){const s=STEPS.find(x=>x.id===v);$('#o-title').textContent=s?s.t:'Module';$('#o-crumb').textContent=s?s.s:'';}
+ $('#drawer').classList.remove('on');spot(null)}
+function spot(el,label,up){const s=$('#spot');if(!el){s.classList.remove('on');return}const a=el.getBoundingClientRect(),m=$('#main').getBoundingClientRect();s.style.left=(a.left-m.left-8)+'px';s.style.top=(a.top-m.top-8)+'px';s.style.width=(a.width+16)+'px';s.style.height=(a.height+16)+'px';s.dataset.l=label||'';s.classList.toggle('up',!!up);s.classList.add('on')}
+function openGuide(id){cur=STEPS.find(s=>s.id===id);sub=0;const g=GUIDE[id]||GUIDE.other;const i=STEPS.indexOf(cur);
+ $('#g-step').textContent=`Step ${i+1} of ${STEPS.length} · ${cur.est}`;$('#g-title').textContent=cur.t;$('#g-text').textContent=g.text;$('#g-prog').style.width=((i)/STEPS.length*100)+'%';$('#g-alice').style.display=cur.alice?'':'none';
+ view(id);$('#guide').classList.add('on');renderSubs()}
+function renderSubs(){const g=GUIDE[cur.id]||GUIDE.other;$('#g-subs').innerHTML=g.subs.map((t,k)=>`<li class="${k<sub?'ok':k===sub?'cur':''}">${t}</li>`).join('');$('#g-next').textContent=sub>=g.subs.length-1?'Mark step done':'Next';
+ // spotlight per sub-step
+ if(cur.id==='org'){const map={1:[$('#b-create'),'Click here'],2:[$('#f-type'),'Pick the access type',true],3:[$('#f-name'),'Name it',true],4:[$('#d-create'),'Create',true]};if(sub>=2){$('#drawer').classList.add('on');$('#main').classList.add('dopen')}else $('#main').classList.remove('dopen');const m=map[sub];if(m)setTimeout(()=>spot(m[0],m[1],m[2]),50);else spot(null)}
+ else if(cur.id==='docs'){const m={1:[$('#b-repo'),'Click here']}[sub];if(m)setTimeout(()=>spot(m[0],m[1]),50);else spot(null)}
+ else spot(null)}
+function advance(){const g=GUIDE[cur.id]||GUIDE.other;if(sub<g.subs.length-1){sub++;renderSubs()}else{finish(cur.id)}}
+function finish(id){const s=STEPS.find(x=>x.id===id);s.done=true;$('#guide').classList.remove('on');spot(null);$('#drawer').classList.remove('on');$('#main').classList.remove('dopen');toast(`“${s.t}” marked done · saved`);view('dash');renderList()}
+function addUnit(name,loc,type){const tb=$('#units');if(!tb.querySelector('tr[data-u]'))tb.innerHTML='';tb.insertAdjacentHTML('beforeend',`<tr data-u><td><b>${name}</b></td><td>${type||'Internal business function'}</td><td>${loc||'—'}</td><td>0 <span class="pill">add members</span></td></tr>`)}
+function show(m){$$('.modal').forEach(x=>x.classList.remove('on'));if(m)$('#m-'+m).classList.add('on')}
+// modes (prototype bar)
+function go(mode){$$('.bar button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.go===mode));show(null);$('#guide').classList.remove('on');spot(null);
+ if(mode==='welcome'){view('dash');show('welcome')}
+ if(mode==='dash'){view('dash')}
+ if(mode==='guide'){openGuide(STEPS.find(s=>!s.done)?.id||'org')}
+ if(mode==='dash'&&!STEPS.some(s=>s.done)){STEPS[0].done=true;STEPS[1].done=true;renderList()}
+ if(mode==='alice'){view('dash');show('alice')}
+ if(mode==='done'){STEPS.forEach(s=>s.done=true);renderList();view('dash');show('done')}}
+document.addEventListener('click',e=>{
+ const go1=e.target.closest('[data-go]');if(go1){e.preventDefault();go(go1.dataset.go);return}
+ const st=e.target.closest('[data-start]');if(st){openGuide(st.dataset.start);return}
+ const al=e.target.closest('[data-alice]');if(al){if(al.dataset.alice==='org'){show('alice')}else{toast('Alice: tell me what to load and I will prepare it for you to confirm')}return}
+ const nav=e.target.closest('[data-nav]');if(nav){e.preventDefault();view(nav.dataset.nav);return}
+});
+$('#w-start').onclick=()=>{show(null);openGuide('org')};$('#w-later').onclick=()=>{show(null);toast('No problem. “Get set up” stays in the sidebar.')};$('#w-alice').onclick=()=>{show('alice')};
+$('#hide').onclick=()=>{$('#setupcard').style.display='none';toast('Hidden. Find it under Set-up › Get set up in the sidebar.')};
+$('#g-next').onclick=advance;$('#g-skip').onclick=()=>{$('#guide').classList.remove('on');spot(null);view('dash');toast('Skipped for now; it stays on your list.')};$('#g-close').onclick=()=>{$('#guide').classList.remove('on');spot(null)};
+$('#g-alice').onclick=()=>{if(cur.id==='org')show('alice');else toast('Alice: send me the material and I will prepare this step for you to confirm')};
+$('#b-create').onclick=()=>{$('#drawer').classList.add('on');if(cur&&cur.id==='org'&&sub===1){sub=2;renderSubs()}};
+$('#d-close').onclick=$('#d-cancel').onclick=()=>{$('#drawer').classList.remove('on');$('#main').classList.remove('dopen')};
+$('#f-type').onchange=e=>{$('#f-typehint').textContent={'Internal business function':'For your own teams, sites or businesses.','Internal compliance function':'Your own audit team.','External compliance function':'Your certification body or external auditors.','External function':'Any other outside party.'}[e.target.value];if(cur&&cur.id==='org'&&sub===2){sub=3;renderSubs()}};
+$('#f-name').oninput=()=>{if(cur&&cur.id==='org'&&sub<4&&$('#f-name').value.length>2){sub=4;renderSubs()}};
+$('#d-create').onclick=()=>{const n=$('#f-name').value||'HR Team';addUnit(n,$('#f-loc').value||'The Hive, Oldham',$('#f-type').value);$('#drawer').classList.remove('on');toast(`${n} created · 1 business unit licence used`);renderList();if(cur&&cur.id==='org'){finish('org')}};
+$('#b-repo').onclick=()=>{const tb=$('#repos');tb.innerHTML='<tr><td><b>Policies &amp; Procedures</b></td><td>Sam Admin</td><td>Yearly</td><td>0 <span class="pill">upload</span></td></tr>';toast('Repository created');if(cur&&cur.id==='docs'){sub=Math.max(sub,3);renderSubs()}};
+$('#a-cancel').onclick=()=>show(null);
+$('#a-go').onclick=()=>{const lines=$('#a-list').value.split('\n').map(l=>l.trim()).filter(Boolean);const p=$('#a-preview');p.style.display='block';p.innerHTML='<div class="hint">Alice is creating…</div>';
+ setTimeout(()=>{lines.forEach(l=>{const [n,loc]=l.split('—').map(x=>x&&x.trim());addUnit(n,loc,'Internal business function')});show(null);const s=STEPS.find(x=>x.id==='org');s.done=true;renderList();view('org');toast(`Alice created ${lines.length} business units · review and add members`);p.style.display='none'},900)};
+$('#done-dash').onclick=()=>{show(null);view('dash')};
+addEventListener('resize',()=>{if(cur)renderSubs()});
+renderList();go(STEPS.some(s=>s.done)?'dash':'welcome');
+})();
+</script>
+</body>
+</html>

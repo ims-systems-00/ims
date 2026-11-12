@@ -4,6 +4,7 @@ import {
   DOCUMENT_PURPOSES,
   DOCUMENT_REVIEW_INTERVALS,
   DOCUMENT_APPLICABLE_MODULES,
+  DOCUMENT_COMPLIANCE_TOOLS,
 } from "./types";
 
 export const createRepositoryFormSchema = z
@@ -37,13 +38,27 @@ export const createFolderFormSchema = z.object({
   name: z.string().trim().min(1, "Folder name is required").max(255),
 });
 
-export const uploadDocumentFormSchema = z.object({
-  purpose: z.enum(DOCUMENT_PURPOSES).default("Document"),
-  applicableModules: z.array(z.enum(DOCUMENT_APPLICABLE_MODULES)).default([]),
-  owners: z.array(z.string().trim().min(1)).min(1).max(5),
-  reviewDate: z.string().trim().nullable().optional(),
-  requireAuthorisation: z.boolean().default(false),
-});
+export const uploadDocumentFormSchema = z
+  .object({
+    purpose: z.enum(DOCUMENT_PURPOSES).default("Document"),
+    applicableModules: z.array(z.enum(DOCUMENT_APPLICABLE_MODULES)).default([]),
+    complianceTools: z.array(z.enum(DOCUMENT_COMPLIANCE_TOOLS)).default([]),
+    owners: z.array(z.string().trim().min(1)).min(1).max(5),
+    reviewDate: z.string().trim().nullable().optional(),
+    requireAuthorisation: z.boolean().default(false),
+  })
+  .superRefine((value, ctx) => {
+    if (
+      value.applicableModules.includes("compliancecontrols") &&
+      value.complianceTools.length === 0
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["complianceTools"],
+        message: "Select at least one compliance standard",
+      });
+    }
+  });
 
 export const updateDocumentInfoFormSchema = z.object({
   purpose: z.enum(DOCUMENT_PURPOSES),

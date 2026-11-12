@@ -182,6 +182,7 @@ services:
       STRIPE_COMPLIANCE_PRICE: ${STRIPE_COMPLIANCE_PRICE:-}
       STRIPE_ADD_MODULE_PRICE: ${STRIPE_ADD_MODULE_PRICE:-}
       STRIPE_SUPPORT_PRICE: ${STRIPE_SUPPORT_PRICE:-}
+      STRIPE_SME_PRICE: ${STRIPE_SME_PRICE:-}
     volumes:
       - ims_v5_backend_files:/data/local-files
     ports:

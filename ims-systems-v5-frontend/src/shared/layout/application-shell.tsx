@@ -10,7 +10,7 @@ import {
   AliceChatSheet,
   FloatingAliceButton,
 } from "@/modules/ai";
-import { ModulePickerDialog, TourEngine } from "@/modules/setup-guide";
+import { SetupGuideHost } from "@/modules/setup-guide";
 import { AppNavbar } from "./app-navbar";
 import { AppSidebar } from "./app-sidebar";
 import { MainContent } from "./page-header";
@@ -50,8 +50,7 @@ export function ApplicationShell() {
       <AliceChatPanel />
       <AliceChatSheet />
       <FloatingAliceButton />
-      <ModulePickerDialog />
-      <TourEngine />
+      <SetupGuideHost />
     </div>
   );
 }

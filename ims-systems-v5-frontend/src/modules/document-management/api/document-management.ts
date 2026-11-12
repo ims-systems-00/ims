@@ -180,6 +180,7 @@ export function createFileNodes(
       storageInfo: DocumentFileMeta;
       purpose?: DocumentPurpose;
       applicableModules?: DocumentApplicableModule[];
+      complianceTools?: string[];
       authorisation?: string[];
       owners?: string[];
       reviewDate?: string | null;

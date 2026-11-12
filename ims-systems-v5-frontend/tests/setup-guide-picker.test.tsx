@@ -1,11 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
-  ModulePickerDialog,
-  TourEngine,
+  SetupChecklistCard,
   useSetupGuideStore,
 } from "@/modules/setup-guide";
 
@@ -19,9 +18,8 @@ vi.mock("@/modules/security/hooks/use-security-capabilities", async () => {
       data: {
         permissions: [
           "functional-units:read",
-          "users:read",
-          "business-premises:read",
           "document-management:read",
+          "compliance:read",
           "risks:read",
         ],
       },
@@ -37,32 +35,24 @@ afterEach(() => {
 
 beforeEach(() => {
   useSetupGuideStore.setState({
-    pickerOpen: false,
-    activeTourId: null,
-    runId: 0,
-    stepIndex: 0,
-    completedEvents: {},
-    missingSteps: {},
-    completedTours: {},
+    checklistHidden: false,
+    activeStepId: null,
+    subIndex: 0,
+    completedSteps: {},
+    events: {},
+    aliceAssistOpen: false,
+    lastDocumentContext: null,
+    focusChecklistToken: 0,
   });
+  try {
+    localStorage.removeItem("ims.setup-guide.progress");
+    localStorage.removeItem("ims.setup-guide.hidden");
+  } catch {
+    /* ignore */
+  }
 });
 
-function Harness() {
-  const openPicker = useSetupGuideStore((s) => s.openPicker);
-  return (
-    <>
-      <button type="button" onClick={() => openPicker()}>
-        Open setup guide
-      </button>
-      <ModulePickerDialog />
-      <TourEngine />
-      <div data-tour="org.fu.register">Functional units register</div>
-      <div data-tour="org.fu.create">Create a function</div>
-    </>
-  );
-}
-
-function renderGuide(path = "/functional-units") {
+function renderChecklist() {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false, refetchOnWindowFocus: false },
@@ -70,56 +60,82 @@ function renderGuide(path = "/functional-units") {
   });
   return render(
     <QueryClientProvider client={queryClient}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={["/"]}>
         <Routes>
-          <Route path="*" element={<Harness />} />
+          <Route path="*" element={<SetupChecklistCard />} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>
   );
 }
 
-describe("Setup Guide picker", () => {
-  it("opens the picker and starts the Organisation tour", async () => {
+describe("SetupChecklistCard", () => {
+  it("renders the checklist and starts the Organisation step", async () => {
     const user = userEvent.setup();
-    renderGuide();
+    renderChecklist();
 
-    await user.click(screen.getByRole("button", { name: /open setup guide/i }));
     expect(
-      screen.getByRole("heading", { name: /setup guide/i })
+      screen.getByRole("heading", { name: /get set up/i })
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(/set up your organisation/i)
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0);
 
-    await user.click(
-      screen.getByRole("button", {
-        name: /organisation.*business units/i,
-      })
-    );
-
-    expect(useSetupGuideStore.getState().activeTourId).toBe("organisation");
-    expect(useSetupGuideStore.getState().pickerOpen).toBe(false);
-
-    await waitFor(() => {
-      expect(
-        screen.getByText(/build the organisation so everything rolls up/i)
-      ).toBeInTheDocument();
-    });
+    const startButtons = screen.getAllByRole("button", { name: /^start$/i });
+    expect(startButtons.length).toBeGreaterThanOrEqual(5);
+    await user.click(startButtons[0]!);
+    expect(useSetupGuideStore.getState().activeStepId).toBe("org");
   });
 
-  it("keeps Next locked on an action step until the waitFor event fires", async () => {
-    renderGuide();
-    useSetupGuideStore.getState().startTour("organisation");
+  it("can start the documents, link, soa and risk steps", async () => {
+    const user = userEvent.setup();
+    renderChecklist();
+    const startButtons = screen.getAllByRole("button", { name: /^start$/i });
+    await user.click(startButtons[1]!);
+    expect(useSetupGuideStore.getState().activeStepId).toBe("docs");
 
-    // Wait for the first chapter card, then the user would advance — jump via
-    // Joyride is hard in jsdom, so assert gating helper + signal path instead.
-    await waitFor(() => {
-      expect(
-        screen.getByText(/build the organisation so everything rolls up/i)
-      ).toBeInTheDocument();
-    });
+    useSetupGuideStore.getState().closeGuide();
+    useSetupGuideStore.getState().showChecklist();
+    cleanup();
+    renderChecklist();
 
-    useSetupGuideStore.getState().signalAction("org.fu.create-opened");
-    expect(useSetupGuideStore.getState().completedEvents).toEqual({
-      "org.fu.create-opened": true,
-    });
+    await user.click(screen.getAllByRole("button", { name: /^start$/i })[2]!);
+    expect(useSetupGuideStore.getState().activeStepId).toBe("link");
+
+    useSetupGuideStore.getState().closeGuide();
+    useSetupGuideStore.getState().showChecklist();
+    cleanup();
+    renderChecklist();
+
+    await user.click(screen.getAllByRole("button", { name: /^start$/i })[3]!);
+    expect(useSetupGuideStore.getState().activeStepId).toBe("soa");
+
+    useSetupGuideStore.getState().closeGuide();
+    useSetupGuideStore.getState().showChecklist();
+    cleanup();
+    renderChecklist();
+
+    await user.click(screen.getAllByRole("button", { name: /^start$/i })[4]!);
+    expect(useSetupGuideStore.getState().activeStepId).toBe("risk");
+  });
+
+  it("hides the card until opened again", async () => {
+    const user = userEvent.setup();
+    renderChecklist();
+
+    await user.click(screen.getByRole("button", { name: /hide for now/i }));
+    expect(useSetupGuideStore.getState().checklistHidden).toBe(true);
+    expect(
+      screen.queryByRole("heading", { name: /get set up/i })
+    ).not.toBeInTheDocument();
+
+    useSetupGuideStore.getState().openChecklist();
+    // Re-render by forcing store-driven remount via another render
+    cleanup();
+    renderChecklist();
+    expect(
+      screen.getByRole("heading", { name: /get set up/i })
+    ).toBeInTheDocument();
   });
 });

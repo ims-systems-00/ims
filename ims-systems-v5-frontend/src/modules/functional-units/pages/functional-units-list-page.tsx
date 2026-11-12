@@ -14,7 +14,7 @@ import {
   type FunctionalUnitSheetMode,
 } from "../components/functional-unit-sheet";
 import { useFunctionalUnitsQuery } from "../hooks/use-functional-units";
-import { signalTourAction, useTourAction } from "@/modules/setup-guide";
+import { signalSetupEvent, useSetupSignal } from "@/modules/setup-guide";
 import type { AccessType } from "../types";
 
 /**
@@ -41,7 +41,7 @@ export function FunctionalUnitsListPage() {
       ? "edit"
       : "view";
 
-  useTourAction("org.fu.create-opened", createOpen);
+  useSetupSignal("org.fu.create-opened", createOpen);
 
   const queryParams = useMemo(
     () => ({
@@ -255,7 +255,7 @@ export function FunctionalUnitsListPage() {
         }}
         onModeChange={handleModeChange}
         onCreated={(unit) => {
-          signalTourAction("org.fu.created");
+          signalSetupEvent("org.fu.created");
           notify.success("Business unit created successfully");
           setEditMode(false);
           setSearchParams({ unit: unit.id });

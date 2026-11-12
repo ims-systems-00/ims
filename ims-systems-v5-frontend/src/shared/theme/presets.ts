@@ -1,16 +1,17 @@
 /**
  * Application color themes — ported from V4 `orgTheme.js` / ThemeColorsModal.
- * Presets use the same four brand shades: primary, primaryDark, primaryLight,
- * primaryExtraLight.
+ * Each preset owns a distinct light palette and a distinct dark palette.
  */
 
 import {
   buildThemeTokensFromColors,
   CUSTOM_THEME_CSS_VARS,
+  deriveDarkThemeFromColors,
   deriveThemeFromPrimary,
   isValidHexColor,
   normalizeHexColor,
   normalizeThemeColors,
+  type ThemeAppearance,
   type ThemeColors,
 } from "./color-utils";
 
@@ -57,7 +58,10 @@ export type ThemePreset = {
   id: ThemeId;
   label: string;
   description: string;
+  /** Light-mode brand palette (also used as the editable brand template). */
   colors: ThemeColors;
+  /** Dark-mode brand + surface seed palette (independent of light). */
+  darkColors: ThemeColors;
 };
 
 /** Organisation colour presets. Default is the official iMS OS brand. */
@@ -67,82 +71,125 @@ export const themeOptions: ThemePreset[] = [
     label: "iMS OS",
     description: "Classic light blue; indigo brand in dark mode",
     colors: { ...DEFAULT_THEME_COLORS },
+    darkColors: { ...IMS_OS_DARK_THEME_COLORS },
   },
   {
     id: "ocean-teal",
     label: "Ocean Teal",
-    description: "Calm teal operations",
+    description: "Calm teal daylight; deep lagoon night",
     colors: {
       primary: "#0D9488",
       primaryDark: "#0B3D3A",
       primaryLight: "#5EEAD4",
       primaryExtraLight: "#F0FDFA",
     },
+    darkColors: {
+      primary: "#2DD4BF",
+      primaryDark: "#031614",
+      primaryLight: "#5EEAD4",
+      primaryExtraLight: "#CCFBF1",
+    },
   },
   {
     id: "forest",
     label: "Forest",
-    description: "Compliance green",
+    description: "Daylight moss; night canopy green",
     colors: {
       primary: "#15803D",
       primaryDark: "#0F2E1C",
       primaryLight: "#86EFAC",
       primaryExtraLight: "#F0FDF4",
     },
+    darkColors: {
+      primary: "#4ADE80",
+      primaryDark: "#06140C",
+      primaryLight: "#86EFAC",
+      primaryExtraLight: "#DCFCE7",
+    },
   },
   {
     id: "ember",
     label: "Ember",
-    description: "Warm copper focus",
+    description: "Warm copper day; forge-fire night",
     colors: {
       primary: "#C2410C",
       primaryDark: "#1C100A",
       primaryLight: "#FDBA74",
       primaryExtraLight: "#FFF7ED",
     },
+    darkColors: {
+      primary: "#FB923C",
+      primaryDark: "#140A06",
+      primaryLight: "#FDBA74",
+      primaryExtraLight: "#FFEDD5",
+    },
   },
   {
     id: "slate",
     label: "Slate",
-    description: "Neutral enterprise grey",
+    description: "Neutral enterprise day; graphite night",
     colors: {
       primary: "#475569",
       primaryDark: "#0F172A",
       primaryLight: "#94A3B8",
       primaryExtraLight: "#F8FAFC",
     },
+    darkColors: {
+      primary: "#94A3B8",
+      primaryDark: "#020617",
+      primaryLight: "#CBD5E1",
+      primaryExtraLight: "#E2E8F0",
+    },
   },
   {
     id: "coral",
     label: "Coral",
-    description: "Bold rose accent",
+    description: "Bold rose day; midnight blush night",
     colors: {
       primary: "#E11D48",
       primaryDark: "#1A0610",
       primaryLight: "#FDA4AF",
       primaryExtraLight: "#FFF1F2",
     },
+    darkColors: {
+      primary: "#FB7185",
+      primaryDark: "#14050A",
+      primaryLight: "#FDA4AF",
+      primaryExtraLight: "#FFE4E6",
+    },
   },
   {
     id: "amber",
     label: "Amber",
-    description: "Warm amber energy",
+    description: "Warm amber day; lantern night",
     colors: {
       primary: "#D97706",
       primaryDark: "#1A1205",
       primaryLight: "#FCD34D",
       primaryExtraLight: "#FFFBEB",
     },
+    darkColors: {
+      primary: "#FBBF24",
+      primaryDark: "#120D04",
+      primaryLight: "#FCD34D",
+      primaryExtraLight: "#FEF3C7",
+    },
   },
   {
     id: "violet",
     label: "Violet",
-    description: "Refined violet accent",
+    description: "Refined violet day; nebula night",
     colors: {
       primary: "#7C3AED",
       primaryDark: "#140B2E",
       primaryLight: "#C4B5FD",
       primaryExtraLight: "#F5F3FF",
+    },
+    darkColors: {
+      primary: "#A78BFA",
+      primaryDark: "#0C0618",
+      primaryLight: "#C4B5FD",
+      primaryExtraLight: "#EDE9FE",
     },
   },
 ];
@@ -188,6 +235,14 @@ export function resolveAppliedThemeId(value: unknown): AppliedThemeId {
   return resolveThemeId(value);
 }
 
+export function resolvePresetColors(
+  themeId: ThemeId,
+  appearance: ThemeAppearance = "light"
+): ThemeColors {
+  const preset = getThemePreset(themeId);
+  return appearance === "dark" ? preset.darkColors : preset.colors;
+}
+
 function clearBrandThemeVars(
   root: HTMLElement = document.documentElement
 ): void {
@@ -199,10 +254,14 @@ function clearBrandThemeVars(
 function applyThemeColors(
   colors: ThemeColors,
   themeId: AppliedThemeId,
-  root: HTMLElement = document.documentElement
+  root: HTMLElement = document.documentElement,
+  appearance: ThemeAppearance = "light"
 ): ThemeColors {
   const normalized = normalizeThemeColors(colors, DEFAULT_THEME_COLORS);
-  const tokens = buildThemeTokensFromColors(normalized);
+  // Always clear previous inline tokens so light mode can fall back to CSS
+  // :root surfaces after leaving a dark palette.
+  clearBrandThemeVars(root);
+  const tokens = buildThemeTokensFromColors(normalized, appearance);
   root.dataset.theme = themeId;
   for (const [property, value] of Object.entries(tokens)) {
     root.style.setProperty(property, value);
@@ -213,14 +272,14 @@ function applyThemeColors(
 export function applyPresetTheme(
   themeId: ThemeId,
   root: HTMLElement = document.documentElement,
-  appearance: "light" | "dark" = "light"
+  appearance: ThemeAppearance = "light"
 ): void {
-  const preset = getThemePreset(themeId);
-  const colors =
-    appearance === "dark" && themeId === "ims-os"
-      ? IMS_OS_DARK_THEME_COLORS
-      : preset.colors;
-  applyThemeColors(colors, themeId, root);
+  applyThemeColors(
+    resolvePresetColors(themeId, appearance),
+    themeId,
+    root,
+    appearance
+  );
 }
 
 /**
@@ -228,7 +287,8 @@ export function applyPresetTheme(
  */
 export function applyCustomThemeColors(
   colors: Partial<ThemeColors>,
-  root: HTMLElement = document.documentElement
+  root: HTMLElement = document.documentElement,
+  appearance: ThemeAppearance = "light"
 ): ThemeColors | null {
   const primary = normalizeHexColor(colors.primary ?? "");
   if (!primary) return null;
@@ -240,7 +300,12 @@ export function applyCustomThemeColors(
     },
     DEFAULT_THEME_COLORS
   );
-  return applyThemeColors(normalized, "custom", root);
+  const palette =
+    appearance === "dark"
+      ? deriveDarkThemeFromColors(normalized)
+      : normalized;
+  applyThemeColors(palette, "custom", root, appearance);
+  return normalized;
 }
 
 /**
@@ -248,11 +313,12 @@ export function applyCustomThemeColors(
  */
 export function applyCustomTheme(
   hex: string,
-  root: HTMLElement = document.documentElement
+  root: HTMLElement = document.documentElement,
+  appearance: ThemeAppearance = "light"
 ): boolean {
   const palette = deriveThemeFromPrimary(hex);
   if (!palette) return false;
-  applyThemeColors(palette, "custom", root);
+  applyCustomThemeColors(palette, root, appearance);
   return true;
 }
 

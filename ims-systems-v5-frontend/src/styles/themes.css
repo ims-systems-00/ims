@@ -1,6 +1,6 @@
 /**
  * V5 theme identity fallbacks — classic light blue by default.
- * Dark appearance applies the iMS OS indigo palette via CSS + ThemeProvider.
+ * Preset dark palettes are applied via ThemeProvider (inline CSS vars).
  */
 
 :root,
@@ -21,21 +21,9 @@ html[data-theme="ims-os"] {
   --sidebar-primary: #ccd9ed;
 }
 
-html.dark[data-theme="ims-os"] {
-  --primary: #4f39f6;
-  --primary-foreground: #ffffff;
-  --secondary: #8c7dff;
-  --secondary-foreground: #07091a;
-  --accent: #1a1f4a;
-  --accent-foreground: #a99dff;
-  --ring: #8c7dff;
-  --sidebar: #07091a;
-  --sidebar-foreground: #f0eeff;
-  --sidebar-muted: #a99dff;
-  --sidebar-accent: #4f39f6;
-  --sidebar-accent-foreground: #ffffff;
-  --sidebar-border: #121535;
-  --sidebar-primary: #8c7dff;
+html.dark {
+  /* Neutral dark shell before JS injects the active preset’s dark palette. */
+  color-scheme: dark;
 }
 
 html[data-theme="ocean-teal"],

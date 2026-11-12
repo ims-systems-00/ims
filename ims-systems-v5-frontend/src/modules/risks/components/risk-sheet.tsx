@@ -19,6 +19,7 @@ import {
   permissionAllowed,
   useSecurityCapabilitiesQuery,
 } from "@/modules/security/hooks/use-security-capabilities";
+import { signalSetupEvent, useSetupSignal } from "@/modules/setup-guide";
 import {
   useCreateRiskMutation,
   useDeleteRiskMutation,
@@ -69,6 +70,8 @@ export function RiskSheet({
     if (!open) setAliceOpen(false);
   }, [open]);
 
+  useSetupSignal("risks.analyse-opened", aliceOpen);
+
   const riskQuery = useRiskQuery(mode === "create" ? undefined : (riskId ?? undefined));
   const orgQuery = useCurrentOrganisationQuery(open && mode === "view");
   const capabilitiesQuery = useSecurityCapabilitiesQuery(open);
@@ -115,6 +118,7 @@ export function RiskSheet({
 
   async function handleCreate(values: CreateRiskInput | UpdateRiskInput) {
     await createMutation.mutateAsync(values as CreateRiskInput);
+    signalSetupEvent("risks.created");
     onCreated?.();
     onOpenChange(false);
   }

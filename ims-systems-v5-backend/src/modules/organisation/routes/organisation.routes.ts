@@ -75,6 +75,10 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   router.post("/:id/go-live", controller.goLive);
   router.post("/:id/ensure-auth0-link", controller.ensureAuth0Link);
   router.get("/:id/card-payment-session", controller.createCardPaymentSession);
+  router.get(
+    "/:id/sme-licence-checkout",
+    controller.createSmeLicenceCheckoutSession
+  );
   router.get("/:id/billing-session", controller.createBillingPortalSession);
   router.get("/:id", controller.getById);
 

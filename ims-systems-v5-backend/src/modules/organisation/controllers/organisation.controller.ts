@@ -21,6 +21,7 @@ export type OrganisationController = {
   ensureAuth0Link: RequestHandler;
   listMine: RequestHandler;
   createCardPaymentSession: RequestHandler;
+  createSmeLicenceCheckoutSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
   updateIncidentResolutionTargets: RequestHandler;
@@ -96,6 +97,23 @@ export function createOrganisationController(
     try {
       const { id } = parseWithSchema(organisationIdParamSchema, req.params);
       const data = await service.createCardPaymentSession(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const createSmeLicenceCheckoutSession: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.createSmeLicenceCheckoutSession(
+        req.identity,
+        id
+      );
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -210,6 +228,7 @@ export function createOrganisationController(
     ensureAuth0Link,
     listMine,
     createCardPaymentSession,
+    createSmeLicenceCheckoutSession,
     createBillingPortalSession,
     updateDocumentReviewReminders,
     updateIncidentResolutionTargets,

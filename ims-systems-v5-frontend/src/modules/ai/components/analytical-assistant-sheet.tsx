@@ -5,6 +5,7 @@ import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { formatDateTime } from "@/shared/lib/format-date";
 import { notify } from "@/shared/lib/toast";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import { TaskSheet, type TaskSheetMode } from "@/modules/tasks";
 import type { TaskSource } from "@/modules/tasks/types";
 import { UserAvatar } from "@/modules/users/components/user-avatar";
@@ -182,6 +183,9 @@ export function AnalyticalAssistantSheet({
           reportStructure: report,
         },
       });
+      if (context.source.moduleType === "risks") {
+        signalSetupEvent("risks.analysed");
+      }
       notify.success("Analysis saved.");
       clearAnalysis();
       setView("home");
