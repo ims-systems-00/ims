@@ -13,6 +13,10 @@ type AliceChatState = {
   threadId: string | null;
   messages: AiChatMessage[];
   pinnedRecords: AiChatPinnedRecord[];
+  /** Saved starter prompts (e.g. Monday question) shown as quick chips. */
+  pinnedPrompts: string[];
+  /** One-shot message to auto-send when the float panel opens. */
+  pendingSend: string | null;
   streaming: boolean;
   streamBuffer: string;
   pendingCitations: AiChatCitation[];
@@ -41,6 +45,10 @@ type AliceChatState = {
   setPinnedRecords: (records: AiChatPinnedRecord[]) => void;
   pinRecord: (record: AiChatPinnedRecord) => void;
   unpinRecord: (module: string, id: string) => void;
+  pinPrompt: (prompt: string) => void;
+  unpinPrompt: (prompt: string) => void;
+  queueSend: (prompt: string) => void;
+  clearPendingSend: () => void;
   setStreaming: (streaming: boolean) => void;
   setStreamBuffer: (text: string) => void;
   appendStreamBuffer: (text: string) => void;
@@ -63,6 +71,8 @@ export const useAliceChatStore = create<AliceChatState>((set) => ({
   threadId: null,
   messages: [],
   pinnedRecords: [],
+  pinnedPrompts: [],
+  pendingSend: null,
   streaming: false,
   streamBuffer: "",
   pendingCitations: [],
@@ -133,6 +143,18 @@ export const useAliceChatStore = create<AliceChatState>((set) => ({
         (row) => !(row.module === module && row.id === id)
       ),
     })),
+  pinPrompt: (prompt) =>
+    set((state) => {
+      const trimmed = prompt.trim();
+      if (!trimmed || state.pinnedPrompts.includes(trimmed)) return state;
+      return { pinnedPrompts: [...state.pinnedPrompts, trimmed].slice(0, 6) };
+    }),
+  unpinPrompt: (prompt) =>
+    set((state) => ({
+      pinnedPrompts: state.pinnedPrompts.filter((row) => row !== prompt),
+    })),
+  queueSend: (prompt) => set({ pendingSend: prompt.trim() || null }),
+  clearPendingSend: () => set({ pendingSend: null }),
   setStreaming: (streaming) => set({ streaming }),
   setStreamBuffer: (streamBuffer) => set({ streamBuffer }),
   appendStreamBuffer: (text) =>

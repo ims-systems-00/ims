@@ -38,6 +38,9 @@ export function AliceSoaAssistSheet() {
   const open = useSetupGuideStore((s) => s.aliceAssistOpen);
   const activeStepId = useSetupGuideStore((s) => s.activeStepId);
   const lastDocumentContext = useSetupGuideStore((s) => s.lastDocumentContext);
+  const setLastControlContext = useSetupGuideStore(
+    (s) => s.setLastControlContext
+  );
   const closeAliceAssist = useSetupGuideStore((s) => s.closeAliceAssist);
   const finishStep = useSetupGuideStore((s) => s.finishStep);
   const closeGuide = useSetupGuideStore((s) => s.closeGuide);
@@ -119,6 +122,10 @@ export function AliceSoaAssistSheet() {
       }
 
       const control = await pickLeafControl(toolkitId);
+      setLastControlContext({
+        toolkitName: toolkitId,
+        controlId: control.id,
+      });
       await updateComplianceControlStatus(control.id, {
         selected: "Selected",
         state: "Implemented",

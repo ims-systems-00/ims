@@ -33,6 +33,7 @@ import {
   type ReviewPrivacy,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { useSetupSignal } from "@/modules/setup-guide";
 
 type PendingDelete = { id: string; label: string };
 
@@ -80,6 +81,8 @@ export function ManagementReviewsListPage() {
     : editMode
       ? "edit"
       : "view";
+
+  useSetupSignal("reviews.create-opened", createOpen);
 
   const nowIso = useMemo(() => new Date().toISOString(), []);
 
@@ -175,7 +178,11 @@ export function ManagementReviewsListPage() {
         title="Management Reviews"
         description="Organisation management review schedule — plan meetings, attach agenda, and mark reviews complete."
         actions={
-          <Button type="button" onClick={openCreate}>
+          <Button
+            type="button"
+            data-tour="reviews.create"
+            onClick={openCreate}
+          >
             <Plus />
             Schedule review
           </Button>
@@ -329,7 +336,12 @@ export function ManagementReviewsListPage() {
                 Clear filters
               </Button>
             ) : (
-              <Button type="button" size="sm" onClick={openCreate}>
+              <Button
+                type="button"
+                size="sm"
+                data-tour="reviews.create"
+                onClick={openCreate}
+              >
                 <Plus />
                 Schedule review
               </Button>

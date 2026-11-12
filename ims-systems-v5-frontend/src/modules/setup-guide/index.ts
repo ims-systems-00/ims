@@ -21,6 +21,7 @@ export {
 export {
   SETUP_STEPS,
   SETUP_GUIDE_TITLE,
+  ALICE_MONDAY_QUESTION,
   getSetupStep,
   listAvailableSteps,
 } from "./catalog";

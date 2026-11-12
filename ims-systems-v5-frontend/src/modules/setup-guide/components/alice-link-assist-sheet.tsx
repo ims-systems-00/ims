@@ -33,6 +33,9 @@ export function AliceLinkAssistSheet() {
   const open = useSetupGuideStore((s) => s.aliceAssistOpen);
   const activeStepId = useSetupGuideStore((s) => s.activeStepId);
   const lastDocumentContext = useSetupGuideStore((s) => s.lastDocumentContext);
+  const setLastDocumentContext = useSetupGuideStore(
+    (s) => s.setLastDocumentContext
+  );
   const closeAliceAssist = useSetupGuideStore((s) => s.closeAliceAssist);
   const finishStep = useSetupGuideStore((s) => s.finishStep);
   const closeGuide = useSetupGuideStore((s) => s.closeGuide);
@@ -126,6 +129,7 @@ export function AliceLinkAssistSheet() {
         toolkitId,
         clauseIds,
       });
+      setLastDocumentContext({ repositoryId, nodeId });
       signalSetupEvent("docs.compliance.linked");
       await Promise.all([
         queryClient.invalidateQueries({

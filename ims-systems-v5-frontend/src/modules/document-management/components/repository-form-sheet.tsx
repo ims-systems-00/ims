@@ -10,7 +10,7 @@ import { cn } from "@/shared/lib/utils";
 import { useSessionProfileUserId } from "@/security";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
-import { signalSetupEvent } from "@/modules/setup-guide";
+import { signalSetupEvent, useSetupGuideStore } from "@/modules/setup-guide";
 import { useCreateDocumentRepositoryMutation } from "../hooks/use-document-management";
 import { createRepositoryFormSchema } from "../schemas";
 import {
@@ -34,6 +34,9 @@ export function RepositoryFormSheet({
   const createMutation = useCreateDocumentRepositoryMutation();
   const unitsQuery = useFunctionalUnitsQuery({ page: 1, pageSize: 100 });
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
+  const setLastRepositoryContext = useSetupGuideStore(
+    (s) => s.setLastRepositoryContext
+  );
 
   const defaultOwnerId = useSessionProfileUserId() ?? "";
 
@@ -136,7 +139,7 @@ export function RepositoryFormSheet({
       return;
     }
     try {
-      await createMutation.mutateAsync({
+      const created = await createMutation.mutateAsync({
         name: parsed.data.name,
         description: parsed.data.description,
         privacy: parsed.data.privacy,
@@ -145,6 +148,7 @@ export function RepositoryFormSheet({
         sharedWith: parsed.data.sharedWith,
         reviewInterval: parsed.data.reviewInterval,
       });
+      setLastRepositoryContext({ repositoryId: created.id });
       signalSetupEvent("docs.repo.created");
       notify.success("Repository created");
       reset();

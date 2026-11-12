@@ -29,6 +29,7 @@ import {
   type AuditType,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { useSetupSignal } from "@/modules/setup-guide";
 
 type PendingDelete = { id: string; label: string };
 
@@ -88,6 +89,8 @@ export function AuditsListPage({ auditType }: AuditsListPageProps) {
     : editMode
       ? "edit"
       : "view";
+
+  useSetupSignal("audits.create-opened", createOpen);
 
   const queryParams = useMemo(
     () => ({
@@ -168,7 +171,7 @@ export function AuditsListPage({ auditType }: AuditsListPageProps) {
         title={`${auditType} Audits`}
         description={`Organisation ${auditType.toLowerCase()} audit register — schedule, conduct, and complete audits.`}
         actions={
-          <Button type="button" onClick={openCreate}>
+          <Button type="button" data-tour="audits.create" onClick={openCreate}>
             <Plus />
             Schedule audit
           </Button>
@@ -290,7 +293,12 @@ export function AuditsListPage({ auditType }: AuditsListPageProps) {
                 Clear filters
               </Button>
             ) : (
-              <Button type="button" size="sm" onClick={openCreate}>
+              <Button
+                type="button"
+                size="sm"
+                data-tour="audits.create"
+                onClick={openCreate}
+              >
                 <Plus />
                 Schedule audit
               </Button>

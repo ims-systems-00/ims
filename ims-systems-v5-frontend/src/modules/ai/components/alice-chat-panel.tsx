@@ -27,6 +27,10 @@ import { cn } from "@/shared/lib/utils";
 import { notify } from "@/shared/lib/toast";
 import { TaskSheet, type TaskSheetMode } from "@/modules/tasks";
 import {
+  ALICE_MONDAY_QUESTION,
+  signalSetupEvent,
+} from "@/modules/setup-guide";
+import {
   useAiChatThreadsQuery,
   useDeleteAiChatThreadMutation,
 } from "../hooks/use-ai";
@@ -70,6 +74,11 @@ export function AliceChatPanel() {
   const setMessages = useAliceChatStore((s) => s.setMessages);
   const pinRecord = useAliceChatStore((s) => s.pinRecord);
   const unpinRecord = useAliceChatStore((s) => s.unpinRecord);
+  const pinnedPrompts = useAliceChatStore((s) => s.pinnedPrompts);
+  const pinPrompt = useAliceChatStore((s) => s.pinPrompt);
+  const unpinPrompt = useAliceChatStore((s) => s.unpinPrompt);
+  const pendingSend = useAliceChatStore((s) => s.pendingSend);
+  const clearPendingSend = useAliceChatStore((s) => s.clearPendingSend);
   const dismissProposal = useAliceChatStore((s) => s.dismissProposal);
   const resetConversation = useAliceChatStore((s) => s.resetConversation);
 
@@ -116,8 +125,25 @@ export function AliceChatPanel() {
     [location.pathname, location.search]
   );
   const suggestions = useMemo(() => suggestedPromptsGeneral(), []);
+  const mondayPinned = pinnedPrompts.includes(ALICE_MONDAY_QUESTION);
 
   const threadsQuery = useAiChatThreadsQuery(open && historyOpen);
+
+  useEffect(() => {
+    if (!open || !pendingSend || streaming) return;
+    const text = pendingSend;
+    clearPendingSend();
+    void sendMessage(text, pageContext).then(() => {
+      signalSetupEvent("alice.asked");
+    });
+  }, [
+    open,
+    pendingSend,
+    streaming,
+    clearPendingSend,
+    sendMessage,
+    pageContext,
+  ]);
   const deleteThreadMutation = useDeleteAiChatThreadMutation();
 
   const resolvedWidth = clampPanelWidth(panelWidth);
@@ -361,6 +387,7 @@ export function AliceChatPanel() {
         aria-label="Alice AI org-wide chat"
         aria-hidden={!open}
         data-alice-float="panel"
+        data-tour="alice.panel"
       >
         <div
           className="absolute inset-y-0 left-0 z-20 w-1.5 cursor-ew-resize touch-none hover:bg-primary/30"
@@ -521,17 +548,85 @@ export function AliceChatPanel() {
                       grounded in live IMS records.
                     </p>
                   </div>
+                  {pinnedPrompts.length > 0 ? (
+                    <div className="space-y-1.5">
+                      <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Pinned questions
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {pinnedPrompts.map((prompt) => (
+                          <button
+                            key={`pin-${prompt}`}
+                            type="button"
+                            className="rounded-xl border border-primary/25 bg-primary/[0.06] px-3 py-2.5 text-left text-xs leading-snug text-foreground transition hover:bg-primary/10"
+                            onClick={() => {
+                              void sendMessage(prompt, pageContext).then(() => {
+                                signalSetupEvent("alice.asked");
+                              });
+                            }}
+                          >
+                            {prompt}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                   <div className="flex flex-col gap-2">
-                    {suggestions.map((prompt) => (
-                      <button
-                        key={prompt}
-                        type="button"
-                        className="rounded-xl border border-border-subtle/90 bg-muted/15 px-3 py-2.5 text-left text-xs leading-snug text-foreground/90 transition hover:border-primary/25 hover:bg-primary/[0.06]"
-                        onClick={() => void sendMessage(prompt, pageContext)}
-                      >
-                        {prompt}
-                      </button>
-                    ))}
+                    {suggestions.map((prompt) => {
+                      const isMonday = prompt === ALICE_MONDAY_QUESTION;
+                      return (
+                        <div
+                          key={prompt}
+                          className="flex items-stretch gap-1.5"
+                          data-tour={isMonday ? "alice.monday" : undefined}
+                        >
+                          <button
+                            type="button"
+                            className="min-w-0 flex-1 rounded-xl border border-border-subtle/90 bg-muted/15 px-3 py-2.5 text-left text-xs leading-snug text-foreground/90 transition hover:border-primary/25 hover:bg-primary/[0.06]"
+                            onClick={() => {
+                              void sendMessage(prompt, pageContext).then(() => {
+                                signalSetupEvent("alice.asked");
+                              });
+                            }}
+                          >
+                            {prompt}
+                          </button>
+                          {isMonday ? (
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant={mondayPinned ? "secondary" : "outline"}
+                              className="size-9 shrink-0 rounded-xl"
+                              data-tour="alice.pin-monday"
+                              aria-label={
+                                mondayPinned
+                                  ? "Unpin Monday question"
+                                  : "Pin Monday question"
+                              }
+                              title={
+                                mondayPinned
+                                  ? "Unpin Monday question"
+                                  : "Pin as Monday question"
+                              }
+                              onClick={() => {
+                                if (mondayPinned) {
+                                  unpinPrompt(ALICE_MONDAY_QUESTION);
+                                  return;
+                                }
+                                pinPrompt(ALICE_MONDAY_QUESTION);
+                                signalSetupEvent("alice.pinned");
+                              }}
+                            >
+                              {mondayPinned ? (
+                                <PinOff className="size-3.5" />
+                              ) : (
+                                <Pin className="size-3.5" />
+                              )}
+                            </Button>
+                          ) : null}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               ) : null}
@@ -586,14 +681,18 @@ export function AliceChatPanel() {
                           <AliceCitationChip
                             key={`${cite.module}:${cite.id}`}
                             cite={cite}
-                            onPin={(c) =>
+                            onOpen={() => {
+                              signalSetupEvent("alice.record.opened");
+                            }}
+                            onPin={(c) => {
                               pinRecord({
                                 module: c.module,
                                 id: c.id,
                                 label: c.reference ?? c.title,
                                 href: c.href,
-                              })
-                            }
+                              });
+                              signalSetupEvent("alice.pinned");
+                            }}
                           />
                         ))}
                       </div>
@@ -641,10 +740,13 @@ export function AliceChatPanel() {
                 event.preventDefault();
                 const text = draft;
                 setDraft("");
-                void sendMessage(text, pageContext);
+                void sendMessage(text, pageContext).then(() => {
+                  signalSetupEvent("alice.asked");
+                });
               }}
             >
               <Textarea
+                data-tour="alice.composer"
                 value={draft}
                 onChange={(event) => setDraft(event.target.value)}
                 placeholder="Ask Alice across your organisation…"
@@ -656,7 +758,9 @@ export function AliceChatPanel() {
                     event.preventDefault();
                     const text = draft;
                     setDraft("");
-                    void sendMessage(text, pageContext);
+                    void sendMessage(text, pageContext).then(() => {
+                      signalSetupEvent("alice.asked");
+                    });
                   }
                 }}
               />
@@ -676,6 +780,7 @@ export function AliceChatPanel() {
                   type="submit"
                   size="icon"
                   className="size-10 shrink-0 rounded-xl"
+                  data-tour="alice.send"
                   disabled={!draft.trim()}
                   aria-label="Send"
                 >

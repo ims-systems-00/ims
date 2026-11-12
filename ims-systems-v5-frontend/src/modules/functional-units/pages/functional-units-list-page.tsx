@@ -256,6 +256,9 @@ export function FunctionalUnitsListPage() {
         onModeChange={handleModeChange}
         onCreated={(unit) => {
           signalSetupEvent("org.fu.created");
+          if (unit.accessType === "External compliance function") {
+            signalSetupEvent("remote.fu.created");
+          }
           notify.success("Business unit created successfully");
           setEditMode(false);
           setSearchParams({ unit: unit.id });

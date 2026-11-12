@@ -183,6 +183,7 @@ export function AuditForm({
         <FormField label="Title" required error={fieldErrors.title}>
           <input
             className="ims-field"
+            data-tour="audits.field.title"
             value={title}
             disabled={pending}
             onChange={(event) => setTitle(event.target.value)}
@@ -243,6 +244,7 @@ export function AuditForm({
         <FormField label="Auditor" required error={fieldErrors.auditorId}>
           <select
             className="ims-select"
+            data-tour="audits.field.auditor"
             value={auditorId}
             disabled={pending || mode === "edit" || usersQuery.isLoading}
             onChange={(event) => setAuditorId(event.target.value)}
@@ -276,6 +278,7 @@ export function AuditForm({
         <FormField label="Interval" required error={fieldErrors.interval}>
           <select
             className="ims-select"
+            data-tour="audits.field.interval"
             value={interval}
             disabled={pending || mode === "edit"}
             onChange={(event) =>

@@ -46,7 +46,8 @@ export function SetupChecklistCard() {
     cardRef.current?.scrollIntoView?.({ behavior: "smooth", block: "nearest" });
   }, [focusToken, hidden]);
 
-  if (hidden || done >= total) return null;
+  // Keep the card available after everything is Done so users can replay steps.
+  if (hidden) return null;
 
   return (
     <section
@@ -99,7 +100,7 @@ export function SetupChecklistCard() {
             provider
           );
           const locked = available && !allowed;
-          const disabled = !available || locked || isDone;
+          const canRun = available && !locked;
 
           return (
             <li
@@ -126,7 +127,7 @@ export function SetupChecklistCard() {
                 <p
                   className={cn(
                     "text-sm font-semibold text-foreground",
-                    isDone && "text-muted-foreground line-through"
+                    isDone && "text-muted-foreground"
                   )}
                 >
                   {step.title}
@@ -152,7 +153,7 @@ export function SetupChecklistCard() {
                   </Badge>
                 ) : null}
                 {isDone ? <Badge variant="secondary">Done</Badge> : null}
-                {!disabled ? (
+                {canRun ? (
                   <>
                     {step.aliceCapable ? (
                       <Button
@@ -172,12 +173,17 @@ export function SetupChecklistCard() {
                     <Button
                       type="button"
                       size="sm"
+                      variant={isDone ? "outline" : "default"}
                       onClick={() => {
                         startStep(step.id);
                         navigate(step.route);
                       }}
                     >
-                      {isNext && done > 0 ? "Continue" : "Start"}
+                      {isDone
+                        ? "Replay"
+                        : isNext && done > 0
+                          ? "Continue"
+                          : "Start"}
                     </Button>
                   </>
                 ) : null}

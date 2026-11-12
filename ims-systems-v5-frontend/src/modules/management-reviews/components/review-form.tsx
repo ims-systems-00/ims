@@ -206,6 +206,7 @@ export function ReviewForm({
         <FormField label="Title" required error={fieldErrors.title}>
           <input
             className="ims-field"
+            data-tour="reviews.field.title"
             value={title}
             disabled={pending}
             onChange={(event) => setTitle(event.target.value)}
@@ -269,6 +270,7 @@ export function ReviewForm({
           <input
             type="date"
             className="ims-field"
+            data-tour="reviews.field.date"
             value={date}
             disabled={pending}
             onChange={(event) => setDate(event.target.value)}
@@ -325,8 +327,10 @@ export function ReviewForm({
                 : undefined
           }
         >
-          <ul className="max-h-48 space-y-2 overflow-y-auto rounded-sm border border-border-subtle p-2">
-            {userOptions.map((user) => {
+          <ul
+            className="max-h-48 space-y-2 overflow-y-auto rounded-sm border border-border-subtle p-2"
+            data-tour="reviews.field.attendees"
+          >            {userOptions.map((user) => {
               const checked = attendees.includes(user.id);
               return (
                 <li key={user.id}>

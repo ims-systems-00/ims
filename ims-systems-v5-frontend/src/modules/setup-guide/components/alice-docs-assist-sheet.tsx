@@ -59,6 +59,9 @@ export function AliceDocsAssistSheet() {
   const setLastDocumentContext = useSetupGuideStore(
     (s) => s.setLastDocumentContext
   );
+  const setLastRepositoryContext = useSetupGuideStore(
+    (s) => s.setLastRepositoryContext
+  );
   const ownerId = useSessionProfileUserId() ?? "";
 
   const visible = open && activeStepId === "docs";
@@ -134,6 +137,7 @@ export function AliceDocsAssistSheet() {
       }
 
       signalSetupEvent("docs.document.created");
+      setLastRepositoryContext({ repositoryId: repo.id });
       setLastDocumentContext({ repositoryId: repo.id, nodeId: node.id });
       await queryClient.invalidateQueries({
         queryKey: documentManagementKeys.all,

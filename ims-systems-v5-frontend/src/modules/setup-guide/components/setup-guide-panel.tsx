@@ -55,9 +55,10 @@ export function SetupGuidePanel() {
   const sub = step?.guide.subs[subIndex];
 
   useEffect(() => {
-    if (!step || !sub?.route) return;
+    // Seeded subs navigate via useSetupSeed — don't fight that with a static route.
+    if (!step || !sub?.route || sub.seed) return;
     navigate(sub.route);
-  }, [navigate, step, sub?.route, subIndex]);
+  }, [navigate, step, sub?.route, sub?.seed, subIndex]);
 
   if (!step) return null;
 

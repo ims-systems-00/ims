@@ -19,7 +19,11 @@ import {
   permissionAllowed,
   useSecurityCapabilitiesQuery,
 } from "@/modules/security/hooks/use-security-capabilities";
-import { signalSetupEvent, useSetupSignal } from "@/modules/setup-guide";
+import {
+  signalSetupEvent,
+  useSetupGuideStore,
+  useSetupSignal,
+} from "@/modules/setup-guide";
 import {
   useCreateRiskMutation,
   useDeleteRiskMutation,
@@ -61,6 +65,7 @@ export function RiskSheet({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [panelTab, setPanelTab] = useState("details");
   const [aliceOpen, setAliceOpen] = useState(false);
+  const setLastRiskContext = useSetupGuideStore((s) => s.setLastRiskContext);
 
   useEffect(() => {
     if (!open || mode !== "view") setPanelTab("details");
@@ -117,7 +122,10 @@ export function RiskSheet({
   );
 
   async function handleCreate(values: CreateRiskInput | UpdateRiskInput) {
-    await createMutation.mutateAsync(values as CreateRiskInput);
+    const created = await createMutation.mutateAsync(
+      values as CreateRiskInput
+    );
+    setLastRiskContext({ riskId: created.id });
     signalSetupEvent("risks.created");
     onCreated?.();
     onOpenChange(false);

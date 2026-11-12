@@ -21,6 +21,8 @@ vi.mock("@/modules/security/hooks/use-security-capabilities", async () => {
           "document-management:read",
           "compliance:read",
           "risks:read",
+          "audits:read",
+          "management-reviews:read",
         ],
       },
       isLoading: false,
@@ -42,6 +44,11 @@ beforeEach(() => {
     events: {},
     aliceAssistOpen: false,
     lastDocumentContext: null,
+    lastControlContext: null,
+    lastRiskContext: null,
+    lastAuditContext: null,
+    lastRepositoryContext: null,
+    seedPending: false,
     focusChecklistToken: 0,
   });
   try {
@@ -80,44 +87,40 @@ describe("SetupChecklistCard", () => {
     expect(
       screen.getByText(/set up your organisation/i)
     ).toBeInTheDocument();
-    expect(screen.getAllByText(/coming soon/i).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument();
 
     const startButtons = screen.getAllByRole("button", { name: /^start$/i });
-    expect(startButtons.length).toBeGreaterThanOrEqual(5);
+    expect(startButtons.length).toBe(9);
     await user.click(startButtons[0]!);
     expect(useSetupGuideStore.getState().activeStepId).toBe("org");
   });
 
-  it("can start the documents, link, soa and risk steps", async () => {
+  it("can start every available setup step", async () => {
     const user = userEvent.setup();
-    renderChecklist();
-    const startButtons = screen.getAllByRole("button", { name: /^start$/i });
-    await user.click(startButtons[1]!);
-    expect(useSetupGuideStore.getState().activeStepId).toBe("docs");
-
-    useSetupGuideStore.getState().closeGuide();
-    useSetupGuideStore.getState().showChecklist();
-    cleanup();
-    renderChecklist();
-
-    await user.click(screen.getAllByRole("button", { name: /^start$/i })[2]!);
-    expect(useSetupGuideStore.getState().activeStepId).toBe("link");
-
-    useSetupGuideStore.getState().closeGuide();
-    useSetupGuideStore.getState().showChecklist();
-    cleanup();
-    renderChecklist();
-
-    await user.click(screen.getAllByRole("button", { name: /^start$/i })[3]!);
-    expect(useSetupGuideStore.getState().activeStepId).toBe("soa");
-
-    useSetupGuideStore.getState().closeGuide();
-    useSetupGuideStore.getState().showChecklist();
-    cleanup();
-    renderChecklist();
-
-    await user.click(screen.getAllByRole("button", { name: /^start$/i })[4]!);
-    expect(useSetupGuideStore.getState().activeStepId).toBe("risk");
+    const expected = [
+      "docs",
+      "link",
+      "soa",
+      "risk",
+      "audit",
+      "review",
+      "remote",
+      "alice",
+    ] as const;
+    for (let index = 0; index < expected.length; index += 1) {
+      if (index > 0) {
+        useSetupGuideStore.getState().closeGuide();
+        useSetupGuideStore.getState().showChecklist();
+        cleanup();
+        renderChecklist();
+      } else {
+        renderChecklist();
+      }
+      await user.click(
+        screen.getAllByRole("button", { name: /^start$/i })[index + 1]!
+      );
+      expect(useSetupGuideStore.getState().activeStepId).toBe(expected[index]);
+    }
   });
 
   it("hides the card until opened again", async () => {
@@ -137,5 +140,17 @@ describe("SetupChecklistCard", () => {
     expect(
       screen.getByRole("heading", { name: /get set up/i })
     ).toBeInTheDocument();
+  });
+
+  it("keeps Done markers and still allows replaying a finished step", async () => {
+    const user = userEvent.setup();
+    useSetupGuideStore.getState().finishStep("org");
+    renderChecklist();
+
+    expect(screen.getByText(/^done$/i)).toBeInTheDocument();
+    const replay = screen.getByRole("button", { name: /^replay$/i });
+    await user.click(replay);
+    expect(useSetupGuideStore.getState().activeStepId).toBe("org");
+    expect(useSetupGuideStore.getState().completedSteps.org).toBe(true);
   });
 });
