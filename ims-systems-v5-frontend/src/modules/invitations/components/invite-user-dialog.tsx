@@ -86,7 +86,13 @@ export function InviteUserDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <FormField label="Email" htmlFor="invite-email" error={emailError ?? undefined} required>
+          <FormField
+            label="Email"
+            htmlFor="invite-email"
+            error={emailError ?? undefined}
+            required
+            dataTour="org.users.invite.email"
+          >
             <Input
               id="invite-email"
               type="email"
@@ -107,6 +113,7 @@ export function InviteUserDialog({
             label="Role"
             htmlFor="invite-role"
             description={ROLE_DESCRIPTIONS[role]}
+            dataTour="org.users.invite.role"
           >
             <select
               id="invite-role"
@@ -136,6 +143,7 @@ export function InviteUserDialog({
           <Button
             type="button"
             disabled={inviteMutation.isPending}
+            data-tour="org.users.invite.send"
             onClick={() => void handleSubmit()}
           >
             {inviteMutation.isPending ? (

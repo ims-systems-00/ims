@@ -115,6 +115,7 @@ export function FunctionalUnitForm({
         htmlFor={`${formId}-accessType`}
         error={fieldErrors.accessType}
         required
+        dataTour="org.fu.field.access-type"
       >
         <select
           id={`${formId}-accessType`}
@@ -141,6 +142,7 @@ export function FunctionalUnitForm({
         htmlFor={`${formId}-name`}
         error={fieldErrors.name}
         required
+        dataTour="org.fu.field.name"
       >
         <Input
           id={`${formId}-name`}
@@ -197,6 +199,7 @@ export function FunctionalUnitForm({
         htmlFor={`${formId}-responsibility`}
         error={fieldErrors.responsibility}
         required
+        dataTour="org.fu.field.responsibility"
       >
         <Textarea
           id={`${formId}-responsibility`}
@@ -256,7 +259,12 @@ export function FunctionalUnitFormActions({
       >
         Cancel
       </Button>
-      <Button type="submit" form={formId} disabled={pending}>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={pending}
+        data-tour="org.fu.submit"
+      >
         {pending ? "Saving…" : submitLabel}
       </Button>
     </>

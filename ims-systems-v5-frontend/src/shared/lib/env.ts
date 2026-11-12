@@ -45,8 +45,9 @@ const publicEnvSchema = z.object({
    */
   VITE_AUTH0_ORGANIZATION_ID: z.string().default(""),
   /**
-   * OnlyOffice Document Server origin (no trailing slash). Empty hides Edit.
-   * Example: http://localhost:8088
+   * OnlyOffice Document Server base (no trailing slash). Empty hides Edit.
+   * Same-origin path `/onlyoffice` (Compose nginx proxy) or absolute origin
+   * e.g. http://localhost:8088 for host Vite + published Document Server.
    */
   VITE_ONLYOFFICE_URL: z.string().default(""),
 });

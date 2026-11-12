@@ -14,7 +14,8 @@ docker compose up -d --build
 | --- | --- |
 | **App** | **http://localhost:7864** |
 | Backend health | http://localhost:3001/api/v1/health |
-| OnlyOffice | http://localhost:8088 |
+| OnlyOffice (via app) | http://localhost:7864/onlyoffice/ |
+| OnlyOffice (direct) | http://localhost:8088 |
 | OpenFGA | http://localhost:18080 |
 
 **Not** http://localhost:3000 — that is host Vite only (`pnpm dev:frontend`).
@@ -131,3 +132,4 @@ Then open **http://localhost:7864** and log in with Auth0.
 | Port 27017 in use | Mongo is internal-only; host mongod can keep :27017 |
 | Auth0 callback error | Add `http://localhost:7864` in Auth0 Application URLs |
 | Empty org after Auth0 login | Wrong Mongo URI, or membership backfill not run |
+| Edit docs → “OnlyOffice… localhost:8088” | Backend `ONLYOFFICE_URL` / frontend `VITE_ONLYOFFICE_URL` still point at loopback. Use `/onlyoffice` (nginx proxy), rebuild frontend, recreate backend |

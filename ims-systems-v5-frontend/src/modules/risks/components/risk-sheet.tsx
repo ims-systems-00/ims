@@ -184,6 +184,7 @@ export function RiskSheet({
         onOpenChange={onOpenChange}
         title={title}
         description={description}
+        dataTour="risks.sheet"
         footer={
           mode === "create" ? (
             <RiskFormActions
@@ -225,6 +226,7 @@ export function RiskSheet({
                       type="button"
                       variant="outline"
                       disabled={pending}
+                      data-tour="risks.analyse"
                       onClick={() => setAliceOpen(true)}
                     >
                       <Sparkles className="size-4" />

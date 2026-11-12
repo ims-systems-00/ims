@@ -139,6 +139,70 @@ describe("stripe payment service", () => {
     ]);
   });
 
+  it("maps Stripe customer create failures to ValidationAppError", async () => {
+    const org = makeOrg({
+      paymentSystem: {
+        type: "Card",
+        status: "Trial",
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+      },
+    });
+    const organisations = {
+      findById: vi.fn(async () => org),
+      updatePaymentSystem: vi.fn(),
+      findByStripeSubscriptionId: vi.fn(),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: {
+        create: vi.fn(async () => {
+          throw new Error("Invalid API Key provided");
+        }),
+      },
+      prices: { retrieve: vi.fn() },
+      checkout: { sessions: { create: vi.fn() } },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: { constructEvent: vi.fn() },
+      subscriptionItems: { list: vi.fn(), update: vi.fn() },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_BU_PRICE: "price_bu",
+        STRIPE_SA_PRICE: "price_sa",
+        STRIPE_USER_PRICE: "price_user",
+        STRIPE_COMPLIANCE_PRICE: "price_comp",
+        STRIPE_ADD_MODULE_PRICE: "price_mod",
+        STRIPE_SUPPORT_PRICE: "price_support",
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    await expect(
+      service.createCheckoutSessionForOrg({
+        organizationId: org.id,
+        licences: {
+          groups: 1,
+          users: 1,
+          superUser: 1,
+          complianceTools: [],
+          additionalModules: [],
+          includeToolkitsAndModules: false,
+        },
+      })
+    ).rejects.toMatchObject({
+      name: "ValidationAppError",
+      message: "Stripe: Invalid API Key provided",
+    });
+    expect(organisations.updatePaymentSystem).not.toHaveBeenCalled();
+  });
+
   it("rejects invalid webhook signatures", async () => {
     const organisations = {
       findById: vi.fn(),

@@ -19,6 +19,7 @@ export const THEME_CUSTOM_COLORS_KEY = "ims-v5-theme-custom-colors";
 /** @deprecated Prefer THEME_CUSTOM_COLORS_KEY (full 4-shade palette). */
 export const THEME_CUSTOM_HEX_KEY = "ims-v5-theme-custom-hex";
 
+/** Classic light brand palette (unchanged from pre–dark-mode V5). */
 export const DEFAULT_THEME_COLORS: ThemeColors = {
   primary: "#0040A3",
   primaryDark: "#002D72",
@@ -26,13 +27,21 @@ export const DEFAULT_THEME_COLORS: ThemeColors = {
   primaryExtraLight: "#F2F5FA",
 };
 
+/** iMS OS brand shades used when appearance is dark. */
+export const IMS_OS_DARK_THEME_COLORS: ThemeColors = {
+  primary: "#4F39F6",
+  primaryDark: "#07091A",
+  primaryLight: "#8C7DFF",
+  primaryExtraLight: "#F0EEFF",
+};
+
 export const DEFAULT_CUSTOM_HEX = DEFAULT_THEME_COLORS.primary;
 
 export const THEME_IDS = [
-  "default-blue",
+  "ims-os",
   "ocean-teal",
   "forest",
-  "indigo",
+  "ember",
   "slate",
   "coral",
   "amber",
@@ -51,12 +60,12 @@ export type ThemePreset = {
   colors: ThemeColors;
 };
 
-/** V4 organisation theme templates. */
+/** Organisation colour presets. Default is the official iMS OS brand. */
 export const themeOptions: ThemePreset[] = [
   {
-    id: "default-blue",
-    label: "Default Blue",
-    description: "Classic iMS brand blue",
+    id: "ims-os",
+    label: "iMS OS",
+    description: "Classic light blue; indigo brand in dark mode",
     colors: { ...DEFAULT_THEME_COLORS },
   },
   {
@@ -65,8 +74,8 @@ export const themeOptions: ThemePreset[] = [
     description: "Calm teal operations",
     colors: {
       primary: "#0D9488",
-      primaryDark: "#0F766E",
-      primaryLight: "#99F6E4",
+      primaryDark: "#0B3D3A",
+      primaryLight: "#5EEAD4",
       primaryExtraLight: "#F0FDFA",
     },
   },
@@ -76,20 +85,20 @@ export const themeOptions: ThemePreset[] = [
     description: "Compliance green",
     colors: {
       primary: "#15803D",
-      primaryDark: "#166534",
-      primaryLight: "#BBF7D0",
+      primaryDark: "#0F2E1C",
+      primaryLight: "#86EFAC",
       primaryExtraLight: "#F0FDF4",
     },
   },
   {
-    id: "indigo",
-    label: "Indigo",
-    description: "Deep indigo focus",
+    id: "ember",
+    label: "Ember",
+    description: "Warm copper focus",
     colors: {
-      primary: "#4F46E5",
-      primaryDark: "#3730A3",
-      primaryLight: "#C7D2FE",
-      primaryExtraLight: "#EEF2FF",
+      primary: "#C2410C",
+      primaryDark: "#1C100A",
+      primaryLight: "#FDBA74",
+      primaryExtraLight: "#FFF7ED",
     },
   },
   {
@@ -98,8 +107,8 @@ export const themeOptions: ThemePreset[] = [
     description: "Neutral enterprise grey",
     colors: {
       primary: "#475569",
-      primaryDark: "#334155",
-      primaryLight: "#CBD5E1",
+      primaryDark: "#0F172A",
+      primaryLight: "#94A3B8",
       primaryExtraLight: "#F8FAFC",
     },
   },
@@ -109,8 +118,8 @@ export const themeOptions: ThemePreset[] = [
     description: "Bold rose accent",
     colors: {
       primary: "#E11D48",
-      primaryDark: "#9A041F",
-      primaryLight: "#FECDD3",
+      primaryDark: "#1A0610",
+      primaryLight: "#FDA4AF",
       primaryExtraLight: "#FFF1F2",
     },
   },
@@ -120,8 +129,8 @@ export const themeOptions: ThemePreset[] = [
     description: "Warm amber energy",
     colors: {
       primary: "#D97706",
-      primaryDark: "#B45309",
-      primaryLight: "#FDE68A",
+      primaryDark: "#1A1205",
+      primaryLight: "#FCD34D",
       primaryExtraLight: "#FFFBEB",
     },
   },
@@ -131,18 +140,20 @@ export const themeOptions: ThemePreset[] = [
     description: "Refined violet accent",
     colors: {
       primary: "#7C3AED",
-      primaryDark: "#5B21B6",
-      primaryLight: "#DDD6FE",
+      primaryDark: "#140B2E",
+      primaryLight: "#C4B5FD",
       primaryExtraLight: "#F5F3FF",
     },
   },
 ];
 
-export const DEFAULT_THEME_ID: ThemeId = "default-blue";
+export const DEFAULT_THEME_ID: ThemeId = "ims-os";
 
-/** Legacy single-hex theme ids from earlier V5 iterations. */
+/** Legacy theme ids from earlier V5 / V4 iterations. */
 const LEGACY_THEME_ID_MAP: Record<string, ThemeId> = {
-  blue: "default-blue",
+  "default-blue": "ims-os",
+  blue: "ims-os",
+  indigo: "ims-os",
   green: "forest",
   orange: "amber",
   rose: "coral",
@@ -201,10 +212,15 @@ function applyThemeColors(
 
 export function applyPresetTheme(
   themeId: ThemeId,
-  root: HTMLElement = document.documentElement
+  root: HTMLElement = document.documentElement,
+  appearance: "light" | "dark" = "light"
 ): void {
   const preset = getThemePreset(themeId);
-  applyThemeColors(preset.colors, themeId, root);
+  const colors =
+    appearance === "dark" && themeId === "ims-os"
+      ? IMS_OS_DARK_THEME_COLORS
+      : preset.colors;
+  applyThemeColors(colors, themeId, root);
 }
 
 /**

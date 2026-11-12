@@ -163,6 +163,7 @@ export function RepositoryFormSheet({
       }}
       title="Create repository"
       description="A controlled document library with privacy, owners, and review cadence."
+      dataTour="docs.repo.sheet"
       footer={
         <>
           <Button

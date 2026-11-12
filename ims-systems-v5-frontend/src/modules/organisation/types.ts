@@ -226,6 +226,25 @@ export type EmailBrandingPreviewResult = {
   html: string;
 };
 
+export type ComposeOrganisationMailAttachment = {
+  filename: string;
+  contentBase64: string;
+  type?: string;
+};
+
+export type ComposeOrganisationMailInput = {
+  subject: string;
+  body: string;
+  recipientUserIds: string[];
+  attachments?: ComposeOrganisationMailAttachment[];
+};
+
+export type ComposeOrganisationMailResult = {
+  accepted: boolean;
+  recipientCount: number;
+  emailed: boolean;
+};
+
 export type OrganisationProfile = Organisation & {
   membership: OrganisationMembership | null;
 };

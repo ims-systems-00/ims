@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
+  APPEARANCE_STORAGE_KEY,
   DEFAULT_CUSTOM_HEX,
   DEFAULT_THEME_COLORS,
   DEFAULT_THEME_ID,
+  IMS_OS_DARK_THEME_COLORS,
   THEME_CUSTOM_COLORS_KEY,
   THEME_CUSTOM_HEX_KEY,
   THEME_STORAGE_KEY,
+  applyAppearanceMode,
   applyCustomTheme,
   applyCustomThemeColors,
   applyPresetTheme,
@@ -18,8 +21,10 @@ import {
   isThemeId,
   isValidHexColor,
   normalizeHexColor,
+  persistAppearanceMode,
   persistCustomHex,
   persistThemeId,
+  readStoredAppearanceMode,
   readStoredCustomHex,
   readStoredThemeId,
   resolveThemeId,
@@ -30,26 +35,32 @@ afterEach(() => {
   localStorage.removeItem(THEME_STORAGE_KEY);
   localStorage.removeItem(THEME_CUSTOM_HEX_KEY);
   localStorage.removeItem(THEME_CUSTOM_COLORS_KEY);
+  localStorage.removeItem(APPEARANCE_STORAGE_KEY);
   document.documentElement.removeAttribute("data-theme");
+  document.documentElement.removeAttribute("data-appearance");
+  document.documentElement.classList.remove("dark");
+  document.documentElement.style.colorScheme = "";
   for (const variable of CUSTOM_THEME_CSS_VARS) {
     document.documentElement.style.removeProperty(variable);
   }
 });
 
 describe("theme presets", () => {
-  it("exposes the V4 organisation theme templates", () => {
+  it("exposes organisation theme templates with iMS OS as default", () => {
     expect(themeOptions.map((t) => t.id)).toEqual([
-      "default-blue",
+      "ims-os",
       "ocean-teal",
       "forest",
-      "indigo",
+      "ember",
       "slate",
       "coral",
       "amber",
       "violet",
     ]);
-    expect(DEFAULT_THEME_ID).toBe("default-blue");
+    expect(DEFAULT_THEME_ID).toBe("ims-os");
     expect(themeOptions[0]?.colors).toEqual(DEFAULT_THEME_COLORS);
+    expect(DEFAULT_THEME_COLORS.primary).toBe("#0040A3");
+    expect(DEFAULT_THEME_COLORS.primaryDark).toBe("#002D72");
   });
 
   it("validates theme ids and falls back safely", () => {
@@ -59,8 +70,9 @@ describe("theme presets", () => {
     expect(isThemeId("neon")).toBe(false);
     expect(resolveThemeId("violet")).toBe("violet");
     expect(resolveThemeId("green")).toBe("forest");
-    expect(resolveThemeId("not-a-theme")).toBe("default-blue");
-    expect(resolveThemeId(null)).toBe("default-blue");
+    expect(resolveThemeId("default-blue")).toBe("ims-os");
+    expect(resolveThemeId("not-a-theme")).toBe("ims-os");
+    expect(resolveThemeId(null)).toBe("ims-os");
   });
 
   it("persists and restores the selected theme", () => {
@@ -71,7 +83,7 @@ describe("theme presets", () => {
 
   it("ignores invalid stored themes", () => {
     localStorage.setItem(THEME_STORAGE_KEY, "hotpink");
-    expect(readStoredThemeId()).toBe("default-blue");
+    expect(readStoredThemeId()).toBe("ims-os");
   });
 
   it("applies V4 shades to primary and sidebar tokens", () => {
@@ -82,7 +94,7 @@ describe("theme presets", () => {
     ).toBe("#D97706");
     expect(
       document.documentElement.style.getPropertyValue("--sidebar").trim()
-    ).toBe("#B45309");
+    ).toBe("#1A1205");
   });
 
   it("maps each preset primary/dark onto button and sidebar tokens", () => {
@@ -155,7 +167,7 @@ describe("custom brand color", () => {
     ).toBe("#475569");
     expect(
       document.documentElement.style.getPropertyValue("--sidebar").trim()
-    ).toBe("#334155");
+    ).toBe("#0F172A");
   });
 
   it("falls back to the default custom hex when storage is empty", () => {
@@ -168,5 +180,40 @@ describe("custom brand color", () => {
     expect(
       document.documentElement.style.getPropertyValue("--primary").trim()
     ).toBe("#7C3AED");
+  });
+});
+
+describe("appearance mode", () => {
+  it("applies and persists dark mode on the document root", () => {
+    applyAppearanceMode("dark");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(document.documentElement.dataset.appearance).toBe("dark");
+    persistAppearanceMode("dark");
+    expect(localStorage.getItem(APPEARANCE_STORAGE_KEY)).toBe("dark");
+    expect(readStoredAppearanceMode()).toBe("dark");
+  });
+
+  it("clears the dark class in light mode", () => {
+    applyAppearanceMode("dark");
+    applyAppearanceMode("light");
+    expect(document.documentElement.classList.contains("dark")).toBe(false);
+    expect(document.documentElement.dataset.appearance).toBe("light");
+  });
+
+  it("uses classic primary dark in light and iMS OS indigo in dark for ims-os", () => {
+    applyPresetTheme("ims-os", document.documentElement, "light");
+    expect(
+      document.documentElement.style.getPropertyValue("--sidebar").trim()
+    ).toBe("#002D72");
+    applyPresetTheme("ims-os", document.documentElement, "dark");
+    expect(
+      document.documentElement.style.getPropertyValue("--primary").trim()
+    ).toBe(IMS_OS_DARK_THEME_COLORS.primary);
+    expect(
+      document.documentElement.style.getPropertyValue("--sidebar").trim()
+    ).toBe(IMS_OS_DARK_THEME_COLORS.primaryDark);
+    // Light brand palette stays classic even while dark tokens are applied.
+    expect(DEFAULT_THEME_COLORS.primaryDark).toBe("#002D72");
+    expect(themeOptions[0]?.colors.primaryDark).toBe("#002D72");
   });
 });

@@ -20,6 +20,8 @@ type AppSheetProps = {
   className?: string;
   /** When false, hide the built-in close (X) control. Default true. */
   showClose?: boolean;
+  /** Stable Setup Guide hook, e.g. `risks.sheet`. */
+  dataTour?: string;
 };
 
 /**
@@ -35,6 +37,7 @@ export function AppSheet({
   footer,
   className,
   showClose = true,
+  dataTour,
 }: AppSheetProps) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -42,6 +45,7 @@ export function AppSheet({
         side="right"
         showClose={showClose}
         className={cn("flex flex-col gap-0 p-0", className)}
+        data-tour={dataTour}
       >
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>

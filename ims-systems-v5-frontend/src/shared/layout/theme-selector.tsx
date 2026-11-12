@@ -13,6 +13,7 @@ import {
 import { FormField } from "@/shared/components/form-field";
 import { cn } from "@/shared/lib/utils";
 import {
+  DEFAULT_THEME_ID,
   THEME_COLOR_FIELDS,
   deriveThemeFromPrimary,
   isValidHexColor,
@@ -24,22 +25,23 @@ import {
 export function ThemeSelector() {
   const {
     themeId,
-    colors: activeColors,
+    brandColors,
     setThemeId,
     setCustomColors,
     themes,
   } = useTheme();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<ThemeColors>(activeColors);
-  const [hexDrafts, setHexDrafts] = useState<ThemeColors>(activeColors);
+  const [draft, setDraft] = useState<ThemeColors>(brandColors);
+  const [hexDrafts, setHexDrafts] = useState<ThemeColors>(brandColors);
   const [hexError, setHexError] = useState<string | undefined>();
 
   useEffect(() => {
     if (!open) return;
-    setDraft(activeColors);
-    setHexDrafts(activeColors);
+    // Edit the light/custom brand palette only — dark appearance remaps are not editable here.
+    setDraft(brandColors);
+    setHexDrafts(brandColors);
     setHexError(undefined);
-  }, [open, activeColors]);
+  }, [open, brandColors]);
 
   function previewColors(next: ThemeColors) {
     setDraft(next);
@@ -90,7 +92,7 @@ export function ThemeSelector() {
 
   function resetDefault() {
     setHexError(undefined);
-    setThemeId("default-blue");
+    setThemeId(DEFAULT_THEME_ID);
   }
 
   return (

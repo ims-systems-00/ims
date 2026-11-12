@@ -1,4 +1,5 @@
 import { cn } from "@/shared/lib/utils";
+import { signalTourAction } from "@/modules/setup-guide";
 import type { DocumentsTabId } from "../types";
 
 const TABS: Array<{ id: DocumentsTabId; label: string }> = [
@@ -18,6 +19,7 @@ export function DocumentsTabs({ value, onChange }: DocumentsTabsProps) {
       className="flex flex-wrap gap-1 border-b border-border-subtle"
       role="tablist"
       aria-label="Documents views"
+      data-tour="docs.tabs"
     >
       {TABS.map((tab) => {
         const selected = value === tab.id;
@@ -27,13 +29,21 @@ export function DocumentsTabs({ value, onChange }: DocumentsTabsProps) {
             type="button"
             role="tab"
             aria-selected={selected}
+            data-tour={
+              tab.id === "repositories" ? "docs.tab.repositories" : undefined
+            }
             className={cn(
               "relative px-3.5 py-2.5 text-sm font-medium transition-colors",
               selected
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
             )}
-            onClick={() => onChange(tab.id)}
+            onClick={() => {
+              onChange(tab.id);
+              if (tab.id === "repositories") {
+                signalTourAction("docs.tab.repositories");
+              }
+            }}
           >
             {tab.label}
             {selected ? (

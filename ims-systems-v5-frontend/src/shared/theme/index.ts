@@ -5,6 +5,7 @@ export {
   THEME_IDS,
   DEFAULT_THEME_ID,
   DEFAULT_THEME_COLORS,
+  IMS_OS_DARK_THEME_COLORS,
   DEFAULT_CUSTOM_HEX,
   themeOptions,
   getThemePreset,
@@ -44,4 +45,15 @@ export {
   CUSTOM_THEME_CSS_VARS,
   THEME_COLOR_FIELDS,
 } from "./color-utils";
+export {
+  APPEARANCE_STORAGE_KEY,
+  APPEARANCE_MODES,
+  DEFAULT_APPEARANCE_MODE,
+  isAppearanceMode,
+  resolveAppearanceMode,
+  readStoredAppearanceMode,
+  persistAppearanceMode,
+  applyAppearanceMode,
+} from "./appearance";
+export type { AppearanceMode } from "./appearance";
 export { ThemeProvider, useTheme } from "./theme-provider";

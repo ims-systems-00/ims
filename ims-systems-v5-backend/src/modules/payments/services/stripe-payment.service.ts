@@ -53,11 +53,28 @@ export function createStripePaymentService(deps: {
 
     let customerId = org.paymentSystem.stripeCustomerId;
     if (!customerId) {
-      const customer = await stripe.customers.create({
-        name: org.name,
-        email: org.officeEmail,
-        metadata: { organizationId: org.id },
-      });
+      let customer: Stripe.Customer;
+      try {
+        customer = await stripe.customers.create({
+          name: org.name,
+          email: org.officeEmail,
+          metadata: { organizationId: org.id },
+        });
+      } catch (error) {
+        logger?.error(
+          {
+            organizationId: org.id,
+            err: error instanceof Error ? error.message : String(error),
+          },
+          "Stripe customer create failed"
+        );
+        throw new ValidationAppError(
+          stripeErrorMessage(
+            error,
+            "Unable to create Stripe customer. Confirm STRIPE_PRIVATE_KEY is valid and the organisation office email is usable."
+          )
+        );
+      }
       customerId = customer.id;
       await organisations.updatePaymentSystem(org.id, {
         stripeCustomerId: customerId,
@@ -214,11 +231,27 @@ export function createStripePaymentService(deps: {
         );
       }
       const clientUrl = config.CLIENT_URL.replace(/\/+$/, "");
-      const session = await stripe.billingPortal.sessions.create({
-        customer: customerId,
-        return_url: `${clientUrl}/organisation`,
-      });
-      return { url: session.url };
+      try {
+        const session = await stripe.billingPortal.sessions.create({
+          customer: customerId,
+          return_url: `${clientUrl}/organisation`,
+        });
+        return { url: session.url };
+      } catch (error) {
+        logger?.error(
+          {
+            organizationId,
+            err: error instanceof Error ? error.message : String(error),
+          },
+          "Stripe billing portal session create failed"
+        );
+        throw new ValidationAppError(
+          stripeErrorMessage(
+            error,
+            "Unable to open Stripe billing portal. Confirm Customer Portal is enabled in the Stripe Dashboard and the customer id is valid."
+          )
+        );
+      }
     },
 
     async handleWebhookEvent(rawBody: Buffer, signature: string): Promise<void> {

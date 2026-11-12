@@ -1,5 +1,7 @@
 import { apiRequest } from "@/shared/lib/http";
 import type {
+  ComposeOrganisationMailInput,
+  ComposeOrganisationMailResult,
   CreateLicenceRequestResult,
   CreateOrganisationInput,
   CreateOrganisationResult,
@@ -153,6 +155,18 @@ export function updateDocumentReviewReminders(
     {
       method: "PUT",
       body: { documentReviewReminderOffsets },
+    }
+  );
+}
+
+export function composeOrganisationMail(
+  body: ComposeOrganisationMailInput
+): Promise<ComposeOrganisationMailResult> {
+  return apiRequest<ComposeOrganisationMailResult>(
+    "/organisations/current/compose-mail",
+    {
+      method: "POST",
+      body,
     }
   );
 }

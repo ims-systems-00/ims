@@ -31,6 +31,9 @@ overwriting the published file.
 - Local/compose needs a Document Server container and callback/file URLs
   reachable from that container (`ONLYOFFICE_CALLBACK_BASE_URL`,
   `FILES_LOCAL_PUBLIC_BASE_URL`).
+- Browser-facing `ONLYOFFICE_URL` / `VITE_ONLYOFFICE_URL` should be the
+  same-origin path `/onlyoffice` (frontend nginx proxies to the Document
+  Server). Do not return `http://localhost:8088` to remote browsers.
 - Scanned/image-only PDFs open in the editor but text rewrite is limited to
   what OnlyOffice can extract; text and fillable PDFs are the strong case.
 - Signature placement on Office still depends on deferred LibreOffice

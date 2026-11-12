@@ -1,6 +1,7 @@
 import { Link, Outlet, useLocation } from "react-router-dom";
 import { Check } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
+import { AppearanceToggle } from "./appearance-toggle";
 import { ThemeSelector } from "./theme-selector";
 import { UserMenu } from "./user-menu";
 
@@ -52,6 +53,7 @@ export function OnboardingShell() {
             </span>
           </Link>
           <div className="flex items-center gap-1.5">
+            <AppearanceToggle />
             <ThemeSelector />
             <UserMenu />
           </div>

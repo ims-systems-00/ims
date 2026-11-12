@@ -378,7 +378,11 @@ const envSchema = z
      * When ONLYOFFICE_ENABLED=false, editor-session endpoints reject clearly.
      */
     ONLYOFFICE_ENABLED: booleanFromEnv.default(false),
-    /** Browser-facing Document Server origin (no trailing slash), e.g. http://localhost:8088 */
+    /**
+     * Browser-facing Document Server base (no trailing slash).
+     * Prefer same-origin `/onlyoffice` (frontend nginx proxy) so production
+     * browsers do not receive localhost. Host Vite may use http://localhost:8088.
+     */
     ONLYOFFICE_URL: z.string().default(""),
     /** Shared HS256 secret with Document Server JWT_SECRET. */
     ONLYOFFICE_JWT_SECRET: z.string().default("dev-onlyoffice-jwt-secret"),

@@ -35,8 +35,21 @@ declare global {
 
 const scriptCache = new Map<string, Promise<void>>();
 
+/**
+ * Backend may return a same-origin path (`/onlyoffice`) so production hosts
+ * never bake localhost. DocsAPI needs an absolute origin in the browser.
+ */
+function resolveDocumentServerUrl(documentServerUrl: string): string {
+  const trimmed = documentServerUrl.trim().replace(/\/+$/, "");
+  if (!trimmed) return "";
+  if (trimmed.startsWith("/")) {
+    return `${window.location.origin}${trimmed}`;
+  }
+  return trimmed;
+}
+
 function loadDocsApi(documentServerUrl: string): Promise<void> {
-  const base = documentServerUrl.replace(/\/+$/, "");
+  const base = resolveDocumentServerUrl(documentServerUrl);
   if (!base) {
     return Promise.reject(new Error("OnlyOffice document server URL is missing"));
   }

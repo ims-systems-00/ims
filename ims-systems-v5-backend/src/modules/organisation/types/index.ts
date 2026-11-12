@@ -312,3 +312,23 @@ export type GoLiveOrganisationResult = {
 export type OrganisationProfile = Organisation & {
   membership: OrganisationMembership | null;
 };
+
+export type ComposeOrganisationMailAttachment = {
+  filename: string;
+  /** Raw base64 (no data-URI prefix). */
+  contentBase64: string;
+  type?: string;
+};
+
+export type ComposeOrganisationMailInput = {
+  subject: string;
+  body: string;
+  recipientUserIds: string[];
+  attachments?: ComposeOrganisationMailAttachment[];
+};
+
+export type ComposeOrganisationMailResult = {
+  accepted: boolean;
+  recipientCount: number;
+  emailed: boolean;
+};

@@ -137,6 +137,7 @@ import {
   createOrganisationMembershipLookupAdapter,
   createOwnershipIntegrityAdapter,
   createUserNotificationAdapter,
+  createUserRepository,
   createUsersModule,
 } from "../../../modules/users";
 import { createInvitationModule } from "../../../modules/invitations";
@@ -339,6 +340,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       notifyGoLive: () => Promise.resolve(),
     };
 
+  const organisationUsersLookup = createUserRepository();
   const organisations = createOrganisationModule({
     authorizer: security.authorizer,
     membershipProjection: security.membershipProjection,
@@ -349,6 +351,13 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     billing,
     allowStubOrganisationAutoProvision:
       config?.SECURITY_PROVIDER === "development-stub",
+    composeMailEmail: email
+      ? { sendBulk: (input) => email.sendBulk(input) }
+      : undefined,
+    usersLookup: {
+      findIdentitySummariesByIds: (ids) =>
+        organisationUsersLookup.findIdentitySummariesByIds(ids),
+    },
   });
   router.use("/organisations", organisations.router);
 

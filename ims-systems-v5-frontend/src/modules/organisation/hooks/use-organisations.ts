@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthClient } from "@/security";
 import { setActiveOrganisationContext } from "@/shared/lib/active-organisation";
 import {
+  composeOrganisationMail,
   createBillingPortalSession,
   createCardPaymentSession,
   createOrganisation,
@@ -16,6 +17,7 @@ import {
   updateOrganisationLogo,
 } from "../api/organisations";
 import type {
+  ComposeOrganisationMailInput,
   CreateOrganisationInput,
   DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
@@ -196,5 +198,12 @@ export function useUpdateDocumentReviewRemindersMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
+  });
+}
+
+export function useComposeOrganisationMailMutation() {
+  return useMutation({
+    mutationFn: (body: ComposeOrganisationMailInput) =>
+      composeOrganisationMail(body),
   });
 }

@@ -248,7 +248,12 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
             <FolderPlus className="size-3.5" />
             New folder
           </Button>
-          <Button type="button" size="sm" onClick={() => setUploadOpen(true)}>
+          <Button
+            type="button"
+            size="sm"
+            data-tour="docs.upload"
+            onClick={() => setUploadOpen(true)}
+          >
             <Upload className="size-3.5" />
             Upload
           </Button>

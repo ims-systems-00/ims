@@ -19,7 +19,7 @@ import {
   Trash2,
   X,
 } from "lucide-react";
-import aliceHorizontal from "@/assets/images/Type=Horizontal.png";
+import aliceLauncherIdle from "@/assets/images/alice-launcher-idle.gif";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { Textarea } from "@/shared/components/ui/textarea";
@@ -338,9 +338,12 @@ export function AliceChatPanel() {
         ref={panelRef}
         className={cn(
           "pointer-events-auto fixed flex flex-col overflow-hidden",
-          "max-h-[min(72dvh,38rem)] rounded-2xl border border-white/10",
+          "max-h-[min(72dvh,38rem)] rounded-2xl border border-border/80",
           "bg-surface/95 shadow-[0_24px_64px_-12px_rgb(0_0_0_/0.35)] backdrop-blur-xl",
-          "ring-1 ring-border/60 dark:bg-surface/90"
+          "ring-1 ring-border/60",
+          // Dark: elevated indigo so the float panel separates from tables/surfaces (#121535 / #1A1F4A)
+          "dark:border-[#8C7DFF]/40 dark:bg-[#252B63]/96 dark:ring-[#8C7DFF]/30",
+          "dark:shadow-[0_28px_72px_-16px_rgb(0_0_0_/0.7)]"
         )}
         style={{
           zIndex: ALICE_FLOAT_Z_INDEX,
@@ -398,9 +401,9 @@ export function AliceChatPanel() {
           <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/40 to-transparent" />
           <div className="min-w-0 flex-1">
             <img
-              src={aliceHorizontal}
+              src={aliceLauncherIdle}
               alt="Alice"
-              className="h-7 w-auto max-w-[9.5rem] object-contain object-left"
+              className="h-12 w-auto max-w-[14rem] object-contain object-left"
               draggable={false}
             />
             {/* <p className="mt-0.5 text-[0.65rem] text-muted-foreground">

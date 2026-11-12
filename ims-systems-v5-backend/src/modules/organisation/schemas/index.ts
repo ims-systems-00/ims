@@ -160,3 +160,20 @@ export const updateDocumentReviewRemindersBodySchema = z.object({
     .array(z.enum(DOCUMENT_REVIEW_REMINDER_OFFSETS))
     .max(DOCUMENT_REVIEW_REMINDER_OFFSETS.length),
 });
+
+const composeMailAttachmentSchema = z.object({
+  filename: z.string().trim().min(1).max(255),
+  contentBase64: z.string().min(1).max(8_000_000),
+  type: z.string().trim().max(200).optional(),
+});
+
+export const composeOrganisationMailBodySchema = z.object({
+  subject: z.string().trim().min(1).max(200),
+  body: z.string().trim().min(1).max(20_000),
+  /** Membership user ids (ObjectId in Auth0 mode; stub may use non-ObjectId subjects). */
+  recipientUserIds: z
+    .array(z.string().trim().min(1).max(128))
+    .min(1, "Select at least one recipient")
+    .max(200),
+  attachments: z.array(composeMailAttachmentSchema).max(10).optional().default([]),
+});

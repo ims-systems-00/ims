@@ -14,6 +14,7 @@ import {
   type FunctionalUnitSheetMode,
 } from "../components/functional-unit-sheet";
 import { useFunctionalUnitsQuery } from "../hooks/use-functional-units";
+import { signalTourAction, useTourAction } from "@/modules/setup-guide";
 import type { AccessType } from "../types";
 
 /**
@@ -39,6 +40,8 @@ export function FunctionalUnitsListPage() {
     : editMode
       ? "edit"
       : "view";
+
+  useTourAction("org.fu.create-opened", createOpen);
 
   const queryParams = useMemo(
     () => ({
@@ -87,7 +90,11 @@ export function FunctionalUnitsListPage() {
         title="Functional Units"
         description="Organisation subdivisions used to scope people, access, and licensing."
         actions={
-          <Button type="button" onClick={openCreate}>
+          <Button
+            type="button"
+            data-tour="org.fu.create"
+            onClick={openCreate}
+          >
             <Plus />
             Create a function
           </Button>
@@ -128,83 +135,90 @@ export function FunctionalUnitsListPage() {
         </select>
       </div>
 
-      {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading functional units…
-        </div>
-      ) : null}
+      <div className="space-y-5" data-tour="org.fu.register">
+        {listQuery.isLoading ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            Loading functional units…
+          </div>
+        ) : null}
 
-      {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}
+        {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}
 
-      {listQuery.isSuccess && listQuery.data.total === 0 ? (
-        <EmptyState
-          icon={<Building2 />}
-          title="No functional units found"
-          description="Create a unit to organise people, access, and licensing."
-          action={
-            <Button type="button" size="sm" onClick={openCreate}>
-              <Plus />
-              Create a function
-            </Button>
-          }
-        />
-      ) : null}
+        {listQuery.isSuccess && listQuery.data.total === 0 ? (
+          <EmptyState
+            icon={<Building2 />}
+            title="No functional units found"
+            description="Create a unit to organise people, access, and licensing."
+            action={
+              <Button
+                type="button"
+                size="sm"
+                data-tour="org.fu.create"
+                onClick={openCreate}
+              >
+                <Plus />
+                Create a function
+              </Button>
+            }
+          />
+        ) : null}
 
-      {listQuery.isSuccess && listQuery.data.items.length > 0 ? (
-        <div className="ims-table-wrap">
-          <table className="ims-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Responsibility</th>
-                <th className="text-right">Members</th>
-                <th className="w-12 text-right">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {listQuery.data.items.map((unit) => (
-                <EntityTableRow
-                  key={unit.id}
-                  disabled={unit.isSystemDefault}
-                  onOpen={
-                    unit.isSystemDefault ? undefined : () => openUnit(unit.id)
-                  }
-                >
-                  <td className="font-medium">{unit.name}</td>
-                  <td className="text-muted-foreground">{unit.accessType}</td>
-                  <td className="max-w-[18rem] truncate text-muted-foreground">
-                    {unit.responsibility}
-                  </td>
-                  <td className="text-right tabular-nums">
-                    {unit.totalMembers}
-                  </td>
-                  <td className="text-right">
-                    {unit.isSystemDefault ? (
-                      <span className="ims-text-meta">Default</span>
-                    ) : (
-                      <RowActionsMenu
-                        label={`Actions for ${unit.name}`}
-                        actions={[
-                          {
-                            id: "details",
-                            label: "Details",
-                            icon: <Eye />,
-                            onSelect: () => openUnit(unit.id),
-                          },
-                        ]}
-                      />
-                    )}
-                  </td>
-                </EntityTableRow>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+        {listQuery.isSuccess && listQuery.data.items.length > 0 ? (
+          <div className="ims-table-wrap">
+            <table className="ims-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Responsibility</th>
+                  <th className="text-right">Members</th>
+                  <th className="w-12 text-right">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {listQuery.data.items.map((unit) => (
+                  <EntityTableRow
+                    key={unit.id}
+                    disabled={unit.isSystemDefault}
+                    onOpen={
+                      unit.isSystemDefault ? undefined : () => openUnit(unit.id)
+                    }
+                  >
+                    <td className="font-medium">{unit.name}</td>
+                    <td className="text-muted-foreground">{unit.accessType}</td>
+                    <td className="max-w-[18rem] truncate text-muted-foreground">
+                      {unit.responsibility}
+                    </td>
+                    <td className="text-right tabular-nums">
+                      {unit.totalMembers}
+                    </td>
+                    <td className="text-right">
+                      {unit.isSystemDefault ? (
+                        <span className="ims-text-meta">Default</span>
+                      ) : (
+                        <RowActionsMenu
+                          label={`Actions for ${unit.name}`}
+                          actions={[
+                            {
+                              id: "details",
+                              label: "Details",
+                              icon: <Eye />,
+                              onSelect: () => openUnit(unit.id),
+                            },
+                          ]}
+                        />
+                      )}
+                    </td>
+                  </EntityTableRow>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </div>
 
       {listQuery.isSuccess && listQuery.data.totalPages > 1 ? (
         <div className="ims-pagination">
@@ -241,6 +255,7 @@ export function FunctionalUnitsListPage() {
         }}
         onModeChange={handleModeChange}
         onCreated={(unit) => {
+          signalTourAction("org.fu.created");
           notify.success("Business unit created successfully");
           setEditMode(false);
           setSearchParams({ unit: unit.id });

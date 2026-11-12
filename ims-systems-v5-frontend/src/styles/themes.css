@@ -1,10 +1,10 @@
 /**
- * V5 theme identity fallbacks — Default Blue (V4 org theme).
- * Runtime injects the active 4-shade palette via the theme provider.
+ * V5 theme identity fallbacks — classic light blue by default.
+ * Dark appearance applies the iMS OS indigo palette via CSS + ThemeProvider.
  */
 
 :root,
-html[data-theme="default-blue"] {
+html[data-theme="ims-os"] {
   --primary: #0040a3;
   --primary-foreground: #fafafa;
   --secondary: #ccd9ed;
@@ -21,13 +21,30 @@ html[data-theme="default-blue"] {
   --sidebar-primary: #ccd9ed;
 }
 
+html.dark[data-theme="ims-os"] {
+  --primary: #4f39f6;
+  --primary-foreground: #ffffff;
+  --secondary: #8c7dff;
+  --secondary-foreground: #07091a;
+  --accent: #1a1f4a;
+  --accent-foreground: #a99dff;
+  --ring: #8c7dff;
+  --sidebar: #07091a;
+  --sidebar-foreground: #f0eeff;
+  --sidebar-muted: #a99dff;
+  --sidebar-accent: #4f39f6;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #121535;
+  --sidebar-primary: #8c7dff;
+}
+
 html[data-theme="ocean-teal"],
 html[data-theme="forest"],
-html[data-theme="indigo"],
+html[data-theme="ember"],
 html[data-theme="slate"],
 html[data-theme="coral"],
 html[data-theme="amber"],
 html[data-theme="violet"],
 html[data-theme="custom"] {
-  /* Tokens injected via JavaScript from the V4-compatible palette. */
+  /* Tokens injected via JavaScript from the brand palette. */
 }

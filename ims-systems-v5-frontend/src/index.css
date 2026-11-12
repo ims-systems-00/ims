@@ -117,7 +117,7 @@
   --duration-fast: 120ms;
   --duration-normal: 180ms;
 
-  /* Default theme surfaces (slate) — identity accents in themes.css */
+  /* Light surfaces (classic V5) — dark mode uses the iMS OS palette below */
   --background: oklch(0.985 0.002 250);
   --foreground: oklch(0.22 0.014 255);
   --surface: oklch(1 0 0);
@@ -154,6 +154,51 @@
   --sidebar-accent-foreground: #fafafa;
   --sidebar-border: #00245c;
   --sidebar-primary: #ccd9ed;
+}
+
+.dark {
+  color-scheme: dark;
+  --shadow-xs: 0 1px 2px oklch(0 0 0 / 0.35);
+  --shadow-sm: 0 1px 2px oklch(0 0 0 / 0.4), 0 1px 3px oklch(0 0 0 / 0.28);
+  --shadow-md: 0 2px 10px oklch(0 0 0 / 0.45), 0 1px 2px oklch(0 0 0 / 0.3);
+
+  /* iMS OS dark surfaces */
+  --background: #07091a;
+  --foreground: #f0eeff;
+  --surface: #121535;
+  --surface-elevated: #121535;
+  --surface-muted: #0c0f2b;
+  --card: #121535;
+  --card-foreground: #f0eeff;
+  --popover: #121535;
+  --popover-foreground: #f0eeff;
+  --primary: #4f39f6;
+  --primary-foreground: #ffffff;
+  --secondary: #8c7dff;
+  --secondary-foreground: #07091a;
+  --muted: #0c0f2b;
+  --muted-foreground: #c3c0f2;
+  --accent: #1a1f4a;
+  --accent-foreground: #a99dff;
+  --destructive: oklch(0.62 0.2 25);
+  --destructive-foreground: #ffffff;
+  --success: oklch(0.62 0.14 155);
+  --success-foreground: #07091a;
+  --warning: oklch(0.78 0.14 85);
+  --warning-foreground: #07091a;
+  --info: #8c7dff;
+  --info-foreground: #07091a;
+  --border: #1e2452;
+  --border-subtle: #171b42;
+  --input: #1e2452;
+  --ring: #8c7dff;
+  --sidebar: #07091a;
+  --sidebar-foreground: #f0eeff;
+  --sidebar-muted: #a99dff;
+  --sidebar-accent: #4f39f6;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #121535;
+  --sidebar-primary: #8c7dff;
 }
 
 @layer base {
@@ -298,6 +343,52 @@
  */
 [data-alice-float] {
   pointer-events: auto !important;
+}
+
+/*
+ * Setup Guide card: same reason as Alice above — it floats over modal sheets
+ * and has to stay clickable while one is open.
+ */
+[data-guide-layer] {
+  pointer-events: auto !important;
+}
+
+/* Setup Guide spotlight ring — a soft pulse on the highlighted control. */
+@keyframes ims-guide-spotlight-pulse {
+  0%,
+  100% {
+    stroke-opacity: 1;
+  }
+  50% {
+    stroke-opacity: 0.35;
+  }
+}
+
+.ims-guide-spotlight {
+  animation: ims-guide-spotlight-pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes ims-guide-dot-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.45;
+  }
+}
+
+.ims-guide-dot {
+  animation: ims-guide-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ims-guide-spotlight,
+  .ims-guide-dot {
+    animation: none;
+  }
 }
 
 @layer components {

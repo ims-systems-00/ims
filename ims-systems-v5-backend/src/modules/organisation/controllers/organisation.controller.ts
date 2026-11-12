@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { parseWithSchema, sendSuccess } from "../../../shared";
 import {
+  composeOrganisationMailBodySchema,
   createOrganisationBodySchema,
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
@@ -26,6 +27,7 @@ export type OrganisationController = {
   updateLogo: RequestHandler;
   updateEmailBranding: RequestHandler;
   previewEmailBranding: RequestHandler;
+  composeMail: RequestHandler;
 };
 
 export function createOrganisationController(
@@ -190,6 +192,16 @@ export function createOrganisationController(
     }
   };
 
+  const composeMail: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(composeOrganisationMailBodySchema, req.body);
+      const data = await service.composeMail(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   return {
     create,
     goLive,
@@ -204,5 +216,6 @@ export function createOrganisationController(
     updateLogo,
     updateEmailBranding,
     previewEmailBranding,
+    composeMail,
   };
 }

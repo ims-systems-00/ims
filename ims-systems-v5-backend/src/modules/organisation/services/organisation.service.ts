@@ -24,17 +24,23 @@ import {
 import type { OrganisationBillingPort } from "../../payments/ports";
 import {
   NoOpOrganisationGoLiveSideEffectsAdapter,
+  type OrganisationComposeMailEmailPort,
   type OrganisationGoLiveSideEffectsPort,
+  type OrganisationUsersLookupPort,
 } from "../ports";
 import type { OrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import type { OrganisationRepository } from "../repositories/organisation.repository";
 import {
   DEFAULT_IMS_EMAIL_BRANDING,
+  escapeHtml,
+  nl2br,
   renderEmail,
   resolveOrganisationEmailBranding,
 } from "../../../infrastructure/email/templates";
 import {
   ORGANISATION_RESOURCE,
+  type ComposeOrganisationMailInput,
+  type ComposeOrganisationMailResult,
   type CreateOrganisationInput,
   type CreateOrganisationResult,
   type EmailBrandingPreviewResult,
@@ -74,6 +80,9 @@ export type OrganisationServiceDeps = {
   billing?: OrganisationBillingPort;
   /** When false (auth0-openfga), never auto-create the stub demo tenant. */
   allowStubOrganisationAutoProvision?: boolean;
+  /** Optional — Compose Mail to org members. */
+  composeMailEmail?: OrganisationComposeMailEmailPort;
+  usersLookup?: OrganisationUsersLookupPort;
 };
 
 export type OrganisationService = ReturnType<typeof createOrganisationService>;
@@ -84,6 +93,8 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
   const goLiveSideEffects =
     deps.goLiveSideEffects ?? new NoOpOrganisationGoLiveSideEffectsAdapter();
   const billing = deps.billing;
+  const composeMailEmail = deps.composeMailEmail;
+  const usersLookup = deps.usersLookup;
   const allowStubOrganisationAutoProvision =
     deps.allowStubOrganisationAutoProvision === true;
 
@@ -798,6 +809,108 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
           "User is already a member of the organisation."
         );
       }
+    },
+
+    /**
+     * Compose and send an email to selected organisation members.
+     * Recipients must be current members; each gets an individual send.
+     */
+    async composeMail(
+      identity: SecurityIdentity | null | undefined,
+      input: ComposeOrganisationMailInput
+    ): Promise<ComposeOrganisationMailResult> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertMember(subjectId, authed.organizationId);
+
+      if (!composeMailEmail || !usersLookup) {
+        throw new ValidationAppError("Organisation email is not configured");
+      }
+
+      const uniqueRecipientIds = [
+        ...new Set(input.recipientUserIds.map((id) => id.trim()).filter(Boolean)),
+      ];
+      if (uniqueRecipientIds.length === 0) {
+        throw new ValidationAppError("Select at least one recipient");
+      }
+
+      const orgMemberships = await memberships.listByOrganization(
+        authed.organizationId
+      );
+      const memberIds = new Set(orgMemberships.map((m) => m.userId));
+      const invalid = uniqueRecipientIds.filter((id) => !memberIds.has(id));
+      if (invalid.length > 0) {
+        throw new ValidationAppError(
+          "One or more recipients are not members of this organisation"
+        );
+      }
+
+      const identities = await usersLookup.findIdentitySummariesByIds(
+        uniqueRecipientIds
+      );
+      const recipients = identities.filter((user) => user.email.trim());
+      if (recipients.length === 0) {
+        throw new ValidationAppError(
+          "Selected members do not have email addresses"
+        );
+      }
+
+      const org = await organisations.findById(authed.organizationId);
+      if (!org) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const branding = resolveOrganisationEmailBranding({
+        name: org.name,
+        logoSrc: org.logoSrc,
+        emailBranding: org.emailBranding,
+      });
+      const bodyHtml = `<p style="margin:0;font-size:15px;line-height:1.65;color:#334155;">${nl2br(
+        escapeHtml(input.body)
+      )}</p>`;
+      const rendered = renderEmail(
+        "campaign-wrap",
+        {
+          subject: input.subject,
+          bodyHtml,
+        },
+        { branding }
+      );
+
+      const attachments = (input.attachments ?? []).map((file) => ({
+        filename: file.filename,
+        contentBase64: file.contentBase64,
+        type: file.type,
+        disposition: "attachment" as const,
+      }));
+
+      const correlationId = `org-compose-mail-${authed.organizationId}-${Date.now()}`;
+      let emailed = false;
+      for (const recipient of recipients) {
+        const result = await composeMailEmail.sendBulk({
+          to: recipient.email,
+          subject: input.subject,
+          html: rendered.html,
+          text: rendered.text,
+          category: "bulk",
+          organizationId: authed.organizationId,
+          correlationId,
+          dedupeKey: `${correlationId}:${recipient.id}`.slice(0, 128),
+          ...(attachments.length > 0 ? { attachments } : {}),
+        });
+        if (result.mode !== "disabled") {
+          emailed = true;
+        }
+      }
+
+      return {
+        accepted: true,
+        recipientCount: recipients.length,
+        emailed,
+      };
     },
   };
 }

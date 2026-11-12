@@ -7,6 +7,23 @@
  */
 
 import type { SecurityIdentity } from "../../security";
+import type { EnqueueEmailInput, EnqueueEmailResult } from "../../infrastructure/queue";
+
+export type OrganisationComposeMailEmailPort = {
+  sendBulk: (input: EnqueueEmailInput) => Promise<EnqueueEmailResult>;
+};
+
+export type OrganisationMemberIdentity = {
+  id: string;
+  name: string;
+  email: string;
+};
+
+export type OrganisationUsersLookupPort = {
+  findIdentitySummariesByIds: (
+    ids: string[]
+  ) => Promise<OrganisationMemberIdentity[]>;
+};
 
 export type GoLivePaymentSession = {
   url: string;

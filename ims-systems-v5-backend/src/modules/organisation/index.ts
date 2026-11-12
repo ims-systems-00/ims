@@ -11,7 +11,9 @@ export {
 export {
   NoOpOrganisationGoLiveSideEffectsAdapter,
   type GoLivePaymentSession,
+  type OrganisationComposeMailEmailPort,
   type OrganisationGoLiveSideEffectsPort,
+  type OrganisationUsersLookupPort,
 } from "./ports";
 export { composeGoLiveSideEffects } from "./adapters/compose-go-live-side-effects";
 export { createGoLiveNotifySideEffectsAdapter } from "./adapters/go-live-notify.adapter";
