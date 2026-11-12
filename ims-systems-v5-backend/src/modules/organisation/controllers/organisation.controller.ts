@@ -1,6 +1,7 @@
 import type { RequestHandler } from "express";
 import { parseWithSchema, sendSuccess } from "../../../shared";
 import {
+  composeOrganisationMailBodySchema,
   createOrganisationBodySchema,
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
@@ -20,12 +21,14 @@ export type OrganisationController = {
   ensureAuth0Link: RequestHandler;
   listMine: RequestHandler;
   createCardPaymentSession: RequestHandler;
+  createSmeLicenceCheckoutSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
   updateIncidentResolutionTargets: RequestHandler;
   updateLogo: RequestHandler;
   updateEmailBranding: RequestHandler;
   previewEmailBranding: RequestHandler;
+  composeMail: RequestHandler;
 };
 
 export function createOrganisationController(
@@ -94,6 +97,23 @@ export function createOrganisationController(
     try {
       const { id } = parseWithSchema(organisationIdParamSchema, req.params);
       const data = await service.createCardPaymentSession(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const createSmeLicenceCheckoutSession: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.createSmeLicenceCheckoutSession(
+        req.identity,
+        id
+      );
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -190,6 +210,16 @@ export function createOrganisationController(
     }
   };
 
+  const composeMail: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(composeOrganisationMailBodySchema, req.body);
+      const data = await service.composeMail(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   return {
     create,
     goLive,
@@ -198,11 +228,13 @@ export function createOrganisationController(
     ensureAuth0Link,
     listMine,
     createCardPaymentSession,
+    createSmeLicenceCheckoutSession,
     createBillingPortalSession,
     updateDocumentReviewReminders,
     updateIncidentResolutionTargets,
     updateLogo,
     updateEmailBranding,
     previewEmailBranding,
+    composeMail,
   };
 }

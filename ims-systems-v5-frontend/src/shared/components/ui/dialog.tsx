@@ -1,6 +1,7 @@
 import * as React from "react";
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
+import { keepOpenForFloatingLayers } from "@/shared/lib/guide-layer";
 import { cn } from "@/shared/lib/utils";
 
 const Dialog = DialogPrimitive.Root;
@@ -27,6 +28,8 @@ function DialogContent({
   className,
   children,
   showClose = true,
+  onInteractOutside,
+  onFocusOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showClose?: boolean;
@@ -41,6 +44,15 @@ function DialogContent({
           className
         )}
         {...props}
+        onInteractOutside={(event) => {
+          // Setup Guide + Alice float above the dialog; using them must not close it.
+          keepOpenForFloatingLayers(event);
+          onInteractOutside?.(event);
+        }}
+        onFocusOutside={(event) => {
+          keepOpenForFloatingLayers(event);
+          onFocusOutside?.(event);
+        }}
       >
         {children}
         {showClose ? (

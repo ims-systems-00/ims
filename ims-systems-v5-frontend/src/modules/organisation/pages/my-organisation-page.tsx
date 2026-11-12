@@ -1,12 +1,13 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2, Loader2, Mail } from "lucide-react";
 import { PageHeader } from "@/shared/layout";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
 import { notify } from "@/shared/lib/toast";
+import { ComposeMailSheet } from "../components/compose-mail-sheet";
 import { DocumentManagementRemindersPanel } from "../components/document-management-reminders-panel";
 import { EmailCustomisePanel } from "../components/email-customise-panel";
 import { IncidentResolutionTargetsPanel } from "../components/incident-resolution-targets-panel";
@@ -92,6 +93,7 @@ export function MyOrganisationPage() {
   const membersQuery = useUsersQuery({ page: 1, pageSize: 1 });
   const logoMutation = useUpdateOrganisationLogoMutation();
   const resolvedLogoUrl = useOrganisationLogoUrl(orgQuery.data);
+  const [composeOpen, setComposeOpen] = useState(false);
 
   if (orgQuery.isLoading) {
     return (
@@ -132,6 +134,9 @@ export function MyOrganisationPage() {
   const canManageLogo =
     organisation.membership?.role === "Super Admin" ||
     organisation.membership?.role === "Head of Service";
+  const canComposeMail =
+    organisation.membership?.role === "Super Admin" ||
+    organisation.membership?.role === "Head of Service";
 
   return (
     <div className="mx-auto max-w-8xl space-y-5">
@@ -139,11 +144,26 @@ export function MyOrganisationPage() {
         title="My organisation"
         description="Tenant identity and contact details for the organisation in this session."
         actions={
-          <Button asChild variant="outline" size="sm">
-            <Link to="/onboard/organisation">Create organisation</Link>
-          </Button>
+          <div className="flex flex-wrap items-center gap-2">
+            {canComposeMail ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setComposeOpen(true)}
+              >
+                <Mail className="size-3.5" />
+                Compose mail
+              </Button>
+            ) : null}
+            <Button asChild variant="outline" size="sm">
+              <Link to="/onboard/organisation">Create organisation</Link>
+            </Button>
+          </div>
         }
       />
+
+      <ComposeMailSheet open={composeOpen} onOpenChange={setComposeOpen} />
 
       <section className="ims-panel overflow-hidden">
         <div className="flex flex-wrap items-start gap-4 px-4 py-5">

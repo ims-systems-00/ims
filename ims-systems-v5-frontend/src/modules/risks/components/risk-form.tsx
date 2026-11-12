@@ -280,6 +280,7 @@ export function RiskForm({
         <FormField label="Title" required error={fieldErrors.title}>
           <input
             className="ims-field"
+            data-tour="risks.field.title"
             value={title}
             disabled={pending || identityLocked}
             onChange={(event) => setTitle(event.target.value)}
@@ -331,6 +332,7 @@ export function RiskForm({
         <FormField label="Risk owner" required={mode === "create"} error={fieldErrors.ownerId}>
           <select
             className="ims-select"
+            data-tour="risks.field.owner"
             value={ownerId}
             disabled={pending}
             onChange={(event) => setOwnerId(event.target.value)}

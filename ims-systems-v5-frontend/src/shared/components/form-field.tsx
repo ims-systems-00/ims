@@ -9,6 +9,8 @@ type FormFieldProps = {
   required?: boolean;
   children: ReactNode;
   className?: string;
+  /** Stable Setup Guide hook, e.g. `org.fu.field.name`. */
+  dataTour?: string;
 };
 
 /**
@@ -22,9 +24,10 @@ export function FormField({
   required,
   children,
   className,
+  dataTour,
 }: FormFieldProps) {
   return (
-    <div className={cn("space-y-1.5", className)}>
+    <div className={cn("space-y-1.5", className)} data-tour={dataTour}>
       <label htmlFor={htmlFor} className="ims-text-label block">
         {label}
         {required ? (
@@ -51,6 +54,8 @@ type FormSectionProps = {
   description?: string;
   children: ReactNode;
   className?: string;
+  /** Stable Setup Guide hook, e.g. `org.premises.site-details`. */
+  dataTour?: string;
 };
 
 export function FormSection({
@@ -58,9 +63,10 @@ export function FormSection({
   description,
   children,
   className,
+  dataTour,
 }: FormSectionProps) {
   return (
-    <section className={cn("space-y-4", className)}>
+    <section className={cn("space-y-4", className)} data-tour={dataTour}>
       {title || description ? (
         <div className="space-y-1">
           {title ? <h3 className="ims-text-section">{title}</h3> : null}

@@ -43,6 +43,7 @@ export function ControlStatusForm({
         <select
           id="control-selected"
           className="ims-select"
+          data-tour="soa.control.selected"
           value={selected}
           disabled={pending || control.isLocked}
           onChange={(event) => {
@@ -60,6 +61,7 @@ export function ControlStatusForm({
         <select
           id="control-state"
           className="ims-select"
+          data-tour="soa.control.state"
           value={state}
           disabled={pending || control.isLocked || selected === "Not selected"}
           onChange={(event) =>

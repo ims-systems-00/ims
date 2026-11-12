@@ -15,6 +15,7 @@ import {
   BusinessPremiseSheet,
   type BusinessPremiseSheetMode,
 } from "../components/business-premise-sheet";
+import { signalTourAction, useTourAction } from "@/modules/setup-guide";
 import {
   useBusinessPremisesQuery,
   useDeleteBusinessPremiseMutation,
@@ -72,6 +73,8 @@ export function BusinessPremisesListPage() {
     : editMode
       ? "edit"
       : "view";
+
+  useTourAction("org.premises.create-opened", createOpen);
 
   const queryParams = useMemo(
     () => ({
@@ -137,7 +140,11 @@ export function BusinessPremisesListPage() {
         title="Business Premises"
         description="Organisation register of physical sites linked to Internal business function units."
         actions={
-          <Button type="button" onClick={openCreate}>
+          <Button
+            type="button"
+            data-tour="org.premises.create"
+            onClick={openCreate}
+          >
             <Plus />
             Create premise
           </Button>
@@ -191,7 +198,12 @@ export function BusinessPremisesListPage() {
                 Clear search
               </Button>
             ) : (
-              <Button type="button" size="sm" onClick={openCreate}>
+              <Button
+                type="button"
+                size="sm"
+                data-tour="org.premises.create"
+                onClick={openCreate}
+              >
                 <Plus />
                 Create premise
               </Button>
@@ -294,6 +306,7 @@ export function BusinessPremisesListPage() {
         }}
         onModeChange={handleModeChange}
         onCreated={(premise) => {
+          signalTourAction("org.premises.created");
           notify.success("Business Premise created successfully");
           setEditMode(false);
           setSearchParams({ premise: premise.id });

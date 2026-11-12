@@ -7,7 +7,7 @@ interface ImportMetaEnv {
   readonly VITE_AUTH0_CLIENT_ID?: string;
   readonly VITE_AUTH0_AUDIENCE?: string;
   readonly VITE_AUTH0_ORGANIZATION_ID?: string;
-  /** OnlyOffice Document Server origin for DocsAPI (empty = Edit hidden). */
+  /** OnlyOffice Document Server base for DocsAPI (`/onlyoffice` or absolute; empty = Edit hidden). */
   readonly VITE_ONLYOFFICE_URL?: string;
 }
 

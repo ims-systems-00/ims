@@ -3,7 +3,11 @@ import type { Authorizer } from "../../../security";
 import type { MembershipProjection } from "../../../security/openfga/membership-projection";
 import type { OrganisationBillingPort } from "../../payments/ports";
 import { createOrganisationController } from "../controllers/organisation.controller";
-import type { OrganisationGoLiveSideEffectsPort } from "../ports";
+import type {
+  OrganisationComposeMailEmailPort,
+  OrganisationGoLiveSideEffectsPort,
+  OrganisationUsersLookupPort,
+} from "../ports";
 import { createOrganisationMembershipRepository } from "../repositories/organisation-membership.repository";
 import { createOrganisationRepository } from "../repositories/organisation.repository";
 import {
@@ -18,6 +22,9 @@ export type OrganisationRouterDeps = {
   billing?: OrganisationBillingPort;
   /** Only true for SECURITY_PROVIDER=development-stub. */
   allowStubOrganisationAutoProvision?: boolean;
+  /** Optional — enables Compose Mail for org members. */
+  composeMailEmail?: OrganisationComposeMailEmailPort;
+  usersLookup?: OrganisationUsersLookupPort;
 };
 
 /**
@@ -39,6 +46,8 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     billing: deps.billing,
     allowStubOrganisationAutoProvision:
       deps.allowStubOrganisationAutoProvision === true,
+    composeMailEmail: deps.composeMailEmail,
+    usersLookup: deps.usersLookup,
   });
   const controller = createOrganisationController(service);
   const router = Router();
@@ -62,9 +71,14 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     "/current/incident-resolution-targets",
     controller.updateIncidentResolutionTargets
   );
+  router.post("/current/compose-mail", controller.composeMail);
   router.post("/:id/go-live", controller.goLive);
   router.post("/:id/ensure-auth0-link", controller.ensureAuth0Link);
   router.get("/:id/card-payment-session", controller.createCardPaymentSession);
+  router.get(
+    "/:id/sme-licence-checkout",
+    controller.createSmeLicenceCheckoutSession
+  );
   router.get("/:id/billing-session", controller.createBillingPortalSession);
   router.get("/:id", controller.getById);
 

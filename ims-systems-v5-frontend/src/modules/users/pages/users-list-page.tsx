@@ -13,6 +13,7 @@ import { cn } from "@/shared/lib/utils";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { UserAvatar } from "../components/user-avatar";
 import { UserDetailsSheet } from "../components/user-details-sheet";
+import { signalTourAction, useTourAction } from "@/modules/setup-guide";
 import { useUsersQuery } from "../hooks/use-users";
 
 type UsersTab = "members" | "invitations";
@@ -27,17 +28,27 @@ const USER_TABS: Array<{ id: UsersTab; label: string }> = [
  * Row click / Details action opens the shared User Details sheet.
  * "Add user" invites by email (Invitations module); the Invitations tab
  * manages pending invites (resend / remove).
+ *
+ * Light URL state, as on the other list pages:
+ * - `?invite=1` → Add user dialog
+ * - `?user=<id>` → User Details sheet
  */
 export function UsersListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<UsersTab>("members");
-  const [inviteOpen, setInviteOpen] = useState(false);
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
 
+  const inviteOpen = searchParams.get("invite") === "1";
   const userId = searchParams.get("user");
   const sheetOpen = Boolean(userId);
+
+  function setInviteOpen(open: boolean) {
+    setSearchParams(open ? { invite: "1" } : {});
+  }
+
+  useTourAction("org.users.invite-opened", inviteOpen);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -67,7 +78,11 @@ export function UsersListPage() {
         title="Users"
         description="Organisation directory of people with active system access."
         actions={
-          <Button type="button" onClick={() => setInviteOpen(true)}>
+          <Button
+            type="button"
+            data-tour="org.users.add"
+            onClick={() => setInviteOpen(true)}
+          >
             <UserPlus className="size-4" />
             Add user
           </Button>
@@ -78,6 +93,7 @@ export function UsersListPage() {
         className="flex flex-wrap gap-1 border-b border-border-subtle"
         role="tablist"
         aria-label="Users views"
+        data-tour="org.users.tabs"
       >
         {USER_TABS.map((item) => {
           const selected = tab === item.id;
@@ -241,7 +257,10 @@ export function UsersListPage() {
       <InviteUserDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        onInvited={() => setTab("invitations")}
+        onInvited={() => {
+          signalTourAction("org.users.invited");
+          setTab("invitations");
+        }}
       />
 
       <UserDetailsSheet

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { CreditCard, KeyRound, Settings2 } from "lucide-react";
+import { BadgePoundSterling, CreditCard, KeyRound, Settings2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { toolkitDisplayLabel } from "@/modules/compliance/types";
 import {
   useBillingPortalSessionMutation,
   useCardPaymentSessionMutation,
+  useSmeLicenceCheckoutMutation,
 } from "../hooks/use-organisations";
 import type {
   OrganisationLicences,
@@ -53,6 +54,7 @@ export function OrganisationLicencesPanel({
 }: OrganisationLicencesPanelProps) {
   const [requestOpen, setRequestOpen] = useState(false);
   const cardPayment = useCardPaymentSessionMutation();
+  const smeLicence = useSmeLicenceCheckoutMutation();
   const billingPortal = useBillingPortalSessionMutation();
 
   if (!isCustomer) {
@@ -74,7 +76,10 @@ export function OrganisationLicencesPanel({
   const toolkits = licences.complianceTools ?? [];
   const modules = licences.additionalModules ?? [];
   const hasSubscription = Boolean(paymentSystem.stripeSubscriptionId);
-  const billingBusy = cardPayment.isPending || billingPortal.isPending;
+  const billingBusy =
+    cardPayment.isPending ||
+    smeLicence.isPending ||
+    billingPortal.isPending;
 
   async function openCardCheckout() {
     try {
@@ -86,6 +91,19 @@ export function OrganisationLicencesPanel({
       window.location.assign(session.url);
     } catch (error) {
       notify.fromError(error, "Unable to start card payment");
+    }
+  }
+
+  async function openSmeCheckout() {
+    try {
+      const session = await smeLicence.mutateAsync(organizationId);
+      if (!session.url) {
+        notify.error("Stripe checkout did not return a URL");
+        return;
+      }
+      window.location.assign(session.url);
+    } catch (error) {
+      notify.fromError(error, "Unable to start SME licence checkout");
     }
   }
 
@@ -115,6 +133,16 @@ export function OrganisationLicencesPanel({
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={billingBusy}
+              onClick={() => void openSmeCheckout()}
+            >
+              <BadgePoundSterling className="size-3.5" />
+              {smeLicence.isPending ? "Opening…" : "SME License"}
+            </Button>
             <Button
               type="button"
               size="sm"

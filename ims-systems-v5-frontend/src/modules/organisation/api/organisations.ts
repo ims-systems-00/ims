@@ -1,5 +1,7 @@
 import { apiRequest } from "@/shared/lib/http";
 import type {
+  ComposeOrganisationMailInput,
+  ComposeOrganisationMailResult,
   CreateLicenceRequestResult,
   CreateOrganisationInput,
   CreateOrganisationResult,
@@ -87,6 +89,14 @@ export function createCardPaymentSession(
   );
 }
 
+export function createSmeLicenceCheckoutSession(
+  organizationId: string
+): Promise<OrganisationPaymentSession> {
+  return apiRequest<OrganisationPaymentSession>(
+    `/organisations/${organizationId}/sme-licence-checkout`
+  );
+}
+
 export function createBillingPortalSession(
   organizationId: string
 ): Promise<OrganisationPaymentSession> {
@@ -153,6 +163,18 @@ export function updateDocumentReviewReminders(
     {
       method: "PUT",
       body: { documentReviewReminderOffsets },
+    }
+  );
+}
+
+export function composeOrganisationMail(
+  body: ComposeOrganisationMailInput
+): Promise<ComposeOrganisationMailResult> {
+  return apiRequest<ComposeOrganisationMailResult>(
+    "/organisations/current/compose-mail",
+    {
+      method: "POST",
+      body,
     }
   );
 }

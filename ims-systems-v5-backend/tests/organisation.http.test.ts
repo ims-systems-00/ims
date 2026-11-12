@@ -180,4 +180,34 @@ describe("Organisation HTTP", () => {
 
     expect(response.status).toBe(403);
   });
+
+  it("POST /api/v1/organisations/current/compose-mail validates recipients", async () => {
+    const created = await request(ctx!.app)
+      .post("/api/v1/organisations")
+      .send(createPayload);
+    const orgId = created.body.data.organisation.id as string;
+
+    const missingRecipients = await request(ctx!.app)
+      .post("/api/v1/organisations/current/compose-mail")
+      .set("x-org-id", orgId)
+      .send({
+        subject: "Hello",
+        body: "Team update",
+        recipientUserIds: [],
+      });
+    expect(missingRecipients.status).toBe(400);
+
+    const unknownMember = await request(ctx!.app)
+      .post("/api/v1/organisations/current/compose-mail")
+      .set("x-org-id", orgId)
+      .send({
+        subject: "Hello",
+        body: "Team update",
+        recipientUserIds: ["000000000000000000000099"],
+      });
+    expect(unknownMember.status).toBe(400);
+    expect(String(unknownMember.body.error?.message ?? "")).toMatch(
+      /not members/i
+    );
+  });
 });

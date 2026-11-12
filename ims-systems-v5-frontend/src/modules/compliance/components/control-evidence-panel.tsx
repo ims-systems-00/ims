@@ -15,6 +15,7 @@ import {
   useDocumentTreeNodeQuery,
   usePublishedDocumentsQuery,
 } from "@/modules/document-management/hooks/use-document-management";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import {
   useCreateControlEvidenceMutation,
   useRemoveControlEvidenceMutation,
@@ -247,6 +248,7 @@ export function ControlEvidencePanel({
 
     try {
       await createMutation.mutateAsync(body);
+      signalSetupEvent("soa.evidence.attached");
       notify.success("Evidence linked");
       setRelatedRiskId("");
       setRelatedIncidentId("");

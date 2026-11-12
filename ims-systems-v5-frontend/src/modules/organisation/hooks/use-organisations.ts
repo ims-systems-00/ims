@@ -2,8 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuthClient } from "@/security";
 import { setActiveOrganisationContext } from "@/shared/lib/active-organisation";
 import {
+  composeOrganisationMail,
   createBillingPortalSession,
   createCardPaymentSession,
+  createSmeLicenceCheckoutSession,
   createOrganisation,
   getCurrentOrganisation,
   goLiveOrganisation,
@@ -16,6 +18,7 @@ import {
   updateOrganisationLogo,
 } from "../api/organisations";
 import type {
+  ComposeOrganisationMailInput,
   CreateOrganisationInput,
   DocumentReviewReminderOffset,
   GoLiveOrganisationInput,
@@ -122,6 +125,13 @@ export function useCardPaymentSessionMutation() {
   });
 }
 
+export function useSmeLicenceCheckoutMutation() {
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      createSmeLicenceCheckoutSession(organizationId),
+  });
+}
+
 export function useBillingPortalSessionMutation() {
   return useMutation({
     mutationFn: (organizationId: string) =>
@@ -196,5 +206,12 @@ export function useUpdateDocumentReviewRemindersMutation() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
     },
+  });
+}
+
+export function useComposeOrganisationMailMutation() {
+  return useMutation({
+    mutationFn: (body: ComposeOrganisationMailInput) =>
+      composeOrganisationMail(body),
   });
 }

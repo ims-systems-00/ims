@@ -284,6 +284,7 @@ export function useCreateFileNodesMutation(repositoryId: string) {
         storageInfo: DocumentFileMeta;
         purpose?: DocumentPurpose;
         applicableModules?: DocumentApplicableModule[];
+        complianceTools?: string[];
         authorisation?: string[];
         owners?: string[];
         reviewDate?: string | null;

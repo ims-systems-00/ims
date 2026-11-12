@@ -83,6 +83,7 @@ export function FunctionalUnitSheet({
       onOpenChange={onOpenChange}
       title={title}
       description={description}
+      dataTour="org.fu.sheet"
       footer={
         mode === "create" ? (
           <FunctionalUnitFormActions

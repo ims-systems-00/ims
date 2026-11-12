@@ -10,6 +10,7 @@ import { cn } from "@/shared/lib/utils";
 import { useSessionProfileUserId } from "@/security";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import { useCreateDocumentRepositoryMutation } from "../hooks/use-document-management";
 import { createRepositoryFormSchema } from "../schemas";
 import {
@@ -144,6 +145,7 @@ export function RepositoryFormSheet({
         sharedWith: parsed.data.sharedWith,
         reviewInterval: parsed.data.reviewInterval,
       });
+      signalSetupEvent("docs.repo.created");
       notify.success("Repository created");
       reset();
       onOpenChange(false);
@@ -163,6 +165,7 @@ export function RepositoryFormSheet({
       }}
       title="Create repository"
       description="A controlled document library with privacy, owners, and review cadence."
+      dataTour="docs.repo.sheet"
       footer={
         <>
           <Button

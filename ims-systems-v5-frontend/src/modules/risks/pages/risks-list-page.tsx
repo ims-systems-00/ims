@@ -40,6 +40,7 @@ import {
   type RiskType,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { useTourAction } from "@/modules/setup-guide";
 
 type PendingDelete = { id: string; label: string };
 
@@ -89,6 +90,9 @@ export function RisksListPage() {
     : editMode
       ? "edit"
       : "view";
+
+  useTourAction("risks:create-opened", createOpen);
+  useTourAction("risks:row-opened", Boolean(riskId));
 
   const queryParams = useMemo(
     () => ({
@@ -196,7 +200,11 @@ export function RisksListPage() {
                 <Download />
                 Export
               </Button>
-              <Button type="button" onClick={openCreate}>
+              <Button
+                type="button"
+                data-tour="risks.create"
+                onClick={openCreate}
+              >
                 <Plus />
                 Raise risk
               </Button>
@@ -330,7 +338,12 @@ export function RisksListPage() {
                 Clear filters
               </Button>
             ) : (
-              <Button type="button" size="sm" onClick={openCreate}>
+              <Button
+                type="button"
+                size="sm"
+                data-tour="risks.create"
+                onClick={openCreate}
+              >
                 <Plus />
                 Raise risk
               </Button>

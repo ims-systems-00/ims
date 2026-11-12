@@ -93,6 +93,7 @@ describe("organisation billing service", () => {
         url: "https://checkout.stripe.test/session",
         id: "cs_1",
       })),
+      createSmeLicenceCheckoutSession: vi.fn(),
       createBillingPortalSession: vi.fn(),
       upgradeSubscription: vi.fn(),
     };
@@ -135,6 +136,7 @@ describe("organisation billing service", () => {
       authorizer: { allow: vi.fn(async () => true) } as never,
       billing: {
         createCheckoutSessionForOrg: vi.fn(),
+        createSmeLicenceCheckoutSession: vi.fn(),
         createBillingPortalSession: vi.fn(),
         upgradeSubscription: vi.fn(),
       },
@@ -143,6 +145,40 @@ describe("organisation billing service", () => {
     await expect(
       service.createCardPaymentSession(identity(), org.id)
     ).rejects.toBeInstanceOf(ConflictError);
+  });
+
+  it("creates an SME licence checkout session", async () => {
+    const org = makeOrg();
+    const billing = {
+      createCheckoutSessionForOrg: vi.fn(),
+      createSmeLicenceCheckoutSession: vi.fn(async () => ({
+        url: "https://checkout.stripe.test/sme",
+        id: "cs_sme",
+      })),
+      createBillingPortalSession: vi.fn(),
+      upgradeSubscription: vi.fn(),
+    };
+    const service = createOrganisationService({
+      organisations: {
+        findById: vi.fn(async () => org),
+      } as never,
+      memberships: {
+        findByUserAndOrg: vi.fn(async () => ({
+          role: "Super Admin",
+        })),
+      } as never,
+      authorizer: { allow: vi.fn(async () => true) } as never,
+      billing,
+    });
+
+    const session = await service.createSmeLicenceCheckoutSession(
+      identity(),
+      org.id
+    );
+    expect(session.url).toContain("checkout.stripe.test/sme");
+    expect(billing.createSmeLicenceCheckoutSession).toHaveBeenCalledWith({
+      organizationId: org.id,
+    });
   });
 
   it("upgrades Stripe after licence request when subscribed", async () => {
@@ -175,6 +211,7 @@ describe("organisation billing service", () => {
       authorizer: { allow: vi.fn(async () => true) } as never,
       billing: {
         createCheckoutSessionForOrg: vi.fn(),
+        createSmeLicenceCheckoutSession: vi.fn(),
         createBillingPortalSession: vi.fn(),
         upgradeSubscription,
       },

@@ -117,7 +117,7 @@ export function BusinessPremiseForm({
           : "Update site details and the linked Functional Units list."}
       </p>
 
-      <FormSection title="Site details">
+      <FormSection title="Site details" dataTour="org.premises.site-details">
         <FormField
           label="Name"
           htmlFor={`${formId}-name`}
@@ -177,7 +177,7 @@ export function BusinessPremiseForm({
         </FormField>
       </FormSection>
 
-      <FormSection title="Functional units">
+      <FormSection title="Functional units" dataTour="org.premises.units">
         <FormField
           label="Linked units"
           htmlFor={`${formId}-units`}
@@ -262,7 +262,12 @@ export function BusinessPremiseFormActions({
           Cancel
         </Button>
       ) : null}
-      <Button type="submit" form={formId} disabled={pending}>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={pending}
+        data-tour="org.premises.submit"
+      >
         {pending ? "Saving…" : submitLabel}
       </Button>
     </div>

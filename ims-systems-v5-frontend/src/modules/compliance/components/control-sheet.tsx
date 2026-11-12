@@ -7,6 +7,7 @@ import {
   ActivityTimeline,
   SheetPanelTabs,
 } from "@/modules/activities";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import {
   useComplianceControlQuery,
   useControlEvidenceQuery,
@@ -40,7 +41,7 @@ export function ControlSheet({
     open ? (controlId ?? undefined) : undefined
   );
   const evidenceQuery = useControlEvidenceQuery(
-    open && panelTab === "evidence" ? (controlId ?? undefined) : undefined,
+    open ? (controlId ?? undefined) : undefined,
     { page: 1, pageSize: 50 }
   );
   const updateMutation = useUpdateControlStatusMutation();
@@ -57,6 +58,10 @@ export function ControlSheet({
     if (!controlId) return;
     try {
       await updateMutation.mutateAsync({ id: controlId, body: values });
+      signalSetupEvent("soa.control.status-updated");
+      if (values.selected === "Selected") {
+        signalSetupEvent("soa.control.selected");
+      }
       notify.success("Control status updated");
     } catch (error) {
       notify.fromError(error, "Unable to update control status");
@@ -73,6 +78,7 @@ export function ControlSheet({
         control ? toolkitDisplayLabel(control.name) : undefined
       }
       className="sm:max-w-xl"
+      dataTour="soa.control.sheet"
       footer={
         <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
           Close
@@ -190,14 +196,18 @@ export function ControlSheet({
             />
           ) : null}
 
-          {panelTab === "evidence" ? (
+          <div
+            data-tour="soa.control.evidence"
+            className={panelTab === "evidence" ? undefined : "hidden"}
+            hidden={panelTab !== "evidence"}
+          >
             <ControlEvidencePanel
               controlStatusId={control.id}
               items={evidenceQuery.data?.items ?? []}
               isLoading={evidenceQuery.isLoading}
               isError={evidenceQuery.isError}
             />
-          ) : null}
+          </div>
         </>
       )}
     </AppSheet>

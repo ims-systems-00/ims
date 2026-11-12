@@ -13,6 +13,7 @@ import { notify } from "@/shared/lib/toast";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { loadPublicEnv } from "@/shared/lib/env";
+import { useSetupSignal } from "@/modules/setup-guide";
 import {
   useComplianceControlsQuery,
   useComplianceOverviewQuery,
@@ -36,6 +37,10 @@ import { formatDate } from "@/shared/lib/format-date";
 
 type TabId = "overview" | "toolkit";
 
+function tabFromSearch(value: string | null): TabId {
+  return value === "toolkit" ? "toolkit" : "overview";
+}
+
 function UpdatedByCell({ userId }: { userId?: string | null }) {
   const query = useUserQuery(userId ?? undefined, Boolean(userId));
   if (!userId) return <span className="text-muted-foreground">—</span>;
@@ -57,7 +62,9 @@ export function ComplianceToolkitPage() {
   const toolkitName = isComplianceToolkitName(rawName) ? rawName : null;
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<TabId>("overview");
+  const [tab, setTab] = useState<TabId>(() =>
+    tabFromSearch(searchParams.get("tab"))
+  );
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [section, setSection] = useState("");
@@ -70,14 +77,29 @@ export function ComplianceToolkitPage() {
     ? toolkitDisplayLabel(toolkitName)
     : "Compliance";
 
+  useSetupSignal("soa.tab.toolkit", tab === "toolkit");
+  useSetupSignal("soa.control.opened", sheetOpen);
+
   useEffect(() => {
-    setTab("overview");
+    setTab(tabFromSearch(searchParams.get("tab")));
     setSearchInput("");
     setSearch("");
     setSection("");
     setPage(1);
     setAutoProvisionAttempted(false);
   }, [toolkitName]);
+
+  useEffect(() => {
+    setTab(tabFromSearch(searchParams.get("tab")));
+  }, [searchParams]);
+
+  function selectTab(next: TabId) {
+    const params = new URLSearchParams(searchParams);
+    if (next === "toolkit") params.set("tab", "toolkit");
+    else params.delete("tab");
+    setSearchParams(params, { replace: true });
+    setTab(next);
+  }
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -209,7 +231,10 @@ export function ComplianceToolkitPage() {
         description="Track control implementation and overall compliance for this framework."
         actions={
           overviewPct != null && !needsProvision ? (
-            <div className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-card px-3 py-1.5 text-[0.8125rem]">
+            <div
+              className="inline-flex items-center gap-2 rounded-full border border-border-subtle bg-card px-3 py-1.5 text-[0.8125rem]"
+              data-tour="soa.score"
+            >
               <ShieldCheck className="size-3.5 text-primary" />
               <span className="text-muted-foreground">Score</span>
               <span className="font-semibold tabular-nums text-foreground">
@@ -250,6 +275,7 @@ export function ComplianceToolkitPage() {
             className="flex flex-wrap gap-1 border-b border-border-subtle"
             role="tablist"
             aria-label="Toolkit views"
+            data-tour="soa.tabs"
           >
             {(
               [
@@ -264,13 +290,16 @@ export function ComplianceToolkitPage() {
                   type="button"
                   role="tab"
                   aria-selected={selected}
+                  data-tour={
+                    item.id === "toolkit" ? "soa.tab.controls" : undefined
+                  }
                   className={cn(
                     "relative px-3.5 py-2.5 text-sm font-medium transition-colors",
                     selected
                       ? "text-foreground"
                       : "text-muted-foreground hover:text-foreground"
                   )}
-                  onClick={() => setTab(item.id)}
+                  onClick={() => selectTab(item.id)}
                 >
                   {item.label}
                   {selected ? (
@@ -296,13 +325,13 @@ export function ComplianceToolkitPage() {
               <ToolkitOverviewPanel
                 overview={overviewQuery.data}
                 toolkitLabel={displayName}
-                onBrowseControls={() => setTab("toolkit")}
+                onBrowseControls={() => selectTab("toolkit")}
               />
             )
           ) : null}
 
           {tab === "toolkit" ? (
-            <div className="space-y-4">
+            <div className="space-y-4" data-tour="soa.controls">
               <div className="flex flex-col gap-3 rounded-xl border border-border-subtle bg-card p-3 sm:flex-row sm:items-center">
                 <SearchInput
                   value={searchInput}

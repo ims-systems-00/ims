@@ -343,6 +343,11 @@ const envSchema = z
     STRIPE_COMPLIANCE_PRICE: z.string().default(""),
     STRIPE_ADD_MODULE_PRICE: z.string().default(""),
     STRIPE_SUPPORT_PRICE: z.string().default(""),
+    /**
+     * Optional Stripe Price id for the £100/month SME licence subscription.
+     * When empty, Checkout uses inline recurring price_data (GBP 100 / month).
+     */
+    STRIPE_SME_PRICE: z.string().default(""),
     /** FE origin for Checkout success/cancel and Billing Portal return. */
     CLIENT_URL: z.string().default("http://localhost:3000"),
 
@@ -378,7 +383,11 @@ const envSchema = z
      * When ONLYOFFICE_ENABLED=false, editor-session endpoints reject clearly.
      */
     ONLYOFFICE_ENABLED: booleanFromEnv.default(false),
-    /** Browser-facing Document Server origin (no trailing slash), e.g. http://localhost:8088 */
+    /**
+     * Browser-facing Document Server base (no trailing slash).
+     * Prefer same-origin `/onlyoffice` (frontend nginx proxy) so production
+     * browsers do not receive localhost. Host Vite may use http://localhost:8088.
+     */
     ONLYOFFICE_URL: z.string().default(""),
     /** Shared HS256 secret with Document Server JWT_SECRET. */
     ONLYOFFICE_JWT_SECRET: z.string().default("dev-onlyoffice-jwt-secret"),

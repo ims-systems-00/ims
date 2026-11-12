@@ -1,10 +1,11 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Loader2, Share2 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useParams, useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { PageHeader } from "@/shared/layout";
 import { cn } from "@/shared/lib/utils";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { DocumentInfoPanel } from "../components/document-info-panel";
 import { DocumentPreviewPanel } from "../components/document-preview-panel";
@@ -50,8 +51,13 @@ const TABS: Array<{ id: DocumentTabId; label: string }> = [
 /**
  * Individual document page — preview, metadata, and action tabs.
  */
+const DETAIL_TAB_IDS = new Set<DocumentTabId>(
+  TABS.map((tab) => tab.id)
+);
+
 export function DocumentDetailPage() {
   const params = useParams<{ id: string; nodeId: string }>();
+  const [searchParams] = useSearchParams();
   const repositoryId = params.id;
   const nodeId = params.nodeId;
 
@@ -60,6 +66,16 @@ export function DocumentDetailPage() {
   const [versionOpen, setVersionOpen] = useState(false);
   const [signatureOpen, setSignatureOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+
+  useEffect(() => {
+    const next = searchParams.get("tab");
+    if (next && DETAIL_TAB_IDS.has(next as DocumentTabId)) {
+      setTab(next as DocumentTabId);
+      if (next === "compliance-settings") {
+        signalSetupEvent("docs.compliance.tab-opened");
+      }
+    }
+  }, [searchParams]);
 
   const repoQuery = useDocumentRepositoryQuery(repositoryId);
   const nodeQuery = useRepoNodeQuery(repositoryId, nodeId);
@@ -213,6 +229,11 @@ export function DocumentDetailPage() {
               role="tab"
               aria-selected={selected}
               disabled={disabled}
+              data-tour={
+                item.id === "compliance-settings"
+                  ? "docs.compliance.tab"
+                  : undefined
+              }
               title={
                 disabled
                   ? "New version is only available for published documents"
@@ -225,7 +246,12 @@ export function DocumentDetailPage() {
                   : "text-muted-foreground hover:text-foreground",
                 disabled && "cursor-not-allowed opacity-40"
               )}
-              onClick={() => handleTabChange(item.id)}
+              onClick={() => {
+                handleTabChange(item.id);
+                if (item.id === "compliance-settings") {
+                  signalSetupEvent("docs.compliance.tab-opened");
+                }
+              }}
             >
               {item.label}
               {item.id === "request-signature" && signatureCount > 0 ? (

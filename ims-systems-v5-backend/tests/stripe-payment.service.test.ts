@@ -139,6 +139,195 @@ describe("stripe payment service", () => {
     ]);
   });
 
+  it("maps Stripe customer create failures to ValidationAppError", async () => {
+    const org = makeOrg({
+      paymentSystem: {
+        type: "Card",
+        status: "Trial",
+        stripeCustomerId: null,
+        stripeSubscriptionId: null,
+      },
+    });
+    const organisations = {
+      findById: vi.fn(async () => org),
+      updatePaymentSystem: vi.fn(),
+      findByStripeSubscriptionId: vi.fn(),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: {
+        create: vi.fn(async () => {
+          throw new Error("Invalid API Key provided");
+        }),
+      },
+      prices: { retrieve: vi.fn() },
+      checkout: { sessions: { create: vi.fn() } },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: { constructEvent: vi.fn() },
+      subscriptionItems: { list: vi.fn(), update: vi.fn() },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_BU_PRICE: "price_bu",
+        STRIPE_SA_PRICE: "price_sa",
+        STRIPE_USER_PRICE: "price_user",
+        STRIPE_COMPLIANCE_PRICE: "price_comp",
+        STRIPE_ADD_MODULE_PRICE: "price_mod",
+        STRIPE_SUPPORT_PRICE: "price_support",
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    await expect(
+      service.createCheckoutSessionForOrg({
+        organizationId: org.id,
+        licences: {
+          groups: 1,
+          users: 1,
+          superUser: 1,
+          complianceTools: [],
+          additionalModules: [],
+          includeToolkitsAndModules: false,
+        },
+      })
+    ).rejects.toMatchObject({
+      name: "ValidationAppError",
+      message: "Stripe: Invalid API Key provided",
+    });
+    expect(organisations.updatePaymentSystem).not.toHaveBeenCalled();
+  });
+
+  it("creates an SME licence checkout session with monthly GBP 100 price", async () => {
+    const org = makeOrg();
+    const organisations = {
+      findById: vi.fn(async () => org),
+      updatePaymentSystem: vi.fn(),
+      applyLicenceRequest: vi.fn(),
+      findByStripeSubscriptionId: vi.fn(),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: { create: vi.fn() },
+      prices: { retrieve: vi.fn() },
+      checkout: {
+        sessions: {
+          create: vi.fn(async () => ({
+            id: "cs_sme",
+            url: "https://checkout.stripe.test/sme",
+          })),
+        },
+      },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: { constructEvent: vi.fn() },
+      subscriptionItems: { list: vi.fn(), update: vi.fn() },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_SME_PRICE: "",
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000/",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    const session = await service.createSmeLicenceCheckoutSession({
+      organizationId: org.id,
+    });
+
+    expect(session.url).toBe("https://checkout.stripe.test/sme");
+    expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        mode: "subscription",
+        customer: "cus_test",
+        success_url: "http://localhost:3000/organisation?sme=success",
+        metadata: expect.objectContaining({
+          ims_sme_licence: "true",
+          org_id: org.id,
+        }),
+        subscription_data: expect.objectContaining({
+          metadata: expect.objectContaining({
+            ims_sme_licence: "true",
+            org_id: org.id,
+          }),
+        }),
+      })
+    );
+    const lineItems = stripe.checkout.sessions.create.mock.calls[0]![0]
+      .line_items as Array<{
+      price_data?: {
+        currency: string;
+        unit_amount: number;
+        recurring?: { interval: string };
+      };
+    }>;
+    expect(lineItems[0]?.price_data).toEqual(
+      expect.objectContaining({
+        currency: "gbp",
+        unit_amount: 10_000,
+        recurring: { interval: "month" },
+      })
+    );
+  });
+
+  it("allocates SME module on checkout.session.completed", async () => {
+    const applyLicenceRequest = vi.fn(async () => makeOrg());
+    const organisations = {
+      findById: vi.fn(),
+      updatePaymentSystem: vi.fn(),
+      applyLicenceRequest,
+      findByStripeSubscriptionId: vi.fn(),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: { create: vi.fn() },
+      prices: { retrieve: vi.fn() },
+      checkout: { sessions: { create: vi.fn() } },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: {
+        constructEvent: vi.fn(() => ({
+          type: "checkout.session.completed",
+          data: {
+            object: {
+              id: "cs_sme",
+              metadata: {
+                ims_sme_licence: "true",
+                org_id: "507f1f77bcf86cd799439011",
+              },
+            },
+          },
+        })),
+      },
+      subscriptionItems: { list: vi.fn(), update: vi.fn() },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    await service.handleWebhookEvent(Buffer.from("{}"), "sig");
+    expect(applyLicenceRequest).toHaveBeenCalledWith(
+      "507f1f77bcf86cd799439011",
+      { additionalModules: ["SME"] }
+    );
+  });
+
   it("rejects invalid webhook signatures", async () => {
     const organisations = {
       findById: vi.fn(),
@@ -293,5 +482,62 @@ describe("stripe payment service", () => {
         quantity: 1,
       })
     );
+  });
+
+  it("maps raw Stripe upgrade failures to ValidationAppError", async () => {
+    const org = makeOrg({
+      paymentSystem: {
+        type: "Card",
+        status: "Subscribed",
+        stripeCustomerId: "cus_test",
+        stripeSubscriptionId: "sub_test",
+      },
+    });
+    const organisations = {
+      findById: vi.fn(),
+      updatePaymentSystem: vi.fn(),
+      findByStripeSubscriptionId: vi.fn(async () => org),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: { create: vi.fn() },
+      prices: { retrieve: vi.fn() },
+      checkout: { sessions: { create: vi.fn() } },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: { constructEvent: vi.fn() },
+      subscriptionItems: {
+        list: vi.fn(async () => {
+          throw new Error("No such subscription: 'sub_test'");
+        }),
+        update: vi.fn(),
+      },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_BU_PRICE: "price_bu",
+        STRIPE_SA_PRICE: "price_sa",
+        STRIPE_USER_PRICE: "price_user",
+        STRIPE_COMPLIANCE_PRICE: "price_comp",
+        STRIPE_ADD_MODULE_PRICE: "price_mod",
+        STRIPE_SUPPORT_PRICE: "price_support",
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    await expect(
+      service.upgradeSubscription("sub_test", {
+        groups: 1,
+        users: 0,
+        superUser: 0,
+        complianceTools: [],
+        additionalModules: [],
+      })
+    ).rejects.toBeInstanceOf(ValidationAppError);
   });
 });

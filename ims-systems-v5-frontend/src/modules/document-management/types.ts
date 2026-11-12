@@ -64,6 +64,70 @@ export const DOCUMENT_APPLICABLE_MODULE_LABELS: Record<
   expensereports: "Expense reports",
 };
 
+/** Stored on documents when Applicable modules includes Compliance. */
+export const DOCUMENT_COMPLIANCE_TOOLS = [
+  "DSPTNHS",
+  "ISO27001",
+  "ISO27001_2022",
+  "ISO27001_2022_ANNEX_A",
+  "ISO27002",
+  "ISO9001",
+  "ISO45001",
+  "ISO20000",
+  "CQC",
+  "BS9997",
+  "ISO14001",
+  "CRM",
+  "ISO15686_5",
+  "ESG_ENVIRONMENTAL",
+  "ESG_GOVERNANCE",
+  "ESG_SOCIAL",
+] as const;
+export type DocumentComplianceTool =
+  (typeof DOCUMENT_COMPLIANCE_TOOLS)[number];
+
+export const DOCUMENT_COMPLIANCE_TOOL_LABELS: Record<
+  DocumentComplianceTool,
+  string
+> = {
+  DSPTNHS: "DSPT",
+  ISO27001: "ISO 27001 (2013)",
+  ISO27001_2022: "ISO 27001 (2022)",
+  ISO27001_2022_ANNEX_A: "ISO 27001 (2022 Annex A)",
+  ISO27002: "ISO 27002",
+  ISO9001: "ISO 9001",
+  ISO45001: "ISO 45001",
+  ISO20000: "ISO 20000",
+  CQC: "CQC",
+  BS9997: "BS 9997",
+  ISO14001: "ISO 14001",
+  CRM: "CRM",
+  ISO15686_5: "ISO 15686-5",
+  ESG_ENVIRONMENTAL: "ESG — Environmental",
+  ESG_GOVERNANCE: "ESG — Governance",
+  ESG_SOCIAL: "ESG — Social",
+};
+
+/** Map Compliance module toolkit display names → document complianceTools codes. */
+export const COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL: Partial<
+  Record<string, DocumentComplianceTool>
+> = {
+  DSPT: "DSPTNHS",
+  "ISO 27001": "ISO27001",
+  "ISO 27001 (2022)": "ISO27001_2022",
+  "ISO 27001 (2022 Annex A)": "ISO27001_2022_ANNEX_A",
+  "ISO 27002": "ISO27002",
+  "ISO 9001": "ISO9001",
+  "ISO 45001": "ISO45001",
+  "ISO 20000": "ISO20000",
+  "BS 9997": "BS9997",
+  "ISO 14001": "ISO14001",
+  "ISO 15686-5": "ISO15686_5",
+  "ESG Toolkit - Environmental": "ESG_ENVIRONMENTAL",
+  "ESG Toolkit - Governance": "ESG_GOVERNANCE",
+  "ESG Toolkit - Social": "ESG_SOCIAL",
+};
+
 export type DocumentFileMeta = {
   Name: string;
   Key: string;

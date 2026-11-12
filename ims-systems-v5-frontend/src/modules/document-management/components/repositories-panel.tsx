@@ -15,6 +15,7 @@ import {
   useRestoreDocumentRepositoryMutation,
   useSoftDeleteDocumentRepositoryMutation,
 } from "../hooks/use-document-management";
+import { useTourAction } from "@/modules/setup-guide";
 import { useDocumentsUiStore } from "../store/use-documents-ui-store";
 import type { DocumentRepository } from "../types";
 import { RepositoryFormSheet } from "./repository-form-sheet";
@@ -27,6 +28,9 @@ export function RepositoriesPanel({ deleted = false }: RepositoriesPanelProps) {
   const navigate = useNavigate();
   const createRepoOpen = useDocumentsUiStore((s) => s.createRepoOpen);
   const setCreateRepoOpen = useDocumentsUiStore((s) => s.setCreateRepoOpen);
+
+  useTourAction("docs.repo.create-opened", createRepoOpen && !deleted);
+  useTourAction("docs.tab.repositories", !deleted);
 
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
@@ -116,6 +120,7 @@ export function RepositoriesPanel({ deleted = false }: RepositoriesPanelProps) {
             <Button
               type="button"
               size="sm"
+              data-tour="docs.repo.create"
               onClick={() => setCreateRepoOpen(true)}
             >
               <Plus className="size-3.5" />
@@ -143,6 +148,7 @@ export function RepositoriesPanel({ deleted = false }: RepositoriesPanelProps) {
               <Button
                 type="button"
                 size="sm"
+                data-tour="docs.repo.create"
                 onClick={() => setCreateRepoOpen(true)}
               >
                 <Plus className="size-3.5" />

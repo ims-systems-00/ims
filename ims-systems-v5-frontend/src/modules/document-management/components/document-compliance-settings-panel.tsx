@@ -15,6 +15,7 @@ import {
   useCatalogueControlsQuery,
   type CatalogueControlItem,
 } from "@/modules/compliance";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import {
   useApplyDocumentComplianceMutation,
   useClearDocumentComplianceMutation,
@@ -117,6 +118,7 @@ export function DocumentComplianceSettingsPanel({
         toolkitId,
         clauseIds,
       });
+      signalSetupEvent("docs.compliance.linked");
       notify.success(successMessage);
     } catch (error) {
       notify.fromError(error, "Unable to link compliance controls");
@@ -158,7 +160,7 @@ export function DocumentComplianceSettingsPanel({
   }
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-4" data-tour="docs.compliance.panel">
       <div className="rounded-lg border border-border-subtle bg-muted/40 px-4 py-3.5">
         <p className="text-sm text-muted-foreground">
           Here you can link this document to multiple Sections, Clauses or

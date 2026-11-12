@@ -10,7 +10,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
-import aliceHorizontal from "@/assets/images/Type=Horizontal.png";
+import aliceLauncherIdle from "@/assets/images/alice-launcher-idle.gif";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import {
   Sheet,
@@ -178,7 +178,7 @@ export function AliceChatSheet() {
         <SheetContent
           side="right"
           showClose
-          className="flex w-full flex-col gap-0 p-0 sm:max-w-xl"
+          className="flex w-full flex-col gap-0 border-border p-0 sm:max-w-xl dark:border-[#8C7DFF]/40 dark:bg-[#252B63]"
         >
           <SheetHeader className="space-y-2 border-b border-border-subtle/80 px-4 py-3 text-left">
             <div className="flex items-start justify-between gap-2 pr-6">
@@ -188,9 +188,9 @@ export function AliceChatSheet() {
                   Beta — answers use live records; verify citations before acting.
                 </p>
                 <img
-                  src={aliceHorizontal}
+                  src={aliceLauncherIdle}
                   alt="Alice"
-                  className="h-7 w-auto max-w-[9.5rem] object-contain object-left"
+                  className="h-12 w-auto max-w-[14rem] object-contain object-left"
                 />
                 <SheetDescription className="mt-1 text-xs">
                   Page-tailored assistant

@@ -120,7 +120,9 @@ services:
       AWS_LEGACY_SECRET_ACCESS_KEY: ${AWS_LEGACY_SECRET_ACCESS_KEY:-}
       AWS_LEGACY_REGION: ${AWS_LEGACY_REGION:-eu-west-2}
       ONLYOFFICE_ENABLED: "true"
-      ONLYOFFICE_URL: http://localhost:8088
+      # Browser-facing DocsAPI base. Same-origin /onlyoffice is proxied by the
+      # frontend nginx so production hosts never receive localhost:8088.
+      ONLYOFFICE_URL: ${ONLYOFFICE_URL:-/onlyoffice}
       ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-dev-onlyoffice-jwt-secret}
       ONLYOFFICE_CALLBACK_BASE_URL: http://backend:3001/api/v1
       OPENFGA_API_URL: ${OPENFGA_API_URL:-http://openfga:8080}
@@ -180,6 +182,7 @@ services:
       STRIPE_COMPLIANCE_PRICE: ${STRIPE_COMPLIANCE_PRICE:-}
       STRIPE_ADD_MODULE_PRICE: ${STRIPE_ADD_MODULE_PRICE:-}
       STRIPE_SUPPORT_PRICE: ${STRIPE_SUPPORT_PRICE:-}
+      STRIPE_SME_PRICE: ${STRIPE_SME_PRICE:-}
     volumes:
       - ims_v5_backend_files:/data/local-files
     ports:
@@ -209,7 +212,8 @@ services:
       args:
         VITE_API_BASE_URL: /api/v1
         VITE_SECURITY_PROVIDER: ${VITE_SECURITY_PROVIDER:-development-stub}
-        VITE_ONLYOFFICE_URL: http://localhost:8088
+        # Must match backend ONLYOFFICE_URL (same-origin proxy; see nginx.conf).
+        VITE_ONLYOFFICE_URL: ${VITE_ONLYOFFICE_URL:-/onlyoffice}
         VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-}
         VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-}
         VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}

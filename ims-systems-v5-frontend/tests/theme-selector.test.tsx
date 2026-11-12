@@ -76,7 +76,7 @@ describe("ThemeSelector dialog", () => {
     ).toBe("#15803D");
     expect(
       document.documentElement.style.getPropertyValue("--sidebar").trim()
-    ).toBe("#166534");
+    ).toBe("#0F2E1C");
   });
 
   it("applies a custom hex color via generate-from-primary flow", async () => {

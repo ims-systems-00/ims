@@ -2,6 +2,7 @@ import * as React from "react";
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
+import { keepOpenForFloatingLayers } from "@/shared/lib/guide-layer";
 import { cn } from "@/shared/lib/utils";
 
 const Sheet = SheetPrimitive.Root;
@@ -47,6 +48,8 @@ function SheetContent({
   className,
   children,
   showClose = true,
+  onInteractOutside,
+  onFocusOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> &
   VariantProps<typeof sheetVariants> & {
@@ -58,6 +61,15 @@ function SheetContent({
       <SheetPrimitive.Content
         className={cn("relative", sheetVariants({ side }), className)}
         {...props}
+        onInteractOutside={(event) => {
+          // Setup Guide + Alice float above the sheet; using them must not close it.
+          keepOpenForFloatingLayers(event);
+          onInteractOutside?.(event);
+        }}
+        onFocusOutside={(event) => {
+          keepOpenForFloatingLayers(event);
+          onFocusOutside?.(event);
+        }}
       >
         {showClose ? (
           <SheetPrimitive.Close

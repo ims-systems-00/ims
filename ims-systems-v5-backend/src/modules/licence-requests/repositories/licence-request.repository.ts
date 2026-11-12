@@ -29,6 +29,15 @@ function toDomain(doc: LicenceRequestDocument): LicenceRequest {
   };
 }
 
+function isDuplicateKeyError(error: unknown): boolean {
+  return Boolean(
+    error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: unknown }).code === 11000
+  );
+}
+
 export type LicenceRequestRepository = ReturnType<
   typeof createLicenceRequestRepository
 >;
@@ -37,13 +46,44 @@ export function createLicenceRequestRepository() {
   const Model = getLicenceRequestModel();
   const Counter = getLicenceRequestCounterModel();
 
+  /**
+   * Highest numeric suffix already used in `LR-{n}` references.
+   * Keeps the counter from drifting behind migrated / seed data.
+   */
+  async function highestExistingSeq(): Promise<number> {
+    const rows = await Model.aggregate<{ max: number | null }>([
+      { $match: { reference: { $regex: /^LR-\d+$/ } } },
+      {
+        $project: {
+          n: {
+            $convert: {
+              input: { $arrayElemAt: [{ $split: ["$reference", "-"] }, 1] },
+              to: "int",
+              onError: 0,
+              onNull: 0,
+            },
+          },
+        },
+      },
+      { $group: { _id: null, max: { $max: "$n" } } },
+    ]);
+    return rows[0]?.max ?? 0;
+  }
+
   async function nextReference(): Promise<string> {
+    const floor = await highestExistingSeq();
+    // Raise the counter if it lagged behind existing LR-* documents.
+    await Counter.findOneAndUpdate(
+      { name: "licence-request" },
+      { $max: { seq: floor } },
+      { upsert: true }
+    );
     const counter = await Counter.findOneAndUpdate(
       { name: "licence-request" },
       { $inc: { seq: 1 } },
       { new: true, upsert: true }
     );
-    return `LR-${counter?.seq ?? 1}`;
+    return `LR-${counter?.seq ?? floor + 1}`;
   }
 
   return {
@@ -52,20 +92,33 @@ export function createLicenceRequestRepository() {
       requestedBy: string;
       data: CreateLicenceRequestInput;
     }): Promise<LicenceRequest> {
-      const reference = await nextReference();
-      const doc = await Model.create({
-        reference,
-        organizationId: input.organizationId,
-        requestedBy: input.requestedBy,
-        superUser: input.data.superUser ?? 0,
-        users: input.data.users ?? 0,
-        groups: input.data.groups ?? 0,
-        complianceTools: input.data.complianceTools ?? [],
-        additionalModules: input.data.additionalModules ?? [],
-        message: input.data.message ?? "",
-        status: "Pending",
-      });
-      return toDomain(doc as LicenceRequestDocument);
+      const maxAttempts = 5;
+      let lastError: unknown;
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const reference = await nextReference();
+        try {
+          const doc = await Model.create({
+            reference,
+            organizationId: input.organizationId,
+            requestedBy: input.requestedBy,
+            superUser: input.data.superUser ?? 0,
+            users: input.data.users ?? 0,
+            groups: input.data.groups ?? 0,
+            complianceTools: input.data.complianceTools ?? [],
+            additionalModules: input.data.additionalModules ?? [],
+            message: input.data.message ?? "",
+            status: "Pending",
+          });
+          return toDomain(doc as LicenceRequestDocument);
+        } catch (error) {
+          lastError = error;
+          if (!isDuplicateKeyError(error)) throw error;
+          // Race / lag: allocate another reference and retry.
+        }
+      }
+      throw lastError instanceof Error
+        ? lastError
+        : new Error("Unable to allocate a unique licence request reference");
     },
 
     async markGranted(

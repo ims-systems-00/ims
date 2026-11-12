@@ -74,8 +74,8 @@ export const listTasksQuerySchema = z.object({
   sourceModuleId: z.string().trim().optional(),
   sort: z
     .enum(["dueDate", "createdOn", "priority", "name", "updatedAt"])
-    .default("dueDate"),
-  sortDir: z.enum(["asc", "desc"]).default("asc"),
+    .default("createdOn"),
+  sortDir: z.enum(["asc", "desc"]).default("desc"),
 });
 
 export const idParamSchema = z.object({

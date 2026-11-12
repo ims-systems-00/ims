@@ -13,6 +13,7 @@ import {
 import { FormField } from "@/shared/components/form-field";
 import { cn } from "@/shared/lib/utils";
 import {
+  DEFAULT_THEME_ID,
   THEME_COLOR_FIELDS,
   deriveThemeFromPrimary,
   isValidHexColor,
@@ -24,22 +25,23 @@ import {
 export function ThemeSelector() {
   const {
     themeId,
-    colors: activeColors,
+    brandColors,
     setThemeId,
     setCustomColors,
     themes,
   } = useTheme();
   const [open, setOpen] = useState(false);
-  const [draft, setDraft] = useState<ThemeColors>(activeColors);
-  const [hexDrafts, setHexDrafts] = useState<ThemeColors>(activeColors);
+  const [draft, setDraft] = useState<ThemeColors>(brandColors);
+  const [hexDrafts, setHexDrafts] = useState<ThemeColors>(brandColors);
   const [hexError, setHexError] = useState<string | undefined>();
 
   useEffect(() => {
     if (!open) return;
-    setDraft(activeColors);
-    setHexDrafts(activeColors);
+    // Edit the light/custom brand palette only — dark appearance remaps are not editable here.
+    setDraft(brandColors);
+    setHexDrafts(brandColors);
     setHexError(undefined);
-  }, [open, activeColors]);
+  }, [open, brandColors]);
 
   function previewColors(next: ThemeColors) {
     setDraft(next);
@@ -90,7 +92,7 @@ export function ThemeSelector() {
 
   function resetDefault() {
     setHexError(undefined);
-    setThemeId("default-blue");
+    setThemeId(DEFAULT_THEME_ID);
   }
 
   return (
@@ -110,8 +112,9 @@ export function ThemeSelector() {
         <DialogHeader>
           <DialogTitle>Colour theme</DialogTitle>
           <DialogDescription>
-            Choose a template or set the four brand colours — the same model as
-            V4 organisation themes. Preview applies immediately.
+            Each template has its own light and dark palettes. Appearance
+            (light/dark) switches the full app chrome; brand colours below edit
+            the light palette.
           </DialogDescription>
         </DialogHeader>
 
@@ -145,19 +148,29 @@ export function ThemeSelector() {
                     type="button"
                     role="option"
                     aria-selected={selected}
-                    title={theme.label}
-                    aria-label={theme.label}
+                    title={`${theme.label} — light ${theme.colors.primary}, dark ${theme.darkColors.primary}`}
+                    aria-label={`${theme.label} (light and dark palettes)`}
                     className={cn(
-                      "size-9 rounded-full border-2 shadow-xs transition-[transform,box-shadow,border-color]",
+                      "relative size-9 overflow-hidden rounded-full border-2 shadow-xs transition-[transform,box-shadow,border-color]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                       "hover:scale-105",
                       selected
                         ? "border-foreground ring-2 ring-ring/30"
-                        : "border-white ring-1 ring-border"
+                        : "border-background ring-1 ring-border"
                     )}
-                    style={{ backgroundColor: theme.colors.primary }}
                     onClick={() => handlePresetSelect(theme.id)}
-                  />
+                  >
+                    <span
+                      className="absolute inset-y-0 left-0 w-1/2"
+                      style={{ backgroundColor: theme.colors.primary }}
+                      aria-hidden
+                    />
+                    <span
+                      className="absolute inset-y-0 right-0 w-1/2"
+                      style={{ backgroundColor: theme.darkColors.primary }}
+                      aria-hidden
+                    />
+                  </button>
                 </li>
               );
             })}

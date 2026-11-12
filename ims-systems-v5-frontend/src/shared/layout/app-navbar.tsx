@@ -1,12 +1,14 @@
-import { Link } from "react-router-dom";
-import { Menu } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { CircleHelp, Menu } from "lucide-react";
 import aliceIcon from "@/assets/images/Type=Icon Dark BG.png";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { useAliceChatStore } from "@/modules/ai";
+import { useSetupGuideStore } from "@/modules/setup-guide";
 import { GlobalSearch } from "./global-search";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { NotificationBell } from "@/modules/notifications";
+import { AppearanceToggle } from "./appearance-toggle";
 import { OrganisationSwitcher } from "./organisation-switcher";
 import { ThemeSelector } from "./theme-selector";
 import { UserMenu } from "./user-menu";
@@ -17,7 +19,9 @@ type AppNavbarProps = {
 };
 
 export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
+  const navigate = useNavigate();
   const openSidebar = useAliceChatStore((state) => state.openSidebar);
+  const openSetupGuide = useSetupGuideStore((state) => state.openChecklist);
 
   return (
     <header className="sticky top-0 z-30 flex h-[var(--navbar-height)] shrink-0 items-center gap-3 border-b border-border bg-surface/95 px-4 backdrop-blur-sm md:px-6">
@@ -88,8 +92,22 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
             height={32}
           />
         </button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Open setup guide"
+          title="Setup Guide"
+          onClick={() => {
+            openSetupGuide();
+            navigate("/");
+          }}
+        >
+          <CircleHelp className="size-4" />
+        </Button>
         <GlobalSearch />
         <OrganisationSwitcher />
+        <AppearanceToggle />
         <ThemeSelector />
         <NotificationBell />
         <UserMenu />
