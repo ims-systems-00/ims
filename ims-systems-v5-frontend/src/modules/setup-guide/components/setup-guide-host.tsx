@@ -20,14 +20,14 @@ export function SetupGuideHost() {
   const aliceAssistOpen = useSetupGuideStore((s) => s.aliceAssistOpen);
   const step = activeStepId ? getSetupStep(activeStepId) : undefined;
   const sub = step?.guide.subs[subIndex];
-  // Pause coach chrome while Alice's sheet is open so it isn't covered by
-  // the spotlight dim / floating panel (sheet is z-50; guide was z-70).
-  const coachActive = Boolean(step) && !aliceAssistOpen;
+  // Keep the docked coach panel visible (it slides left over open drawers).
+  // Pause only the spotlight dim so it does not sit on top of Alice / sheets.
+  const spotlightActive = Boolean(step && !aliceAssistOpen && sub?.target);
 
   return (
     <>
       <SetupSpotlight
-        active={Boolean(coachActive && sub?.target)}
+        active={spotlightActive}
         selector={sub?.target}
         label={sub?.spotLabel}
         labelAbove={sub?.spotLabelAbove}
