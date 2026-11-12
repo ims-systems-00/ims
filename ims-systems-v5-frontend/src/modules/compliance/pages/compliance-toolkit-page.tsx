@@ -73,11 +73,17 @@ export function ComplianceToolkitPage() {
 
   const controlId = searchParams.get("control");
   const sheetOpen = Boolean(controlId);
+  const panelParam = searchParams.get("panel");
+  const controlPanel =
+    panelParam === "evidence" || panelParam === "activity"
+      ? panelParam
+      : "details";
   const displayName = toolkitName
     ? toolkitDisplayLabel(toolkitName)
     : "Compliance";
 
-  useSetupSignal("soa.tab.toolkit", tab === "toolkit");
+  // Only advance when the user opens a clause — not when the Controls tab
+  // is already selected from a deep link (that was skipping early coach steps).
   useSetupSignal("soa.control.opened", sheetOpen);
 
   useEffect(() => {
@@ -186,6 +192,7 @@ export function ComplianceToolkitPage() {
     if (open) return;
     const next = new URLSearchParams(searchParams);
     next.delete("control");
+    next.delete("panel");
     setSearchParams(next);
   }
 
@@ -480,6 +487,7 @@ export function ComplianceToolkitPage() {
         open={sheetOpen}
         controlId={controlId}
         onOpenChange={closeControl}
+        initialPanel={controlPanel}
       />
     </div>
   );

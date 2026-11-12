@@ -171,11 +171,12 @@ export function ensureSetupRepositoryCreate(): SeededRepositoryCreate {
 export async function ensureSetupRepository(input: {
   ownerId: string;
   preferred?: { repositoryId: string } | null;
+  tab?: "upload";
 }): Promise<SeededRepository> {
   if (input.preferred?.repositoryId) {
     return {
       repositoryId: input.preferred.repositoryId,
-      path: repositoryPath(input.preferred.repositoryId),
+      path: repositoryPath(input.preferred.repositoryId, input.tab),
     };
   }
 
@@ -189,7 +190,7 @@ export async function ensureSetupRepository(input: {
   if (existing) {
     return {
       repositoryId: existing.id,
-      path: repositoryPath(existing.id),
+      path: repositoryPath(existing.id, input.tab),
     };
   }
 
@@ -209,12 +210,16 @@ export async function ensureSetupRepository(input: {
 
   return {
     repositoryId: repo.id,
-    path: repositoryPath(repo.id),
+    path: repositoryPath(repo.id, input.tab),
   };
 }
 
-function repositoryPath(repositoryId: string): string {
-  return `/documents/repositories/${repositoryId}`;
+function repositoryPath(
+  repositoryId: string,
+  tab?: "upload"
+): string {
+  const base = `/documents/repositories/${repositoryId}`;
+  return tab === "upload" ? `${base}?upload=1` : base;
 }
 
 /**
@@ -227,6 +232,7 @@ export async function ensureSetupControl(input: {
     controlId: string;
   } | null;
   toolkitName?: ComplianceToolkitName;
+  tab?: "evidence";
 }): Promise<SeededControl> {
   const toolkitName = input.preferred?.toolkitName ?? input.toolkitName ?? "ISO 9001";
 
@@ -234,7 +240,11 @@ export async function ensureSetupControl(input: {
     return {
       toolkitName: input.preferred.toolkitName,
       controlId: input.preferred.controlId,
-      path: controlPath(input.preferred.toolkitName, input.preferred.controlId),
+      path: controlPath(
+        input.preferred.toolkitName,
+        input.preferred.controlId,
+        input.tab
+      ),
     };
   }
 
@@ -267,15 +277,17 @@ export async function ensureSetupControl(input: {
   return {
     toolkitName,
     controlId: control.id,
-    path: controlPath(toolkitName, control.id),
+    path: controlPath(toolkitName, control.id, input.tab),
   };
 }
 
 function controlPath(
   toolkitName: ComplianceToolkitName | string,
-  controlId: string
+  controlId: string,
+  tab?: "evidence"
 ): string {
-  return `${toolkitPath(toolkitName)}?tab=toolkit&control=${encodeURIComponent(controlId)}`;
+  const base = `${toolkitPath(toolkitName)}?tab=toolkit&control=${encodeURIComponent(controlId)}`;
+  return tab === "evidence" ? `${base}&panel=evidence` : base;
 }
 
 export type SeededRisk = {

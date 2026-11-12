@@ -76,6 +76,15 @@ describe("setup guide seed-record", () => {
     expect(listDocumentRepositories).not.toHaveBeenCalled();
   });
 
+  it("opens repository upload sheet via seed tab", async () => {
+    const seeded = await ensureSetupRepository({
+      ownerId: "user-1",
+      preferred: { repositoryId: "repo-1" },
+      tab: "upload",
+    });
+    expect(seeded.path).toBe("/documents/repositories/repo-1?upload=1");
+  });
+
   it("creates Policies & Procedures when no repositories exist", async () => {
     listDocumentRepositories.mockResolvedValue({ items: [] });
     createDocumentRepository.mockResolvedValue({ id: "repo-new" });
@@ -136,6 +145,16 @@ describe("setup guide seed-record", () => {
       "/compliance/ISO%209001?tab=toolkit&control=ctrl-1"
     );
     expect(listComplianceControls).not.toHaveBeenCalled();
+  });
+
+  it("opens control evidence panel via seed tab", async () => {
+    const seeded = await ensureSetupControl({
+      preferred: { toolkitName: "ISO 9001", controlId: "ctrl-1" },
+      tab: "evidence",
+    });
+    expect(seeded.path).toBe(
+      "/compliance/ISO%209001?tab=toolkit&control=ctrl-1&panel=evidence"
+    );
   });
 
   it("provisions toolkit and opens first unlocked control", async () => {

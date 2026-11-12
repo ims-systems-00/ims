@@ -33,7 +33,7 @@ describe("Setup Guide catalog", () => {
     expect(getSetupStep("link")?.completeOn).toBe("docs.compliance.linked");
     expect(getSetupStep("soa")?.completeOn).toBe("soa.evidence.attached");
     expect(getSetupStep("risk")?.completeOn).toBe("risks.analysed");
-    expect(getSetupStep("audit")?.completeOn).toBe("audits.plan.saved");
+    expect(getSetupStep("audit")?.completeOn).toBe("audits.scheduled");
     expect(getSetupStep("review")?.completeOn).toBe("reviews.scheduled");
     expect(getSetupStep("remote")?.completeOn).toBe("remote.auditor.invited");
     expect(getSetupStep("alice")?.completeOn).toBe("alice.pinned");
@@ -63,7 +63,7 @@ describe("Setup Guide catalog", () => {
     const alice = getSetupStep("alice");
     expect(soa?.guide.subs.map((s) => s.target).filter(Boolean)).toEqual([
       "[data-tour='soa.tabs']",
-      "[data-tour='soa.control.selected']",
+      "[data-tour='soa.controls']",
       "[data-tour='soa.control.selected']",
       "[data-tour='soa.control.state']",
       "[data-tour='soa.control.evidence']",
@@ -72,22 +72,21 @@ describe("Setup Guide catalog", () => {
       "[data-tour='risks.create']",
       "[data-tour='risks.field.title']",
       "[data-tour='risks.field.owner']",
+      "[data-tour='risks.submit']",
       "[data-tour='risks.analyse']",
-      "[data-tour='risks.sheet']",
     ]);
     expect(audit?.guide.subs.map((s) => s.target).filter(Boolean)).toEqual([
       "[data-tour='audits.create']",
       "[data-tour='audits.field.title']",
       "[data-tour='audits.field.auditor']",
       "[data-tour='audits.field.interval']",
-      "[data-tour='audits.assist']",
     ]);
     expect(review?.guide.subs.map((s) => s.target).filter(Boolean)).toEqual([
       "[data-tour='reviews.create']",
       "[data-tour='reviews.field.title']",
       "[data-tour='reviews.field.date']",
       "[data-tour='reviews.field.attendees']",
-      "[data-tour='reviews.sheet']",
+      "[data-tour='reviews.submit']",
     ]);
     expect(remote?.guide.subs.map((s) => s.target).filter(Boolean)).toEqual([
       "[data-tour='org.fu.create']",
@@ -106,7 +105,7 @@ describe("Setup Guide catalog", () => {
     expect(alice?.aliceCapable).toBe(true);
   });
 
-  it("seeds repository create and workspace for docs upload coaching", () => {
+  it("seeds repository create and upload sheet for docs coaching", () => {
     const docs = getSetupStep("docs");
     expect(docs?.guide.subs.map((s) => s.seed)).toEqual([
       undefined,
@@ -115,11 +114,20 @@ describe("Setup Guide catalog", () => {
       "repository",
       "repository",
     ]);
+    expect(docs?.guide.subs.map((s) => s.seedTab)).toEqual([
+      undefined,
+      undefined,
+      undefined,
+      "upload",
+      "upload",
+    ]);
     expect(docs?.guide.subs[2]?.target).toBe("[data-tour='docs.repo.sheet']");
-    expect(docs?.guide.subs[3]?.target).toBe("[data-tour='docs.upload']");
+    expect(docs?.guide.subs[3]?.target).toBe(
+      "[data-tour='docs.upload.purpose']"
+    );
   });
 
-  it("seeds a document before link compliance spotlights", () => {
+  it("seeds a document page before Compliance Settings", () => {
     const link = getSetupStep("link");
     expect(link?.guide.subs.map((s) => s.seed)).toEqual([
       "document",
@@ -129,57 +137,54 @@ describe("Setup Guide catalog", () => {
     ]);
     expect(link?.guide.subs.map((s) => s.seedTab)).toEqual([
       undefined,
-      "compliance-settings",
+      undefined,
       "compliance-settings",
       "compliance-settings",
     ]);
-    expect(link?.guide.subs[0]?.route).toBeUndefined();
     expect(link?.guide.subs.map((s) => s.target)).toEqual([
-      "[data-tour='docs.compliance.tab']",
+      "[data-tour='docs.document.page']",
       "[data-tour='docs.compliance.tab']",
       "[data-tour='docs.compliance.panel']",
       "[data-tour='docs.compliance.panel']",
     ]);
   });
 
-  it("seeds a control before SoA clause spotlights", () => {
+  it("keeps SoA Controls/Open clause before seeding select/status/evidence", () => {
     const soa = getSetupStep("soa");
     expect(soa?.guide.subs.map((s) => s.seed)).toEqual([
+      undefined,
       undefined,
       "control",
       "control",
       "control",
-      "control",
     ]);
+    expect(soa?.guide.subs[4]?.seedTab).toBe("evidence");
     expect(soa?.guide.subs[0]?.route).toBe(
       "/compliance/ISO%209001?tab=toolkit"
     );
-    expect(soa?.guide.subs.slice(1).every((s) => !s.route)).toBe(true);
+    expect(soa?.guide.subs[1]?.target).toBe("[data-tour='soa.controls']");
   });
 
-  it("seeds a saved risk before Analyse and treatment", () => {
+  it("makes Analyse the last risk step on a seeded view sheet", () => {
     const risk = getSetupStep("risk");
     expect(risk?.guide.subs.map((s) => s.seed)).toEqual([
       undefined,
       undefined,
       undefined,
-      "risk",
+      undefined,
       "risk",
     ]);
-    expect(risk?.guide.subs[3]?.target).toBe("[data-tour='risks.analyse']");
-    expect(risk?.guide.subs[4]?.target).toBe("[data-tour='risks.sheet']");
+    expect(risk?.guide.subs.at(-1)?.target).toBe(
+      "[data-tour='risks.analyse']"
+    );
   });
 
-  it("seeds a saved audit before Assist & Verification", () => {
+  it("makes Set the interval the last audit coach step", () => {
     const audit = getSetupStep("audit");
-    expect(audit?.guide.subs.map((s) => s.seed)).toEqual([
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      "audit",
-    ]);
-    expect(audit?.guide.subs[4]?.target).toBe("[data-tour='audits.assist']");
+    expect(audit?.guide.subs.at(-1)?.target).toBe(
+      "[data-tour='audits.field.interval']"
+    );
+    expect(audit?.completeOn).toBe("audits.scheduled");
   });
 });
 

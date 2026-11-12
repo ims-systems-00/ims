@@ -66,7 +66,10 @@ export function useSetupSeed() {
           const seeded = await ensureSetupDocument({
             ownerId,
             preferred: state.lastDocumentContext,
-            tab: sub.seedTab,
+            tab:
+              sub.seedTab === "compliance-settings"
+                ? "compliance-settings"
+                : undefined,
           });
           if (cancelled) return;
           setLastDocumentContext({
@@ -81,6 +84,7 @@ export function useSetupSeed() {
         if (sub.seed === "control") {
           const seeded = await ensureSetupControl({
             preferred: state.lastControlContext,
+            tab: sub.seedTab === "evidence" ? "evidence" : undefined,
           });
           if (cancelled) return;
           setLastControlContext({
@@ -133,6 +137,7 @@ export function useSetupSeed() {
           const seeded = await ensureSetupRepository({
             ownerId,
             preferred,
+            tab: sub.seedTab === "upload" ? "upload" : undefined,
           });
           if (cancelled) return;
           setLastRepositoryContext({ repositoryId: seeded.repositoryId });

@@ -432,7 +432,12 @@ export function ReviewFormActions({
           Cancel
         </Button>
       ) : null}
-      <Button type="submit" form={formId} disabled={pending}>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={pending}
+        data-tour="reviews.submit"
+      >
         {pending ? "Saving…" : submitLabel}
       </Button>
     </div>

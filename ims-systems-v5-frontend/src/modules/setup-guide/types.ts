@@ -22,6 +22,12 @@ export type SetupSeedKind =
   | "repository-create"
   | "repository";
 
+/** Optional deep-link within a seeded record / sheet. */
+export type SetupSeedTab =
+  | "compliance-settings"
+  | "evidence"
+  | "upload";
+
 export type SetupSubStep = {
   /** Coach line shown in the guide panel. */
   label: string;
@@ -42,15 +48,15 @@ export type SetupSubStep = {
   /**
    * Auto-create/reuse a record and open it before spotlighting.
    * - `document` → document detail (optional compliance tab via seedTab)
-   * - `control` → compliance toolkit control sheet
+   * - `control` → compliance toolkit control sheet (seedTab `evidence`)
    * - `risk` → saved risk view sheet (Analyse lives here, not on create)
    * - `audit` → saved audit view sheet (Assist lives here, not on create)
    * - `repository-create` → Documents › Repositories with create-repo sheet open
-   * - `repository` → open a repository workspace (Upload lives here)
+   * - `repository` → open a repository workspace (seedTab `upload`)
    */
   seed?: SetupSeedKind;
-  /** For `seed: "document"`, open this document detail tab. */
-  seedTab?: "compliance-settings";
+  /** Deep-link within the seeded surface (tab / panel / sheet). */
+  seedTab?: SetupSeedTab;
 };
 export type SetupStepDefinition = {
   id: string;

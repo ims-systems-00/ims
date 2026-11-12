@@ -28,6 +28,8 @@ type FunctionalUnitSheetProps = {
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: FunctionalUnitSheetMode) => void;
   onCreated?: (unit: FunctionalUnit) => void;
+  /** Setup Guide deep-link: preselect access type on create. */
+  createAccessType?: CreateFunctionalUnitInput["accessType"];
 };
 
 export function FunctionalUnitSheet({
@@ -37,6 +39,7 @@ export function FunctionalUnitSheet({
   onOpenChange,
   onModeChange,
   onCreated,
+  createAccessType,
 }: FunctionalUnitSheetProps) {
   const unitQuery = useFunctionalUnitQuery(
     mode === "create" ? undefined : (unitId ?? undefined)
@@ -125,12 +128,15 @@ export function FunctionalUnitSheet({
     >
       {mode === "create" ? (
         <FunctionalUnitForm
-          key="create"
+          key={`create-${createAccessType ?? "default"}`}
           formId="fu-create-form"
           mode="create"
           submitLabel="Create"
           pending={pending}
           hideActions
+          initialValues={
+            createAccessType ? { accessType: createAccessType } : undefined
+          }
           onSubmit={handleCreate}
           onCancel={() => onOpenChange(false)}
         />

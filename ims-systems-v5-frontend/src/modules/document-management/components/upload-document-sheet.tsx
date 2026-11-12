@@ -273,7 +273,12 @@ export function UploadDocumentSheet({
           />
         </FormField>
 
-        <FormField label="Purpose" htmlFor="doc-purpose" required>
+        <FormField
+          label="Purpose"
+          htmlFor="doc-purpose"
+          required
+          dataTour="docs.upload.purpose"
+        >
           <select
             id="doc-purpose"
             className="ims-select"
@@ -293,6 +298,7 @@ export function UploadDocumentSheet({
         <FormField
           label="Applicable modules"
           description="Used by pickers in other modules."
+          dataTour="docs.upload.modules"
         >
           <div className="flex flex-wrap gap-1.5">
             {DOCUMENT_APPLICABLE_MODULES.map((module) => {
@@ -357,7 +363,11 @@ export function UploadDocumentSheet({
           </FormField>
         ) : null}
 
-        <FormField label="Select owner(s)" required>
+        <FormField
+          label="Select owner(s)"
+          required
+          dataTour="docs.upload.owners"
+        >
           <OwnerMultiSelect
             options={userOptions}
             value={owners}

@@ -26,6 +26,8 @@ type ControlSheetProps = {
   open: boolean;
   controlId: string | null;
   onOpenChange: (open: boolean) => void;
+  /** Setup Guide deep-link: open Compliance Evidence panel. */
+  initialPanel?: "details" | "activity" | "evidence";
 };
 
 /**
@@ -35,8 +37,9 @@ export function ControlSheet({
   open,
   controlId,
   onOpenChange,
+  initialPanel = "details",
 }: ControlSheetProps) {
-  const [panelTab, setPanelTab] = useState("details");
+  const [panelTab, setPanelTab] = useState(initialPanel);
   const controlQuery = useComplianceControlQuery(
     open ? (controlId ?? undefined) : undefined
   );
@@ -47,8 +50,12 @@ export function ControlSheet({
   const updateMutation = useUpdateControlStatusMutation();
 
   useEffect(() => {
-    if (!open) setPanelTab("details");
-  }, [open, controlId]);
+    if (!open) {
+      setPanelTab("details");
+      return;
+    }
+    setPanelTab(initialPanel);
+  }, [open, controlId, initialPanel]);
 
   const control = controlQuery.data;
   const hasIncompleteChildren =
@@ -100,10 +107,22 @@ export function ControlSheet({
             tabs={[
               { id: "details", label: "Details" },
               { id: "activity", label: "Activity" },
-              { id: "evidence", label: "Compliance Evidence" },
+              {
+                id: "evidence",
+                label: "Compliance Evidence",
+                dataTour: "soa.control.evidence.tab",
+              },
             ]}
             value={panelTab}
-            onChange={setPanelTab}
+            onChange={(next) => {
+              if (
+                next === "details" ||
+                next === "activity" ||
+                next === "evidence"
+              ) {
+                setPanelTab(next);
+              }
+            }}
           />
 
           {panelTab === "details" ? (

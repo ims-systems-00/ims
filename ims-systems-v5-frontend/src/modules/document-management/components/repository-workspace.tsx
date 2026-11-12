@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Check,
   ChevronRight,
@@ -14,7 +14,7 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
@@ -55,11 +55,20 @@ type ViewMode = "list" | "grid";
 
 export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [parentNodeId, setParentNodeId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [folderOpen, setFolderOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+
+  useEffect(() => {
+    if (searchParams.get("upload") !== "1") return;
+    setUploadOpen(true);
+    const next = new URLSearchParams(searchParams);
+    next.delete("upload");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
   const [copyOpen, setCopyOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [changeRepoOpen, setChangeRepoOpen] = useState(false);
