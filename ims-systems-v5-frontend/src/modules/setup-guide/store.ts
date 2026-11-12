@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { ComplianceToolkitName } from "@/modules/compliance/types";
 import { getSetupStep, SETUP_STEPS } from "./catalog";
 
 const PROGRESS_KEY = "ims.setup-guide.progress";
@@ -59,6 +60,19 @@ type SetupGuideState = {
    * link-to-standards assist so it can deep-link without hunting.
    */
   lastDocumentContext: { repositoryId: string; nodeId: string } | null;
+  /** Last compliance control opened/seeded for SoA coaching. */
+  lastControlContext: {
+    toolkitName: ComplianceToolkitName;
+    controlId: string;
+  } | null;
+  /** Last risk opened/seeded for Analyse coaching. */
+  lastRiskContext: { riskId: string } | null;
+  /** Last internal audit opened/seeded for Assist coaching. */
+  lastAuditContext: { auditId: string } | null;
+  /** Last document repository opened/seeded for upload coaching. */
+  lastRepositoryContext: { repositoryId: string } | null;
+  /** True while seed-then-spotlight is creating/opening a record. */
+  seedPending: boolean;
   /** Briefly true after navbar “open setup guide” so the card can scroll into view. */
   focusChecklistToken: number;
 
@@ -76,6 +90,18 @@ type SetupGuideState = {
   setLastDocumentContext: (
     context: { repositoryId: string; nodeId: string } | null
   ) => void;
+  setLastControlContext: (
+    context: {
+      toolkitName: ComplianceToolkitName;
+      controlId: string;
+    } | null
+  ) => void;
+  setLastRiskContext: (context: { riskId: string } | null) => void;
+  setLastAuditContext: (context: { auditId: string } | null) => void;
+  setLastRepositoryContext: (
+    context: { repositoryId: string } | null
+  ) => void;
+  setSeedPending: (pending: boolean) => void;
 };
 
 export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
@@ -86,6 +112,11 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
   events: {},
   aliceAssistOpen: false,
   lastDocumentContext: null,
+  lastControlContext: null,
+  lastRiskContext: null,
+  lastAuditContext: null,
+  lastRepositoryContext: null,
+  seedPending: false,
   focusChecklistToken: 0,
 
   hideChecklist: () => {
@@ -114,6 +145,7 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
       subIndex: 0,
       events: {},
       aliceAssistOpen: false,
+      seedPending: false,
       checklistHidden: true,
     });
   },
@@ -124,6 +156,7 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
       subIndex: 0,
       events: {},
       aliceAssistOpen: false,
+      seedPending: false,
     }),
 
   setSubIndex: (index) => {
@@ -191,6 +224,12 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
   openAliceAssist: () => set({ aliceAssistOpen: true }),
   closeAliceAssist: () => set({ aliceAssistOpen: false }),
   setLastDocumentContext: (context) => set({ lastDocumentContext: context }),
+  setLastControlContext: (context) => set({ lastControlContext: context }),
+  setLastRiskContext: (context) => set({ lastRiskContext: context }),
+  setLastAuditContext: (context) => set({ lastAuditContext: context }),
+  setLastRepositoryContext: (context) =>
+    set({ lastRepositoryContext: context }),
+  setSeedPending: (seedPending) => set({ seedPending }),
 }));
 
 /** Modules report UI / domain outcomes (create opened, record created, …). */

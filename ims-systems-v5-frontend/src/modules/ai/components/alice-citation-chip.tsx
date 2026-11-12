@@ -4,18 +4,25 @@ import type { AiChatCitation } from "../types-chat";
 type AliceCitationChipProps = {
   cite: AiChatCitation;
   onPin?: (cite: AiChatCitation) => void;
+  onOpen?: (cite: AiChatCitation) => void;
 };
 
 /**
  * Clickable citation linking to a grounded IMS record.
  */
-export function AliceCitationChip({ cite, onPin }: AliceCitationChipProps) {
+export function AliceCitationChip({
+  cite,
+  onPin,
+  onOpen,
+}: AliceCitationChipProps) {
   return (
     <span className="inline-flex max-w-full items-center gap-1">
       <Link
         to={cite.href}
+        data-tour="alice.citation"
         className="inline-flex max-w-full truncate rounded-full border border-primary/15 bg-primary/[0.06] px-2 py-0.5 text-[0.65rem] text-primary transition hover:bg-primary/10"
         title={cite.title}
+        onClick={() => onOpen?.(cite)}
       >
         <span className="truncate">
           {[cite.reference, cite.title].filter(Boolean).join(" — ")}

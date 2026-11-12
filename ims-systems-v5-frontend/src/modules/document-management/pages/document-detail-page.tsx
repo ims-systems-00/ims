@@ -188,7 +188,7 @@ export function DocumentDetailPage() {
   const canAddVersion = node.status === "Published";
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5" data-tour="docs.document.page">
       <PageHeader
         title={node.name}
         description={`${node.reference} · ${repoQuery.data.name}`}

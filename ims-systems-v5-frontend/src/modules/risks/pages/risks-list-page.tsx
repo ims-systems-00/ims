@@ -40,7 +40,7 @@ import {
   type RiskType,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
-import { useTourAction } from "@/modules/setup-guide";
+import { useSetupSignal } from "@/modules/setup-guide";
 
 type PendingDelete = { id: string; label: string };
 
@@ -91,8 +91,8 @@ export function RisksListPage() {
       ? "edit"
       : "view";
 
-  useTourAction("risks:create-opened", createOpen);
-  useTourAction("risks:row-opened", Boolean(riskId));
+  useSetupSignal("risks.create-opened", createOpen);
+  useSetupSignal("risks.row-opened", Boolean(riskId));
 
   const queryParams = useMemo(
     () => ({

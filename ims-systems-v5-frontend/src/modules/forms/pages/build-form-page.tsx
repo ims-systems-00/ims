@@ -442,12 +442,17 @@ export function BuildFormPage() {
                     const def = getElementDefinition(type);
                     if (!def) return null;
                     const Icon = PALETTE_ICONS[type] ?? Plus;
+                    const isInputElements = section.title === "Input elements";
                     return (
                       <button
                         key={type}
                         type="button"
                         disabled={busy}
-                        className="flex flex-col items-start gap-1.5 rounded-lg border border-border bg-background px-2.5 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/50 disabled:opacity-50"
+                        className={
+                          isInputElements
+                            ? "flex aspect-square flex-col items-center justify-center gap-1.5 rounded-lg border border-border bg-background px-2 text-center transition-colors hover:border-primary/40 hover:bg-muted/50 disabled:opacity-50"
+                            : "flex flex-col items-start gap-1.5 rounded-lg border border-border bg-background px-2.5 py-2.5 text-left transition-colors hover:border-primary/40 hover:bg-muted/50 disabled:opacity-50"
+                        }
                         onClick={() => {
                           void addElement(type).catch((error) =>
                             notify.error(
@@ -458,8 +463,14 @@ export function BuildFormPage() {
                           );
                         }}
                       >
-                        <Icon className="size-4 text-muted-foreground" />
-                        <span className="text-xs font-medium leading-tight">
+                        <Icon className="size-4 shrink-0 text-muted-foreground" />
+                        <span
+                          className={
+                            isInputElements
+                              ? "text-xs font-medium leading-tight text-balance"
+                              : "text-xs font-medium leading-tight"
+                          }
+                        >
                           {def.label}
                         </span>
                       </button>

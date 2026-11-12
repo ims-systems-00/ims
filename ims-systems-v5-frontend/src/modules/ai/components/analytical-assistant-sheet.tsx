@@ -186,6 +186,9 @@ export function AnalyticalAssistantSheet({
       if (context.source.moduleType === "risks") {
         signalSetupEvent("risks.analysed");
       }
+      if (context.source.moduleType === "audits") {
+        signalSetupEvent("audits.plan.saved");
+      }
       notify.success("Analysis saved.");
       clearAnalysis();
       setView("home");

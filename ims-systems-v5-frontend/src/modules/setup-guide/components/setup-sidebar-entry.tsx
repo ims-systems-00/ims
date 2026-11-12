@@ -15,7 +15,8 @@ export function SetupSidebarEntry({ collapsed }: { collapsed: boolean }) {
   const done = completedCount(completedSteps);
   const total = SETUP_STEPS.length;
 
-  if (!hidden || done >= total) return null;
+  // Show while the checklist is hidden so users can reopen it (including after Done).
+  if (!hidden) return null;
 
   return (
     <button

@@ -4,6 +4,7 @@ import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import {
   useCompleteManagementReviewMutation,
   useCreateManagementReviewMutation,
@@ -75,6 +76,7 @@ export function ReviewSheet({
     const result = await createMutation.mutateAsync(
       values as CreateManagementReviewInput
     );
+    signalSetupEvent("reviews.scheduled");
     onCreated?.(result.items.length);
     onOpenChange(false);
   }
@@ -140,6 +142,7 @@ export function ReviewSheet({
         onOpenChange={onOpenChange}
         title={title}
         description={description}
+        dataTour="reviews.sheet"
         footer={
           mode === "create" ? (
             <ReviewFormActions

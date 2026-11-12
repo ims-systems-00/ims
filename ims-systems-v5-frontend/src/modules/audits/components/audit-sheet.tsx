@@ -18,6 +18,11 @@ import {
 } from "@/modules/security/hooks/use-security-capabilities";
 import { useSessionSubjectId } from "@/security";
 import {
+  signalSetupEvent,
+  useSetupGuideStore,
+  useSetupSignal,
+} from "@/modules/setup-guide";
+import {
   useAuditQuery,
   useCompleteAuditMutation,
   useCreateAuditMutation,
@@ -71,6 +76,7 @@ export function AuditSheet({
   >(null);
   const [panelTab, setPanelTab] = useState("details");
   const [aliceOpen, setAliceOpen] = useState(false);
+  const setLastAuditContext = useSetupGuideStore((s) => s.setLastAuditContext);
 
   useEffect(() => {
     if (!open || mode !== "view") setPanelTab("details");
@@ -79,6 +85,8 @@ export function AuditSheet({
   useEffect(() => {
     if (!open) setAliceOpen(false);
   }, [open]);
+
+  useSetupSignal("audits.assist-opened", aliceOpen);
 
   const auditQuery = useAuditQuery(
     mode === "create" ? undefined : (auditId ?? undefined)
@@ -135,6 +143,9 @@ export function AuditSheet({
 
   async function handleCreate(values: CreateAuditInput | UpdateAuditInput) {
     const result = await createMutation.mutateAsync(values as CreateAuditInput);
+    const created = result.items[0];
+    if (created) setLastAuditContext({ auditId: created.id });
+    signalSetupEvent("audits.scheduled");
     onCreated?.(result.items.length);
     onOpenChange(false);
   }
@@ -211,6 +222,7 @@ export function AuditSheet({
         onOpenChange={onOpenChange}
         title={title}
         description={description}
+        dataTour="audits.sheet"
         footer={
           mode === "create" ? (
             <AuditFormActions
@@ -252,6 +264,7 @@ export function AuditSheet({
                       type="button"
                       variant="outline"
                       disabled={pending}
+                      data-tour="audits.assist"
                       onClick={() => setAliceOpen(true)}
                     >
                       <Sparkles className="size-4" />

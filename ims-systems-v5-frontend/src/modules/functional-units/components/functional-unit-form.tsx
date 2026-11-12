@@ -179,6 +179,7 @@ export function FunctionalUnitForm({
           label="Standards"
           htmlFor={`${formId}-standards`}
           error={fieldErrors.standards}
+          dataTour="org.fu.field.standards"
         >
           <Input
             id={`${formId}-standards`}

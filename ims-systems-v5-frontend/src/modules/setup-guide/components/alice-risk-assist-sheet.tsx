@@ -28,6 +28,7 @@ export function AliceRiskAssistSheet() {
   const queryClient = useQueryClient();
   const open = useSetupGuideStore((s) => s.aliceAssistOpen);
   const activeStepId = useSetupGuideStore((s) => s.activeStepId);
+  const setLastRiskContext = useSetupGuideStore((s) => s.setLastRiskContext);
   const closeAliceAssist = useSetupGuideStore((s) => s.closeAliceAssist);
   const finishStep = useSetupGuideStore((s) => s.finishStep);
   const closeGuide = useSetupGuideStore((s) => s.closeGuide);
@@ -78,6 +79,7 @@ export function AliceRiskAssistSheet() {
         likelihood,
         consequence,
       });
+      setLastRiskContext({ riskId: risk.id });
       signalSetupEvent("risks.created");
 
       let analysisText = "";

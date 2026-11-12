@@ -90,6 +90,7 @@ export function moduleLabelForHint(moduleHint: string): string {
 /** Org-wide suggestions for the floating general chat. */
 export function suggestedPromptsGeneral(): string[] {
   return [
+    "What needs attention this week?",
     "What open risks and incidents need attention across the organisation?",
     "Show high priority tasks that need attention ASAP",
     "Where are we weakest in compliance right now?",

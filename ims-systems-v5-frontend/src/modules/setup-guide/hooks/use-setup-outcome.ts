@@ -20,7 +20,7 @@ export function useSetupOutcomeListener() {
     if (!activeStepId) return;
     const step = getSetupStep(activeStepId);
     if (!step?.completeOn) return;
-    if (completedSteps[step.id]) return;
+    // Still finish (close coach) on replay of an already-Done step.
     if (events[step.completeOn]) {
       finishStep(step.id);
     }

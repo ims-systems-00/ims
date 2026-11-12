@@ -1,9 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { BadgePoundSterling, CreditCard, KeyRound, Settings2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { toolkitDisplayLabel } from "@/modules/compliance/types";
 import {
+  organisationKeys,
   useBillingPortalSessionMutation,
   useCardPaymentSessionMutation,
   useSmeLicenceCheckoutMutation,
@@ -52,10 +55,58 @@ export function OrganisationLicencesPanel({
   isCustomer,
   paymentSystem,
 }: OrganisationLicencesPanelProps) {
+  const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [requestOpen, setRequestOpen] = useState(false);
+  const [openingSme, setOpeningSme] = useState(false);
+  const [openingCard, setOpeningCard] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
   const cardPayment = useCardPaymentSessionMutation();
   const smeLicence = useSmeLicenceCheckoutMutation();
   const billingPortal = useBillingPortalSessionMutation();
+
+  // Stripe return / browser back (bfcache) can restore a mid-checkout pending
+  // mutation and leave the SME button stuck disabled/"Opening…".
+  useEffect(() => {
+    function clearCheckoutUiState() {
+      setOpeningSme(false);
+      setOpeningCard(false);
+      setOpeningPortal(false);
+      smeLicence.reset();
+      cardPayment.reset();
+      billingPortal.reset();
+    }
+
+    clearCheckoutUiState();
+
+    function onPageShow(event: PageTransitionEvent) {
+      if (event.persisted) clearCheckoutUiState();
+    }
+
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+    // Intentionally once on mount + bfcache restore only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- reset helpers are stable enough for mount
+  }, []);
+
+  const smeCheckoutResult = searchParams.get("sme");
+  useEffect(() => {
+    if (smeCheckoutResult !== "success" && smeCheckoutResult !== "cancelled") {
+      return;
+    }
+
+    const next = new URLSearchParams(searchParams);
+    next.delete("sme");
+    setSearchParams(next, { replace: true });
+
+    void queryClient.invalidateQueries({
+      queryKey: organisationKeys.current(),
+    });
+
+    if (smeCheckoutResult === "success") {
+      notify.success("SME licence checkout completed");
+    }
+  }, [queryClient, searchParams, setSearchParams, smeCheckoutResult]);
 
   if (!isCustomer) {
     return (
@@ -76,46 +127,52 @@ export function OrganisationLicencesPanel({
   const toolkits = licences.complianceTools ?? [];
   const modules = licences.additionalModules ?? [];
   const hasSubscription = Boolean(paymentSystem.stripeSubscriptionId);
-  const billingBusy =
-    cardPayment.isPending ||
-    smeLicence.isPending ||
-    billingPortal.isPending;
+  const billingBusy = openingSme || openingCard || openingPortal;
 
   async function openCardCheckout() {
+    setOpeningCard(true);
     try {
       const session = await cardPayment.mutateAsync(organizationId);
       if (!session.url) {
         notify.error("Stripe checkout did not return a URL");
+        setOpeningCard(false);
         return;
       }
       window.location.assign(session.url);
     } catch (error) {
+      setOpeningCard(false);
       notify.fromError(error, "Unable to start card payment");
     }
   }
 
   async function openSmeCheckout() {
+    setOpeningSme(true);
     try {
       const session = await smeLicence.mutateAsync(organizationId);
       if (!session.url) {
         notify.error("Stripe checkout did not return a URL");
+        setOpeningSme(false);
         return;
       }
       window.location.assign(session.url);
     } catch (error) {
+      setOpeningSme(false);
       notify.fromError(error, "Unable to start SME licence checkout");
     }
   }
 
   async function openBillingPortal() {
+    setOpeningPortal(true);
     try {
       const session = await billingPortal.mutateAsync(organizationId);
       if (!session.url) {
         notify.error("Stripe billing portal did not return a URL");
+        setOpeningPortal(false);
         return;
       }
       window.location.assign(session.url);
     } catch (error) {
+      setOpeningPortal(false);
       notify.fromError(error, "Unable to open billing portal");
     }
   }
@@ -123,7 +180,7 @@ export function OrganisationLicencesPanel({
   return (
     <>
       <section className="ims-panel overflow-hidden">
-        <div className="ims-panel-header">
+        <div className="space-y-3 border-b border-border-subtle px-4 py-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold tracking-tight">Licenses</h3>
             <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
@@ -141,12 +198,13 @@ export function OrganisationLicencesPanel({
               onClick={() => void openSmeCheckout()}
             >
               <BadgePoundSterling className="size-3.5" />
-              {smeLicence.isPending ? "Opening…" : "SME License"}
+              {openingSme ? "Opening…" : "SME License"}
             </Button>
             <Button
               type="button"
               size="sm"
               variant="outline"
+              disabled={billingBusy}
               onClick={() => setRequestOpen(true)}
             >
               <KeyRound className="size-3.5" />
@@ -160,7 +218,7 @@ export function OrganisationLicencesPanel({
                 onClick={() => void openBillingPortal()}
               >
                 <Settings2 className="size-3.5" />
-                {billingPortal.isPending ? "Opening…" : "Manage billing"}
+                {openingPortal ? "Opening…" : "Manage billing"}
               </Button>
             ) : (
               <Button
@@ -170,7 +228,7 @@ export function OrganisationLicencesPanel({
                 onClick={() => void openCardCheckout()}
               >
                 <CreditCard className="size-3.5" />
-                {cardPayment.isPending ? "Opening…" : "Card payment"}
+                {openingCard ? "Opening…" : "Card payment"}
               </Button>
             )}
           </div>

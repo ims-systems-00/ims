@@ -2,6 +2,7 @@ import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react
 import { createPortal } from "react-dom";
 import aliceIcon from "@/assets/images/Type=Icon Dark BG.png";
 import { cn } from "@/shared/lib/utils";
+import { signalSetupEvent } from "@/modules/setup-guide";
 import { useAliceChatStore } from "../store/use-alice-chat-store";
 import {
   ALICE_FAB_SIZE,
@@ -90,7 +91,9 @@ export function FloatingAliceButton({ className }: FloatingAliceButtonProps) {
       /* already released */
     }
     if (!moved) {
+      const wasOpen = useAliceChatStore.getState().surface === "float";
       toggleFloat();
+      if (!wasOpen) signalSetupEvent("alice.opened");
     }
   }
 
@@ -122,6 +125,7 @@ export function FloatingAliceButton({ className }: FloatingAliceButtonProps) {
         bottom: "auto",
       }}
       data-alice-float="fab"
+      data-tour="alice.fab"
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={endPointer}

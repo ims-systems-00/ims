@@ -14,6 +14,11 @@ function resetStore() {
     events: {},
     aliceAssistOpen: false,
     lastDocumentContext: null,
+    lastControlContext: null,
+    lastRiskContext: null,
+    lastAuditContext: null,
+    lastRepositoryContext: null,
+    seedPending: false,
     focusChecklistToken: 0,
   });
   try {
@@ -69,8 +74,18 @@ describe("useSetupGuideStore", () => {
     );
     useSetupGuideStore.getState().finishStep("soa");
     useSetupGuideStore.getState().finishStep("risk");
+    expect(nextUndoneStepId(useSetupGuideStore.getState().completedSteps)).toBe(
+      "audit"
+    );
+    useSetupGuideStore.getState().finishStep("audit");
+    useSetupGuideStore.getState().finishStep("review");
+    expect(nextUndoneStepId(useSetupGuideStore.getState().completedSteps)).toBe(
+      "remote"
+    );
+    useSetupGuideStore.getState().finishStep("remote");
+    useSetupGuideStore.getState().finishStep("alice");
     expect(nextUndoneStepId(useSetupGuideStore.getState().completedSteps)).toBeNull();
-    expect(completedCount(useSetupGuideStore.getState().completedSteps)).toBe(5);
+    expect(completedCount(useSetupGuideStore.getState().completedSteps)).toBe(9);
   });
 
   it("hides and restores the checklist", () => {

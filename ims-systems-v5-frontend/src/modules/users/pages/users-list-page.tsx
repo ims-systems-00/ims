@@ -257,8 +257,11 @@ export function UsersListPage() {
       <InviteUserDialog
         open={inviteOpen}
         onOpenChange={setInviteOpen}
-        onInvited={() => {
+        onInvited={({ role }) => {
           signalTourAction("org.users.invited");
+          if (role === "External Auditor") {
+            signalTourAction("remote.auditor.invited");
+          }
           setTab("invitations");
         }}
       />

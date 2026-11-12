@@ -3,6 +3,7 @@ import { cn } from "@/shared/lib/utils";
 export type SheetPanelTab = {
   id: string;
   label: string;
+  dataTour?: string;
 };
 
 type SheetPanelTabsProps = {
@@ -40,6 +41,7 @@ export function SheetPanelTabs({
             type="button"
             role="tab"
             aria-selected={selected}
+            data-tour={tab.dataTour}
             className={cn(
               "relative px-3 py-2 text-sm font-medium transition-colors",
               selected

@@ -10,6 +10,24 @@ import type { InvitationRole } from "@/modules/invitations/types";
 
 export type SetupStepStatus = "available" | "coming_soon";
 
+/**
+ * When set, the guide ensures a real module record exists and is open
+ * before spotlighting (seed-then-spotlight).
+ */
+export type SetupSeedKind =
+  | "document"
+  | "control"
+  | "risk"
+  | "audit"
+  | "repository-create"
+  | "repository";
+
+/** Optional deep-link within a seeded record / sheet. */
+export type SetupSeedTab =
+  | "compliance-settings"
+  | "evidence"
+  | "upload";
+
 export type SetupSubStep = {
   /** Coach line shown in the guide panel. */
   label: string;
@@ -22,12 +40,24 @@ export type SetupSubStep = {
   /**
    * Optional path to put the app in before highlighting this sub-step
    * (e.g. `/functional-units?create=1`).
+   * Ignored when `seed` is set — the seeder navigates instead.
    */
   route?: string;
   /** Advance the coach when this event is signalled. */
   advanceOn?: string;
+  /**
+   * Auto-create/reuse a record and open it before spotlighting.
+   * - `document` → document detail (optional compliance tab via seedTab)
+   * - `control` → compliance toolkit control sheet (seedTab `evidence`)
+   * - `risk` → saved risk view sheet (Analyse lives here, not on create)
+   * - `audit` → saved audit view sheet (Assist lives here, not on create)
+   * - `repository-create` → Documents › Repositories with create-repo sheet open
+   * - `repository` → open a repository workspace (seedTab `upload`)
+   */
+  seed?: SetupSeedKind;
+  /** Deep-link within the seeded surface (tab / panel / sheet). */
+  seedTab?: SetupSeedTab;
 };
-
 export type SetupStepDefinition = {
   id: string;
   title: string;

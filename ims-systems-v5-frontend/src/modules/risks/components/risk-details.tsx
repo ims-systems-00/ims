@@ -271,7 +271,12 @@ export function RiskFormActions({
           Cancel
         </Button>
       ) : null}
-      <Button type="submit" form={formId} disabled={pending}>
+      <Button
+        type="submit"
+        form={formId}
+        disabled={pending}
+        data-tour="risks.submit"
+      >
         {pending ? "Saving…" : submitLabel}
       </Button>
     </>

@@ -20,7 +20,7 @@ type InviteUserDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** Called after a successful invite (e.g. switch to the Invitations tab). */
-  onInvited?: (email: string) => void;
+  onInvited?: (payload: { email: string; role: InvitationRole }) => void;
 };
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,7 +64,7 @@ export function InviteUserDialog({
       setEmail("");
       setRole("Basic User");
       onOpenChange(false);
-      onInvited?.(created.email);
+      onInvited?.({ email: created.email, role: created.role });
     } catch (error) {
       notify.error(
         isApiClientError(error)

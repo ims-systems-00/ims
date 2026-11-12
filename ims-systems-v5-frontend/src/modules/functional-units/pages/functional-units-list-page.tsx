@@ -34,6 +34,14 @@ export function FunctionalUnitsListPage() {
 
   const createOpen = searchParams.get("create") === "1";
   const unitId = searchParams.get("unit");
+  const accessTypeParam = searchParams.get("accessType");
+  const createAccessType =
+    accessTypeParam === "External compliance function" ||
+    accessTypeParam === "Internal compliance function" ||
+    accessTypeParam === "Internal business function" ||
+    accessTypeParam === "External business function"
+      ? (accessTypeParam as AccessType)
+      : undefined;
   const sheetOpen = createOpen || Boolean(unitId);
   const sheetMode: FunctionalUnitSheetMode = createOpen
     ? "create"
@@ -250,12 +258,16 @@ export function FunctionalUnitsListPage() {
         open={sheetOpen}
         mode={sheetMode}
         unitId={unitId}
+        createAccessType={createAccessType}
         onOpenChange={(open) => {
           if (!open) closeSheet();
         }}
         onModeChange={handleModeChange}
         onCreated={(unit) => {
           signalSetupEvent("org.fu.created");
+          if (unit.accessType === "External compliance function") {
+            signalSetupEvent("remote.fu.created");
+          }
           notify.success("Business unit created successfully");
           setEditMode(false);
           setSearchParams({ unit: unit.id });
