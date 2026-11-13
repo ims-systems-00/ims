@@ -91,11 +91,15 @@ export function updateFormElement(
 export function reorderFormElement(
   formId: string,
   id: string,
-  afterElementId: string | null
+  afterElementId: string | null,
+  parentElementId?: string | null
 ): Promise<FormElement> {
   return apiRequest<FormElement>(`/forms/${formId}/elements/${id}/order`, {
     method: "PUT",
-    body: { afterElementId },
+    body: {
+      afterElementId,
+      ...(parentElementId !== undefined ? { parentElementId } : {}),
+    },
   });
 }
 

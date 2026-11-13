@@ -13,6 +13,7 @@ import {
   createFolderBodySchema,
   createRepositoryBodySchema,
   decideAuthorisationBodySchema,
+  downloadNodesZipBodySchema,
   idParamSchema,
   listPublishedDocumentsQuerySchema,
   listRepoNodesQuerySchema,
@@ -41,6 +42,7 @@ export type DocumentManagementController = {
   restoreRepository: RequestHandler;
   hardDeleteRepository: RequestHandler;
   copyFolderStructure: RequestHandler;
+  downloadNodesZip: RequestHandler;
   listCrossOrgCopySources: RequestHandler;
   createFolder: RequestHandler;
   createFiles: RequestHandler;
@@ -177,6 +179,27 @@ export function createDocumentManagementController(
       const body = parseWithSchema(copyFolderStructureBodySchema, req.body);
       const data = await service.copyFolderStructure(req.identity, id, body);
       sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const downloadNodesZip: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const body = parseWithSchema(downloadNodesZipBodySchema, req.body);
+      const { filename, body: zip } = await service.downloadNodesZip(
+        req.identity,
+        id,
+        body.nodeIds
+      );
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename.replace(/"/g, "")}"`
+      );
+      res.setHeader("Content-Length", String(zip.byteLength));
+      res.status(200).send(zip);
     } catch (error) {
       next(error);
     }
@@ -689,6 +712,7 @@ export function createDocumentManagementController(
     restoreRepository,
     hardDeleteRepository,
     copyFolderStructure,
+    downloadNodesZip,
     listCrossOrgCopySources,
     createFolder,
     createFiles,

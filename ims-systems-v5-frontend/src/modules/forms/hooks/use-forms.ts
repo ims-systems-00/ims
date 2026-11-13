@@ -178,11 +178,17 @@ export function useReorderFormElementMutation(formId: string) {
     mutationFn: ({
       id,
       afterElementId,
+      parentElementId,
     }: {
       id: string;
       afterElementId: string | null;
-    }) => reorderFormElement(formId, id, afterElementId),
-    onSuccess: async () => {
+      parentElementId?: string | null;
+      /** When true, skip cache invalidation (batch callers invalidate once). */
+      skipInvalidate?: boolean;
+    }) =>
+      reorderFormElement(formId, id, afterElementId, parentElementId),
+    onSuccess: async (_data, variables) => {
+      if (variables.skipInvalidate) return;
       await queryClient.invalidateQueries({
         queryKey: formKeys.elements(formId),
       });

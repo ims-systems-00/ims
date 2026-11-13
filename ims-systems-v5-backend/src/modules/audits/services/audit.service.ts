@@ -116,6 +116,7 @@ function mapAttachments(
     mimeType: file.mimeType,
     sizeBytes: file.sizeBytes,
     storageKey: file.storageKey,
+    bucket: file.bucket,
     url: file.url || undefined,
     uploadedBy: actorId,
     uploadedAt: now,
@@ -188,6 +189,12 @@ export function createAuditService(deps: AuditServiceDeps) {
   }
 
   async function syncCalendar(audit: Audit): Promise<void> {
+    if (
+      !(audit.startDate instanceof Date) ||
+      Number.isNaN(audit.startDate.getTime())
+    ) {
+      return;
+    }
     await calendar.upsertAuditEvent({
       organizationId: audit.organizationId,
       auditId: audit.id,
@@ -363,7 +370,16 @@ export function createAuditService(deps: AuditServiceDeps) {
       );
       if (!updated) throw new NotFoundError("Audit not found");
 
-      await syncCalendar(updated);
+      // Attachment-only (and similar) patches must not fail calendar sync.
+      const scheduleTouched =
+        input.title !== undefined ||
+        input.startDate !== undefined ||
+        input.time !== undefined ||
+        input.businessUnitId !== undefined ||
+        input.complianceBodyId !== undefined;
+      if (scheduleTouched) {
+        await syncCalendar(updated);
+      }
       return updated;
     },
 

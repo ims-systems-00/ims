@@ -22,9 +22,19 @@ export type AuditAttachment = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  bucket?: string;
   url?: string;
   uploadedBy: string;
   uploadedAt: string;
+};
+
+export type AuditAttachmentInput = {
+  fileName: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  storageKey?: string;
+  bucket?: string;
+  url?: string;
 };
 
 export type ComplianceLink = {
@@ -103,6 +113,7 @@ export type UpdateAuditInput = {
   startDate?: string;
   time?: string | null;
   comment?: string | null;
+  attachments?: AuditAttachmentInput[];
 };
 
 export type CreateIdentificationInput = {

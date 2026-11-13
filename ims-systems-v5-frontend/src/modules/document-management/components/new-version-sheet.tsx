@@ -40,7 +40,10 @@ export function NewVersionSheet({
     }
     setBusy(true);
     try {
-      const storageInfo = await uploadFileViaHandler(file, "general");
+      const storageInfo = {
+        ...(await uploadFileViaHandler(file, "general")),
+        Size: file.size,
+      };
       if (mode === "revision") {
         await revisionMutation.mutateAsync({
           nodeId: node.id,

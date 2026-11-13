@@ -1,11 +1,54 @@
 import type { ReactNode } from "react";
 import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
+import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
 import {
   attrString,
   type ElementAttributes,
 } from "./element-types";
 
 export type ElementImagePosition = "above" | "below" | "background";
+
+function attrImageStorage(attributes: ElementAttributes): {
+  bucket: string;
+  key: string;
+  fileName?: string;
+} | null {
+  const raw = attributes.imageStorage;
+  if (!raw || typeof raw !== "object") return null;
+  const storage = raw as {
+    bucket?: unknown;
+    key?: unknown;
+    fileName?: unknown;
+  };
+  const bucket = typeof storage.bucket === "string" ? storage.bucket : "";
+  const key = typeof storage.key === "string" ? storage.key : "";
+  if (!bucket || !key) return null;
+  return {
+    bucket,
+    key,
+    fileName:
+      typeof storage.fileName === "string" ? storage.fileName : undefined,
+  };
+}
+
+function useElementImageSrc(attributes: ElementAttributes): string | null {
+  const storage = attrImageStorage(attributes);
+  const fallback = attrString(attributes, "imageSrc") || null;
+  const view = useFileViewUrlQuery(
+    storage
+      ? {
+          Bucket: storage.bucket,
+          Key: storage.key,
+          key: storage.key,
+          Name: storage.fileName ?? "image",
+        }
+      : null,
+    Boolean(storage)
+  );
+  if (view.data?.url) return view.data.url;
+  if (storage) return view.isError ? fallback : null;
+  return fallback;
+}
 
 export function attrImagePosition(
   attributes: ElementAttributes
@@ -22,7 +65,7 @@ export function ElementImagePreview({
   attributes: ElementAttributes;
   className?: string;
 }) {
-  const src = attrString(attributes, "imageSrc");
+  const src = useElementImageSrc(attributes);
   if (!src) return null;
   const position = attrImagePosition(attributes);
   if (position === "background") {
@@ -56,14 +99,14 @@ export function ElementImageProperties({
   attributes: ElementAttributes;
   onChange: (next: ElementAttributes) => void;
 }) {
-  const src = attrString(attributes, "imageSrc");
+  const src = useElementImageSrc(attributes);
   const position = attrImagePosition(attributes);
 
   return (
     <div className="space-y-3 border-t border-border pt-3">
       <p className="text-sm font-medium">Image</p>
       <ImageUploadControl
-        imageUrl={src || null}
+        imageUrl={src}
         alt="Element image"
         shape="rounded"
         tileClassName="h-20 w-full max-w-xs text-sm"
@@ -110,26 +153,33 @@ export function ElementImageProperties({
   );
 }
 
-export function withElementImage(
-  attributes: ElementAttributes,
-  content: ReactNode
-): ReactNode {
-  const src = attrString(attributes, "imageSrc");
-  if (!src) return content;
+export function WithElementImage({
+  attributes,
+  children,
+}: {
+  attributes: ElementAttributes;
+  children: ReactNode;
+}) {
+  const src = useElementImageSrc(attributes);
+  const hasImage =
+    Boolean(src) || Boolean(attrImageStorage(attributes)) || Boolean(attrString(attributes, "imageSrc"));
+  if (!hasImage) return <>{children}</>;
   const position = attrImagePosition(attributes);
 
   if (position === "background") {
     return (
       <div className="relative overflow-hidden rounded-md">
-        <div
-          className="absolute inset-0 opacity-25"
-          style={{
-            backgroundImage: `url(${src})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-          }}
-        />
-        <div className="relative z-10 p-3">{content}</div>
+        {src ? (
+          <div
+            className="absolute inset-0 opacity-25"
+            style={{
+              backgroundImage: `url(${src})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+            }}
+          />
+        ) : null}
+        <div className="relative z-10 p-3">{children}</div>
       </div>
     );
   }
@@ -137,8 +187,18 @@ export function withElementImage(
   return (
     <div className="space-y-2">
       {position === "above" ? <ElementImagePreview attributes={attributes} /> : null}
-      {content}
+      {children}
       {position === "below" ? <ElementImagePreview attributes={attributes} /> : null}
     </div>
+  );
+}
+
+/** @deprecated Prefer {@link WithElementImage} so signed URLs can refresh. */
+export function withElementImage(
+  attributes: ElementAttributes,
+  content: ReactNode
+): ReactNode {
+  return (
+    <WithElementImage attributes={attributes}>{content}</WithElementImage>
   );
 }

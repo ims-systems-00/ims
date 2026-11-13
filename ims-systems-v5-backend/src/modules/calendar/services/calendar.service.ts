@@ -60,8 +60,17 @@ function assertValidRange(start: Date, end: Date): void {
  * Apply optional HH:mm wall-clock time onto a date's UTC components.
  * Spec has no timezone model; stored as Date (ISO-8601 at the API boundary).
  */
-export function applyTimeOfDay(date: Date, time?: string): Date {
-  const result = new Date(date.getTime());
+export function applyTimeOfDay(
+  date: Date | string | null | undefined,
+  time?: string
+): Date {
+  if (date == null) {
+    throw new Error("applyTimeOfDay requires a date");
+  }
+  const result = new Date(date instanceof Date ? date.getTime() : date);
+  if (Number.isNaN(result.getTime())) {
+    throw new Error("applyTimeOfDay requires a valid date");
+  }
   if (!time?.trim()) return result;
   const match = /^(\d{1,2}):(\d{2})$/.exec(time.trim());
   if (!match) return result;

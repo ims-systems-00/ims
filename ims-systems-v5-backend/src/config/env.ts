@@ -321,7 +321,7 @@ const envSchema = z
     ALLOWED_FILE_PATHS: z
       .string()
       .default(
-        "agenda,audit_attachments,contract,inventory_software_attachments,minutes,sla,general,onboarding,isoEvidence,profile,cqcReport,cqcEvidence,risks,cips,tasks,incidents,crms,staffwallet,forms"
+        "agenda,audit_attachments,audits,contract,inventory_software_attachments,minutes,sla,general,onboarding,isoEvidence,profile,cqcReport,cqcEvidence,risks,cips,tasks,incidents,crms,staffwallet,forms"
       )
       .transform((value) =>
         value

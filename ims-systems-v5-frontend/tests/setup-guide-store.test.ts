@@ -8,6 +8,7 @@ import {
 function resetStore() {
   useSetupGuideStore.setState({
     checklistHidden: false,
+    checklistOpen: false,
     activeStepId: null,
     subIndex: 0,
     completedSteps: {},
@@ -19,7 +20,6 @@ function resetStore() {
     lastAuditContext: null,
     lastRepositoryContext: null,
     seedPending: false,
-    focusChecklistToken: 0,
   });
   try {
     localStorage.removeItem("ims.setup-guide.progress");
@@ -36,10 +36,11 @@ describe("useSetupGuideStore", () => {
     useSetupGuideStore.getState().startStep("organisation");
     expect(useSetupGuideStore.getState().activeStepId).toBeNull();
 
+    useSetupGuideStore.getState().openChecklist();
     useSetupGuideStore.getState().startStep("org");
     expect(useSetupGuideStore.getState().activeStepId).toBe("org");
     expect(useSetupGuideStore.getState().subIndex).toBe(0);
-    expect(useSetupGuideStore.getState().checklistHidden).toBe(true);
+    expect(useSetupGuideStore.getState().checklistOpen).toBe(false);
 
     useSetupGuideStore.getState().setSubIndex(1);
     useSetupGuideStore.getState().signalEvent("org.fu.create-opened");
@@ -53,6 +54,7 @@ describe("useSetupGuideStore", () => {
     expect(state.completedSteps.org).toBe(true);
     expect(state.activeStepId).toBeNull();
     expect(state.checklistHidden).toBe(false);
+    expect(state.checklistOpen).toBe(true);
   });
 
   it("finishes org from Alice even when the guide is closed", () => {
@@ -89,10 +91,13 @@ describe("useSetupGuideStore", () => {
   });
 
   it("hides and restores the checklist", () => {
+    useSetupGuideStore.getState().openChecklist();
+    expect(useSetupGuideStore.getState().checklistOpen).toBe(true);
     useSetupGuideStore.getState().hideChecklist();
     expect(useSetupGuideStore.getState().checklistHidden).toBe(true);
+    expect(useSetupGuideStore.getState().checklistOpen).toBe(false);
     useSetupGuideStore.getState().openChecklist();
     expect(useSetupGuideStore.getState().checklistHidden).toBe(false);
-    expect(useSetupGuideStore.getState().focusChecklistToken).toBe(1);
+    expect(useSetupGuideStore.getState().checklistOpen).toBe(true);
   });
 });

@@ -54,9 +54,12 @@ import {
   type OnlyOfficeCallbackBody,
   type OnlyOfficeRuntimeConfig,
 } from "../lib/onlyoffice";
+import { buildZipStore } from "../lib/zip-store";
 import {
   DOCUMENT_MANAGEMENT_RESOURCE,
   MAX_DOCUMENT_OWNERS,
+  MAX_DOWNLOAD_ZIP_BYTES,
+  MAX_DOWNLOAD_ZIP_FILES,
   MAX_FOLDER_DEPTH,
   MAX_REPO_OWNERS,
   MAX_SIBLING_NAMES,
@@ -886,6 +889,194 @@ export function createDocumentManagementService(
       if (!threadId) return [node];
       const family = await trees.listByThread(organizationId, threadId);
       return family.length > 0 ? family : [node];
+    },
+
+    /**
+     * Build a zip of selected documents. Folder selections expand to all
+     * nested documents (depth-capped). Returns raw zip bytes + download name.
+     */
+    async downloadNodesZip(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      nodeIds: string[]
+    ): Promise<{ filename: string; body: Buffer }> {
+      const { identity: actor, organizationId } = requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const repo = await requireRepository(organizationId, repositoryId);
+
+      const uniqueIds = [...new Set(nodeIds)];
+      const roots: DocumentTreeNode[] = [];
+      for (const id of uniqueIds) {
+        const node = await requireNode(organizationId, id);
+        if (node.repositoryId !== repositoryId) {
+          throw new NotFoundError("Document node not found");
+        }
+        if (node.deletedAt) {
+          throw new ValidationAppError(
+            "Cannot download items that are in the recycle bin"
+          );
+        }
+        roots.push(node);
+      }
+
+      type PendingFile = {
+        nodeId: string;
+        zipPath: string;
+        storageInfo: NonNullable<
+          DocumentTreeNode["documentData"]
+        >["storageInfo"];
+      };
+
+      const pending: PendingFile[] = [];
+      const seenDocIds = new Set<string>();
+      const usedPaths = new Set<string>();
+
+      function sanitizeSegment(name: string): string {
+        const cleaned = name
+          .replace(/[\\/]+/g, "_")
+          .replace(/[\u0000-\u001f]/g, "")
+          .trim();
+        return cleaned.length > 0 ? cleaned.slice(0, 180) : "untitled";
+      }
+
+      function uniqueZipPath(path: string): string {
+        if (!usedPaths.has(path)) {
+          usedPaths.add(path);
+          return path;
+        }
+        const dot = path.lastIndexOf(".");
+        const base = dot > 0 ? path.slice(0, dot) : path;
+        const ext = dot > 0 ? path.slice(dot) : "";
+        let n = 2;
+        let candidate = `${base} (${n})${ext}`;
+        while (usedPaths.has(candidate)) {
+          n += 1;
+          candidate = `${base} (${n})${ext}`;
+        }
+        usedPaths.add(candidate);
+        return candidate;
+      }
+
+      function enqueueDocument(
+        node: DocumentTreeNode,
+        relativeDir: string
+      ): void {
+        if (node.type !== "document" || !node.documentData?.storageInfo) return;
+        if (seenDocIds.has(node.id)) return;
+        if (pending.length >= MAX_DOWNLOAD_ZIP_FILES) {
+          throw new ValidationAppError(
+            `Download is limited to ${MAX_DOWNLOAD_ZIP_FILES} files`
+          );
+        }
+        seenDocIds.add(node.id);
+        const fileName = sanitizeSegment(
+          node.documentData.storageInfo.Name || node.name
+        );
+        const zipPath = uniqueZipPath(
+          relativeDir ? `${relativeDir}${fileName}` : fileName
+        );
+        pending.push({
+          nodeId: node.id,
+          zipPath,
+          storageInfo: node.documentData.storageInfo,
+        });
+      }
+
+      async function listAllChildren(
+        parentNodeId: string | null
+      ): Promise<DocumentTreeNode[]> {
+        const items: DocumentTreeNode[] = [];
+        let page = 1;
+        for (;;) {
+          const pageResult = await trees.listChildren(
+            organizationId,
+            repositoryId,
+            {
+              page,
+              pageSize: 200,
+              parentNodeId,
+              sort: "name",
+              sortDir: "asc",
+            }
+          );
+          items.push(...pageResult.items);
+          if (
+            pageResult.items.length === 0 ||
+            items.length >= pageResult.total
+          ) {
+            break;
+          }
+          page += 1;
+        }
+        return items;
+      }
+
+      async function walkFolder(
+        folderId: string,
+        relativeDir: string,
+        depth: number
+      ): Promise<void> {
+        if (depth > MAX_FOLDER_DEPTH) {
+          throw new ValidationAppError("Folder depth limit exceeded");
+        }
+        const children = await listAllChildren(folderId);
+        for (const child of children) {
+          if (child.type === "document") {
+            enqueueDocument(child, relativeDir);
+          } else if (child.type === "folder") {
+            await walkFolder(
+              child.id,
+              `${relativeDir}${sanitizeSegment(child.name)}/`,
+              depth + 1
+            );
+          }
+        }
+      }
+
+      for (const root of roots) {
+        if (root.type === "document") {
+          enqueueDocument(root, "");
+        } else if (root.type === "folder") {
+          await walkFolder(
+            root.id,
+            `${sanitizeSegment(root.name)}/`,
+            1
+          );
+        }
+      }
+
+      if (pending.length === 0) {
+        throw new ValidationAppError(
+          "No downloadable documents found in the selection"
+        );
+      }
+
+      const zipEntries: { path: string; data: Buffer }[] = [];
+      let totalBytes = 0;
+      for (const item of pending) {
+        let data: Buffer;
+        try {
+          data = await files.readStoredFile(item.storageInfo);
+        } catch {
+          throw new ValidationAppError(
+            `Unable to read "${item.zipPath}" for download`
+          );
+        }
+        totalBytes += data.byteLength;
+        if (totalBytes > MAX_DOWNLOAD_ZIP_BYTES) {
+          throw new ValidationAppError(
+            "Selected files exceed the download size limit"
+          );
+        }
+        zipEntries.push({ path: item.zipPath, data });
+      }
+
+      const body = buildZipStore(zipEntries);
+      const safeRepo = sanitizeSegment(repo.name || repo.reference || "documents");
+      return {
+        filename: `${safeRepo}-documents.zip`,
+        body,
+      };
     },
 
     async getNodePath(

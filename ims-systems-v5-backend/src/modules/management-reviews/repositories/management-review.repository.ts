@@ -46,6 +46,7 @@ function toAttachment(file: ReviewAttachment): ReviewAttachment {
     mimeType: file.mimeType,
     sizeBytes: file.sizeBytes,
     storageKey: file.storageKey,
+    bucket: file.bucket,
     url: file.url,
     uploadedBy: file.uploadedBy,
     uploadedAt: file.uploadedAt,

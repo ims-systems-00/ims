@@ -1,14 +1,35 @@
 import type { ReactNode } from "react";
+import { GripVertical } from "lucide-react";
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import type { FormElementType } from "../types";
 import {
   ElementImageProperties,
   withElementImage,
 } from "./element-image";
 import {
+  OTHER_CHOICE_VALUE,
   attrBool,
   attrOptions,
   attrString,
   requireIfNeeded,
+  singleChoiceOtherText,
+  singleChoiceSelection,
   type ElementAttributes,
   type ElementDefinition,
 } from "./element-types";
@@ -90,67 +111,171 @@ function TextProps({
   );
 }
 
+function SortableOptionRow({
+  id,
+  label,
+  onLabelChange,
+  onRemove,
+}: {
+  id: string;
+  label: string;
+  onLabelChange: (next: string) => void;
+  onRemove: () => void;
+}) {
+  const {
+    attributes: dndAttributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id });
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+      }}
+      className={
+        isDragging
+          ? "flex gap-2 rounded-md bg-muted/40 opacity-90 shadow-sm"
+          : "flex gap-2"
+      }
+    >
+      <button
+        type="button"
+        className="inline-flex shrink-0 cursor-grab items-center rounded-md border border-border-subtle px-1.5 text-muted-foreground hover:bg-muted/50 active:cursor-grabbing"
+        aria-label="Drag to reorder option"
+        title="Drag to reorder"
+        {...dndAttributes}
+        {...listeners}
+      >
+        <GripVertical className="size-3.5" aria-hidden />
+      </button>
+      <input
+        className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
+        value={label}
+        onChange={(e) => onLabelChange(e.target.value)}
+      />
+      <button
+        type="button"
+        className="shrink-0 text-xs text-destructive"
+        onClick={onRemove}
+      >
+        Remove
+      </button>
+    </div>
+  );
+}
+
 function OptionsProps({
   attributes,
   onChange,
+  extrasAfterOptions,
 }: {
   attributes: ElementAttributes;
   onChange: (next: ElementAttributes) => void;
+  extrasAfterOptions?: ReactNode;
 }) {
   const options = attrOptions(attributes);
+  const optionIds = options.map((_, index) => String(index));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: { distance: 6 },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = Number(active.id);
+    const newIndex = Number(over.id);
+    if (
+      !Number.isInteger(oldIndex) ||
+      !Number.isInteger(newIndex) ||
+      oldIndex < 0 ||
+      newIndex < 0 ||
+      oldIndex >= options.length ||
+      newIndex >= options.length
+    ) {
+      return;
+    }
+    onChange({
+      ...attributes,
+      options: arrayMove(options, oldIndex, newIndex),
+    });
+  }
+
   return (
     <TextProps
       attributes={attributes}
       onChange={onChange}
       extras={
-        <div className="space-y-2">
-          <div className="text-sm font-medium">Options</div>
-          {options.map((opt, index) => (
-            <div key={index} className="flex gap-2">
-              <input
-                className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
-                value={opt.label}
-                onChange={(e) => {
-                  const next = [...options];
-                  next[index] = {
-                    label: e.target.value,
-                    value: e.target.value,
-                  };
-                  onChange({ ...attributes, options: next });
-                }}
-              />
-              <button
-                type="button"
-                className="text-xs text-destructive"
-                onClick={() => {
-                  onChange({
-                    ...attributes,
-                    options: options.filter((_, i) => i !== index),
-                  });
-                }}
+        <div className="space-y-3">
+          <div className="space-y-2">
+            <div className="text-sm font-medium">Options</div>
+            <p className="text-[0.75rem] text-muted-foreground">
+              Drag the handle to reorder options.
+            </p>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={optionIds}
+                strategy={verticalListSortingStrategy}
               >
-                Remove
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            className="text-xs text-primary"
-            onClick={() =>
-              onChange({
-                ...attributes,
-                options: [
-                  ...options,
-                  {
-                    label: `Option ${options.length + 1}`,
-                    value: `option_${options.length + 1}`,
-                  },
-                ],
-              })
-            }
-          >
-            Add option
-          </button>
+                <div className="space-y-2">
+                  {options.map((opt, index) => (
+                    <SortableOptionRow
+                      key={optionIds[index]}
+                      id={optionIds[index]!}
+                      label={opt.label}
+                      onLabelChange={(nextLabel) => {
+                        const next = [...options];
+                        next[index] = {
+                          label: nextLabel,
+                          value: nextLabel,
+                        };
+                        onChange({ ...attributes, options: next });
+                      }}
+                      onRemove={() => {
+                        onChange({
+                          ...attributes,
+                          options: options.filter((_, i) => i !== index),
+                        });
+                      }}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
+            <button
+              type="button"
+              className="text-xs text-primary"
+              onClick={() =>
+                onChange({
+                  ...attributes,
+                  options: [
+                    ...options,
+                    {
+                      label: `Option ${options.length + 1}`,
+                      value: `option_${options.length + 1}`,
+                    },
+                  ],
+                })
+              }
+            >
+              Add option
+            </button>
+          </div>
+          {extrasAfterOptions}
         </div>
       }
     />
@@ -251,6 +376,7 @@ function makeChoiceElement(
       label,
       description: "",
       required: false,
+      ...(multiple ? {} : { allowOther: false }),
       options: [
         { label: "Option A", value: "a" },
         { label: "Option B", value: "b" },
@@ -258,6 +384,7 @@ function makeChoiceElement(
     },
     Designer: ({ attributes }) => {
       const options = attrOptions(attributes);
+      const allowOther = !multiple && attrBool(attributes, "allowOther");
       return (
         <FieldShell
           label={attrString(attributes, "label", label)}
@@ -270,56 +397,159 @@ function makeChoiceElement(
                 {opt.label}
               </label>
             ))}
+            {allowOther ? (
+              <label className="flex flex-col gap-1.5 text-sm">
+                <span className="inline-flex items-center gap-2">
+                  <input type="radio" disabled />
+                  Other (please specify)
+                </span>
+                <input
+                  disabled
+                  className="ml-6 w-full rounded-md border border-dashed border-border px-2 py-1.5 text-sm"
+                  placeholder="Please specify"
+                />
+              </label>
+            ) : null}
           </div>
         </FieldShell>
       );
     },
-    Properties: (props) => <OptionsProps {...props} />,
+    Properties: (props) =>
+      multiple ? (
+        <OptionsProps {...props} />
+      ) : (
+        <OptionsProps
+          {...props}
+          extrasAfterOptions={
+            <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border-subtle px-3 py-2.5 text-sm">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-3.5 accent-primary"
+                checked={attrBool(props.attributes, "allowOther")}
+                onChange={(e) =>
+                  props.onChange({
+                    ...props.attributes,
+                    allowOther: e.target.checked,
+                  })
+                }
+              />
+              <span>
+                <span className="block font-medium">
+                  Other (please specify)
+                </span>
+                <span className="mt-0.5 block text-[0.75rem] text-muted-foreground">
+                  Let respondents pick Other and type their own answer when
+                  none of the options fit.
+                </span>
+              </span>
+            </label>
+          }
+        />
+      ),
     Response: ({ attributes, value, onChange, disabled }) => {
       const options = attrOptions(attributes);
-      const selected = multiple
-        ? Array.isArray(value)
-          ? (value as string[])
-          : []
-        : typeof value === "string"
-          ? value
-          : "";
+      const allowOther = !multiple && attrBool(attributes, "allowOther");
+      const fieldName = attrString(attributes, "label", label);
+
+      if (multiple) {
+        const selected = Array.isArray(value) ? (value as string[]) : [];
+        return (
+          <FieldShell
+            label={fieldName}
+            required={attrBool(attributes, "required")}
+          >
+            <div className="space-y-1.5">
+              {options.map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex items-center gap-2 text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    name={fieldName}
+                    disabled={disabled}
+                    checked={selected.includes(opt.value)}
+                    onChange={() => {
+                      const set = new Set(selected);
+                      if (set.has(opt.value)) set.delete(opt.value);
+                      else set.add(opt.value);
+                      onChange([...set]);
+                    }}
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </FieldShell>
+        );
+      }
+
+      const selected = singleChoiceSelection(value);
+      const otherText = singleChoiceOtherText(value);
+      const otherSelected = selected === OTHER_CHOICE_VALUE;
+
       return (
         <FieldShell
-          label={attrString(attributes, "label", label)}
+          label={fieldName}
           required={attrBool(attributes, "required")}
         >
           <div className="space-y-1.5">
             {options.map((opt) => (
               <label key={opt.value} className="flex items-center gap-2 text-sm">
                 <input
-                  type={multiple ? "checkbox" : "radio"}
-                  name={attrString(attributes, "label", label)}
+                  type="radio"
+                  name={fieldName}
                   disabled={disabled}
-                  checked={
-                    multiple
-                      ? (selected as string[]).includes(opt.value)
-                      : selected === opt.value
-                  }
-                  onChange={() => {
-                    if (!multiple) {
-                      onChange(opt.value);
-                      return;
-                    }
-                    const set = new Set(selected as string[]);
-                    if (set.has(opt.value)) set.delete(opt.value);
-                    else set.add(opt.value);
-                    onChange([...set]);
-                  }}
+                  checked={selected === opt.value}
+                  onChange={() => onChange(opt.value)}
                 />
                 {opt.label}
               </label>
             ))}
+            {allowOther ? (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="radio"
+                    name={fieldName}
+                    disabled={disabled}
+                    checked={otherSelected}
+                    onChange={() => onChange({ other: otherText })}
+                  />
+                  Other (please specify)
+                </label>
+                {otherSelected ? (
+                  <input
+                    disabled={disabled}
+                    className="ml-6 w-full rounded-md border border-border px-2 py-1.5 text-sm"
+                    placeholder="Please specify"
+                    value={otherText}
+                    onChange={(e) => onChange({ other: e.target.value })}
+                  />
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </FieldShell>
       );
     },
-    validate: requireIfNeeded,
+    validate: (value, attributes) => {
+      if (multiple) return requireIfNeeded(value, attributes);
+
+      const allowOther = attrBool(attributes, "allowOther");
+      const selected = singleChoiceSelection(value);
+      const otherText = singleChoiceOtherText(value).trim();
+      const required = attrBool(attributes, "required");
+
+      if (selected === OTHER_CHOICE_VALUE) {
+        if (!allowOther) return "Other is not allowed for this field";
+        if (!otherText) return "Please specify your answer";
+        return null;
+      }
+
+      if (required && !selected) return "This field is required";
+      return null;
+    },
   };
 }
 

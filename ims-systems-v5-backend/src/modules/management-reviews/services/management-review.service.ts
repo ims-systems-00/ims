@@ -108,6 +108,7 @@ function mapAttachments(
     mimeType: file.mimeType,
     sizeBytes: file.sizeBytes,
     storageKey: file.storageKey,
+    bucket: file.bucket,
     url: file.url || undefined,
     uploadedBy: actorId,
     uploadedAt: now,

@@ -9,20 +9,28 @@
 export const GUIDE_LAYER_SELECTOR = "[data-guide-layer]";
 export const ALICE_FLOAT_SELECTOR = "[data-alice-float]";
 
+/**
+ * Clicks on message/prompt text often target a Text node, not an Element.
+ * `closest` only exists on Element — walk up so text clicks still count.
+ */
+export function eventTargetElement(
+  target: EventTarget | null | undefined
+): Element | null {
+  if (target instanceof Element) return target;
+  if (target instanceof Text) return target.parentElement;
+  return null;
+}
+
 export function isInGuideLayer(
   target: EventTarget | null | undefined
 ): boolean {
-  return (
-    target instanceof Element && target.closest(GUIDE_LAYER_SELECTOR) !== null
-  );
+  return eventTargetElement(target)?.closest(GUIDE_LAYER_SELECTOR) !== null;
 }
 
 export function isInAliceFloatLayer(
   target: EventTarget | null | undefined
 ): boolean {
-  return (
-    target instanceof Element && target.closest(ALICE_FLOAT_SELECTOR) !== null
-  );
+  return eventTargetElement(target)?.closest(ALICE_FLOAT_SELECTOR) !== null;
 }
 
 type OutsideInteractionEvent = {

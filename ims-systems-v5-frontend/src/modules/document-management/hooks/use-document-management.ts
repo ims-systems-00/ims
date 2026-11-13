@@ -36,6 +36,7 @@ import {
   applyDocumentComplianceClauses,
   clearDocumentComplianceLinks,
   createDocumentEditorSession,
+  downloadRepoNodesZip,
   getDocumentTreeNode,
   softDeleteDocumentRepository,
   softDeleteNode,
@@ -191,10 +192,15 @@ export function usePublishedDocumentsQuery(params: {
   purpose?: DocumentPurpose;
   applicableModule?: DocumentApplicableModule;
   search?: string;
+  complianceToolkitId?: string;
+  clauseId?: string;
+  enabled?: boolean;
 }) {
+  const { enabled = true, ...queryParams } = params;
   return useQuery({
-    queryKey: documentManagementKeys.published(params),
-    queryFn: () => listPublishedDocuments(params),
+    queryKey: documentManagementKeys.published(queryParams),
+    queryFn: () => listPublishedDocuments(queryParams),
+    enabled,
   });
 }
 
@@ -435,6 +441,13 @@ export function useCopyFolderStructureMutation(repositoryId: string) {
     onSuccess: async () => {
       await invalidateDocumentQueries(queryClient, repositoryId);
     },
+  });
+}
+
+export function useDownloadRepoNodesZipMutation(repositoryId: string) {
+  return useMutation({
+    mutationFn: (nodeIds: string[]) =>
+      downloadRepoNodesZip(repositoryId, nodeIds),
   });
 }
 

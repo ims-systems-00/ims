@@ -175,6 +175,7 @@ export type UpdateFormElementInput = {
 };
 
 export type ReorderFormElementInput = {
+  parentElementId?: string | null;
   /** Place after this element; null = move to start. */
   afterElementId: string | null;
 };

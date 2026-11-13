@@ -5,7 +5,7 @@ import { cn } from "@/shared/lib/utils";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
 import { useUpdateFormMutation } from "../hooks/use-forms";
-import { normalizeFormTheme } from "../lib/form-theme";
+import { normalizeFormTheme, useThemeImageSrc } from "../lib/form-theme";
 import type {
   Form,
   FormLogoHorizontal,
@@ -112,6 +112,8 @@ export function FormBrandPanel({
   const [theme, setTheme] = useState<FormTheme>(() =>
     normalizeFormTheme(form.theme)
   );
+  const logoPreviewUrl = useThemeImageSrc(theme.logo);
+  const coverPreviewUrl = useThemeImageSrc(theme.coverImage);
 
   useEffect(() => {
     setTheme(normalizeFormTheme(form.theme));
@@ -170,7 +172,7 @@ export function FormBrandPanel({
           </p>
         </div>
         <ImageUploadControl
-          imageUrl={theme.logo?.src}
+          imageUrl={logoPreviewUrl}
           alt="Form logo"
           shape="rounded"
           tileClassName="size-16 text-sm"
@@ -227,7 +229,7 @@ export function FormBrandPanel({
           </p>
         </div>
         <ImageUploadControl
-          imageUrl={theme.coverImage?.src}
+          imageUrl={coverPreviewUrl}
           alt="Form cover"
           shape="rounded"
           layout="column"

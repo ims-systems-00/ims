@@ -24,6 +24,7 @@ const fileMetaSchema = z.object({
   Key: z.string().trim().min(1),
   key: z.string().trim().min(1).optional(),
   Bucket: z.string().trim().min(1),
+  Size: z.number().int().nonnegative().optional(),
 });
 
 export const createRepositoryBodySchema = z
@@ -215,6 +216,11 @@ export const copyFolderStructureBodySchema = z.object({
   sourceOrgId: objectIdSchema.optional(),
 });
 
+/** Multi-download: document and/or folder node ids (folders expand recursively). */
+export const downloadNodesZipBodySchema = z.object({
+  nodeIds: z.array(objectIdSchema).min(1).max(200),
+});
+
 export const addAuthoriserBodySchema = z.object({
   user: z.string().trim().min(1),
   userId: z.string().trim().min(1).optional(),
@@ -290,6 +296,8 @@ export const listPublishedDocumentsQuerySchema = z.object({
   purpose: z.enum(DOCUMENT_PURPOSES).optional(),
   applicableModule: z.enum(DOCUMENT_APPLICABLE_MODULES).optional(),
   complianceTool: z.enum(DOCUMENT_COMPLIANCE_TOOLS).optional(),
+  complianceToolkitId: z.string().trim().min(1).max(120).optional(),
+  clauseId: z.string().trim().min(1).max(80).optional(),
   sort: z.enum(["createdOn", "name", "updatedAt"]).default("createdOn"),
   sortDir: z.enum(["asc", "desc"]).default("desc"),
 });
@@ -299,11 +307,23 @@ export function normalizeFileMeta(input: {
   Key: string;
   key?: string;
   Bucket: string;
-}): { Name: string; Key: string; key: string; Bucket: string } {
+  Size?: number;
+}): {
+  Name: string;
+  Key: string;
+  key: string;
+  Bucket: string;
+  Size?: number;
+} {
   return {
     Name: input.Name,
     Key: input.Key,
     key: input.key ?? input.Key,
     Bucket: input.Bucket,
+    ...(typeof input.Size === "number" &&
+    Number.isFinite(input.Size) &&
+    input.Size >= 0
+      ? { Size: input.Size }
+      : {}),
   };
 }

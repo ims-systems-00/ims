@@ -19,6 +19,7 @@ const fileMetaSchema = new Schema(
     Key: { type: String, required: true },
     key: { type: String, required: true },
     Bucket: { type: String, required: true },
+    Size: { type: Number, required: false },
   },
   { _id: false }
 );

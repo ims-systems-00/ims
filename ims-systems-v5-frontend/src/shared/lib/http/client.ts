@@ -137,11 +137,11 @@ export async function apiRequest<T>(
 /**
  * Authenticated binary/CSV download helper.
  * Same auth + org headers as {@link apiRequest}, but returns a Blob instead of
- * parsing the JSON success envelope (report endpoints stream raw CSV).
+ * parsing the JSON success envelope (report endpoints stream raw CSV/zip).
  */
 export async function apiBlobRequest(
   path: string,
-  options: Omit<ApiRequestOptions, "body"> & {
+  options: ApiRequestOptions & {
     accept?: string;
   } = {}
 ): Promise<Blob> {
@@ -155,6 +155,10 @@ export async function apiBlobRequest(
     "x-correlation-id": correlationId,
     ...options.headers,
   };
+
+  if (options.body !== undefined) {
+    headers["Content-Type"] = "application/json";
+  }
 
   const activeOrgId = getActiveOrganisationId();
   if (activeOrgId && !headers["x-org-id"]) {
@@ -174,6 +178,8 @@ export async function apiBlobRequest(
     response = await fetch(url, {
       method,
       headers,
+      body:
+        options.body === undefined ? undefined : JSON.stringify(options.body),
       signal: options.signal,
     });
   } catch (error) {
@@ -187,11 +193,32 @@ export async function apiBlobRequest(
   }
 
   if (!response.ok) {
+    const responseCorrelationId =
+      response.headers.get("x-correlation-id") ?? correlationId;
+    const contentType = response.headers.get("content-type") ?? "";
+    if (contentType.includes("application/json")) {
+      try {
+        const payload: unknown = await response.json();
+        const parsedError = apiErrorSchema.safeParse(payload);
+        if (parsedError.success) {
+          throw new ApiClientError({
+            message: parsedError.data.error.message,
+            status: response.status,
+            code: parsedError.data.error.code,
+            details: parsedError.data.error.details,
+            correlationId:
+              parsedError.data.correlationId ?? responseCorrelationId,
+          });
+        }
+      } catch (error) {
+        if (error instanceof ApiClientError) throw error;
+      }
+    }
     throw new ApiClientError({
       message: `Unable to download file (${response.status})`,
       status: response.status,
       code: mapStatusToCode(response.status),
-      correlationId: response.headers.get("x-correlation-id") ?? correlationId,
+      correlationId: responseCorrelationId,
     });
   }
 

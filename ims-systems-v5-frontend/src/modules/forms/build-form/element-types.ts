@@ -63,6 +63,33 @@ export function attrOptions(
     .filter((row): row is { label: string; value: string } => row != null);
 }
 
+/** Sentinel value for Single choice “Other (please specify)”. */
+export const OTHER_CHOICE_VALUE = "__other__";
+
+export type OtherChoiceValue = { other: string };
+
+export function isOtherChoiceValue(
+  value: unknown
+): value is OtherChoiceValue {
+  return (
+    Boolean(value) &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    "other" in (value as object) &&
+    typeof (value as { other: unknown }).other === "string"
+  );
+}
+
+export function singleChoiceSelection(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (isOtherChoiceValue(value)) return OTHER_CHOICE_VALUE;
+  return "";
+}
+
+export function singleChoiceOtherText(value: unknown): string {
+  return isOtherChoiceValue(value) ? value.other : "";
+}
+
 export function requireIfNeeded(
   value: unknown,
   attributes: ElementAttributes

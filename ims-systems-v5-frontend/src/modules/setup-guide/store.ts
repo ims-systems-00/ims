@@ -43,8 +43,13 @@ function writeHidden(hidden: boolean) {
 }
 
 type SetupGuideState = {
-  /** Dashboard checklist card is collapsed / hidden. */
+  /**
+   * User chose “Hide for now” — sidebar entry can offer reopen.
+   * Persisted; independent of whether the modal is open this session.
+   */
   checklistHidden: boolean;
+  /** Large setup-guide popup is open. */
+  checklistOpen: boolean;
   /** Step currently being coached, or null. */
   activeStepId: string | null;
   /** 0-based sub-step index inside the active step. */
@@ -73,12 +78,11 @@ type SetupGuideState = {
   lastRepositoryContext: { repositoryId: string } | null;
   /** True while seed-then-spotlight is creating/opening a record. */
   seedPending: boolean;
-  /** Briefly true after navbar “open setup guide” so the card can scroll into view. */
-  focusChecklistToken: number;
 
   hideChecklist: () => void;
   showChecklist: () => void;
   openChecklist: () => void;
+  closeChecklist: () => void;
   startStep: (stepId: string) => void;
   closeGuide: () => void;
   setSubIndex: (index: number) => void;
@@ -106,6 +110,7 @@ type SetupGuideState = {
 
 export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
   checklistHidden: typeof window !== "undefined" ? readHidden() : false,
+  checklistOpen: false,
   activeStepId: null,
   subIndex: 0,
   completedSteps: typeof window !== "undefined" ? readDone() : {},
@@ -117,11 +122,10 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
   lastAuditContext: null,
   lastRepositoryContext: null,
   seedPending: false,
-  focusChecklistToken: 0,
 
   hideChecklist: () => {
     writeHidden(true);
-    set({ checklistHidden: true });
+    set({ checklistHidden: true, checklistOpen: false });
   },
 
   showChecklist: () => {
@@ -131,11 +135,13 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
 
   openChecklist: () => {
     writeHidden(false);
-    set((state) => ({
+    set({
       checklistHidden: false,
-      focusChecklistToken: state.focusChecklistToken + 1,
-    }));
+      checklistOpen: true,
+    });
   },
+
+  closeChecklist: () => set({ checklistOpen: false }),
 
   startStep: (stepId) => {
     const step = getSetupStep(stepId);
@@ -146,7 +152,7 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
       events: {},
       aliceAssistOpen: false,
       seedPending: false,
-      checklistHidden: true,
+      checklistOpen: false,
     });
   },
 
@@ -178,13 +184,17 @@ export const useSetupGuideStore = create<SetupGuideState>((set, get) => ({
     set((state) => {
       const completedSteps = { ...state.completedSteps, [stepId]: true };
       writeDone(completedSteps);
+      const closingActive = state.activeStepId === stepId;
+      writeHidden(false);
       return {
         completedSteps,
-        activeStepId: state.activeStepId === stepId ? null : state.activeStepId,
-        subIndex: state.activeStepId === stepId ? 0 : state.subIndex,
-        events: state.activeStepId === stepId ? {} : state.events,
+        activeStepId: closingActive ? null : state.activeStepId,
+        subIndex: closingActive ? 0 : state.subIndex,
+        events: closingActive ? {} : state.events,
         aliceAssistOpen: false,
+        // Reopen the checklist popup so the next step is obvious.
         checklistHidden: false,
+        checklistOpen: closingActive ? true : state.checklistOpen,
       };
     });
   },

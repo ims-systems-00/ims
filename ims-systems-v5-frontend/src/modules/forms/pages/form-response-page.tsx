@@ -3,18 +3,25 @@ import { useParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import {
+  useFormElementsQuery,
   useFormQuery,
   useFormSubmissionQuery,
   useFormSubmissionsQuery,
 } from "../hooks/use-forms";
 import { getElementDefinition } from "../build-form/registry";
+import { FormElementsLayout } from "../components/form-elements-layout";
 import { FormLogo } from "../components/form-logo";
-import { formThemeCssVars, normalizeFormTheme, themeImageSrc } from "../lib/form-theme";
+import {
+  formThemeCssVars,
+  normalizeFormTheme,
+  useThemeImageSrc,
+} from "../lib/form-theme";
 
 export function FormResponsePage() {
   const { formId = "" } = useParams();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const formQuery = useFormQuery(formId);
+  const elementsQuery = useFormElementsQuery(formId);
   const listQuery = useFormSubmissionsQuery(formId, { page: 1, pageSize: 50 });
   const detailQuery = useFormSubmissionQuery(
     formId,
@@ -24,7 +31,7 @@ export function FormResponsePage() {
     () => normalizeFormTheme(formQuery.data?.theme),
     [formQuery.data?.theme]
   );
-  const coverSrc = themeImageSrc(theme.coverImage);
+  const coverSrc = useThemeImageSrc(theme.coverImage);
   const logoAtTop = theme.logoVertical !== "bottom";
 
   const items = listQuery.data?.items ?? [];
@@ -116,30 +123,61 @@ export function FormResponsePage() {
                   Submitted {new Date(detailQuery.data.createdAt).toLocaleString()}
                 </p>
               </div>
-              {detailQuery.data.responses.map((row) => {
-                const type = row.element?.type ?? "TextInput";
-                const def = getElementDefinition(type);
-                if (!def) {
+              {(elementsQuery.data?.length ?? 0) > 0 ? (
+                <FormElementsLayout
+                  elements={elementsQuery.data ?? []}
+                  renderElement={(el) => {
+                    const response = detailQuery.data.responses.find(
+                      (row) => row.formElementId === el.id
+                    );
+                    const def = getElementDefinition(el.type);
+                    if (!def) {
+                      return (
+                        <pre className="overflow-x-auto rounded bg-black/5 p-2 text-xs">
+                          {JSON.stringify(
+                            response?.responseValue ?? null,
+                            null,
+                            2
+                          )}
+                        </pre>
+                      );
+                    }
+                    return (
+                      <def.Response
+                        attributes={el.attributes}
+                        value={response?.responseValue}
+                        onChange={() => undefined}
+                        disabled
+                      />
+                    );
+                  }}
+                />
+              ) : (
+                detailQuery.data.responses.map((row) => {
+                  const type = row.element?.type ?? "TextInput";
+                  const def = getElementDefinition(type);
+                  if (!def) {
+                    return (
+                      <pre
+                        key={row.id}
+                        className="overflow-x-auto rounded bg-black/5 p-2 text-xs"
+                      >
+                        {JSON.stringify(row.responseValue, null, 2)}
+                      </pre>
+                    );
+                  }
                   return (
-                    <pre
-                      key={row.id}
-                      className="overflow-x-auto rounded bg-black/5 p-2 text-xs"
-                    >
-                      {JSON.stringify(row.responseValue, null, 2)}
-                    </pre>
+                    <div key={row.id}>
+                      <def.Response
+                        attributes={row.element?.attributes ?? {}}
+                        value={row.responseValue}
+                        onChange={() => undefined}
+                        disabled
+                      />
+                    </div>
                   );
-                }
-                return (
-                  <div key={row.id}>
-                    <def.Response
-                      attributes={row.element?.attributes ?? {}}
-                      value={row.responseValue}
-                      onChange={() => undefined}
-                      disabled
-                    />
-                  </div>
-                );
-              })}
+                })
+              )}
               {!logoAtTop ? (
                 <FormLogo
                   theme={theme}

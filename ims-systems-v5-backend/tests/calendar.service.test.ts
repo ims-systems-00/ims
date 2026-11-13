@@ -53,6 +53,11 @@ describe("applyTimeOfDay", () => {
     expect(applyTimeOfDay(base).toISOString()).toBe(base.toISOString());
     expect(applyTimeOfDay(base, "bad").toISOString()).toBe(base.toISOString());
   });
+
+  it("rejects missing or invalid dates", () => {
+    expect(() => applyTimeOfDay(undefined)).toThrow(/requires a date/i);
+    expect(() => applyTimeOfDay("not-a-date")).toThrow(/valid date/i);
+  });
 });
 
 describe("CalendarService", () => {

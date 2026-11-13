@@ -133,6 +133,8 @@ export type DocumentFileMeta = {
   Key: string;
   key: string;
   Bucket: string;
+  /** Optional byte size from upload (used for repo size sorting). */
+  Size?: number;
 };
 
 export type AuthorisationEntry = {

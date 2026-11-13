@@ -19,7 +19,7 @@ import type {
   PaginatedDocumentNodes,
   DocumentOverviewCounts,
 } from "../types";
-import { DOCUMENT_PURPOSES } from "../types";
+import { DOCUMENT_PURPOSES, documentToolForToolkit } from "../types";
 import {
   getDocumentTreeModel,
   type DocumentTreeDocument,
@@ -75,12 +75,18 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     return null;
   }
   const key = String(storage.key ?? storage.Key);
+  const rawSize = (storage as { Size?: unknown }).Size;
+  const size =
+    typeof rawSize === "number" && Number.isFinite(rawSize) && rawSize >= 0
+      ? rawSize
+      : undefined;
   return {
     storageInfo: {
       Name: String(storage.Name),
       Key: String(storage.Key ?? key),
       key,
       Bucket: String(storage.Bucket),
+      ...(size !== undefined ? { Size: size } : {}),
     },
     purpose: (data.purpose && DOCUMENT_PURPOSES.includes(data.purpose)
       ? data.purpose
@@ -621,12 +627,42 @@ export function createDocumentTreeStore() {
       if (query.complianceTool) {
         filter["documentData.complianceTools"] = query.complianceTool;
       }
+      const toolkitId = query.complianceToolkitId?.trim();
+      const clauseId = query.clauseId?.trim();
+      const andClauses: Record<string, unknown>[] = [];
+      if (toolkitId && clauseId) {
+        // Clause filter only applies to Compliance Settings links.
+        andClauses.push({
+          "documentData.complianceLinks": {
+            $elemMatch: { toolkitId, clauseIds: clauseId },
+          },
+        });
+      } else if (toolkitId) {
+        // Match Compliance Settings links OR upload-time complianceTools tags.
+        const toolCode = documentToolForToolkit(toolkitId);
+        const toolkitMatch: Record<string, unknown>[] = [
+          { "documentData.complianceLinks.toolkitId": toolkitId },
+        ];
+        if (toolCode) {
+          toolkitMatch.push({ "documentData.complianceTools": toolCode });
+        }
+        andClauses.push({ $or: toolkitMatch });
+      } else if (clauseId) {
+        andClauses.push({
+          "documentData.complianceLinks.clauseIds": clauseId,
+        });
+      }
       if (query.search?.trim()) {
         const escaped = query.search
           .trim()
           .replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         const regex = new RegExp(escaped, "i");
-        filter.$or = [{ name: regex }, { reference: regex }];
+        andClauses.push({ $or: [{ name: regex }, { reference: regex }] });
+      }
+      if (andClauses.length === 1) {
+        Object.assign(filter, andClauses[0]);
+      } else if (andClauses.length > 1) {
+        filter.$and = andClauses;
       }
 
       const sortField = query.sort ?? "createdOn";

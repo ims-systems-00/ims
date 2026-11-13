@@ -2,6 +2,7 @@ import { useMemo, useState, type FormEvent } from "react";
 import { FormField, FormSection } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
+import { FileDropZone, type FileMetaInfo } from "@/modules/files";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import {
@@ -73,10 +74,8 @@ export function ReviewForm({
   const [attendees, setAttendees] = useState<string[]>(
     initialReview?.attendees ?? []
   );
-  const [agendaFileName, setAgendaFileName] = useState("");
-  const [agendaUrl, setAgendaUrl] = useState("");
-  const [minutesFileName, setMinutesFileName] = useState("");
-  const [minutesUrl, setMinutesUrl] = useState("");
+  const [agendaFiles, setAgendaFiles] = useState<AttachmentInput[]>([]);
+  const [minutesFiles, setMinutesFiles] = useState<AttachmentInput[]>([]);
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
@@ -108,18 +107,36 @@ export function ReviewForm({
     );
   }
 
-  function buildAttachments(
-    fileName: string,
-    url: string
-  ): AttachmentInput[] | undefined {
-    const trimmed = fileName.trim();
-    if (!trimmed) return undefined;
-    return [
-      {
-        fileName: trimmed,
-        url: url.trim() || undefined,
-      },
-    ];
+  function toAttachmentInput(meta: FileMetaInfo, file: File): AttachmentInput {
+    return {
+      fileName: meta.Name,
+      mimeType: file.type || undefined,
+      sizeBytes: file.size,
+      storageKey: meta.Key || meta.key,
+      bucket: meta.Bucket,
+    };
+  }
+
+  function handleAgendaUploaded(meta: FileMetaInfo, file: File) {
+    setAgendaFiles((current) => [...current, toAttachmentInput(meta, file)]);
+  }
+
+  function handleAgendaRemoved(meta: FileMetaInfo) {
+    const key = meta.Key || meta.key;
+    setAgendaFiles((current) =>
+      current.filter((item) => item.storageKey !== key)
+    );
+  }
+
+  function handleMinutesUploaded(meta: FileMetaInfo, file: File) {
+    setMinutesFiles((current) => [...current, toAttachmentInput(meta, file)]);
+  }
+
+  function handleMinutesRemoved(meta: FileMetaInfo) {
+    const key = meta.Key || meta.key;
+    setMinutesFiles((current) =>
+      current.filter((item) => item.storageKey !== key)
+    );
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -135,8 +152,8 @@ export function ReviewForm({
         businessUnitId: businessUnitId || undefined,
         time: time || undefined,
         attendees,
-        agenda: buildAttachments(agendaFileName, agendaUrl),
-        minutes: buildAttachments(minutesFileName, minutesUrl),
+        agenda: agendaFiles.length > 0 ? agendaFiles : undefined,
+        minutes: minutesFiles.length > 0 ? minutesFiles : undefined,
       });
       if (!parsed.success) {
         const next: FieldErrors = {};
@@ -354,45 +371,35 @@ export function ReviewForm({
       {mode === "create" ? (
         <FormSection
           title="Documents"
-          description="File storage is not wired yet — add a display name and optional URL. Files attach to the first scheduled instance only."
+          description="Upload agenda and minutes from your device. Files are stored in the cloud and attach to the first scheduled instance only."
         >
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Agenda file name" error={fieldErrors.agenda}>
-              <input
-                className="ims-field"
-                value={agendaFileName}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Agenda</p>
+              <FileDropZone
+                path="agenda"
+                multiple
                 disabled={pending}
-                placeholder="agenda.pdf"
-                onChange={(event) => setAgendaFileName(event.target.value)}
+                onUploaded={handleAgendaUploaded}
+                onRemoved={handleAgendaRemoved}
               />
-            </FormField>
-            <FormField label="Agenda URL">
-              <input
-                className="ims-field"
-                value={agendaUrl}
+              {fieldErrors.agenda ? (
+                <p className="text-sm text-destructive">{fieldErrors.agenda}</p>
+              ) : null}
+            </div>
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Minutes</p>
+              <FileDropZone
+                path="minutes"
+                multiple
                 disabled={pending}
-                placeholder="https://"
-                onChange={(event) => setAgendaUrl(event.target.value)}
+                onUploaded={handleMinutesUploaded}
+                onRemoved={handleMinutesRemoved}
               />
-            </FormField>
-            <FormField label="Minutes file name" error={fieldErrors.minutes}>
-              <input
-                className="ims-field"
-                value={minutesFileName}
-                disabled={pending}
-                placeholder="minutes.pdf"
-                onChange={(event) => setMinutesFileName(event.target.value)}
-              />
-            </FormField>
-            <FormField label="Minutes URL">
-              <input
-                className="ims-field"
-                value={minutesUrl}
-                disabled={pending}
-                placeholder="https://"
-                onChange={(event) => setMinutesUrl(event.target.value)}
-              />
-            </FormField>
+              {fieldErrors.minutes ? (
+                <p className="text-sm text-destructive">{fieldErrors.minutes}</p>
+              ) : null}
+            </div>
           </div>
         </FormSection>
       ) : null}

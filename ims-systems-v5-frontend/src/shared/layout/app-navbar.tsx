@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { CircleHelp, Menu } from "lucide-react";
 import aliceIcon from "@/assets/images/Type=Icon Dark BG.png";
 import { Button } from "@/shared/components/ui/button";
@@ -19,7 +19,6 @@ type AppNavbarProps = {
 };
 
 export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
-  const navigate = useNavigate();
   const openSidebar = useAliceChatStore((state) => state.openSidebar);
   const openSetupGuide = useSetupGuideStore((state) => state.openChecklist);
 
@@ -100,7 +99,6 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
           title="Setup Guide"
           onClick={() => {
             openSetupGuide();
-            navigate("/");
           }}
         >
           <CircleHelp className="size-4" />

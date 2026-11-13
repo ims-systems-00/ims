@@ -46,6 +46,7 @@ export const uploadDocumentFormSchema = z
     owners: z.array(z.string().trim().min(1)).min(1).max(5),
     reviewDate: z.string().trim().nullable().optional(),
     requireAuthorisation: z.boolean().default(false),
+    authoriserId: z.string().trim().optional().default(""),
   })
   .superRefine((value, ctx) => {
     if (
@@ -56,6 +57,13 @@ export const uploadDocumentFormSchema = z
         code: "custom",
         path: ["complianceTools"],
         message: "Select at least one compliance standard",
+      });
+    }
+    if (value.requireAuthorisation && !value.authoriserId.trim()) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["authoriserId"],
+        message: "Select who should authorise this document",
       });
     }
   });
