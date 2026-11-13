@@ -1,4 +1,5 @@
 import type { ActivitiesApplicationPort } from "../../activities";
+import { getLocalObjectStorage } from "../../files/local-fallback-storage";
 import type { ObjectStoragePort } from "../../files/ports";
 import type { NotificationsApplicationPort } from "../../notifications";
 import type { EmailSystem } from "../../../infrastructure/queue/create-email-system";
@@ -10,6 +11,53 @@ import type {
   DocumentMembershipPort,
   DocumentNotificationPort,
 } from "../ports";
+
+type ReadableStorage = ObjectStoragePort & {
+  readObject?: (input: { bucket: string; key: string }) => Promise<Buffer>;
+};
+
+/**
+ * Prefer direct disk/S3 reads over HTTP fetch of signed URLs.
+ * Compose local signed URLs point at the host (`localhost`), which the
+ * backend container cannot reach (ECONNREFUSED).
+ */
+async function readObjectBytes(
+  storage: ObjectStoragePort,
+  bucket: string,
+  key: string
+): Promise<Buffer> {
+  const withRead = storage as ReadableStorage;
+  if (typeof withRead.readObject === "function") {
+    try {
+      return await withRead.readObject({ bucket, key });
+    } catch {
+      // Non-local / unsupported bucket — fall through.
+    }
+  }
+
+  const local = getLocalObjectStorage(storage);
+  if (local) {
+    try {
+      return await local.readObject({ bucket, key });
+    } catch {
+      // Object may live in remote storage.
+    }
+  }
+
+  const url = await storage.createViewUrl({
+    bucket,
+    key,
+    expiresInSeconds: 600,
+  });
+  if (url.startsWith("memory://")) {
+    throw new Error("Stored file bytes are not available (memory storage)");
+  }
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Unable to read stored file (${response.status})`);
+  }
+  return Buffer.from(await response.arrayBuffer());
+}
 
 export function createDocumentMembershipAdapter(): DocumentMembershipPort {
   const memberships = createOrganisationMembershipRepository();
@@ -69,19 +117,7 @@ export function createDocumentFilesAdapter(
     },
 
     async readStoredFile(meta) {
-      const url = await storage.createViewUrl({
-        bucket: meta.Bucket,
-        key: meta.Key || meta.key,
-        expiresInSeconds: 600,
-      });
-      if (url.startsWith("memory://")) {
-        throw new Error("Stored file bytes are not available (memory storage)");
-      }
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Unable to read stored file (${response.status})`);
-      }
-      return Buffer.from(await response.arrayBuffer());
+      return readObjectBytes(storage, meta.Bucket, meta.Key || meta.key);
     },
 
     async writeStoredFile(input) {

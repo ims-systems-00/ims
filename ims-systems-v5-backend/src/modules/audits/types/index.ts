@@ -33,6 +33,8 @@ export type AuditAttachment = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  /** File Handler bucket for view/download URLs. */
+  bucket?: string;
   url?: string;
   uploadedBy: string;
   uploadedAt: Date;
@@ -103,6 +105,7 @@ export type AttachmentInput = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  bucket?: string;
   url?: string;
 };
 

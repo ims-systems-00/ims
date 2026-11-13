@@ -180,7 +180,7 @@ export function OrganisationLicencesPanel({
   return (
     <>
       <section className="ims-panel overflow-hidden">
-        <div className="space-y-3 border-b border-border-subtle px-4 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border-subtle px-4 py-3">
           <div className="min-w-0">
             <h3 className="text-sm font-semibold tracking-tight">Licenses</h3>
             <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
@@ -189,7 +189,7 @@ export function OrganisationLicencesPanel({
               {hasSubscription ? " · subscribed" : ""}
             </p>
           </div>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center justify-end gap-2">
             <Button
               type="button"
               size="sm"

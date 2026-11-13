@@ -1,4 +1,5 @@
 import type { CSSProperties } from "react";
+import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
 import type {
   FormLogoHorizontal,
   FormLogoVertical,
@@ -55,9 +56,38 @@ export function formThemeCssVars(theme: FormTheme): CSSProperties {
   };
 }
 
+/** Sync fallback — prefer {@link useThemeImageSrc} so signed URLs stay fresh. */
 export function themeImageSrc(
   image: FormThemeImage | null | undefined
 ): string | null {
   if (!image?.src) return null;
   return image.src;
+}
+
+/**
+ * Display URL for a form theme image (logo / cover): mint a fresh File Handler
+ * view URL from bucket/key when available. Persisted `src` signed URLs expire
+ * and otherwise 403 after FILES_VIEW_URL_TTL_SECONDS.
+ */
+export function useThemeImageSrc(
+  image: FormThemeImage | null | undefined
+): string | null {
+  const storage = image?.storage ?? null;
+  const view = useFileViewUrlQuery(
+    storage
+      ? {
+          Bucket: storage.bucket,
+          Key: storage.key,
+          key: storage.key,
+          Name: storage.fileName ?? "image",
+        }
+      : null,
+    Boolean(storage?.bucket && storage?.key)
+  );
+  if (view.data?.url) return view.data.url;
+  if (storage?.bucket && storage?.key) {
+    // Avoid flashing an expired signed `src` while a fresh URL loads.
+    return view.isError ? (image?.src ?? null) : null;
+  }
+  return image?.src ?? null;
 }

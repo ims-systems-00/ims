@@ -2,6 +2,11 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
+import {
+  AttachmentRow,
+  FileDropZone,
+  type FileMetaInfo,
+} from "@/modules/files";
 import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery, useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
@@ -9,8 +14,11 @@ import {
   useReviewAttachmentMutations,
   useReviewAttendeeMutations,
 } from "../hooks/use-management-reviews";
-import { attachmentFormSchema } from "../schemas";
-import type { ManagementReview, ReviewAttachment } from "../types";
+import type {
+  AttachmentInput,
+  ManagementReview,
+  ReviewAttachment,
+} from "../types";
 import {
   ReviewIntervalBadge,
   ReviewPrivacyBadge,
@@ -59,9 +67,11 @@ function UnitLabel({ id }: { id?: string }) {
 
 type AttachmentListProps = {
   title: string;
+  /** File Handler path (`agenda` / `minutes`). */
+  uploadPath: string;
   files: ReviewAttachment[];
   editable: boolean;
-  onAdd?: (fileName: string, url?: string) => Promise<void>;
+  onUpload?: (files: AttachmentInput[]) => Promise<void>;
   onRemove?: (attachmentId: string) => Promise<void>;
   pending?: boolean;
   removingId?: string | null;
@@ -69,109 +79,116 @@ type AttachmentListProps = {
 
 function AttachmentList({
   title,
+  uploadPath,
   files,
   editable,
-  onAdd,
+  onUpload,
   onRemove,
   pending,
   removingId,
 }: AttachmentListProps) {
-  const [fileName, setFileName] = useState("");
-  const [url, setUrl] = useState("");
-  const [error, setError] = useState<string | undefined>();
-
-  async function handleAdd(event: FormEvent) {
-    event.preventDefault();
-    if (!onAdd) return;
-    const parsed = attachmentFormSchema.safeParse({
-      fileName,
-      url: url || undefined,
-    });
-    if (!parsed.success) {
-      setError(parsed.error.issues[0]?.message ?? "Invalid attachment");
-      return;
-    }
-    setError(undefined);
+  async function handleUploaded(meta: FileMetaInfo, file: File) {
+    if (!onUpload) return;
     try {
-      await onAdd(parsed.data.fileName, parsed.data.url || undefined);
-      setFileName("");
-      setUrl("");
-    } catch (err) {
-      notify.fromError(err, `Unable to add ${title.toLowerCase()}`);
+      await onUpload([
+        {
+          fileName: meta.Name,
+          mimeType: file.type || undefined,
+          sizeBytes: file.size,
+          storageKey: meta.Key || meta.key,
+          bucket: meta.Bucket,
+        },
+      ]);
+      notify.success(`${meta.Name} uploaded`);
+    } catch (error) {
+      notify.fromError(error, `Unable to save ${title.toLowerCase()}`);
     }
   }
 
   return (
     <section className="space-y-3">
-      <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
-      {files.length === 0 ? (
-        <p className="ims-text-meta">No {title.toLowerCase()} attached</p>
-      ) : (
-        <ul className="space-y-2">
-          {files.map((file) => (
-            <li
-              key={file.id}
-              className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
-            >
-              <span className="min-w-0 truncate">
-                {file.url ? (
-                  <a
-                    href={file.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="underline-offset-2 hover:underline"
-                  >
-                    {file.fileName}
-                  </a>
-                ) : (
-                  file.fileName
-                )}
-              </span>
-              {editable && onRemove ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={pending || removingId === file.id}
-                  onClick={() => void onRemove(file.id)}
-                >
-                  Remove
-                </Button>
-              ) : null}
-            </li>
-          ))}
-        </ul>
-      )}
-      {editable && onAdd ? (
-        <form
-          className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]"
-          onSubmit={(e) => void handleAdd(e)}
-        >
-          <FormField label="File name" required error={error}>
-            <input
-              className="ims-field"
-              value={fileName}
-              disabled={pending}
-              placeholder="document.pdf"
-              onChange={(event) => setFileName(event.target.value)}
-            />
-          </FormField>
-          <FormField label="URL (optional)">
-            <input
-              className="ims-field"
-              value={url}
-              disabled={pending}
-              placeholder="https://"
-              onChange={(event) => setUrl(event.target.value)}
-            />
-          </FormField>
-          <div className="flex items-end">
-            <Button type="submit" size="sm" disabled={pending}>
-              Add
-            </Button>
-          </div>
-        </form>
+      <div>
+        <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+        <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+          Upload documents or images from your device. They are stored in cloud
+          storage on this review.
+        </p>
+      </div>
+
+      {editable && onUpload ? (
+        <FileDropZone
+          path={uploadPath}
+          multiple
+          disabled={pending}
+          onUploaded={(meta, file) => void handleUploaded(meta, file)}
+        />
       ) : null}
+
+      {files.length === 0 ? (
+        <p className="ims-text-meta">
+          {editable
+            ? `No ${title.toLowerCase()} yet — drop files above to add them.`
+            : `No ${title.toLowerCase()} attached`}
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {files.map((file) =>
+            file.storageKey && file.bucket ? (
+              <AttachmentRow
+                key={file.id}
+                file={{
+                  Name: file.fileName,
+                  Key: file.storageKey,
+                  key: file.storageKey,
+                  Bucket: file.bucket,
+                }}
+                sizeBytes={file.sizeBytes}
+                metaLine={
+                  file.uploadedAt
+                    ? `Uploaded ${formatDateTime(file.uploadedAt)}`
+                    : undefined
+                }
+                onDelete={
+                  editable && onRemove
+                    ? () => void onRemove(file.id)
+                    : undefined
+                }
+              />
+            ) : (
+              <div
+                key={file.id}
+                className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
+              >
+                <span className="min-w-0 truncate">
+                  {file.url ? (
+                    <a
+                      href={file.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="underline-offset-2 hover:underline"
+                    >
+                      {file.fileName}
+                    </a>
+                  ) : (
+                    file.fileName
+                  )}
+                </span>
+                {editable && onRemove ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    disabled={pending || removingId === file.id}
+                    onClick={() => void onRemove(file.id)}
+                  >
+                    Remove
+                  </Button>
+                ) : null}
+              </div>
+            )
+          )}
+        </div>
+      )}
     </section>
   );
 }
@@ -350,26 +367,26 @@ export function ReviewDetails({ review }: ReviewDetailsProps) {
 
       <AttachmentList
         title="Agenda"
+        uploadPath="agenda"
         files={review.agenda}
         editable={editable}
         pending={pending}
         removingId={removingAttachmentId}
-        onAdd={async (fileName, url) => {
-          await attachments.addAgenda.mutateAsync([{ fileName, url }]);
-          notify.success("Agenda attachment added");
+        onUpload={async (files) => {
+          await attachments.addAgenda.mutateAsync(files);
         }}
         onRemove={handleRemoveAgenda}
       />
 
       <AttachmentList
         title="Minutes"
+        uploadPath="minutes"
         files={review.minutes}
         editable={editable}
         pending={pending}
         removingId={removingAttachmentId}
-        onAdd={async (fileName, url) => {
-          await attachments.addMinutes.mutateAsync([{ fileName, url }]);
-          notify.success("Minutes attachment added");
+        onUpload={async (files) => {
+          await attachments.addMinutes.mutateAsync(files);
         }}
         onRemove={handleRemoveMinutes}
       />

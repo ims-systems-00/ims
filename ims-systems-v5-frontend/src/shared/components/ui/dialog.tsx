@@ -29,6 +29,7 @@ function DialogContent({
   children,
   showClose = true,
   onInteractOutside,
+  onPointerDownOutside,
   onFocusOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
@@ -44,6 +45,10 @@ function DialogContent({
           className
         )}
         {...props}
+        onPointerDownOutside={(event) => {
+          keepOpenForFloatingLayers(event);
+          onPointerDownOutside?.(event);
+        }}
         onInteractOutside={(event) => {
           // Setup Guide + Alice float above the dialog; using them must not close it.
           keepOpenForFloatingLayers(event);

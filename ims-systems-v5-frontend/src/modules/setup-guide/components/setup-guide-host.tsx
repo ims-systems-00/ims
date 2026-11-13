@@ -11,11 +11,12 @@ import { AliceRemoteAssistSheet } from "./alice-remote-assist-sheet";
 import { AliceReviewAssistSheet } from "./alice-review-assist-sheet";
 import { AliceRiskAssistSheet } from "./alice-risk-assist-sheet";
 import { AliceSoaAssistSheet } from "./alice-soa-assist-sheet";
+import { SetupChecklistCard } from "./setup-checklist-card";
 import { SetupGuidePanel } from "./setup-guide-panel";
 import { SetupSpotlight } from "./setup-spotlight";
 
 /**
- * Shell host: coach panel + spotlight + Alice assist sheets. Mount once.
+ * Shell host: checklist modal + coach panel + spotlight + Alice assist. Mount once.
  */
 export function SetupGuideHost() {
   useSetupOutcomeListener();
@@ -35,6 +36,7 @@ export function SetupGuideHost() {
 
   return (
     <>
+      <SetupChecklistCard />
       <SetupSpotlight
         active={spotlightActive}
         selector={sub?.target}

@@ -17,6 +17,7 @@ import { PageHeader } from "@/shared/layout";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { FormCardPreview } from "../components/form-card-preview";
 import {
   useCreateFormMutation,
   useFormsQuery,
@@ -196,26 +197,33 @@ export function FormsLibraryPage() {
           }
         />
       ) : view === "grid" ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((form) => (
             <Link
               key={form.id}
               to={`/documents/forms/${form.id}/build-form`}
-              className="rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
+              className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40"
             >
-              <div className="flex items-start justify-between gap-2">
-                <h3 className="font-medium leading-snug">{form.title}</h3>
-                <StatusBadge tone={statusTone(form.status)}>
-                  {form.status}
-                </StatusBadge>
+              <div className="border-b border-border-subtle bg-muted/25 p-3">
+                <FormCardPreview form={form} />
               </div>
-              <p className="mt-2 line-clamp-2 text-sm text-muted-foreground">
-                {form.description || "No description"}
-              </p>
-              <p className="mt-3 text-xs text-muted-foreground">
-                {form.submissionCount} submission
-                {form.submissionCount === 1 ? "" : "s"}
-              </p>
+              <div className="space-y-2 p-4">
+                <div className="flex items-start justify-between gap-2">
+                  <h3 className="font-medium leading-snug group-hover:text-primary">
+                    {form.title}
+                  </h3>
+                  <StatusBadge tone={statusTone(form.status)}>
+                    {form.status}
+                  </StatusBadge>
+                </div>
+                <p className="line-clamp-2 text-sm text-muted-foreground">
+                  {form.description || "No description"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {form.submissionCount} submission
+                  {form.submissionCount === 1 ? "" : "s"}
+                </p>
+              </div>
             </Link>
           ))}
         </div>

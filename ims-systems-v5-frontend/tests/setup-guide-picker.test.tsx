@@ -38,6 +38,7 @@ afterEach(() => {
 beforeEach(() => {
   useSetupGuideStore.setState({
     checklistHidden: false,
+    checklistOpen: true,
     activeStepId: null,
     subIndex: 0,
     completedSteps: {},
@@ -49,7 +50,6 @@ beforeEach(() => {
     lastAuditContext: null,
     lastRepositoryContext: null,
     seedPending: false,
-    focusChecklistToken: 0,
   });
   try {
     localStorage.removeItem("ims.setup-guide.progress");
@@ -110,7 +110,7 @@ describe("SetupChecklistCard", () => {
     for (let index = 0; index < expected.length; index += 1) {
       if (index > 0) {
         useSetupGuideStore.getState().closeGuide();
-        useSetupGuideStore.getState().showChecklist();
+        useSetupGuideStore.getState().openChecklist();
         cleanup();
         renderChecklist();
       } else {

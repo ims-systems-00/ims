@@ -1045,8 +1045,12 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     cips: auditCipPromotion,
     calendar: createAuditCalendarAdapter(calendar.service),
     notifications: createAuditNotificationAdapter(notifications.application),
-    // N-14: extract reports generated + emailed via EmailSystem.
-    reports: createAuditReportAdapter(email, resolveEmailBranding),
+    // N-14: extract reports generated + emailed via EmailSystem
+    // (HTML summary + audit cloud attachments when storage is wired).
+    reports: createAuditReportAdapter(email, {
+      resolveEmailBranding,
+      storage: objectStorage,
+    }),
   });
 
   const managementReviews = createManagementReviewModule({

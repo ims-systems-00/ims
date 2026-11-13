@@ -1,29 +1,27 @@
-import { useNavigate } from "react-router-dom";
 import { CircleHelp } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { SETUP_STEPS } from "../catalog";
 import { completedCount, useSetupGuideStore } from "../store";
 
 /**
- * Compact sidebar control when the dashboard checklist is hidden.
+ * Compact sidebar control when the setup popup was dismissed with “Hide for now”.
  */
 export function SetupSidebarEntry({ collapsed }: { collapsed: boolean }) {
-  const navigate = useNavigate();
   const hidden = useSetupGuideStore((s) => s.checklistHidden);
+  const checklistOpen = useSetupGuideStore((s) => s.checklistOpen);
   const completedSteps = useSetupGuideStore((s) => s.completedSteps);
   const openChecklist = useSetupGuideStore((s) => s.openChecklist);
   const done = completedCount(completedSteps);
   const total = SETUP_STEPS.length;
 
-  // Show while the checklist is hidden so users can reopen it (including after Done).
-  if (!hidden) return null;
+  // Show while the checklist was hidden so users can reopen it.
+  if (!hidden || checklistOpen) return null;
 
   return (
     <button
       type="button"
       onClick={() => {
         openChecklist();
-        navigate("/");
       }}
       className={cn(
         "mx-2 mb-2 flex items-center gap-2 rounded-md px-2.5 py-2 text-left text-[0.8125rem] font-medium text-sidebar-foreground/90 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",

@@ -2,12 +2,17 @@ import { useState, type FormEvent, type ReactNode } from "react";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
+import {
+  AttachmentRow,
+  FileDropZone,
+  type FileMetaInfo,
+} from "@/modules/files";
 import { UserDetailsSheet } from "@/modules/users";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useExtractAuditReportMutation } from "../hooks/use-audits";
 import { extractReportFormSchema } from "../schemas";
-import type { Audit } from "../types";
+import type { Audit, AuditAttachmentInput } from "../types";
 import { AuditIntervalBadge, AuditStatusBadge, AuditTypeBadge } from "./audit-badges";
 import { AuditFindingsSection } from "./audit-findings-section";
 import { formatDate, formatDateTime } from "@/shared/lib/format-date";
@@ -52,18 +57,41 @@ function UnitLabel({ id }: { id?: string }) {
 
 type AuditDetailsProps = {
   audit: Audit;
+  onUploadAttachments?: (files: AuditAttachmentInput[]) => Promise<void> | void;
   onRemoveAttachment?: (attachmentId: string) => void;
   removingAttachmentId?: string | null;
+  uploadingAttachments?: boolean;
 };
 
 export function AuditDetails({
   audit,
+  onUploadAttachments,
   onRemoveAttachment,
   removingAttachmentId,
+  uploadingAttachments = false,
 }: AuditDetailsProps) {
   const [userSheetId, setUserSheetId] = useState<string | null>(null);
   const completed = audit.completed.status;
   const editableFindings = !completed;
+  const canManageAttachments = Boolean(onUploadAttachments) && !completed;
+
+  async function handleUploaded(meta: FileMetaInfo, file: File) {
+    if (!onUploadAttachments) return;
+    try {
+      await onUploadAttachments([
+        {
+          fileName: meta.Name,
+          mimeType: file.type || undefined,
+          sizeBytes: file.size,
+          storageKey: meta.Key || meta.key,
+          bucket: meta.Bucket,
+        },
+      ]);
+      notify.success(`${meta.Name} uploaded`);
+    } catch (error) {
+      notify.fromError(error, "Unable to save attachment");
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -128,32 +156,75 @@ export function AuditDetails({
         )}
       </section>
 
-      <section>
-        <h3 className="mb-3 text-sm font-semibold tracking-tight">Attachments</h3>
+      <section className="space-y-3">
+        <div>
+          <h3 className="text-sm font-semibold tracking-tight">Attachments</h3>
+          <p className="mt-0.5 text-[0.75rem] text-muted-foreground">
+            Upload documents, images, or other files from your device. They are
+            stored in cloud storage on this audit.
+          </p>
+        </div>
+
+        {canManageAttachments ? (
+          <FileDropZone
+            path="audits"
+            multiple
+            disabled={uploadingAttachments || completed}
+            onUploaded={(meta, file) => void handleUploaded(meta, file)}
+          />
+        ) : null}
+
         {audit.attachments.length === 0 ? (
-          <p className="ims-text-meta">No attachment here</p>
+          <p className="ims-text-meta">
+            {canManageAttachments
+              ? "No attachments yet — drop files above to add them."
+              : "No attachment here"}
+          </p>
         ) : (
-          <ul className="space-y-2">
-            {audit.attachments.map((file) => (
-              <li
-                key={file.id}
-                className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
-              >
-                <span className="truncate">{file.fileName}</span>
-                {onRemoveAttachment && !completed ? (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    disabled={removingAttachmentId === file.id}
-                    onClick={() => onRemoveAttachment(file.id)}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </li>
-            ))}
-          </ul>
+          <div className="space-y-2">
+            {audit.attachments.map((file) =>
+              file.storageKey && file.bucket ? (
+                <AttachmentRow
+                  key={file.id}
+                  file={{
+                    Name: file.fileName,
+                    Key: file.storageKey,
+                    key: file.storageKey,
+                    Bucket: file.bucket,
+                  }}
+                  sizeBytes={file.sizeBytes}
+                  metaLine={
+                    file.uploadedAt
+                      ? `Uploaded ${formatDateTime(file.uploadedAt)}`
+                      : undefined
+                  }
+                  onDelete={
+                    onRemoveAttachment && !completed
+                      ? () => onRemoveAttachment(file.id)
+                      : undefined
+                  }
+                />
+              ) : (
+                <div
+                  key={file.id}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-sm"
+                >
+                  <span className="truncate">{file.fileName}</span>
+                  {onRemoveAttachment && !completed ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={removingAttachmentId === file.id}
+                      onClick={() => onRemoveAttachment(file.id)}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
+                </div>
+              )
+            )}
+          </div>
         )}
       </section>
 

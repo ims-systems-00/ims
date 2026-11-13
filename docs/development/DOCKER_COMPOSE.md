@@ -133,3 +133,4 @@ Then open **http://localhost:7864** and log in with Auth0.
 | Auth0 callback error | Add `http://localhost:7864` in Auth0 Application URLs |
 | Empty org after Auth0 login | Wrong Mongo URI, or membership backfill not run |
 | Edit docs → “OnlyOffice… localhost:8088” | Backend `ONLYOFFICE_URL` / frontend `VITE_ONLYOFFICE_URL` still point at loopback. Use `/onlyoffice` (nginx proxy), rebuild frontend, recreate backend |
+| Edit docs → Download failed (code -4), URL has `/onlyoffice/onlyoffice/` | Doubled virtual path: remove `X-Forwarded-Prefix` (keep path only on `X-Forwarded-Host`). Rebuild/redeploy **frontend** nginx image; recreate OnlyOffice if cache is sticky (`docker compose up frontend onlyoffice -d --force-recreate --build`) |

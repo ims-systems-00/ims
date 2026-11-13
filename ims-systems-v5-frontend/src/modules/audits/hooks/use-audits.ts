@@ -211,6 +211,18 @@ export function useOfiMutations(auditId: string) {
   };
 }
 
+export function useAddAuditAttachmentsMutation(auditId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (attachments: import("../types").AuditAttachmentInput[]) =>
+      updateAudit(auditId, { attachments }),
+    onSuccess: async (audit) => {
+      await invalidateAuditQueries(queryClient, auditId);
+      queryClient.setQueryData(auditKeys.detail(auditId), audit);
+    },
+  });
+}
+
 export function useRemoveAuditAttachmentMutation(auditId: string) {
   const queryClient = useQueryClient();
   return useMutation({

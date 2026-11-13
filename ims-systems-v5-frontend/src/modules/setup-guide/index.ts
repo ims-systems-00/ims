@@ -1,8 +1,8 @@
 /**
  * Setup Guide — interactive get-set-up (setupux-inspired).
  *
- * - `SetupChecklistCard` on the organisation dashboard.
- * - `SetupGuideHost` in the app shell (coach panel, spotlight, Alice assist).
+ * - `SetupChecklistCard` large popup (navbar / sidebar open).
+ * - `SetupGuideHost` in the app shell (checklist modal, coach, spotlight, Alice).
  * - Modules mark controls with `data-tour="…"` and report outcomes with
  *   `useSetupSignal` / `signalSetupEvent`.
  */

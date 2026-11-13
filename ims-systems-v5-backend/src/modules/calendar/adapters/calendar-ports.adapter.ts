@@ -48,6 +48,14 @@ export function createAuditCalendarAdapter(
 ): AuditCalendarPort {
   return {
     async upsertAuditEvent(input) {
+      if (
+        input.startDate == null ||
+        Number.isNaN(new Date(input.startDate).getTime())
+      ) {
+        // Migrated / incomplete audits may lack a schedule date — skip sync
+        // rather than failing unrelated updates (e.g. attachments).
+        return;
+      }
       const start = applyTimeOfDay(input.startDate, input.time);
       await calendar.upsertSystemEvent({
         organizationId: input.organizationId,

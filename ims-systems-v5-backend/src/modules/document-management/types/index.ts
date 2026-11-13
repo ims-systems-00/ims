@@ -86,12 +86,43 @@ export const DOCUMENT_COMPLIANCE_TOOLS = [
 ] as const;
 export type DocumentComplianceTool = (typeof DOCUMENT_COMPLIANCE_TOOLS)[number];
 
+/**
+ * Map Compliance toolkit display names (licences / complianceLinks.toolkitId)
+ * → documentData.complianceTools codes set on upload.
+ */
+export const COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL: Partial<
+  Record<string, DocumentComplianceTool>
+> = {
+  DSPT: "DSPTNHS",
+  "ISO 27001": "ISO27001",
+  "ISO 27001 (2022)": "ISO27001_2022",
+  "ISO 27001 (2022 Annex A)": "ISO27001_2022_ANNEX_A",
+  "ISO 27002": "ISO27002",
+  "ISO 9001": "ISO9001",
+  "ISO 45001": "ISO45001",
+  "ISO 20000": "ISO20000",
+  "BS 9997": "BS9997",
+  "ISO 14001": "ISO14001",
+  "ISO 15686-5": "ISO15686_5",
+  "ESG Toolkit - Environmental": "ESG_ENVIRONMENTAL",
+  "ESG Toolkit - Governance": "ESG_GOVERNANCE",
+  "ESG Toolkit - Social": "ESG_SOCIAL",
+};
+
+export function documentToolForToolkit(
+  toolkitId: string
+): DocumentComplianceTool | undefined {
+  return COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL[toolkitId.trim()];
+}
+
 /** File metadata produced by File Handler (Name / Key / Bucket). */
 export type DocumentFileMeta = {
   Name: string;
   Key: string;
   key: string;
   Bucket: string;
+  /** Optional byte size captured at upload (repo size sorting). */
+  Size?: number;
 };
 
 export type AuthorisationEntry = {
@@ -326,6 +357,10 @@ export type ListPublishedDocumentsQuery = {
   purpose?: DocumentPurpose;
   applicableModule?: DocumentApplicableModule;
   complianceTool?: DocumentComplianceTool;
+  /** Matches documentData.complianceLinks.toolkitId (e.g. "ISO 9001"). */
+  complianceToolkitId?: string;
+  /** Optional clause filter within the linked toolkit. */
+  clauseId?: string;
   sort?: "createdOn" | "name" | "updatedAt";
   sortDir?: "asc" | "desc";
 };
@@ -401,6 +436,10 @@ export const MAX_FOLDER_DEPTH = 20;
 export const MAX_SIBLING_NAMES = 100;
 export const MAX_REPO_NAME_LENGTH = 200;
 export const MAX_NODE_NAME_LENGTH = 255;
+/** Cap for multi-download zip entries (documents after folder expansion). */
+export const MAX_DOWNLOAD_ZIP_FILES = 200;
+/** Soft total byte cap for multi-download zip payloads. */
+export const MAX_DOWNLOAD_ZIP_BYTES = 250 * 1024 * 1024;
 
 /** OnlyOffice DocsAPI config returned by editor-session. */
 export type DocumentEditorSession = {

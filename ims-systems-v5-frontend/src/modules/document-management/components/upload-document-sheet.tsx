@@ -7,10 +7,7 @@ import { Input } from "@/shared/components/ui/input";
 import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
 import { loadPublicEnv } from "@/shared/lib/env";
-import {
-  useSessionProfileUserId,
-  useSessionSubjectId,
-} from "@/security";
+import { useSessionProfileUserId } from "@/security";
 import { uploadFileViaHandler } from "@/modules/files";
 import {
   COMPLIANCE_TOOLKIT_NAMES,
@@ -54,7 +51,6 @@ export function UploadDocumentSheet({
   repositoryId,
   parentNodeId,
 }: UploadDocumentSheetProps) {
-  const subjectId = useSessionSubjectId();
   const defaultOwnerId = useSessionProfileUserId() ?? "";
   const createMutation = useCreateFileNodesMutation(repositoryId);
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
@@ -71,6 +67,7 @@ export function UploadDocumentSheet({
   const [owners, setOwners] = useState<string[]>([]);
   const [reviewDate, setReviewDate] = useState("");
   const [requireAuthorisation, setRequireAuthorisation] = useState(false);
+  const [authoriserId, setAuthoriserId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | undefined>();
 
@@ -125,6 +122,7 @@ export function UploadDocumentSheet({
     setOwners(defaultOwnerId ? [defaultOwnerId] : []);
     setReviewDate("");
     setRequireAuthorisation(false);
+    setAuthoriserId("");
     setFormError(undefined);
   }
 
@@ -156,6 +154,7 @@ export function UploadDocumentSheet({
       owners: owners.length > 0 ? owners : [defaultOwnerId],
       reviewDate: reviewDate.trim() ? reviewDate : null,
       requireAuthorisation,
+      authoriserId,
     });
     if (!parsed.success) {
       setFormError(parsed.error.issues[0]?.message);
@@ -172,16 +171,14 @@ export function UploadDocumentSheet({
       for (const file of Array.from(files)) {
         const storageInfo = await uploadFileViaHandler(file, "general");
         payloads.push({
-          storageInfo,
+          storageInfo: { ...storageInfo, Size: file.size },
           purpose: parsed.data.purpose,
           applicableModules: parsed.data.applicableModules,
           complianceTools: parsed.data.complianceTools,
           owners: parsed.data.owners,
           reviewDate: fromDateInputValue(parsed.data.reviewDate ?? ""),
           authorisation: parsed.data.requireAuthorisation
-            ? subjectId
-              ? [subjectId]
-              : []
+            ? [parsed.data.authoriserId]
             : [],
         });
       }
@@ -386,22 +383,65 @@ export function UploadDocumentSheet({
           />
         </FormField>
 
-        <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border-subtle px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-muted/30">
-          <input
-            type="checkbox"
-            className="mt-0.5 size-3.5 accent-primary"
-            checked={requireAuthorisation}
-            onChange={(event) =>
-              setRequireAuthorisation(event.target.checked)
-            }
-          />
-          <span>
-            <span className="block font-medium">Require authorisation</span>
-            <span className="mt-0.5 block text-[0.75rem] text-muted-foreground">
-              You must approve before the document can be published.
+        <div className="space-y-3 rounded-md border border-border-subtle px-3 py-2.5">
+          <label className="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-3.5 accent-primary"
+              checked={requireAuthorisation}
+              onChange={(event) => {
+                const checked = event.target.checked;
+                setRequireAuthorisation(checked);
+                if (!checked) setAuthoriserId("");
+                setFormError(undefined);
+              }}
+            />
+            <span>
+              <span className="block font-medium">Require authorisation</span>
+              <span className="mt-0.5 block text-[0.75rem] text-muted-foreground">
+                Choose who must approve before the document can be published.
+              </span>
             </span>
-          </span>
-        </label>
+          </label>
+
+          {requireAuthorisation ? (
+            <FormField
+              label="Send authorisation to"
+              htmlFor="doc-authoriser"
+              required
+              error={
+                formError?.toLowerCase().includes("authoris")
+                  ? formError
+                  : undefined
+              }
+            >
+              <select
+                id="doc-authoriser"
+                className="ims-select"
+                value={authoriserId}
+                disabled={usersQuery.isLoading}
+                onChange={(event) => {
+                  setAuthoriserId(event.target.value);
+                  setFormError(undefined);
+                }}
+              >
+                <option value="">
+                  {usersQuery.isLoading
+                    ? "Loading users…"
+                    : "Select a user…"}
+                </option>
+                {userOptions.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.label}
+                    {user.email && user.email !== user.label
+                      ? ` (${user.email})`
+                      : ""}
+                  </option>
+                ))}
+              </select>
+            </FormField>
+          ) : null}
+        </div>
       </div>
     </AppSheet>
   );

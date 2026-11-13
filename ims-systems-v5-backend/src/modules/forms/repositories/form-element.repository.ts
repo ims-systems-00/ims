@@ -191,7 +191,8 @@ export function createFormElementRepository() {
       organizationId: string,
       formId: string,
       id: string,
-      afterElementId: string | null
+      afterElementId: string | null,
+      parentElementId?: string | null
     ): Promise<FormElement | null> {
       if (afterElementId === id) {
         throw new Error("Cannot place an element after itself");
@@ -215,6 +216,11 @@ export function createFormElementRepository() {
         );
       }
 
+      const parentPatch =
+        parentElementId !== undefined
+          ? { parentElementId }
+          : {};
+
       // Attach
       if (afterElementId == null) {
         const head = await findHead(organizationId, formId);
@@ -231,6 +237,7 @@ export function createFormElementRepository() {
             $set: {
               previousElementId: null,
               nextElementId: newHead ? String(newHead._id) : null,
+              ...parentPatch,
             },
           }
         );
@@ -250,6 +257,7 @@ export function createFormElementRepository() {
             $set: {
               previousElementId: afterElementId,
               nextElementId: afterNext,
+              ...parentPatch,
             },
           }
         );
@@ -275,6 +283,30 @@ export function createFormElementRepository() {
     ): Promise<boolean> {
       const target = await findDoc(organizationId, formId, id);
       if (!target) return false;
+
+      // Promote first child to row leader; re-parent remaining siblings.
+      const children = await Model()
+        .find({ organizationId, formId, parentElementId: id })
+        .lean();
+      if (children.length > 0) {
+        const ordered = await this.listOrdered(organizationId, formId);
+        const childIds = new Set(children.map((doc) => String(doc._id)));
+        const orderedChildren = ordered.filter((el) => childIds.has(el.id));
+        const [first, ...rest] = orderedChildren;
+        if (first) {
+          await Model().updateOne(
+            { _id: first.id },
+            { $set: { parentElementId: null } }
+          );
+          if (rest.length > 0) {
+            await Model().updateMany(
+              { _id: { $in: rest.map((el) => el.id) } },
+              { $set: { parentElementId: first.id } }
+            );
+          }
+        }
+      }
+
       const prevId = target.previousElementId;
       const nextId = target.nextElementId;
       if (prevId) {

@@ -10,11 +10,12 @@ import {
   useFormQuery,
 } from "../hooks/use-forms";
 import { getElementDefinition } from "../build-form/registry";
+import { FormElementsLayout } from "../components/form-elements-layout";
 import { FormLogo } from "../components/form-logo";
 import {
   formThemeCssVars,
   normalizeFormTheme,
-  themeImageSrc,
+  useThemeImageSrc,
 } from "../lib/form-theme";
 
 /**
@@ -36,7 +37,7 @@ export function FormSubmissionPage() {
     () => normalizeFormTheme(formQuery.data?.theme),
     [formQuery.data?.theme]
   );
-  const coverSrc = themeImageSrc(theme.coverImage);
+  const coverSrc = useThemeImageSrc(theme.coverImage);
   const logoAtTop = theme.logoVertical !== "bottom";
   const isPublished = formQuery.data?.status === "published";
 
@@ -149,24 +150,27 @@ export function FormSubmissionPage() {
               </p>
             ) : null}
           </div>
-          {elements.map((el) => {
-            const def = getElementDefinition(el.type);
-            if (!def) return null;
-            return (
-              <div key={el.id} className="space-y-1">
-                <def.Response
-                  attributes={el.attributes}
-                  value={values[el.id]}
-                  onChange={(value) =>
-                    setValues((prev) => ({ ...prev, [el.id]: value }))
-                  }
-                />
-                {errors[el.id] ? (
-                  <p className="text-xs text-destructive">{errors[el.id]}</p>
-                ) : null}
-              </div>
-            );
-          })}
+          <FormElementsLayout
+            elements={elements}
+            renderElement={(el) => {
+              const def = getElementDefinition(el.type);
+              if (!def) return null;
+              return (
+                <div className="space-y-1">
+                  <def.Response
+                    attributes={el.attributes}
+                    value={values[el.id]}
+                    onChange={(value) =>
+                      setValues((prev) => ({ ...prev, [el.id]: value }))
+                    }
+                  />
+                  {errors[el.id] ? (
+                    <p className="text-xs text-destructive">{errors[el.id]}</p>
+                  ) : null}
+                </div>
+              );
+            }}
+          />
           {!logoAtTop ? <FormLogo theme={theme} /> : null}
           <Button
             type="button"

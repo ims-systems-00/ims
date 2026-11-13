@@ -5,17 +5,35 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { keepOpenForFloatingLayers } from "@/shared/lib/guide-layer";
 import { cn } from "@/shared/lib/utils";
 
-const Sheet = SheetPrimitive.Root;
+/**
+ * Non-modal by default so Alice / Setup Guide can take focus while a sheet is
+ * open. Radix modal focus-trap otherwise steals focus back into the sheet.
+ * Backdrop clicks still dismiss via the overlay + outside handlers below.
+ */
+function Sheet({
+  modal = false,
+  ...props
+}: React.ComponentProps<typeof SheetPrimitive.Root>) {
+  return <SheetPrimitive.Root modal={modal} {...props} />;
+}
+
 const SheetTrigger = SheetPrimitive.Trigger;
 const SheetClose = SheetPrimitive.Close;
 const SheetPortal = SheetPrimitive.Portal;
 
+/**
+ * Plain overlay (not Radix Overlay): with `modal={false}`, Radix skips rendering
+ * its overlay entirely, so we own the dimmed backdrop ourselves.
+ */
 function SheetOverlay({
   className,
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Overlay>) {
+}: React.ComponentProps<"div">) {
   return (
-    <SheetPrimitive.Overlay
+    <div
+      role="presentation"
+      aria-hidden="true"
+      data-state="open"
       className={cn(
         "ims-sheet-overlay fixed inset-0 z-50 bg-foreground/30",
         className
@@ -49,6 +67,7 @@ function SheetContent({
   children,
   showClose = true,
   onInteractOutside,
+  onPointerDownOutside,
   onFocusOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> &
@@ -61,8 +80,12 @@ function SheetContent({
       <SheetPrimitive.Content
         className={cn("relative", sheetVariants({ side }), className)}
         {...props}
-        onInteractOutside={(event) => {
+        onPointerDownOutside={(event) => {
           // Setup Guide + Alice float above the sheet; using them must not close it.
+          keepOpenForFloatingLayers(event);
+          onPointerDownOutside?.(event);
+        }}
+        onInteractOutside={(event) => {
           keepOpenForFloatingLayers(event);
           onInteractOutside?.(event);
         }}

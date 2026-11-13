@@ -23,6 +23,7 @@ import {
   useSetupSignal,
 } from "@/modules/setup-guide";
 import {
+  useAddAuditAttachmentsMutation,
   useAuditQuery,
   useCompleteAuditMutation,
   useCreateAuditMutation,
@@ -31,6 +32,7 @@ import {
   useUpdateAuditMutation,
 } from "../hooks/use-audits";
 import type {
+  AuditAttachmentInput,
   AuditType,
   CreateAuditInput,
   UpdateAuditInput,
@@ -98,6 +100,7 @@ export function AuditSheet({
   const updateMutation = useUpdateAuditMutation(auditId ?? "");
   const deleteMutation = useDeleteAuditMutation();
   const completeMutation = useCompleteAuditMutation();
+  const addAttachmentsMutation = useAddAuditAttachmentsMutation(auditId ?? "");
   const removeAttachmentMutation = useRemoveAuditAttachmentMutation(
     auditId ?? ""
   );
@@ -118,6 +121,7 @@ export function AuditSheet({
     updateMutation.isPending ||
     deleteMutation.isPending ||
     completeMutation.isPending ||
+    addAttachmentsMutation.isPending ||
     removeAttachmentMutation.isPending;
 
   const completed = Boolean(audit?.completed.status);
@@ -180,6 +184,11 @@ export function AuditSheet({
     } catch (error) {
       notify.fromError(error, "Unable to complete audit");
     }
+  }
+
+  async function handleUploadAttachments(files: AuditAttachmentInput[]) {
+    if (!auditId || files.length === 0) return;
+    await addAttachmentsMutation.mutateAsync(files);
   }
 
   async function handleRemoveAttachment(attachmentId: string) {
@@ -341,12 +350,18 @@ export function AuditSheet({
             {panelTab === "details" ? (
               <AuditDetails
                 audit={audit}
+                onUploadAttachments={
+                  !completed
+                    ? (files) => handleUploadAttachments(files)
+                    : undefined
+                }
                 onRemoveAttachment={
                   !completed
                     ? (id) => void handleRemoveAttachment(id)
                     : undefined
                 }
                 removingAttachmentId={removingAttachmentId}
+                uploadingAttachments={addAttachmentsMutation.isPending}
               />
             ) : null}
             {panelTab === "lifecycle" ? (

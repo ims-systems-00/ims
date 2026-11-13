@@ -1,4 +1,4 @@
-import { apiRequest } from "@/shared/lib/http";
+import { apiBlobRequest, apiRequest } from "@/shared/lib/http";
 import type {
   CreateDocumentRepositoryInput,
   CreateFileNodesResult,
@@ -355,6 +355,18 @@ export function copyFolderStructure(
   );
 }
 
+/** Zip download for selected documents/folders (folders expand recursively). */
+export function downloadRepoNodesZip(
+  repositoryId: string,
+  nodeIds: string[]
+): Promise<Blob> {
+  return apiBlobRequest(`/document-repositories/${repositoryId}/download-zip`, {
+    method: "POST",
+    body: { nodeIds },
+    accept: "application/zip",
+  });
+}
+
 export function listCrossOrgCopySources(): Promise<CrossOrgCopySource[]> {
   return apiRequest<CrossOrgCopySource[]>(
     "/document-repositories/cross-org-copy-sources"
@@ -483,6 +495,9 @@ export function listPublishedDocuments(params: {
   search?: string;
   purpose?: DocumentPurpose;
   applicableModule?: DocumentApplicableModule;
+  /** Matches Compliance Settings links (e.g. "ISO 9001"). */
+  complianceToolkitId?: string;
+  clauseId?: string;
 }): Promise<PaginatedDocumentNodes> {
   return apiRequest<PaginatedDocumentNodes>(
     `/document-trees${toQuery(params)}`

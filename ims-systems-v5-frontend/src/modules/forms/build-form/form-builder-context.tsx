@@ -8,14 +8,22 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Form, FormElement, FormTheme } from "../types";
 import {
+  formKeys,
   useCreateFormElementMutation,
   useHardDeleteFormElementMutation,
   useReorderFormElementMutation,
   useUpdateFormElementMutation,
 } from "../hooks/use-forms";
 import { normalizeFormTheme } from "../lib/form-theme";
+import {
+  groupFormRows,
+  reorderColumnsInElements,
+  reorderFormRows,
+  type RowDropEdge,
+} from "./group-rows";
 import { getElementDefinition } from "./registry";
 
 export type AttributeSaveStatus = "idle" | "saving" | "saved" | "error";
@@ -35,7 +43,13 @@ type FormBuilderContextValue = {
   setPreview: (value: boolean) => void;
   brandOpen: boolean;
   setBrandOpen: (value: boolean) => void;
-  addElement: (type: string, afterElementId?: string | null) => Promise<void>;
+  addElement: (
+    type: string,
+    options?: {
+      afterElementId?: string | null;
+      parentElementId?: string | null;
+    }
+  ) => Promise<void>;
   updateElement: (
     id: string,
     attributes: Record<string, unknown>
@@ -44,7 +58,16 @@ type FormBuilderContextValue = {
   cloneElement: (id: string) => Promise<void>;
   changeElementOrder: (
     id: string,
-    afterElementId: string | null
+    afterElementId: string | null,
+    parentElementId?: string | null
+  ) => Promise<void>;
+  /** Reorder columns inside a row (updates parent + linked-list order). */
+  reorderRowColumns: (orderedColumnIds: string[]) => Promise<void>;
+  /** Move a whole layout row before/after another row (optimistic). */
+  moveFormRow: (
+    sourceRowId: string,
+    targetRowId: string,
+    edge: RowDropEdge
   ) => Promise<void>;
   busy: boolean;
 };
@@ -79,10 +102,24 @@ export function FormBuilderProvider({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const queryClient = useQueryClient();
   const createMutation = useCreateFormElementMutation(formId);
   const updateMutation = useUpdateFormElementMutation(formId);
   const deleteMutation = useHardDeleteFormElementMutation(formId);
   const reorderMutation = useReorderFormElementMutation(formId);
+
+  const setElementsCache = useCallback(
+    (next: FormElement[]) => {
+      queryClient.setQueryData(formKeys.elements(formId), next);
+    },
+    [formId, queryClient]
+  );
+
+  const invalidateElements = useCallback(async () => {
+    await queryClient.invalidateQueries({
+      queryKey: formKeys.elements(formId),
+    });
+  }, [formId, queryClient]);
 
   const theme = useMemo(
     () => normalizeFormTheme(form?.theme),
@@ -233,17 +270,18 @@ export function FormBuilderProvider({
         updateMutation.isPending ||
         deleteMutation.isPending ||
         reorderMutation.isPending,
-      async addElement(type, afterElementId) {
+      async addElement(type, options) {
         const def = getElementDefinition(type);
-        // Default: append after the last element. Explicit null still means prepend.
+        // Default: append after the last element as a new full-width row.
         const resolvedAfterId =
-          afterElementId === undefined
-            ? (elements[elements.length - 1]?.id ?? null)
-            : afterElementId;
+          options && "afterElementId" in options
+            ? (options.afterElementId ?? null)
+            : (elements[elements.length - 1]?.id ?? null);
         await createMutation.mutateAsync({
           type,
           attributes: def?.defaultAttributes ?? { label: type },
           afterElementId: resolvedAfterId,
+          parentElementId: options?.parentElementId ?? null,
         });
       },
       async updateElement(id, attributes) {
@@ -271,10 +309,96 @@ export function FormBuilderProvider({
           type: source.type,
           attributes: { ...attributes },
           afterElementId: id,
+          parentElementId: source.parentElementId,
         });
       },
-      async changeElementOrder(id, afterElementId) {
-        await reorderMutation.mutateAsync({ id, afterElementId });
+      async changeElementOrder(id, afterElementId, parentElementId) {
+        await reorderMutation.mutateAsync({
+          id,
+          afterElementId,
+          parentElementId,
+        });
+      },
+      async reorderRowColumns(orderedColumnIds) {
+        if (orderedColumnIds.length === 0) return;
+        const [leaderId] = orderedColumnIds;
+        if (!leaderId) return;
+
+        const previous = elements;
+        const next = reorderColumnsInElements(elements, orderedColumnIds);
+        if (next !== previous) setElementsCache(next);
+
+        try {
+          let afterId: string | null = null;
+          const firstCurrent = previous.find((el) =>
+            orderedColumnIds.includes(el.id)
+          );
+          if (firstCurrent) {
+            const idx = previous.findIndex((el) => el.id === firstCurrent.id);
+            afterId = idx > 0 ? (previous[idx - 1]?.id ?? null) : null;
+            while (afterId && orderedColumnIds.includes(afterId)) {
+              const prevIdx = previous.findIndex((el) => el.id === afterId);
+              afterId =
+                prevIdx > 0 ? (previous[prevIdx - 1]?.id ?? null) : null;
+            }
+          }
+
+          for (const columnId of orderedColumnIds) {
+            await reorderMutation.mutateAsync({
+              id: columnId,
+              afterElementId: afterId,
+              parentElementId: columnId === leaderId ? null : leaderId,
+              skipInvalidate: true,
+            });
+            afterId = columnId;
+          }
+          await invalidateElements();
+        } catch (error) {
+          setElementsCache(previous);
+          throw error;
+        }
+      },
+      async moveFormRow(sourceRowId, targetRowId, edge) {
+        const previous = elements;
+        const next = reorderFormRows(
+          elements,
+          sourceRowId,
+          targetRowId,
+          edge
+        );
+        if (next === previous) return;
+
+        setElementsCache(next);
+
+        try {
+          const rows = groupFormRows(next);
+          const moved = rows.find((row) => row.id === sourceRowId);
+          if (!moved?.columns.length) {
+            await invalidateElements();
+            return;
+          }
+          const movedIndex = rows.findIndex((row) => row.id === sourceRowId);
+          let afterId: string | null =
+            movedIndex <= 0
+              ? null
+              : (rows[movedIndex - 1]?.columns.at(-1)?.id ?? null);
+          const leaderId = moved.columns[0]!.id;
+
+          for (let i = 0; i < moved.columns.length; i += 1) {
+            const column = moved.columns[i]!;
+            await reorderMutation.mutateAsync({
+              id: column.id,
+              afterElementId: afterId,
+              parentElementId: i === 0 ? null : leaderId,
+              skipInvalidate: true,
+            });
+            afterId = column.id;
+          }
+          await invalidateElements();
+        } catch (error) {
+          setElementsCache(previous);
+          throw error;
+        }
       },
     }),
     [
@@ -295,6 +419,8 @@ export function FormBuilderProvider({
       deleteMutation,
       reorderMutation,
       clearDebounce,
+      setElementsCache,
+      invalidateElements,
     ]
   );
 

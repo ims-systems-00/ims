@@ -122,6 +122,7 @@ export const updateFormElementBodySchema = z
 
 export const reorderFormElementBodySchema = z.object({
   afterElementId: objectIdSchema.nullable(),
+  parentElementId: objectIdSchema.nullable().optional(),
 });
 
 export const listSubmissionsQuerySchema = z.object({

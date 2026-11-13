@@ -296,7 +296,8 @@ export function createFormService(deps: FormServiceDeps) {
           actor.organizationId,
           formId,
           id,
-          input.afterElementId
+          input.afterElementId,
+          input.parentElementId
         );
         if (!updated) throw new NotFoundError("Form element not found");
         return updated;

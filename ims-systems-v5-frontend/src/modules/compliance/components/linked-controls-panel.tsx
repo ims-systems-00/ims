@@ -6,12 +6,16 @@ import { FormField } from "@/shared/components/form-field";
 import { SearchInput } from "@/shared/components/search-input";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
+import { loadPublicEnv } from "@/shared/lib/env";
 import { notify } from "@/shared/lib/toast";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { useCatalogueControlsQuery } from "../hooks/use-compliance";
 import {
   COMPLIANCE_TOOLKIT_NAMES,
+  isComplianceToolkitName,
   toolkitDisplayLabel,
   toolkitPath,
+  type ComplianceToolkitName,
   type ModuleComplianceLink,
 } from "../types";
 
@@ -38,12 +42,36 @@ export function LinkedControlsPanel({
   entityLabel = "record",
   lockedMessage,
 }: LinkedControlsPanelProps) {
-  const [toolkitId, setToolkitId] = useState<string>("ISO 9001");
+  // Match sidebar / document compliance gating: full catalogue in
+  // development-stub; Auth0 mode shows only org-licensed toolkits.
+  const isAuth0Mode =
+    loadPublicEnv().VITE_SECURITY_PROVIDER === "auth0-openfga";
+  const orgQuery = useCurrentOrganisationQuery(isAuth0Mode);
+  const availableToolkits = useMemo((): ComplianceToolkitName[] => {
+    if (!isAuth0Mode) return [...COMPLIANCE_TOOLKIT_NAMES];
+    return (orgQuery.data?.licences.complianceTools ?? []).filter(
+      (name): name is ComplianceToolkitName => isComplianceToolkitName(name)
+    );
+  }, [isAuth0Mode, orgQuery.data?.licences.complianceTools]);
+
+  const [toolkitId, setToolkitId] = useState<string>(
+    () => availableToolkits[0] ?? ""
+  );
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [draftClauses, setDraftClauses] = useState<string[]>([]);
   const [pendingRemove, setPendingRemove] =
     useState<ModuleComplianceLink | null>(null);
+
+  useEffect(() => {
+    if (availableToolkits.length === 0) {
+      if (toolkitId) setToolkitId("");
+      return;
+    }
+    if (!availableToolkits.some((name) => name === toolkitId)) {
+      setToolkitId(availableToolkits[0]!);
+    }
+  }, [availableToolkits, toolkitId]);
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
@@ -65,7 +93,7 @@ export function LinkedControlsPanel({
       pageSize: 100,
       search: search || undefined,
     },
-    canEdit
+    canEdit && Boolean(toolkitId)
   );
 
   const existingForToolkit = useMemo(
@@ -186,14 +214,22 @@ export function LinkedControlsPanel({
               id="linked-controls-toolkit"
               className="ims-select"
               value={toolkitId}
-              disabled={pending}
+              disabled={pending || availableToolkits.length === 0}
               onChange={(event) => setToolkitId(event.target.value)}
             >
-              {COMPLIANCE_TOOLKIT_NAMES.map((name) => (
-                <option key={name} value={name}>
-                  {toolkitDisplayLabel(name)}
+              {availableToolkits.length === 0 ? (
+                <option value="">
+                  {orgQuery.isLoading
+                    ? "Loading licensed toolkits…"
+                    : "No licensed compliance toolkits"}
                 </option>
-              ))}
+              ) : (
+                availableToolkits.map((name) => (
+                  <option key={name} value={name}>
+                    {toolkitDisplayLabel(name)}
+                  </option>
+                ))
+              )}
             </select>
           </FormField>
 
@@ -207,7 +243,7 @@ export function LinkedControlsPanel({
               value={searchInput}
               onChange={(event) => setSearchInput(event.target.value)}
               placeholder="Search clause or title"
-              disabled={pending}
+              disabled={pending || !toolkitId}
             />
           </FormField>
 

@@ -108,6 +108,7 @@ export function createDocumentManagementModule(
     "/:id/copy-folder-structure",
     controller.copyFolderStructure
   );
+  repositoriesRouter.post("/:id/download-zip", controller.downloadNodesZip);
   repositoriesRouter.post("/:id/folder-nodes", controller.createFolder);
   repositoriesRouter.post("/:id/file-nodes", controller.createFiles);
   repositoriesRouter.get("/:id/nodes", controller.listNodes);

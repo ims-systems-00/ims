@@ -33,12 +33,15 @@ import {
 } from "../components/control-badges";
 import { ControlSheet } from "../components/control-sheet";
 import { ToolkitOverviewPanel } from "../components/toolkit-overview-panel";
+import { ToolkitRelatedDocumentsPanel } from "../components/toolkit-related-documents-panel";
 import { formatDate } from "@/shared/lib/format-date";
 
-type TabId = "overview" | "toolkit";
+type TabId = "overview" | "toolkit" | "documents";
 
 function tabFromSearch(value: string | null): TabId {
-  return value === "toolkit" ? "toolkit" : "overview";
+  if (value === "toolkit") return "toolkit";
+  if (value === "documents") return "documents";
+  return "overview";
 }
 
 function UpdatedByCell({ userId }: { userId?: string | null }) {
@@ -102,7 +105,10 @@ export function ComplianceToolkitPage() {
   function selectTab(next: TabId) {
     const params = new URLSearchParams(searchParams);
     if (next === "toolkit") params.set("tab", "toolkit");
+    else if (next === "documents") params.set("tab", "documents");
     else params.delete("tab");
+    params.delete("control");
+    params.delete("panel");
     setSearchParams(params, { replace: true });
     setTab(next);
   }
@@ -288,6 +294,7 @@ export function ComplianceToolkitPage() {
               [
                 { id: "overview", label: "Overview" },
                 { id: "toolkit", label: "Controls" },
+                { id: "documents", label: "Related Documents" },
               ] as const
             ).map((item) => {
               const selected = tab === item.id;
@@ -298,7 +305,11 @@ export function ComplianceToolkitPage() {
                   role="tab"
                   aria-selected={selected}
                   data-tour={
-                    item.id === "toolkit" ? "soa.tab.controls" : undefined
+                    item.id === "toolkit"
+                      ? "soa.tab.controls"
+                      : item.id === "documents"
+                        ? "soa.tab.documents"
+                        : undefined
                   }
                   className={cn(
                     "relative px-3.5 py-2.5 text-sm font-medium transition-colors",
@@ -479,6 +490,13 @@ export function ComplianceToolkitPage() {
                 </>
               )}
             </div>
+          ) : null}
+
+          {tab === "documents" ? (
+            <ToolkitRelatedDocumentsPanel
+              toolkitName={toolkitName}
+              toolkitLabel={displayName}
+            />
           ) : null}
         </>
       )}

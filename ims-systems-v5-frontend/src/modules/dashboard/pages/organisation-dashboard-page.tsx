@@ -41,8 +41,6 @@ import {
 } from "../components/dashboard-panel";
 import { DigitalMaturityPanelContent } from "../components/digital-maturity-panel";
 import { DashboardTodoList } from "../components/dashboard-todo-list";
-import { SetupChecklistCard } from "@/modules/setup-guide";
-
 function OrgPulseHero({
   state,
   confidence,
@@ -219,8 +217,6 @@ export function OrganisationDashboardPage() {
           </div>
         }
       />
-
-      <SetupChecklistCard />
 
       {dashboardQuery.isError ? (
         <p className="ims-alert ims-alert-error" role="alert">

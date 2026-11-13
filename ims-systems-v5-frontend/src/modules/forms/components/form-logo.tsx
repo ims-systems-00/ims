@@ -1,6 +1,6 @@
 import { cn } from "@/shared/lib/utils";
 import type { FormTheme } from "../types";
-import { themeImageSrc } from "../lib/form-theme";
+import { useThemeImageSrc } from "../lib/form-theme";
 
 export function formLogoAlignClass(theme: FormTheme): string {
   switch (theme.logoHorizontal) {
@@ -24,7 +24,7 @@ export function FormLogo({
   className,
   imageClassName = "h-10 w-auto max-w-[180px] object-contain",
 }: FormLogoProps) {
-  const src = themeImageSrc(theme.logo);
+  const src = useThemeImageSrc(theme.logo);
   if (!src) return null;
   return (
     <div className={cn("flex w-full", formLogoAlignClass(theme), className)}>

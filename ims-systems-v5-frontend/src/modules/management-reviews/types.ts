@@ -27,6 +27,7 @@ export type ReviewAttachment = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  bucket?: string;
   url?: string;
   uploadedBy: string;
   uploadedAt: string;
@@ -61,6 +62,7 @@ export type AttachmentInput = {
   mimeType?: string;
   sizeBytes?: number;
   storageKey?: string;
+  bucket?: string;
   url?: string;
 };
 

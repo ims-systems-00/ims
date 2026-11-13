@@ -1,8 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ArrowDownAZ,
+  ArrowUpAZ,
   Check,
   ChevronRight,
   Copy,
+  Download,
   FolderInput,
   FolderPlus,
   GitBranch,
@@ -32,10 +35,18 @@ import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import {
   useDecideAuthorisationMutation,
   useDocumentRepositoryQuery,
+  useDownloadRepoNodesZipMutation,
   useNodePathQuery,
   useRepoNodesQuery,
   useSoftDeleteNodeMutation,
 } from "../hooks/use-document-management";
+import {
+  REPO_SORT_FIELD_LABELS,
+  REPO_SORT_FIELDS,
+  sortRepoNodes,
+  type RepoSortDir,
+  type RepoSortField,
+} from "../lib/sort-nodes";
 import type { DocumentTreeNode } from "../types";
 import { DOCUMENT_PURPOSE_LABELS } from "../types";
 import { ChangeRepositoryDialog } from "./change-repository-dialog";
@@ -53,12 +64,39 @@ type RepositoryWorkspaceProps = {
 
 type ViewMode = "list" | "grid";
 
+const SORT_STORAGE_KEY = "ims.docs.repo-sort";
+
+function readStoredSort(): { field: RepoSortField; dir: RepoSortDir } {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY);
+    if (!raw) return { field: "name", dir: "asc" };
+    const parsed = JSON.parse(raw) as {
+      field?: string;
+      dir?: string;
+    };
+    const field = REPO_SORT_FIELDS.includes(parsed.field as RepoSortField)
+      ? (parsed.field as RepoSortField)
+      : "name";
+    const dir = parsed.dir === "desc" ? "desc" : "asc";
+    return { field, dir };
+  } catch {
+    return { field: "name", dir: "asc" };
+  }
+}
+
 export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [parentNodeId, setParentNodeId] = useState<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [sortField, setSortField] = useState<RepoSortField>(
+    () => readStoredSort().field
+  );
+  const [sortDir, setSortDir] = useState<RepoSortDir>(
+    () => readStoredSort().dir
+  );
   const [folderOpen, setFolderOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
 
@@ -91,12 +129,36 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   const pathQuery = useNodePathQuery(repositoryId, parentNodeId);
   const softDeleteMutation = useSoftDeleteNodeMutation(repositoryId);
   const decideMutation = useDecideAuthorisationMutation(repositoryId);
+  const downloadZipMutation = useDownloadRepoNodesZipMutation(repositoryId);
   const sessionSubjectId = useSessionSubjectId();
   const usersQuery = useUsersQuery({ page: 1, pageSize: 100 });
 
   const items = nodesQuery.data?.items ?? [];
   const path = pathQuery.data ?? [];
-  const selected = items.find((item) => item.id === selectedId) ?? null;
+
+  useEffect(() => {
+    setCheckedIds(new Set());
+  }, [parentNodeId, repositoryId]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        SORT_STORAGE_KEY,
+        JSON.stringify({ field: sortField, dir: sortDir })
+      );
+    } catch {
+      /* ignore quota / private mode */
+    }
+  }, [sortField, sortDir]);
+
+  const sortedItems = useMemo(
+    () => sortRepoNodes(items, sortField, sortDir),
+    [items, sortField, sortDir]
+  );
+  const selected =
+    sortedItems.find((item) => item.id === selectedId) ??
+    items.find((item) => item.id === selectedId) ??
+    null;
 
   const userNames = useMemo(() => {
     const map: Record<string, string> = {
@@ -110,12 +172,12 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   }, [usersQuery.data?.items]);
 
   const folders = useMemo(
-    () => items.filter((item) => item.type === "folder"),
-    [items]
+    () => sortedItems.filter((item) => item.type === "folder"),
+    [sortedItems]
   );
   const documents = useMemo(
-    () => items.filter((item) => item.type === "document"),
-    [items]
+    () => sortedItems.filter((item) => item.type === "document"),
+    [sortedItems]
   );
 
   function openDocument(node: DocumentTreeNode) {
@@ -131,6 +193,12 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
       await softDeleteMutation.mutateAsync(pendingDelete.id);
       notify.success("Moved to bin");
       if (selectedId === pendingDelete.id) setSelectedId(null);
+      setCheckedIds((current) => {
+        if (!current.has(pendingDelete.id)) return current;
+        const next = new Set(current);
+        next.delete(pendingDelete.id);
+        return next;
+      });
       setPendingDelete(null);
     } catch (error) {
       notify.fromError(error, "Unable to move item to bin");
@@ -167,10 +235,56 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
     setSelectedId(node.id);
   }
 
+  function toggleChecked(nodeId: string) {
+    setCheckedIds((current) => {
+      const next = new Set(current);
+      if (next.has(nodeId)) next.delete(nodeId);
+      else next.add(nodeId);
+      return next;
+    });
+  }
+
+  function selectAllVisible() {
+    setCheckedIds(new Set(sortedItems.map((item) => item.id)));
+  }
+
+  function clearChecked() {
+    setCheckedIds(new Set());
+  }
+
+  async function handleDownloadSelected() {
+    const ids = [...checkedIds];
+    if (ids.length === 0) return;
+    try {
+      const blob = await downloadZipMutation.mutateAsync(ids);
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = `${repoQuery.data?.name ?? "documents"}-download.zip`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      URL.revokeObjectURL(url);
+      notify.success(
+        ids.length === 1
+          ? "Download started"
+          : `Downloading ${ids.length} items`
+      );
+    } catch (error) {
+      notify.fromError(error, "Unable to download selected items");
+    }
+  }
+
   function openFolder(node: DocumentTreeNode) {
     setParentNodeId(node.id);
     setSelectedId(null);
   }
+
+  const allVisibleSelected =
+    sortedItems.length > 0 &&
+    sortedItems.every((item) => checkedIds.has(item.id));
+  const someVisibleSelected =
+    sortedItems.some((item) => checkedIds.has(item.id)) && !allVisibleSelected;
 
   if (repoQuery.isLoading) {
     return (
@@ -216,7 +330,48 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
             </p>
           ) : null}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="inline-flex items-center gap-1">
+            <select
+              className="h-8 rounded-md border-0 bg-transparent py-0 pl-1 pr-6 text-xs text-muted-foreground shadow-none focus-visible:ring-0"
+              aria-label="Sort by"
+              value={sortField}
+              onChange={(event) =>
+                setSortField(event.target.value as RepoSortField)
+              }
+            >
+              {REPO_SORT_FIELDS.map((field) => (
+                <option key={field} value={field}>
+                  {REPO_SORT_FIELD_LABELS[field]}
+                </option>
+              ))}
+            </select>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 w-8 px-0 text-muted-foreground"
+              aria-label={
+                sortDir === "asc"
+                  ? "Sort descending"
+                  : "Sort ascending"
+              }
+              title={
+                sortDir === "asc"
+                  ? "Sort descending"
+                  : "Sort ascending"
+              }
+              onClick={() =>
+                setSortDir((current) => (current === "asc" ? "desc" : "asc"))
+              }
+            >
+              {sortDir === "asc" ? (
+                <ArrowDownAZ className="size-3.5" />
+              ) : (
+                <ArrowUpAZ className="size-3.5" />
+              )}
+            </Button>
+          </div>
           <div className="inline-flex rounded-md border border-border-subtle p-0.5">
             <Button
               type="button"
@@ -300,6 +455,48 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
         ))}
       </nav>
 
+      {items.length > 0 ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <label className="inline-flex items-center gap-2 text-[0.8125rem] text-muted-foreground">
+            <input
+              type="checkbox"
+              className="size-3.5 rounded border-border-subtle"
+              checked={allVisibleSelected}
+              ref={(el) => {
+                if (el) el.indeterminate = someVisibleSelected;
+              }}
+              onChange={() => {
+                if (allVisibleSelected) clearChecked();
+                else selectAllVisible();
+              }}
+              aria-label="Select all in this folder"
+            />
+            Select all in this folder
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            {checkedIds.size > 0 ? (
+              <span className="text-[0.75rem] text-muted-foreground">
+                {checkedIds.size} selected
+              </span>
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              disabled={checkedIds.size === 0 || downloadZipMutation.isPending}
+              onClick={() => void handleDownloadSelected()}
+            >
+              {downloadZipMutation.isPending ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <Download className="size-3.5" />
+              )}
+              Download
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-3">
           {nodesQuery.isLoading ? (
@@ -338,6 +535,9 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
               <table className="ims-table w-full min-w-[36rem] text-left text-sm">
                 <thead>
                   <tr className="border-b border-border-subtle bg-muted/30 text-[0.75rem] text-muted-foreground">
+                    <th className="w-10 px-3 py-2.5 font-medium">
+                      <span className="sr-only">Select</span>
+                    </th>
                     <th className="px-3 py-2.5 font-medium">Name</th>
                     <th className="px-3 py-2.5 font-medium">Type</th>
                     <th className="px-3 py-2.5 font-medium">Status</th>
@@ -352,10 +552,21 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                     <EntityTableRow
                       key={node.id}
                       className={cn(
-                        selectedId === node.id && "bg-muted/40"
+                        selectedId === node.id && "bg-muted/40",
+                        checkedIds.has(node.id) && "bg-primary/5"
                       )}
                       onOpen={() => openFolder(node)}
                     >
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          className="size-3.5 rounded border-border-subtle"
+                          checked={checkedIds.has(node.id)}
+                          aria-label={`Select ${node.name}`}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => toggleChecked(node.id)}
+                        />
+                      </td>
                       <td className="px-3 py-2.5">
                         <button
                           type="button"
@@ -400,13 +611,24 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                     <EntityTableRow
                       key={node.id}
                       className={cn(
-                        selectedId === node.id && "bg-muted/40"
+                        selectedId === node.id && "bg-muted/40",
+                        checkedIds.has(node.id) && "bg-primary/5"
                       )}
                       onOpen={() => {
                         selectNode(node);
                         openDocument(node);
                       }}
                     >
+                      <td className="px-3 py-2.5">
+                        <input
+                          type="checkbox"
+                          className="size-3.5 rounded border-border-subtle"
+                          checked={checkedIds.has(node.id)}
+                          aria-label={`Select ${node.name}`}
+                          onClick={(event) => event.stopPropagation()}
+                          onChange={() => toggleChecked(node.id)}
+                        />
+                      </td>
                       <td className="px-3 py-2.5">
                         <button
                           type="button"
@@ -501,63 +723,77 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
               <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-x-2 gap-y-3 sm:grid-cols-[repeat(auto-fill,minmax(7rem,1fr))]">
                 {[...folders, ...documents].map((node) => {
                   const selected = selectedId === node.id;
+                  const checked = checkedIds.has(node.id);
                   return (
-                    <button
+                    <div
                       key={node.id}
-                      type="button"
                       role="listitem"
-                      title={node.name}
-                      aria-pressed={selected}
                       className={cn(
                         "group relative flex flex-col items-center gap-2 rounded-lg px-2 py-3 text-center outline-none transition-colors",
-                        "hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/40",
-                        selected && "bg-primary/15 ring-1 ring-primary/30"
+                        "hover:bg-primary/10",
+                        selected && "bg-primary/15 ring-1 ring-primary/30",
+                        checked && !selected && "bg-primary/5 ring-1 ring-primary/20"
                       )}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        selectNode(node);
-                      }}
-                      onDoubleClick={(event) => {
-                        event.stopPropagation();
-                        if (node.type === "folder") openFolder(node);
-                        else openDocument(node);
-                      }}
                     >
-                      <div className="relative flex size-16 items-center justify-center sm:size-[4.5rem]">
-                        <FileTypeIcon
-                          type={node.type}
-                          fileName={
-                            node.documentData?.storageInfo?.Name ?? node.name
-                          }
-                          size="lg"
-                          className="drop-shadow-sm"
-                        />
-                        {node.type === "document" &&
-                        node.status !== "Published" ? (
-                          <span className="absolute -right-1 -top-1">
-                            <StatusBadge
-                              tone={
-                                node.status === "Pending"
-                                  ? "warning"
-                                  : node.status === "Rejected"
-                                    ? "destructive"
-                                    : "neutral"
-                              }
-                            >
-                              {node.status}
-                            </StatusBadge>
-                          </span>
-                        ) : null}
-                      </div>
-                      <span
-                        className={cn(
-                          "line-clamp-2 w-full break-words px-0.5 text-[0.75rem] leading-snug text-foreground",
-                          selected && "font-medium"
-                        )}
+                      <input
+                        type="checkbox"
+                        className="absolute left-2 top-2 size-3.5 rounded border-border-subtle"
+                        checked={checked}
+                        aria-label={`Select ${node.name}`}
+                        onClick={(event) => event.stopPropagation()}
+                        onChange={() => toggleChecked(node.id)}
+                      />
+                      <button
+                        type="button"
+                        title={node.name}
+                        aria-pressed={selected}
+                        className="flex w-full flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          selectNode(node);
+                        }}
+                        onDoubleClick={(event) => {
+                          event.stopPropagation();
+                          if (node.type === "folder") openFolder(node);
+                          else openDocument(node);
+                        }}
                       >
-                        {node.name}
-                      </span>
-                    </button>
+                        <div className="relative flex size-16 items-center justify-center sm:size-[4.5rem]">
+                          <FileTypeIcon
+                            type={node.type}
+                            fileName={
+                              node.documentData?.storageInfo?.Name ?? node.name
+                            }
+                            size="lg"
+                            className="drop-shadow-sm"
+                          />
+                          {node.type === "document" &&
+                          node.status !== "Published" ? (
+                            <span className="absolute -right-1 -top-1">
+                              <StatusBadge
+                                tone={
+                                  node.status === "Pending"
+                                    ? "warning"
+                                    : node.status === "Rejected"
+                                      ? "destructive"
+                                      : "neutral"
+                                }
+                              >
+                                {node.status}
+                              </StatusBadge>
+                            </span>
+                          ) : null}
+                        </div>
+                        <span
+                          className={cn(
+                            "line-clamp-2 w-full break-words px-0.5 text-[0.75rem] leading-snug text-foreground",
+                            selected && "font-medium"
+                          )}
+                        >
+                          {node.name}
+                        </span>
+                      </button>
+                    </div>
                   );
                 })}
               </div>
