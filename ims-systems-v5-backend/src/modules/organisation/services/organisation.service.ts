@@ -468,7 +468,10 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
       identity: SecurityIdentity | null | undefined
     ): Promise<Organisation[]> {
       const { identity: authed, subjectId } = requireIdentity(identity);
-      await assertAllowed(authed, "read");
+      // AuthN-only bootstrap: Mongo memberships scope the result. Do not
+      // OpenFGA-check identity.organizationId / x-org-id here — a stale
+      // tenant or empty self-hosted store would 403 the post-login gate.
+      await assertAllowed(authed, "read", "");
 
       const ids = await memberships.listOrganizationIdsForUser(subjectId);
       return organisations.findByIds(ids);
