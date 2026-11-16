@@ -77,7 +77,7 @@ Status values: `not_started` | `in_progress` | `blocked` | `done`
 | Role → permission matrix (incl. `create` vs update quirk) | `approved` | M6–M7 | Org module matrix in ROLE_PERMISSION_MATRIX.md; expand in M7 |
 | JIT vs invite-only provisioning; fate of `passwordHash` | `approved` | M2–M4 | Invite-only; keep `passwordHash` for now (Phase 0, 2026-10-16) |
 | Auth0 Orgs + Management API ownership (envs) | `approved` | M4–M5 | Owner: Mehrab (Phase 0) |
-| OpenFGA hosting (self-hosted vs Auth0 FGA) | `approved` | M6 | Self-hosted OpenFGA (Phase 0, 2026-10-16) |
+| OpenFGA hosting (self-hosted vs Auth0 FGA) | `approved` | M6 | Self-hosted OpenFGA + API token in prod (not Auth0 FGA cloud); see OPENFGA_SELF_HOSTED_PROD.md |
 | Accept Bearer (D-20) + rewrite D-16 for Vite SPA | `approved` | M1 | ADRs updated 2026-10-16 (Accepted) |
 | Shadow / enforce kill-switch for cutover? | `approved` | M7 | No — rollback via provider flip / redeploy (Phase 0) |
 | `subjectId` = IMS user ObjectId vs Auth0 `sub` | `approved` | M2–M3 | IMS user ObjectId (working agreement M0) |
@@ -91,7 +91,7 @@ Status values: `open` | `approved` | `deferred`
 | Resource | Owner | Env ready? | Notes |
 | --- | --- | --- | --- |
 | Auth0 tenant (SPA + API + Organizations) | Mehrab | yes | Staging SPA/API/Org + user token with org_id verified (Phase 1) |
-| OpenFGA store / Auth0 FGA | Mehrab | yes | Self-hosted Docker local; store+model+check OK (Phase 2) |
+| OpenFGA store / Auth0 FGA | Mehrab | yes | Self-hosted Docker local OK; prod = shared EC2 OpenFGA + OPENFGA_API_TOKEN |
 | Staging secrets (backend only) | Mehrab | no | Never put Management/OpenFGA secrets in Vite |
 
 When owners are known, replace **BLOCKED — unassigned** with a name and set `Env ready?` accordingly. Update the Dashboard **Blocked on** field.

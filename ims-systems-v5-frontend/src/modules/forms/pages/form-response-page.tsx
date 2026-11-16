@@ -92,7 +92,7 @@ export function FormResponsePage() {
           <EmptyState title="Submission not found" />
         ) : (
           <div
-            className="overflow-hidden rounded-lg border border-black/10"
+            className="ims-form-surface overflow-hidden rounded-lg border border-[var(--form-border)]"
             style={formThemeCssVars(theme)}
           >
             {coverSrc ? (
@@ -108,7 +108,7 @@ export function FormResponsePage() {
                   imageClassName="h-8 w-auto max-w-[140px] object-contain"
                 />
               ) : null}
-              <div className="rounded-md bg-black/5 px-3 py-2 text-sm">
+              <div className="rounded-md bg-[var(--form-muted)] px-3 py-2 text-sm">
                 <p className="font-medium">
                   {detailQuery.data.submittedByUser?.name?.trim() ||
                     detailQuery.data.submittedByUser?.email?.trim() ||

@@ -87,6 +87,7 @@ export type EmailTemplateId =
   | "partnership-code-ready"
   | "invoice"
   | "document-shared"
+  | "document-authorisation-requested"
   | "document-signature-requested"
   | "document-signed-copy"
   | "audit-report"

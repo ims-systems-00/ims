@@ -64,7 +64,7 @@ Status values: `not_started` | `in_progress` | `blocked` | `done`
 | OpenFGA owner | Mehrab | 2026-10-16 |
 | Staging secrets owner | Mehrab | 2026-10-16 |
 | Invite-only vs JIT | Invite-only; keep `passwordHash` for now | 2026-10-16 |
-| OpenFGA hosting | Self-hosted OpenFGA | 2026-10-16 |
+| OpenFGA hosting | Self-hosted OpenFGA + API token in prod (not Auth0 FGA) | 2026-10-16; reaffirmed 2026-11-16 — see [OPENFGA_SELF_HOSTED_PROD.md](./OPENFGA_SELF_HOSTED_PROD.md) |
 | Kill-switch / shadow | No — rollback via provider flip / redeploy | 2026-10-16 |
 
 **Exit:** all 0.1–0.6 checked; Dashboard **Blocked on** cleared or narrowed to Phase 1 only. **Met 2026-10-16.**
@@ -126,7 +126,7 @@ Access token **must** include: `sub` (Auth0 user id) and `org_id` (Auth0 Organiz
 | 2.1 | Stand up OpenFGA store (self-hosted or Auth0 FGA) | [x] |
 | 2.2 | Write model from `docs/security/openfga/authorization-model.fga` | [x] |
 | 2.3 | Record `OPENFGA_STORE_ID` + `OPENFGA_MODEL_ID` (ULIDs) | [x] |
-| 2.4 | Backend-only secrets: `OPENFGA_API_URL`, `OPENFGA_CLIENT_ID` / `OPENFGA_CLIENT_SECRET` | [x] |
+| 2.4 | Backend-only secrets: `OPENFGA_API_URL`, `OPENFGA_API_TOKEN` (prod); leave client-cred quartet empty | [x] |
 | 2.5 | Manual Check against store succeeds for a test tuple | [x] |
 
 **Exit:** Check API returns expected allow/deny for the test tuple.
@@ -145,7 +145,8 @@ Access token **must** include: `sub` (Auth0 user id) and `org_id` (Auth0 Organiz
 | `OPENFGA_API_URL` | `http://127.0.0.1:18080` (local Docker host map) |
 | `OPENFGA_STORE_ID` | _(ULID from create store)_ |
 | `OPENFGA_MODEL_ID` | _(ULID from write model)_ |
-| `OPENFGA_CLIENT_ID` / `OPENFGA_CLIENT_SECRET` / `OPENFGA_API_TOKEN_ISSUER` / `OPENFGA_API_AUDIENCE` | empty for local default (no auth); set for Auth0 FGA |
+| `OPENFGA_API_TOKEN` | empty locally; **required for self-hosted production** |
+| `OPENFGA_CLIENT_ID` / `OPENFGA_CLIENT_SECRET` / `OPENFGA_API_TOKEN_ISSUER` / `OPENFGA_API_AUDIENCE` | empty for local and for API-token prod; Auth0 FGA cloud only (legacy) |
 
 **With Cursor:** model write/verify; interpret OpenFGA errors; env shape.
 
@@ -306,6 +307,7 @@ db.organisations.countDocuments({
 | 2026-10-16 | 4 | 3.6 proven — GET /users/me 200 with Auth0 user token (Ada linked) |
 | 2026-10-16 | 4 | Phase 4 done — backfill idempotent; Ada can_read true. Advanced to Phase 5 |
 | 2026-10-16 | 5 | Phase 5 started — FE provider flipped to auth0-openfga; dual-run checklist issued |
+| 2026-11-16 | 2 | Reaffirmed prod OpenFGA = self-hosted + `OPENFGA_API_TOKEN` (not Auth0 FGA cloud); added OPENFGA_SELF_HOSTED_PROD.md + verify/fetch-model scripts |
 
 ---
 

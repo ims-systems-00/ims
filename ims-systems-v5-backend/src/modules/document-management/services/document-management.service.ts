@@ -23,12 +23,14 @@ import {
 import {
   NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentMembershipAdapter,
+  NoOpDocumentUsersAdapter,
   type DocumentActivityPort,
   type DocumentComplianceLinkPort,
   type DocumentEmailPort,
   type DocumentFilesPort,
   type DocumentMembershipPort,
   type DocumentNotificationPort,
+  type DocumentUsersPort,
 } from "../ports";
 import {
   createDocumentAccessTokenStore,
@@ -138,6 +140,7 @@ export type DocumentManagementServiceDeps = {
   notifications: DocumentNotificationPort;
   email?: DocumentEmailPort;
   memberships?: DocumentMembershipPort;
+  users?: DocumentUsersPort;
   accessTokens?: DocumentAccessTokenStore;
   signatures?: DocumentSignatureStore;
   complianceLinks?: DocumentComplianceLinkPort;
@@ -173,6 +176,7 @@ export function createDocumentManagementService(
   const { repositories, trees, authorizer, files, activities, notifications } =
     deps;
   const memberships = deps.memberships ?? new NoOpDocumentMembershipAdapter();
+  const users = deps.users ?? new NoOpDocumentUsersAdapter();
   const accessTokens =
     deps.accessTokens ?? createDocumentAccessTokenStore();
   const signatures = deps.signatures ?? createDocumentSignatureStore();
@@ -321,6 +325,68 @@ export function createDocumentManagementService(
       });
     } catch {
       // Non-fatal.
+    }
+  }
+
+  /**
+   * In-app notification + email when authorisation is requested on upload /
+   * version / add-authoriser. Email is the gap the UI “Send authorisation”
+   * implies; in-app alone was easy to miss.
+   */
+  async function notifyAuthorisationRequested(input: {
+    organizationId: string;
+    createdBy: string;
+    authoriserIds: string[];
+    documentName: string;
+    reference: string;
+    repositoryId: string;
+    nodeId: string;
+  }): Promise<void> {
+    const authoriserIds = [...new Set(input.authoriserIds)].filter(Boolean);
+    if (authoriserIds.length === 0) return;
+
+    await notifyUsers(
+      input.organizationId,
+      input.createdBy,
+      authoriserIds,
+      "Document authorisation requested",
+      `Please authorise "${input.documentName}" (${input.reference}).`,
+      input.nodeId
+    );
+
+    if (!deps.email) return;
+    try {
+      const profiles = await users.findIdentitySummariesByIds(authoriserIds);
+      const emails = [
+        ...new Set(
+          profiles
+            .map((profile) => profile.email.trim().toLowerCase())
+            .filter(Boolean)
+        ),
+      ];
+      if (emails.length === 0) return;
+
+      const viewUrl = accessLinkBaseUrl
+        ? `${accessLinkBaseUrl}/documents/repositories/${input.repositoryId}/nodes/${input.nodeId}`
+        : undefined;
+      const rendered = renderEmail(
+        "document-authorisation-requested",
+        {
+          documentName: input.documentName,
+          reference: input.reference,
+          ...(viewUrl ? { viewUrl } : {}),
+        },
+        { branding: await brandingFor(input.organizationId) }
+      );
+      await deps.email.sendDocumentEmail({
+        to: emails,
+        subject: rendered.subject,
+        text: rendered.text,
+        html: rendered.html,
+        organizationId: input.organizationId,
+      });
+    } catch {
+      // Non-fatal — in-app notification already attempted.
     }
   }
 
@@ -813,14 +879,15 @@ export function createDocumentManagementService(
         created.push(node);
 
         if (authoriserIds.length > 0) {
-          await notifyUsers(
+          await notifyAuthorisationRequested({
             organizationId,
-            subjectId,
+            createdBy: subjectId,
             authoriserIds,
-            "Document authorisation requested",
-            `Please authorise "${node.name}" (${node.reference}).`,
-            node.id
-          );
+            documentName: node.name,
+            reference: node.reference,
+            repositoryId,
+            nodeId: node.id,
+          });
           await recordActivity(
             organizationId,
             node.id,
@@ -1421,14 +1488,15 @@ export function createDocumentManagementService(
         node.documentData?.threadId
       );
       if (authoriserIds.length > 0) {
-        await notifyUsers(
+        await notifyAuthorisationRequested({
           organizationId,
-          subjectId,
+          createdBy: subjectId,
           authoriserIds,
-          "Document authorisation requested",
-          `Please authorise new version of "${node.name}".`,
-          node.id
-        );
+          documentName: node.name,
+          reference: node.reference,
+          repositoryId,
+          nodeId: node.id,
+        });
       }
       return node;
     },
@@ -1968,14 +2036,15 @@ export function createDocumentManagementService(
       });
       if (!updated) throw new NotFoundError("Document node not found");
 
-      await notifyUsers(
+      await notifyAuthorisationRequested({
         organizationId,
-        subjectId,
-        [userId],
-        "Document authorisation requested",
-        `Please authorise "${node.name}".`,
-        node.id
-      );
+        createdBy: subjectId,
+        authoriserIds: [userId],
+        documentName: node.name,
+        reference: node.reference,
+        repositoryId,
+        nodeId: node.id,
+      });
       return updated;
     },
 

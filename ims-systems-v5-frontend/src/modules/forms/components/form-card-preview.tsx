@@ -11,6 +11,8 @@ import { attrString } from "../build-form/element-types";
 import { getElementDefinition } from "../build-form/registry";
 import type { Form, FormElement } from "../types";
 
+const PREVIEW_FIELD_SLOTS = 3;
+
 function elementPreviewLabel(element: FormElement): string {
   const fromLabel = attrString(element.attributes, "label");
   if (fromLabel) return fromLabel;
@@ -26,8 +28,8 @@ type FormCardPreviewProps = {
 };
 
 /**
- * Mini themed preview of a form for library cards — brand chrome plus a
- * few element labels so the card reflects what was built.
+ * Fixed-height mini themed preview for library cards so every card in a
+ * grid row shares the same preview + chrome proportions.
  */
 export function FormCardPreview({ form }: FormCardPreviewProps) {
   const theme = useMemo(
@@ -37,88 +39,88 @@ export function FormCardPreview({ form }: FormCardPreviewProps) {
   const coverSrc = useThemeImageSrc(theme.coverImage);
   const logoAtTop = theme.logoVertical !== "bottom";
   const elementsQuery = useFormElementsQuery(form.id);
-  const previewElements = (elementsQuery.data ?? []).slice(0, 4);
+  const previewElements = (elementsQuery.data ?? []).slice(
+    0,
+    PREVIEW_FIELD_SLOTS
+  );
 
   return (
     <div
-      className="overflow-hidden rounded-md border border-black/10 shadow-sm"
+      className="ims-form-surface flex h-44 flex-col overflow-hidden rounded-md border border-[var(--form-border)] shadow-sm"
       style={formThemeCssVars(theme)}
       aria-hidden
     >
-      {coverSrc ? (
-        <div
-          className="h-16 w-full bg-cover bg-center"
-          style={{ backgroundImage: `url(${coverSrc})` }}
-        />
-      ) : (
-        <div
-          className="h-1.5 w-full"
-          style={{ backgroundColor: "var(--form-accent)" }}
-        />
-      )}
-      <div className="space-y-2 p-3">
-        {logoAtTop ? (
-          <FormLogo
-            theme={theme}
-            imageClassName="h-6 w-auto max-w-[100px] object-contain"
+      <div className="relative h-14 shrink-0 overflow-hidden">
+        {coverSrc ? (
+          <div
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ backgroundImage: `url(${coverSrc})` }}
           />
+        ) : (
+          <div
+            className="absolute inset-x-0 top-0 h-1.5"
+            style={{ backgroundColor: "var(--form-accent)" }}
+          />
+        )}
+        {logoAtTop ? (
+          <div className="absolute bottom-1.5 left-2 right-2">
+            <FormLogo
+              theme={theme}
+              imageClassName="h-5 w-auto max-w-[88px] object-contain drop-shadow-sm"
+            />
+          </div>
         ) : null}
-        <div>
-          <p className="truncate text-[0.8125rem] font-semibold leading-tight">
+      </div>
+
+      <div className="flex min-h-0 flex-1 flex-col gap-1.5 p-2.5">
+        <div className="shrink-0">
+          <p className="truncate text-[0.75rem] font-semibold leading-tight">
             {form.title}
           </p>
-          {form.description ? (
-            <p className="mt-0.5 line-clamp-1 text-[0.7rem] opacity-70">
-              {form.description}
-            </p>
-          ) : null}
+          <p className="mt-0.5 line-clamp-1 min-h-[0.95rem] text-[0.65rem] text-[var(--form-muted-fg)]">
+            {form.description || "\u00A0"}
+          </p>
         </div>
 
-        {elementsQuery.isLoading ? (
-          <div className="flex items-center gap-1.5 py-1 text-[0.7rem] opacity-60">
-            <Loader2 className="size-3 animate-spin" />
-            Loading fields…
-          </div>
-        ) : previewElements.length === 0 ? (
-          <p className="rounded border border-dashed border-black/15 px-2 py-3 text-center text-[0.7rem] opacity-55">
-            No fields yet
-          </p>
-        ) : (
-          <div className="space-y-1.5">
-            {previewElements.map((element) => {
+        <div className="min-h-0 flex-1 space-y-1 overflow-hidden">
+          {elementsQuery.isLoading ? (
+            <div className="flex items-center gap-1.5 py-1 text-[0.65rem] text-[var(--form-muted-fg)]">
+              <Loader2 className="size-3 animate-spin" />
+              Loading fields…
+            </div>
+          ) : previewElements.length === 0 ? (
+            <p className="rounded border border-dashed border-[var(--form-border)] px-2 py-2 text-center text-[0.65rem] text-[var(--form-muted-fg)]">
+              No fields yet
+            </p>
+          ) : (
+            previewElements.map((element) => {
               const label = elementPreviewLabel(element);
               const isHeader =
                 element.type === "Header" || element.type === "Paragraph";
               return (
-                <div key={element.id} className="space-y-1">
+                <div key={element.id} className="space-y-0.5">
                   <p
                     className={
                       isHeader
-                        ? "truncate text-[0.75rem] font-semibold"
-                        : "truncate text-[0.65rem] font-medium opacity-80"
+                        ? "truncate text-[0.7rem] font-semibold"
+                        : "truncate text-[0.6rem] font-medium text-[var(--form-muted-fg)]"
                     }
                   >
                     {label}
                   </p>
                   {!isHeader ? (
-                    <div className="h-5 rounded border border-black/10 bg-black/[0.03]" />
+                    <div className="h-3.5 rounded border border-[var(--form-border)] bg-[var(--form-muted)]" />
                   ) : null}
                 </div>
               );
-            })}
-            {(elementsQuery.data?.length ?? 0) > previewElements.length ? (
-              <p className="text-[0.65rem] opacity-50">
-                +{(elementsQuery.data?.length ?? 0) - previewElements.length}{" "}
-                more
-              </p>
-            ) : null}
-          </div>
-        )}
+            })
+          )}
+        </div>
 
         {!logoAtTop ? (
           <FormLogo
             theme={theme}
-            imageClassName="h-6 w-auto max-w-[100px] object-contain"
+            imageClassName="mt-auto h-5 w-auto max-w-[88px] object-contain"
           />
         ) : null}
       </div>

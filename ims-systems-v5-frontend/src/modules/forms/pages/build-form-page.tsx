@@ -159,10 +159,10 @@ function CanvasItem({
         if (sourceColumnId) onColumnDrop(sourceColumnId);
       }}
       className={cn(
-        "group relative h-full rounded-lg border bg-[color-mix(in_srgb,var(--form-bg)_92%,white)] p-3 shadow-sm transition-shadow",
+        "group relative h-full rounded-lg border bg-[color-mix(in_srgb,var(--form-bg)_92%,var(--surface-elevated))] p-3 shadow-sm transition-shadow",
         selected
           ? "border-[var(--form-accent)] ring-2 ring-[color-mix(in_srgb,var(--form-accent)_35%,transparent)]"
-          : "border-black/10 hover:border-black/20",
+          : "border-[var(--form-border)] hover:border-[color-mix(in_srgb,var(--form-fg)_22%,var(--form-bg))]",
         columnDragActive && "opacity-55",
         isColumnDragOver &&
           "border-[var(--form-accent)] ring-2 ring-[color-mix(in_srgb,var(--form-accent)_40%,transparent)]"
@@ -172,7 +172,7 @@ function CanvasItem({
         <span
           draggable={!busy}
           className={cn(
-            "cursor-grab rounded p-0.5 text-black/40 hover:bg-black/5 hover:text-black/65 active:cursor-grabbing",
+            "cursor-grab rounded p-0.5 text-[var(--form-muted-fg)] hover:bg-[var(--form-muted)] hover:text-[var(--form-fg)] active:cursor-grabbing",
             busy && "pointer-events-none opacity-40"
           )}
           title="Drag to reorder within this row"
@@ -188,7 +188,7 @@ function CanvasItem({
         >
           <GripHorizontal className="size-4" />
         </span>
-        <span className="min-w-0 flex-1 text-[11px] font-medium uppercase tracking-wide text-black/45">
+        <span className="min-w-0 flex-1 text-[11px] font-medium uppercase tracking-wide text-[var(--form-muted-fg)]">
           {def?.label ?? element.type}
         </span>
         <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
@@ -503,7 +503,7 @@ export function BuildFormPage() {
 
   const themedPaper = (
     <div
-      className="mx-auto w-full max-w-5xl overflow-hidden rounded-xl border border-black/10 shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]"
+      className="ims-form-surface mx-auto w-full max-w-5xl overflow-hidden rounded-xl border border-[var(--form-border)] shadow-[0_18px_40px_-24px_rgba(15,23,42,0.45)]"
       style={formThemeCssVars(theme)}
     >
       {coverSrc ? (
@@ -553,10 +553,10 @@ export function BuildFormPage() {
             />
           )
         ) : elements.length === 0 ? (
-          <div className="rounded-lg border border-dashed border-black/20 px-6 py-12 text-center">
-            <LayoutTemplate className="mx-auto size-8 opacity-40" />
+          <div className="rounded-lg border border-dashed border-[var(--form-border)] px-6 py-12 text-center">
+            <LayoutTemplate className="mx-auto size-8 text-[var(--form-muted-fg)]" />
             <p className="mt-3 text-sm font-medium">Start building your form</p>
-            <p className="mt-1 text-xs opacity-70">
+            <p className="mt-1 text-xs text-[var(--form-muted-fg)]">
               Pick an item from the right panel to add your first block.
             </p>
             <Button
@@ -652,7 +652,7 @@ export function BuildFormPage() {
                         role="button"
                         tabIndex={0}
                         className={cn(
-                          "cursor-grab rounded-md border border-transparent p-1 text-black/40 hover:border-black/10 hover:bg-black/5 hover:text-black/70 active:cursor-grabbing",
+                          "cursor-grab rounded-md border border-transparent p-1 text-[var(--form-muted-fg)] hover:border-[var(--form-border)] hover:bg-[var(--form-muted)] hover:text-[var(--form-fg)] active:cursor-grabbing",
                           busy && "pointer-events-none opacity-50",
                           draggingRowId === row.id &&
                             "border-[var(--form-accent)] bg-[color-mix(in_srgb,var(--form-accent)_12%,transparent)] text-[var(--form-accent)]"

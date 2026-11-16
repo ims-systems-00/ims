@@ -3,7 +3,9 @@
 **Preferred:** Postgres-backed OpenFGA via [Docker Compose](../development/DOCKER_COMPOSE.md) (data survives restart).  
 **Legacy:** in-memory `openfga-ims-v5` container (wipes on stop — morning recovery below).
 
-**Related:** [OPENFGA_MEMBERSHIP_BACKFILL.md](./OPENFGA_MEMBERSHIP_BACKFILL.md) · [openfga/authorization-model.fga](./openfga/authorization-model.fga) · [PRODUCTION_READINESS_PLAN.md](./PRODUCTION_READINESS_PLAN.md)
+**Related:** [OPENFGA_SELF_HOSTED_PROD.md](./OPENFGA_SELF_HOSTED_PROD.md) · [OPENFGA_MEMBERSHIP_BACKFILL.md](./OPENFGA_MEMBERSHIP_BACKFILL.md) · [openfga/authorization-model.fga](./openfga/authorization-model.fga) · [PRODUCTION_READINESS_PLAN.md](./PRODUCTION_READINESS_PLAN.md)
+
+**Production** uses the same OpenFGA product, but a **shared self-hosted** API with `OPENFGA_API_TOKEN` — see [OPENFGA_SELF_HOSTED_PROD.md](./OPENFGA_SELF_HOSTED_PROD.md). Do not point production at Auth0 FGA (`api.*.fga.dev`).
 
 ---
 
@@ -109,15 +111,13 @@ Edit `ims-systems-v5-backend/.env` only:
 OPENFGA_API_URL=http://127.0.0.1:18080
 OPENFGA_STORE_ID=PASTE_STORE_ID
 OPENFGA_MODEL_ID=PASTE_MODEL_ID
-# Leave empty for local Docker (no auth). For Auth0 FGA / Okta FGA cloud:
-# OPENFGA_CLIENT_ID=...
-# OPENFGA_CLIENT_SECRET=...
-# OPENFGA_API_TOKEN_ISSUER=auth.fga.dev
-# OPENFGA_API_AUDIENCE=https://api.us1.fga.dev/
+# Local Docker: leave empty (no auth).
+# Production self-hosted: set OPENFGA_API_TOKEN only — see OPENFGA_SELF_HOSTED_PROD.md
 OPENFGA_CLIENT_ID=
 OPENFGA_CLIENT_SECRET=
 OPENFGA_API_TOKEN_ISSUER=
 OPENFGA_API_AUDIENCE=
+OPENFGA_API_TOKEN=
 ```
 
 #### 5. Backfill membership tuples

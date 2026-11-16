@@ -126,7 +126,7 @@ export function FormSubmissionPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <div
-        className="overflow-hidden rounded-xl border border-black/10 shadow-sm"
+        className="ims-form-surface overflow-hidden rounded-xl border border-[var(--form-border)] shadow-sm"
         style={formThemeCssVars(theme)}
       >
         {coverSrc ? (

@@ -8,6 +8,9 @@
  */
 export const GUIDE_LAYER_SELECTOR = "[data-guide-layer]";
 export const ALICE_FLOAT_SELECTOR = "[data-alice-float]";
+/** Radix dropdown / menu portals — keep non-modal sheets open while menus close. */
+export const MENU_LAYER_SELECTOR =
+  "[data-radix-dropdown-menu-content],[data-radix-menu-content],[role='menu']";
 
 /**
  * Clicks on message/prompt text often target a Text node, not an Element.
@@ -31,6 +34,12 @@ export function isInAliceFloatLayer(
   target: EventTarget | null | undefined
 ): boolean {
   return eventTargetElement(target)?.closest(ALICE_FLOAT_SELECTOR) !== null;
+}
+
+export function isInMenuLayer(
+  target: EventTarget | null | undefined
+): boolean {
+  return eventTargetElement(target)?.closest(MENU_LAYER_SELECTOR) !== null;
 }
 
 type OutsideInteractionEvent = {
@@ -65,10 +74,17 @@ export function keepOpenForAliceFloat(event: OutsideInteractionEvent): void {
   }
 }
 
+export function keepOpenForMenuLayer(event: OutsideInteractionEvent): void {
+  if (isInMenuLayer(resolveOutsideTarget(event))) {
+    event.preventDefault();
+  }
+}
+
 /** Combined dismiss guard for sheets/dialogs that sit beside Alice / the guide. */
 export function keepOpenForFloatingLayers(
   event: OutsideInteractionEvent
 ): void {
   keepOpenForGuideLayer(event);
   keepOpenForAliceFloat(event);
+  keepOpenForMenuLayer(event);
 }

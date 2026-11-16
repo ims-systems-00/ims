@@ -127,7 +127,12 @@ echo
 echo "OPENFGA_API_URL=http://127.0.0.1:18080"
 echo "OPENFGA_STORE_ID=${STORE_ID}"
 echo "OPENFGA_MODEL_ID=${MODEL_ID}"
+echo "OPENFGA_CLIENT_ID="
+echo "OPENFGA_CLIENT_SECRET="
+echo "OPENFGA_API_TOKEN_ISSUER="
+echo "OPENFGA_API_AUDIENCE="
 echo "OPENFGA_API_TOKEN="
 echo
 echo "For backend inside Compose, use OPENFGA_API_URL=http://openfga:8080 instead."
+echo "Production (shared self-hosted + token): see docs/security/OPENFGA_SELF_HOSTED_PROD.md"
 echo "Then run membership backfill against this stack."

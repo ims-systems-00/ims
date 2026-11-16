@@ -72,6 +72,21 @@ export class NoOpDocumentMembershipAdapter
   }
 }
 
+/** Resolve authoriser emails for authorisation request mail. */
+export type DocumentUsersPort = {
+  findIdentitySummariesByIds(
+    ids: string[]
+  ): Promise<Array<{ id: string; name: string; email: string }>>;
+};
+
+export class NoOpDocumentUsersAdapter implements DocumentUsersPort {
+  async findIdentitySummariesByIds(): Promise<
+    Array<{ id: string; name: string; email: string }>
+  > {
+    return [];
+  }
+}
+
 export type DocumentActivityPort = {
   record(input: {
     organizationId: string;
