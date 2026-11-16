@@ -542,7 +542,7 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     },
 
     /**
-     * Monthly £100 SME licence Stripe Checkout.
+     * Monthly £1 SME licence Stripe Checkout.
      */
     async createSmeLicenceCheckoutSession(
       identity: SecurityIdentity | null | undefined,

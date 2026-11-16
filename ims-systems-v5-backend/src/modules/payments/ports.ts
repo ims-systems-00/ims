@@ -15,7 +15,7 @@ export type OrganisationBillingPort = {
     licences: StripeCheckoutLicences;
   }): Promise<CheckoutSessionResult>;
 
-  /** Monthly £100 SME licence Checkout (subscription mode). */
+  /** Monthly £1 SME licence Checkout (subscription mode). */
   createSmeLicenceCheckoutSession(input: {
     organizationId: string;
   }): Promise<CheckoutSessionResult>;

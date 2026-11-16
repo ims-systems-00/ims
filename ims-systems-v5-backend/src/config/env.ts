@@ -345,7 +345,7 @@ const envSchema = z
     STRIPE_ADD_MODULE_PRICE: z.string().default(""),
     STRIPE_SUPPORT_PRICE: z.string().default(""),
     /**
-     * Optional Stripe Price id for the £100/month SME licence subscription.
+     * Optional Stripe Price id for the £1/month SME licence subscription.
      * When empty, Checkout uses inline recurring price_data (GBP 100 / month).
      */
     STRIPE_SME_PRICE: z.string().default(""),

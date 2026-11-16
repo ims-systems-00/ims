@@ -273,7 +273,7 @@ describe("stripe payment service", () => {
     expect(lineItems[0]?.price_data).toEqual(
       expect.objectContaining({
         currency: "gbp",
-        unit_amount: 10_000,
+        unit_amount: 100,
         recurring: { interval: "month" },
       })
     );

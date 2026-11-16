@@ -20,8 +20,8 @@ import type {
 
 const SUPPORT_PERCENTAGE = 0.25;
 
-/** Fixed SME licence monthly amount (GBP). */
-export const SME_LICENCE_AMOUNT_PENCE = 10_000;
+/** Fixed SME licence monthly amount (GBP pence). */
+export const SME_LICENCE_AMOUNT_PENCE = 100;
 export const SME_LICENCE_MODULE_NAME = "SME";
 
 export type StripePaymentService = ReturnType<typeof createStripePaymentService>;
@@ -224,7 +224,7 @@ export function createStripePaymentService(deps: {
     },
 
     /**
-     * Monthly £100 SME licence Checkout (subscription mode).
+     * Monthly £1 SME licence Checkout (subscription mode).
      * Uses STRIPE_SME_PRICE when set; otherwise inline recurring price_data.
      */
     async createSmeLicenceCheckoutSession(input: {
@@ -252,7 +252,7 @@ export function createStripePaymentService(deps: {
                   product_data: {
                     name: "SME Licence",
                     description:
-                      "iMS Systems SME licence — £100 per month",
+                      "iMS Systems SME licence — £1 per month",
                   },
                 },
               },

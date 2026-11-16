@@ -1,0 +1,9 @@
+{
+  "template": "verify_email",
+  "from": "hello@imssystems.tech",
+  "subject": "Verify your email - iMS OS",
+  "syntax": "liquid",
+  "enabled": true,
+  "urlLifetimeInSeconds": 432000,
+  "body": "SEE body.html — paste contents here before POST, or use a deploy script that inlines body.html"
+}
