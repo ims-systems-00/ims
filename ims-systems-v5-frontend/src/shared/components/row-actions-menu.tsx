@@ -62,7 +62,13 @@ export function RowActionsMenu({
           <MoreHorizontal className="size-4" />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} onClick={(event) => event.stopPropagation()}>
+      <DropdownMenuContent
+        align={align}
+        onClick={(event) => event.stopPropagation()}
+        // Opening a sheet/dialog from an item must not restore focus to the
+        // 3-dot trigger (that focus-outside closes non-modal sheets).
+        onCloseAutoFocus={(event) => event.preventDefault()}
+      >
         <DropdownMenuLabel>Actions</DropdownMenuLabel>
         <DropdownMenuSeparator />
         {actions.map((action) => (
@@ -70,9 +76,9 @@ export function RowActionsMenu({
             key={action.id}
             disabled={action.disabled}
             variant={action.variant}
-            onSelect={(event) => {
-              event.preventDefault();
-              action.onSelect();
+            onSelect={() => {
+              // Let the menu close first, then open sheets/dialogs.
+              queueMicrotask(() => action.onSelect());
             }}
           >
             {action.icon}

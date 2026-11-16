@@ -4,9 +4,28 @@ One command starts MongoDB, backend, frontend, OnlyOffice, and durable OpenFGA (
 
 **Related:** [OPENFGA_LOCAL_DEV.md](../security/OPENFGA_LOCAL_DEV.md) · [`.env.docker.example`](../../.env.docker.example)
 
+## Shared Docker network (`ims_network`)
+
+On hosts that run multiple stacks (e.g. EC2 `~/projects/{carbon-os,ims,openfga}`), Compose attaches **backend** and **frontend** to the external network `ims_network` in addition to the private project network.
+
+- **On `ims_network`:** `backend`, `frontend` (aliases `ims-v5-backend`, `ims-v5-frontend` for peer stacks)
+- **Private only:** `mongodb`, `openfga-db`, Compose `openfga`, `onlyoffice`
+
+Create the network once before the first `up` (idempotent):
+
+```bash
+./scripts/docker/ensure-ims-network.sh
+# or: docker network create ims_network
+```
+
+Peer stacks should call `http://ims-v5-backend:3001` / `http://ims-v5-frontend` — not bare `backend` / `frontend`.
+
+**Production OpenFGA:** point `OPENFGA_API_URL` at the shared `~/projects/openfga` service on `ims_network` and set `OPENFGA_API_TOKEN` (clear Auth0 FGA client-cred vars). Leave this Compose project’s `openfga` / `openfga-db` private for local use. Full cutover: [OPENFGA_SELF_HOSTED_PROD.md](../security/OPENFGA_SELF_HOSTED_PROD.md).
+
 ## Quick start (stub demo)
 
 ```bash
+./scripts/docker/ensure-ims-network.sh
 docker compose up -d --build
 ```
 
@@ -49,6 +68,7 @@ Compose only reads the **repo-root** `.env`. Package-level backend/frontend `.en
 ### 2. Start infra + bootstrap OpenFGA
 
 ```bash
+./scripts/docker/ensure-ims-network.sh
 docker compose up -d mongodb openfga-db openfga-migrate openfga
 ./scripts/docker/openfga-bootstrap.sh
 ```

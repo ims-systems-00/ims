@@ -24,6 +24,7 @@ import {
   type ContactLeadData,
 } from "./catalog/contact-ims";
 import {
+  renderDocumentAuthorisationRequested,
   renderDocumentShared,
   renderDocumentSignatureRequested,
   renderDocumentSignedCopy,
@@ -123,6 +124,11 @@ export type EmailTemplateDataMap = {
     message?: string;
     viewUrl?: string;
   };
+  "document-authorisation-requested": {
+    documentName: string;
+    reference?: string;
+    viewUrl?: string;
+  };
   "document-signature-requested": {
     documentName: string;
     message?: string;
@@ -197,6 +203,7 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "partnership-code-ready": renderPartnershipCodeReady,
   invoice: renderInvoice,
   "document-shared": renderDocumentShared,
+  "document-authorisation-requested": renderDocumentAuthorisationRequested,
   "document-signature-requested": renderDocumentSignatureRequested,
   "document-signed-copy": renderDocumentSignedCopy,
   "audit-report": renderAuditReport,

@@ -24,6 +24,35 @@ export function renderDocumentShared(data: {
   });
 }
 
+export function renderDocumentAuthorisationRequested(data: {
+  documentName: string;
+  reference?: string;
+  viewUrl?: string;
+}): RenderedEmail {
+  return renderEmailLayout(
+    `Authorisation requested: ${data.documentName}`,
+    {
+      mode: "action",
+      eyebrow: "Documents",
+      statusChip: { label: "Action required", tone: "warning" },
+      title: "Please authorise a document",
+      hero: data.documentName,
+      paragraphs: [
+        `You have been asked to authorise “${data.documentName}” before it can be published.`,
+      ],
+      meta: [
+        { label: "Document", value: data.documentName },
+        ...(data.reference
+          ? [{ label: "Reference", value: data.reference }]
+          : []),
+      ],
+      ...(data.viewUrl
+        ? { cta: { label: "Review document", href: data.viewUrl } }
+        : {}),
+    }
+  );
+}
+
 export function renderDocumentSignatureRequested(data: {
   documentName: string;
   message?: string;

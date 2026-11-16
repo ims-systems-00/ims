@@ -12,6 +12,7 @@
 #   5. docker compose up -d --build
 #   → http://localhost:7864  (real Auth0 login)
 #
+# Shared net (EC2 multi-stack): ./scripts/docker/ensure-ims-network.sh first
 # Docs: docs/development/DOCKER_COMPOSE.md
 # NEVER: docker compose down -v  (wipes volumes)
 
@@ -87,6 +88,14 @@ services:
       context: .
       dockerfile: ims-systems-v5-backend/Dockerfile
     restart: unless-stopped
+    # Private stack net (Mongo / Compose OpenFGA / OnlyOffice) + shared
+    # ims_network for peer stacks (carbon-os, shared OpenFGA on EC2, etc.).
+    # Peers should use alias ims-v5-backend — not bare "backend".
+    networks:
+      default: {}
+      ims_network:
+        aliases:
+          - ims-v5-backend
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -125,15 +134,17 @@ services:
       ONLYOFFICE_URL: ${ONLYOFFICE_URL:-/onlyoffice}
       ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-dev-onlyoffice-jwt-secret}
       ONLYOFFICE_CALLBACK_BASE_URL: http://backend:3001/api/v1
+      # Local: http://openfga:8080 (Compose). Prod shared stack on ims_network:
+      # usually http://openfga:8080 + OPENFGA_API_TOKEN (see OPENFGA_SELF_HOSTED_PROD.md).
       OPENFGA_API_URL: ${OPENFGA_API_URL:-http://openfga:8080}
       OPENFGA_STORE_ID: ${OPENFGA_STORE_ID:-}
       OPENFGA_MODEL_ID: ${OPENFGA_MODEL_ID:-}
-      # Preferred Auth0 FGA / Okta FGA OAuth client credentials
+      # Auth0 FGA OAuth (optional/legacy). Leave empty for API-token or no-auth.
       OPENFGA_CLIENT_ID: ${OPENFGA_CLIENT_ID:-}
       OPENFGA_CLIENT_SECRET: ${OPENFGA_CLIENT_SECRET:-}
       OPENFGA_API_TOKEN_ISSUER: ${OPENFGA_API_TOKEN_ISSUER:-}
       OPENFGA_API_AUDIENCE: ${OPENFGA_API_AUDIENCE:-}
-      # Legacy static token — only used when client credentials are unset
+      # Self-hosted production preshared token (ignored if client creds set).
       OPENFGA_API_TOKEN: ${OPENFGA_API_TOKEN:-}
       # Auth0 (required when SECURITY_PROVIDER=auth0-openfga) — from .env
       AUTH0_DOMAIN: ${AUTH0_DOMAIN:-}
@@ -218,6 +229,11 @@ services:
         VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-}
         VITE_AUTH0_ORGANIZATION_ID: ${VITE_AUTH0_ORGANIZATION_ID:-}
     restart: unless-stopped
+    networks:
+      default: {}
+      ims_network:
+        aliases:
+          - ims-v5-frontend
     ports:
       - "${FRONTEND_HOST_PORT:-7864}:80"
     depends_on:
@@ -251,3 +267,12 @@ volumes:
     name: ims_v5_onlyoffice_data
   ims_v5_openfga_pg:
     name: ims_v5_openfga_pg
+
+networks:
+  # Shared across ~/projects on EC2 (carbon-os, ims, openfga, …).
+  # Create once: docker network create ims_network
+  # or: ./scripts/docker/ensure-ims-network.sh
+  # Mongo / openfga-db / Compose openfga / onlyoffice stay on default only.
+  ims_network:
+    name: ims_network
+    external: true

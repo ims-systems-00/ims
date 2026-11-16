@@ -17,6 +17,7 @@ import {
   createDocumentNotificationAdapter,
   createDocumentEmailAdapter,
   createDocumentMembershipAdapter,
+  createDocumentUsersAdapter,
   startDocumentReviewReminderSchedule,
   NoOpDocumentComplianceLinkAdapter,
   type DocumentComplianceLinkPort,
@@ -787,6 +788,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     notifications: createDocumentNotificationAdapter(notifications.application),
     email: createDocumentEmailAdapter(email),
     memberships: createDocumentMembershipAdapter(),
+    users: createDocumentUsersAdapter(),
     complianceLinks: {
       applyClauses: (input) =>
         documentComplianceLinkHolder.current.applyClauses(input),

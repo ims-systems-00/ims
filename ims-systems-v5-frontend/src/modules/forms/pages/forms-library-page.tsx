@@ -197,29 +197,29 @@ export function FormsLibraryPage() {
           }
         />
       ) : view === "grid" ? (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid items-stretch gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((form) => (
             <Link
               key={form.id}
               to={`/documents/forms/${form.id}/build-form`}
-              className="group overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40"
+              className="group flex h-full flex-col overflow-hidden rounded-xl border border-border bg-card transition-colors hover:border-primary/40"
             >
-              <div className="border-b border-border-subtle bg-muted/25 p-3">
+              <div className="shrink-0 border-b border-border-subtle bg-muted/25 p-3">
                 <FormCardPreview form={form} />
               </div>
-              <div className="space-y-2 p-4">
+              <div className="flex flex-1 flex-col gap-2 p-4">
                 <div className="flex items-start justify-between gap-2">
-                  <h3 className="font-medium leading-snug group-hover:text-primary">
+                  <h3 className="line-clamp-2 min-h-[2.5rem] font-medium leading-snug group-hover:text-primary">
                     {form.title}
                   </h3>
                   <StatusBadge tone={statusTone(form.status)}>
                     {form.status}
                   </StatusBadge>
                 </div>
-                <p className="line-clamp-2 text-sm text-muted-foreground">
+                <p className="line-clamp-2 min-h-[2.5rem] text-sm text-muted-foreground">
                   {form.description || "No description"}
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="mt-auto text-xs text-muted-foreground">
                   {form.submissionCount} submission
                   {form.submissionCount === 1 ? "" : "s"}
                 </p>

@@ -23,9 +23,11 @@ export type OpenFgaCredentials =
   | OpenFgaApiTokenCredentials;
 
 /**
- * Prefer OAuth client credentials (Auth0 FGA / Okta FGA) when configured.
- * Fall back to a static API token only when client credentials are absent.
- * Local unauthenticated OpenFGA returns undefined.
+ * Credential precedence:
+ * 1. OAuth client credentials (Auth0 FGA / Okta FGA) when any of those
+ *    fields are set — all four required.
+ * 2. Else static OPENFGA_API_TOKEN (self-hosted production).
+ * 3. Else undefined (local Compose OpenFGA with no auth).
  */
 export function resolveOpenFgaCredentials(
   config: Pick<

@@ -46,13 +46,61 @@ export function normalizeFormTheme(
   };
 }
 
+/** Rough luminance check for hex colours (form theme pickers use hex). */
+function isDarkHex(hex: string): boolean {
+  const match = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex.trim());
+  if (!match) return false;
+  const r = Number.parseInt(match[1]!, 16);
+  const g = Number.parseInt(match[2]!, 16);
+  const b = Number.parseInt(match[3]!, 16);
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.55;
+}
+
+/**
+ * CSS vars for a self-contained form surface.
+ * Remaps app semantic tokens (`--foreground`, `--muted-foreground`, …) so
+ * Tailwind utilities inside the form stay readable regardless of app dark mode.
+ */
 export function formThemeCssVars(theme: FormTheme): CSSProperties {
+  const fg = theme.foregroundColor;
+  const bg = theme.backgroundColor;
+  const accent = theme.accentColor;
+  const darkSurface = isDarkHex(bg);
+
   return {
-    ["--form-fg" as string]: theme.foregroundColor,
-    ["--form-bg" as string]: theme.backgroundColor,
-    ["--form-accent" as string]: theme.accentColor,
+    ["--form-fg" as string]: fg,
+    ["--form-bg" as string]: bg,
+    ["--form-accent" as string]: accent,
+    ["--form-muted" as string]: `color-mix(in srgb, ${fg} 6%, ${bg})`,
+    ["--form-muted-fg" as string]: `color-mix(in srgb, ${fg} 58%, ${bg})`,
+    ["--form-border" as string]: `color-mix(in srgb, ${fg} 14%, ${bg})`,
     color: "var(--form-fg)",
     backgroundColor: "var(--form-bg)",
+    colorScheme: darkSurface ? "dark" : "light",
+    // Isolate from `.dark` app tokens so designers / inputs stay legible.
+    ["--foreground" as string]: fg,
+    ["--background" as string]: bg,
+    ["--card" as string]: bg,
+    ["--card-foreground" as string]: fg,
+    ["--popover" as string]: darkSurface
+      ? `color-mix(in srgb, ${bg} 88%, white)`
+      : "#ffffff",
+    ["--popover-foreground" as string]: fg,
+    ["--muted" as string]: `color-mix(in srgb, ${fg} 6%, ${bg})`,
+    ["--muted-foreground" as string]: `color-mix(in srgb, ${fg} 58%, ${bg})`,
+    ["--border" as string]: `color-mix(in srgb, ${fg} 14%, ${bg})`,
+    ["--border-subtle" as string]: `color-mix(in srgb, ${fg} 8%, ${bg})`,
+    ["--input" as string]: `color-mix(in srgb, ${fg} 18%, ${bg})`,
+    ["--ring" as string]: accent,
+    ["--primary" as string]: accent,
+    ["--primary-foreground" as string]: darkSurface ? fg : "#ffffff",
+    ["--accent" as string]: `color-mix(in srgb, ${accent} 14%, ${bg})`,
+    ["--accent-foreground" as string]: fg,
+    ["--surface" as string]: bg,
+    ["--surface-elevated" as string]: darkSurface
+      ? `color-mix(in srgb, ${bg} 90%, white)`
+      : "#ffffff",
+    ["--surface-muted" as string]: `color-mix(in srgb, ${fg} 4%, ${bg})`,
   };
 }
 

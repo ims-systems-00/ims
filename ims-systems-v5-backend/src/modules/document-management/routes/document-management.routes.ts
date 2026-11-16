@@ -13,6 +13,7 @@ import {
   type DocumentFilesPort,
   type DocumentMembershipPort,
   type DocumentNotificationPort,
+  type DocumentUsersPort,
 } from "../ports";
 import { createDocumentRepositoryStore } from "../repositories/document-repository.repository";
 import { createDocumentTreeStore } from "../repositories/document-tree.repository";
@@ -35,6 +36,7 @@ export type DocumentManagementRouterDeps = {
   notifications?: DocumentNotificationPort;
   email?: DocumentEmailPort;
   memberships?: DocumentMembershipPort;
+  users?: DocumentUsersPort;
   complianceLinks?: DocumentComplianceLinkPort;
   /** Base URL for emailed access links (share / signature). */
   accessLinkBaseUrl?: string;
@@ -75,6 +77,7 @@ export function createDocumentManagementModule(
     notifications: notificationsPort,
     email: deps.email ?? new NoOpDocumentEmailAdapter(),
     memberships: deps.memberships,
+    users: deps.users,
     complianceLinks:
       deps.complianceLinks ?? new NoOpDocumentComplianceLinkAdapter(),
     accessLinkBaseUrl: deps.accessLinkBaseUrl,

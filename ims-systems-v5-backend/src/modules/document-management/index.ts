@@ -23,6 +23,7 @@ export {
   createDocumentNotificationAdapter,
   createDocumentEmailAdapter,
   createDocumentMembershipAdapter,
+  createDocumentUsersAdapter,
 } from "./adapters";
 
 export {
@@ -37,11 +38,13 @@ export {
   NoOpDocumentNotificationAdapter,
   NoOpDocumentEmailAdapter,
   NoOpDocumentComplianceLinkAdapter,
+  NoOpDocumentUsersAdapter,
   type DocumentFilesPort,
   type DocumentActivityPort,
   type DocumentNotificationPort,
   type DocumentEmailPort,
   type DocumentMembershipPort,
+  type DocumentUsersPort,
   type DocumentComplianceLinkPort,
 } from "./ports";
 

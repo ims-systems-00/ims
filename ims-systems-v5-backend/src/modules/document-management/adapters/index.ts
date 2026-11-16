@@ -4,12 +4,14 @@ import type { ObjectStoragePort } from "../../files/ports";
 import type { NotificationsApplicationPort } from "../../notifications";
 import type { EmailSystem } from "../../../infrastructure/queue/create-email-system";
 import { createOrganisationMembershipRepository } from "../../organisation/repositories/organisation-membership.repository";
+import { createUserRepository } from "../../users/repositories/user.repository";
 import type {
   DocumentActivityPort,
   DocumentEmailPort,
   DocumentFilesPort,
   DocumentMembershipPort,
   DocumentNotificationPort,
+  DocumentUsersPort,
 } from "../ports";
 
 type ReadableStorage = ObjectStoragePort & {
@@ -71,6 +73,15 @@ export function createDocumentMembershipAdapter(): DocumentMembershipPort {
     },
     async listOrganizationIdsForUser(userId) {
       return memberships.listOrganizationIdsForUser(userId);
+    },
+  };
+}
+
+export function createDocumentUsersAdapter(): DocumentUsersPort {
+  const users = createUserRepository();
+  return {
+    async findIdentitySummariesByIds(ids) {
+      return users.findIdentitySummariesByIds(ids);
     },
   };
 }
