@@ -32,6 +32,7 @@ export {
   buildAuditReportHtml,
   createAuditReportAdapter,
 } from "./adapters/report.adapter";
+export { buildAuditReportPdf } from "./adapters/audit-report-pdf";
 export {
   NoOpAuditNotificationAdapter,
   NoOpAuditCalendarAdapter,

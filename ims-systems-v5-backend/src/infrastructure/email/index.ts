@@ -9,6 +9,7 @@ export { createEmailTransport } from "./create-transport";
 export { createLoggingEmailTransport } from "./logging.transport";
 export { createMailtrapEmailTransport } from "./mailtrap.transport";
 export { createSendGridEmailTransport } from "./sendgrid.transport";
+export { prepareOutgoingEmailImages } from "./inline-data-uri-images";
 export {
   renderEmail,
   renderEmailForOrganisation,

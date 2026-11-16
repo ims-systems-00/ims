@@ -339,8 +339,8 @@ export function EmailCustomisePanel({
               />
             ) : (
               <p className="text-xs text-muted-foreground">
-                No logo uploaded yet — emails show a monogram + organisation
-                name when branding is active.
+                No logo uploaded yet — emails use the default iMS Systems logo
+                (same as the live preview). Upload your own logo to replace it.
               </p>
             )}
           </div>

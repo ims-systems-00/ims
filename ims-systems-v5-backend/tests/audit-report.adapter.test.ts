@@ -67,7 +67,7 @@ describe("AuditReportAdapter (N-14)", () => {
     expect(html).toContain("Attachments (0)");
   });
 
-  it("emails the report with an HTML attachment", async () => {
+  it("emails the report with a PDF attachment", async () => {
     const sendTransactional = vi.fn().mockResolvedValue({ mode: "direct" });
     const adapter = createAuditReportAdapter({
       sendTransactional,
@@ -92,12 +92,10 @@ describe("AuditReportAdapter (N-14)", () => {
     expect(input.subject).toMatch(/Audit report/i);
     expect(input.category).toBe("transactional");
     expect(input.attachments).toHaveLength(1);
-    expect(input.attachments[0]!.filename).toBe("audit-report-AUD-001.html");
-    const decoded = Buffer.from(
-      input.attachments[0]!.contentBase64,
-      "base64"
-    ).toString("utf8");
-    expect(decoded).toContain("Missing record");
+    expect(input.attachments[0]!.filename).toBe("audit-report-AUD-001.pdf");
+    expect(input.attachments[0]!.type).toBe("application/pdf");
+    const bytes = Buffer.from(input.attachments[0]!.contentBase64, "base64");
+    expect(bytes.subarray(0, 4).toString("utf8")).toBe("%PDF");
   });
 
   it("includes cloud audit attachments on the email", async () => {

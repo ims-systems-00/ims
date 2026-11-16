@@ -1,13 +1,14 @@
 import { Worker, type Job } from "bullmq";
 import type { AppConfig } from "../../config";
 import type { EmailTransport, OutgoingEmail } from "../email";
+import { prepareOutgoingEmailImages } from "../email/inline-data-uri-images";
 import type { Logger } from "../logging/logger";
 import { parseEmailJobData, type EmailJobData } from "./email-jobs";
 import { QUEUE_NAMES } from "./names";
 import { createRedisClient } from "./redis-connection";
 
 function toOutgoingEmail(data: EmailJobData): OutgoingEmail {
-  return {
+  return prepareOutgoingEmailImages({
     to: data.to,
     subject: data.subject,
     html: data.html,
@@ -17,7 +18,7 @@ function toOutgoingEmail(data: EmailJobData): OutgoingEmail {
     category: data.category,
     ...(data.correlationId ? { correlationId: data.correlationId } : {}),
     ...(data.organizationId ? { organizationId: data.organizationId } : {}),
-  };
+  });
 }
 
 async function processEmailJob(

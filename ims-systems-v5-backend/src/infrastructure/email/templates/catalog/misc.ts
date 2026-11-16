@@ -80,7 +80,7 @@ export function renderAuditReport(data: {
     ],
     meta: [{ label: "Reference", value: data.reference }],
     safeHtmlBlock: data.summaryHtml,
-    attachmentNote: "Full report attached when provided by the export job.",
+    attachmentNote: "A professional PDF audit extract is attached to this email.",
   });
 }
 

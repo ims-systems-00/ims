@@ -1,8 +1,8 @@
 /**
  * Real AuditReportPort (N-14) — builds an audit extract report
  * (summary, identifications, embedded risks, OFIs) and delivers it
- * to the recipient via the shared EmailSystem, with the full report
- * HTML plus any cloud-stored audit attachments.
+ * to the recipient via the shared EmailSystem, with a professional PDF
+ * attachment plus any cloud-stored audit attachments.
  */
 
 import {
@@ -15,6 +15,7 @@ import { getLocalObjectStorage } from "../../files/local-fallback-storage";
 import type { ObjectStoragePort } from "../../files/ports";
 import type { Audit, AuditAttachment } from "../types";
 import { NoOpAuditReportAdapter, type AuditReportPort } from "../ports";
+import { buildAuditReportPdf } from "./audit-report-pdf";
 
 /** Soft cap so report emails stay within provider size limits. */
 const MAX_ATTACHMENT_BYTES = 8 * 1024 * 1024;
@@ -225,6 +226,7 @@ export function createAuditReportAdapter(
       organizationId,
     }) {
       const summaryHtml = buildAuditReportHtml(audit);
+      const reportPdf = await buildAuditReportPdf(audit);
       const rendered = await renderEmailForOrganisation(
         "audit-report",
         {
@@ -247,9 +249,9 @@ export function createAuditReportAdapter(
         organizationId,
         attachments: [
           {
-            filename: `audit-report-${audit.reference}.html`,
-            contentBase64: Buffer.from(summaryHtml, "utf8").toString("base64"),
-            type: "text/html",
+            filename: `audit-report-${audit.reference}.pdf`,
+            contentBase64: Buffer.from(reportPdf).toString("base64"),
+            type: "application/pdf",
           },
           ...fileAttachments,
         ],

@@ -6,6 +6,7 @@ import {
   type OutgoingEmail,
   type SendEmailResult,
 } from "../email";
+import { prepareOutgoingEmailImages } from "../email/inline-data-uri-images";
 import type { Logger } from "../logging/logger";
 import {
   emailJobDataSchema,
@@ -56,7 +57,7 @@ const DEFAULT_BULK_JOB_OPTS: JobsOptions = {
 };
 
 function toOutgoing(data: EmailJobData): OutgoingEmail {
-  return {
+  return prepareOutgoingEmailImages({
     to: data.to,
     subject: data.subject,
     html: data.html,
@@ -66,7 +67,7 @@ function toOutgoing(data: EmailJobData): OutgoingEmail {
     category: data.category,
     ...(data.correlationId ? { correlationId: data.correlationId } : {}),
     ...(data.organizationId ? { organizationId: data.organizationId } : {}),
-  };
+  });
 }
 
 /**
@@ -135,9 +136,26 @@ export function createEmailSystem(options: {
     queueName: typeof QUEUE_NAMES.emailTransactional | typeof QUEUE_NAMES.emailBulk,
     input: EnqueueEmailInput
   ): Promise<EnqueueEmailResult> => {
-    const data = emailJobDataSchema.parse({
+    const parsed = emailJobDataSchema.parse({
       kind: "raw",
       ...input,
+    });
+    // Rewrite data:image logos → cid before queue/direct send so workers
+    // and providers both receive inbox-safe inline attachments.
+    const prepared = prepareOutgoingEmailImages({
+      to: parsed.to,
+      subject: parsed.subject,
+      html: parsed.html,
+      ...(parsed.text ? { text: parsed.text } : {}),
+      ...(parsed.replyTo ? { replyTo: parsed.replyTo } : {}),
+      ...(parsed.attachments ? { attachments: parsed.attachments } : {}),
+      category: parsed.category,
+      ...(parsed.correlationId ? { correlationId: parsed.correlationId } : {}),
+      ...(parsed.organizationId ? { organizationId: parsed.organizationId } : {}),
+    });
+    const data = emailJobDataSchema.parse({
+      kind: "raw" as const,
+      ...prepared,
     });
 
     if (!config.EMAIL_ENABLED) {
@@ -148,34 +166,48 @@ export function createEmailSystem(options: {
       return deliverDirect(data);
     }
 
-    const queues = ensureQueues();
-    const queue =
-      queueName === QUEUE_NAMES.emailBulk
-        ? queues.bulkQueue
-        : queues.transactionalQueue;
+    try {
+      const queues = ensureQueues();
+      const queue =
+        queueName === QUEUE_NAMES.emailBulk
+          ? queues.bulkQueue
+          : queues.transactionalQueue;
 
-    const job = await queue.add(data.category, data, {
-      ...(data.dedupeKey
-        ? { jobId: data.dedupeKey, removeOnComplete: true }
-        : {}),
-    });
+      const job = await queue.add(data.category, data, {
+        ...(data.dedupeKey
+          ? { jobId: data.dedupeKey, removeOnComplete: true }
+          : {}),
+      });
 
-    logger.info(
-      {
+      logger.info(
+        {
+          queue: queueName,
+          jobId: job.id,
+          category: data.category,
+          correlationId: data.correlationId,
+          organizationId: data.organizationId,
+        },
+        "Email job enqueued"
+      );
+
+      return {
+        mode: "queued",
         queue: queueName,
         jobId: job.id,
-        category: data.category,
-        correlationId: data.correlationId,
-        organizationId: data.organizationId,
-      },
-      "Email job enqueued"
-    );
-
-    return {
-      mode: "queued",
-      queue: queueName,
-      jobId: job.id,
-    };
+      };
+    } catch (error) {
+      // Common in Compose when EMAIL_QUEUE_ENABLED=true but Redis is down.
+      logger.warn(
+        {
+          err: error,
+          queue: queueName,
+          category: data.category,
+          organizationId: data.organizationId,
+        },
+        "Email queue unavailable — falling back to direct send"
+      );
+      return deliverDirect(data);
+    }
   };
 
   return {
