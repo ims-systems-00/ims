@@ -93,17 +93,18 @@ export function App() {
         path="register-interest"
         element={<RegisterPublicInterestPage />}
       />
+      {/* Invitation preview/register handoff is public; accept auto-runs when
+          the user is signed in. Outside membership gate so invitees without
+          an org are not forced into create-organisation. */}
+      <Route
+        path="auth/onboard/accept-invitation/:token"
+        element={<AcceptInvitationPage />}
+      />
 
       <Route element={<RequireAuth />}>
         <Route
           path="auth/preparation-screen"
           element={<PreparationScreenPage />}
-        />
-        {/* Emailed invitation acceptance: authenticated, but outside the
-            membership gate — invitees may have no membership yet. */}
-        <Route
-          path="auth/onboard/accept-invitation/:token"
-          element={<AcceptInvitationPage />}
         />
         <Route element={<PostLoginMembershipGate />}>
           <Route path="onboard" element={<OnboardingShell />}>

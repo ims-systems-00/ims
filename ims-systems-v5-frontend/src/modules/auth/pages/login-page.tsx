@@ -8,6 +8,10 @@ import { isApiClientError } from "@/shared/lib/http/errors";
 import { Button } from "@/shared/components/ui/button";
 import { Input } from "@/shared/components/ui/input";
 import { FormField } from "@/shared/components/form-field";
+import {
+  acceptInvitationPath,
+  getPendingInvite,
+} from "@/modules/invitations/lib/pending-invite";
 import { AuthEntryLayout } from "../components/auth-entry-layout";
 import { loginSchema, type LoginFormValues } from "../schemas";
 
@@ -20,8 +24,28 @@ export function LoginPage() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const pendingInvite = getPendingInvite();
   const returnTo =
-    (location.state as { returnTo?: string } | null)?.returnTo ?? "/";
+    (location.state as { returnTo?: string } | null)?.returnTo ??
+    (pendingInvite?.token
+      ? acceptInvitationPath(pendingInvite.token, true)
+      : "/");
+  const registerHref = pendingInvite?.token
+    ? `/register?invite=${encodeURIComponent(pendingInvite.token)}${
+        pendingInvite.email
+          ? `&email=${encodeURIComponent(pendingInvite.email)}`
+          : ""
+      }`
+    : returnTo.startsWith("/auth/onboard/accept-invitation/")
+      ? (() => {
+          const match = /\/auth\/onboard\/accept-invitation\/([^/?#]+)/.exec(
+            returnTo
+          );
+          return match
+            ? `/register?invite=${encodeURIComponent(decodeURIComponent(match[1]!))}`
+            : "/register";
+        })()
+      : "/register";
   const [checking, setChecking] = useState(
     env.VITE_SECURITY_PROVIDER === "auth0-openfga"
   );
@@ -178,7 +202,7 @@ export function LoginPage() {
         <p className="text-center text-[0.8125rem] text-muted-foreground">
           Don&apos;t have an account?{" "}
           <Link
-            to="/register"
+            to={registerHref}
             className="font-medium text-primary underline-offset-4 hover:underline"
           >
             Sign up

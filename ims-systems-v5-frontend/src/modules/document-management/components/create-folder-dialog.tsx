@@ -13,7 +13,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { notify } from "@/shared/lib/toast";
 import { useCreateFolderNodeMutation } from "../hooks/use-document-management";
-import { fromUkDateInputValue } from "../lib/format";
+import { fromDateInputValue } from "../lib/format";
 import { createFolderFormSchema } from "../schemas";
 
 type CreateFolderDialogProps = {
@@ -51,10 +51,10 @@ export function CreateFolderDialog({
     }
     const reviewIso =
       parsed.data.reviewDate && parsed.data.reviewDate.trim()
-        ? fromUkDateInputValue(parsed.data.reviewDate)
+        ? fromDateInputValue(parsed.data.reviewDate)
         : null;
     if (parsed.data.reviewDate?.trim() && !reviewIso) {
-      setError("Use review date as dd/mm/yyyy");
+      setError("Select a valid review date");
       return;
     }
 
@@ -103,16 +103,10 @@ export function CreateFolderDialog({
               autoFocus
             />
           </FormField>
-          <FormField
-            label="Folder review date"
-            htmlFor="folder-review-date"
-            description="Format: dd/mm/yyyy"
-          >
+          <FormField label="Folder review date" htmlFor="folder-review-date">
             <Input
               id="folder-review-date"
-              type="text"
-              inputMode="numeric"
-              placeholder="dd/mm/yyyy"
+              type="date"
               value={reviewDate}
               onChange={(event) => setReviewDate(event.target.value)}
             />

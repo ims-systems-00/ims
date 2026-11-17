@@ -65,6 +65,7 @@ function makeService(overrides: {
       findById: vi.fn(async () => ({
         id: ORG_ID,
         name: "Acme Ltd",
+        auth0OrganizationId: "org_acme",
         licences: {
           superUser: {
             allocated: overrides.allocatedSuper ?? 0,
@@ -210,11 +211,31 @@ describe("createInvitationService", () => {
       organisationName: "Acme Ltd",
       role: "Basic User",
       userId: "user-9",
+      auth0OrganizationId: "org_acme",
+      alreadyMember: false,
     });
     expect(membershipsCreated).toEqual([
       { organizationId: ORG_ID, userId: "user-9", role: "Basic User" },
     ]);
     expect(projected).toHaveLength(1);
+    expect(repository.remove).toHaveBeenCalledWith(stored.id);
+  });
+
+  it("accept returns alreadyMember when the user is already in the org", async () => {
+    const { service, repository, membershipsCreated } = makeService({
+      repository: fakeRepository(stored),
+      existingUser: { id: "user-9", email: stored.email, name: "Existing" },
+      members: [{ userId: "user-9", role: "Basic User" }],
+    });
+
+    const result = await service.accept(
+      { subjectId: "user-9", email: stored.email },
+      "raw-token"
+    );
+
+    expect(result.alreadyMember).toBe(true);
+    expect(result.organizationId).toBe(ORG_ID);
+    expect(membershipsCreated).toHaveLength(0);
     expect(repository.remove).toHaveBeenCalledWith(stored.id);
   });
 

@@ -79,6 +79,9 @@ export type AcceptInvitationResult = {
   organisationName: string;
   role: OrganisationRole;
   userId: string;
+  auth0OrganizationId?: string | null;
+  /** True when the user was already a member (invite consumed). */
+  alreadyMember?: boolean;
 };
 
 /**

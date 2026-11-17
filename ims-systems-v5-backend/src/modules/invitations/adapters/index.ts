@@ -27,6 +27,7 @@ export function createInvitationOrganisationAdapter(): InvitationOrganisationPor
         id: organisation.id,
         name: organisation.name,
         licences: organisation.licences,
+        auth0OrganizationId: organisation.auth0OrganizationId ?? null,
       };
     },
   };

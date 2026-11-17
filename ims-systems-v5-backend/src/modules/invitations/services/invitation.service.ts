@@ -381,13 +381,25 @@ export function createInvitationService(deps: InvitationServiceDeps) {
         );
       }
 
+      const organisation = await organisations.findById(
+        invitation.organizationId
+      );
+      const auth0OrganizationId = organisation?.auth0OrganizationId ?? null;
+
       const existingMembership = await memberships.findByUserAndOrg(
         user.id,
         invitation.organizationId
       );
       if (existingMembership) {
         await repository.remove(invitation.id);
-        throw new ConflictError("User already is a member of organisation.");
+        return {
+          organizationId: invitation.organizationId,
+          organisationName: invitation.organisationName,
+          role: existingMembership.role,
+          userId: user.id,
+          auth0OrganizationId,
+          alreadyMember: true,
+        };
       }
 
       await assertLicenceAvailable(
@@ -414,6 +426,8 @@ export function createInvitationService(deps: InvitationServiceDeps) {
         organisationName: invitation.organisationName,
         role: membership.role,
         userId: user.id,
+        auth0OrganizationId,
+        alreadyMember: false,
       };
     },
   };

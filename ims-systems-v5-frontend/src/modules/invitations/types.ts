@@ -68,4 +68,6 @@ export type AcceptInvitationResult = {
   organisationName: string;
   role: InvitationRole;
   userId: string;
+  auth0OrganizationId?: string | null;
+  alreadyMember?: boolean;
 };

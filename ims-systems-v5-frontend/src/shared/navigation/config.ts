@@ -122,6 +122,36 @@ export function buildNavigationSections(
         ],
       },
       {
+        id: "documents",
+        label: "Documents",
+        icon: FolderOpen,
+        children: [
+          {
+            id: "documents-overview",
+            label: "Overview",
+            href: "/documents",
+            icon: FolderOpen,
+            requiredPermission: "document-management:read",
+          },
+          {
+            id: "documents-signatures",
+            label: "Signature requests",
+            href: "/documents/signatures",
+            icon: PenLine,
+            requiredPermission: "document-management:read",
+          },
+          {
+            id: "documents-forms",
+            label: "Forms",
+            href: "/documents/forms",
+            icon: ClipboardList,
+            // Same as other Documents children so the item is visible whenever
+            // the user can open Documents. IMS Forms is free (no licence gate).
+            requiredPermission: "document-management:read",
+          },
+        ],
+      },
+      {
         id: "inventory",
         label: "Inventory",
         icon: Package,
@@ -224,36 +254,6 @@ export function buildNavigationSections(
             icon: Tags,
             requiredPermission: "tags-and-categories:read",
           },
-        ],
-      },
-      {
-        id: "documents",
-        label: "Documents",
-        icon: FolderOpen,
-        children: [
-          {
-            id: "documents-overview",
-            label: "Overview",
-            href: "/documents",
-            icon: FolderOpen,
-            requiredPermission: "document-management:read",
-          },
-          {
-            id: "documents-signatures",
-            label: "Signature requests",
-            href: "/documents/signatures",
-            icon: PenLine,
-            requiredPermission: "document-management:read",
-          },
-          {
-            id: "documents-forms",
-            label: "Forms",
-            href: "/documents/forms",
-            icon: ClipboardList,
-            // Same as other Documents children so the item is visible whenever
-            // the user can open Documents. IMS Forms is free (no licence gate).
-            requiredPermission: "document-management:read",
-          }
         ],
       },
       {

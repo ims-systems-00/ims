@@ -11,6 +11,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import type { ReactNode } from "react";
 
+const isAuthenticatedMock = vi.fn(async () => false);
+
 vi.mock("@/modules/invitations/api/invitations", () => ({
   createInvitation: vi.fn(),
   listInvitations: vi.fn(),
@@ -19,6 +21,20 @@ vi.mock("@/modules/invitations/api/invitations", () => ({
   removeInvitation: vi.fn(),
   getInvitationPreview: vi.fn(),
   acceptInvitation: vi.fn(),
+}));
+
+vi.mock("@/security", () => ({
+  useAuthClient: () => ({
+    isAuthenticated: () => isAuthenticatedMock(),
+  }),
+}));
+
+vi.mock("@/shared/lib/toast", () => ({
+  notify: {
+    success: vi.fn(),
+    error: vi.fn(),
+    fromError: vi.fn(),
+  },
 }));
 
 import * as invitationsApi from "@/modules/invitations/api/invitations";
@@ -31,6 +47,8 @@ const api = vi.mocked(invitationsApi);
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
+  isAuthenticatedMock.mockResolvedValue(false);
+  sessionStorage.clear();
 });
 
 function withQueryClient(node: ReactNode) {
@@ -80,7 +98,10 @@ describe("InviteUserDialog", () => {
       })
     );
     await waitFor(() =>
-      expect(onInvited).toHaveBeenCalledWith("invited@example.com")
+      expect(onInvited).toHaveBeenCalledWith({
+        email: "invited@example.com",
+        role: "Basic User",
+      })
     );
   }, 15_000);
 
@@ -167,8 +188,8 @@ describe("InvitationsPanel", () => {
 });
 
 describe("AcceptInvitationPage", () => {
-  it("shows the invitation context and joins the organisation", async () => {
-    const user = userEvent.setup();
+  it("auto-joins when authenticated and account exists", async () => {
+    isAuthenticatedMock.mockResolvedValue(true);
     api.getInvitationPreview.mockResolvedValue({
       email: "invited@example.com",
       role: "Basic User",
@@ -204,19 +225,14 @@ describe("AcceptInvitationPage", () => {
       )
     );
 
-    expect(await screen.findByText(/Admin One/)).toBeTruthy();
-    expect(screen.getAllByText(/Acme Ltd/).length).toBeGreaterThan(0);
-
-    await user.click(
-      screen.getByRole("button", { name: /Join organisation/i })
-    );
     await waitFor(() =>
       expect(api.acceptInvitation).toHaveBeenCalledWith("token-123")
     );
     expect(await screen.findByText("Preparation")).toBeTruthy();
   });
 
-  it("prompts registration when the invitee has no account", async () => {
+  it("prompts registration with invite token when invitee has no account", async () => {
+    isAuthenticatedMock.mockResolvedValue(false);
     api.getInvitationPreview.mockResolvedValue({
       email: "invited@example.com",
       role: "Basic User",
@@ -242,9 +258,15 @@ describe("AcceptInvitationPage", () => {
       )
     );
 
-    expect(
-      await screen.findByRole("link", { name: /Register/i })
-    ).toBeTruthy();
+    const registerLink = await screen.findByRole("link", {
+      name: /Create account & join/i,
+    });
+    expect(registerLink.getAttribute("href")).toContain(
+      "/register?invite=token-123"
+    );
+    expect(registerLink.getAttribute("href")).toContain(
+      "email=invited%40example.com"
+    );
     expect(
       screen.queryByRole("button", { name: /Join organisation/i })
     ).toBeNull();

@@ -2,6 +2,10 @@ import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { useMyOrganisationsQuery } from "@/modules/organisation/hooks/use-organisations";
 import {
+  acceptInvitationPath,
+  getPendingInvite,
+} from "@/modules/invitations/lib/pending-invite";
+import {
   clearActiveOrganisation,
   getActiveOrganisationId,
   setActiveOrganisationContext,
@@ -128,6 +132,15 @@ export function PostLoginMembershipGate() {
 
   const memberships = orgsQuery.data ?? [];
   if (memberships.length === 0 && !onOnboard) {
+    const pendingInvite = getPendingInvite();
+    if (pendingInvite?.token) {
+      return (
+        <Navigate
+          to={acceptInvitationPath(pendingInvite.token, true)}
+          replace
+        />
+      );
+    }
     return <Navigate to="/onboard/organisation" replace />;
   }
 

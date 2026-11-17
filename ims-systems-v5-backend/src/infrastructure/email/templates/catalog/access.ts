@@ -18,7 +18,7 @@ export function renderInvitation(data: {
       hero: `${data.inviterName} has invited you to collaborate.`,
       paragraphs: [
         `${data.inviterName} invited you to join ${data.organisationName} as a ${data.role}.`,
-        "If you do not have an iMS account yet, register with this email address first, then open the invitation link again.",
+        "Open the link below. If you do not have an iMS account yet, you can create one from that page and you will join this organisation automatically.",
       ],
       meta: [
         { label: "Organisation", value: data.organisationName },

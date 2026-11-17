@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   computeRepoReviewDate,
   formatReviewDateDisplay,
-  fromUkDateInputValue,
-  toUkDateInputValue,
+  fromDateInputValue,
+  toDateInputValue,
 } from "@/modules/document-management/lib/format";
 
 describe("document review date helpers", () => {
@@ -18,12 +18,12 @@ describe("document review date helpers", () => {
     );
   });
 
-  it("round-trips dd/mm/yyyy text inputs to ISO", () => {
-    expect(toUkDateInputValue("2026-06-15T00:00:00.000Z")).toBe("15/06/2026");
-    expect(fromUkDateInputValue("15/06/2026")).toBe("2026-06-15T00:00:00.000Z");
-    expect(fromUkDateInputValue("15-06-2026")).toBe("2026-06-15T00:00:00.000Z");
-    expect(fromUkDateInputValue("")).toBeNull();
-    expect(fromUkDateInputValue("32/01/2026")).toBeNull();
+  it("round-trips native date-picker values to ISO", () => {
+    expect(toDateInputValue("2026-06-15T00:00:00.000Z")).toBe("2026-06-15");
+    expect(fromDateInputValue("2026-06-15")).toBe("2026-06-15T00:00:00.000Z");
+    expect(fromDateInputValue("15/06/2026")).toBe("2026-06-15T00:00:00.000Z");
+    expect(fromDateInputValue("")).toBeNull();
+    expect(fromDateInputValue("2026-13-01")).toBeNull();
   });
 
   it("advances repo review date past today from an old createdOn", () => {

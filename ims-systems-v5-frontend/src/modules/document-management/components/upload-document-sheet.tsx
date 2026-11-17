@@ -18,7 +18,7 @@ import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-or
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { signalSetupEvent } from "@/modules/setup-guide";
 import { useCreateFileNodesMutation } from "../hooks/use-document-management";
-import { fromUkDateInputValue } from "../lib/format";
+import { fromDateInputValue } from "../lib/format";
 import { uploadDocumentFormSchema } from "../schemas";
 import {
   COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL,
@@ -162,10 +162,10 @@ export function UploadDocumentSheet({
 
     const reviewIso =
       parsed.data.reviewDate && parsed.data.reviewDate.trim()
-        ? fromUkDateInputValue(parsed.data.reviewDate)
+        ? fromDateInputValue(parsed.data.reviewDate)
         : null;
     if (parsed.data.reviewDate?.trim() && !reviewIso) {
-      setFormError("Use review date as dd/mm/yyyy");
+      setFormError("Select a valid review date");
       return;
     }
 
@@ -378,16 +378,10 @@ export function UploadDocumentSheet({
           />
         </FormField>
 
-        <FormField
-          label="Document review date"
-          htmlFor="doc-review-date"
-          description="Format: dd/mm/yyyy"
-        >
+        <FormField label="Document review date" htmlFor="doc-review-date">
           <Input
             id="doc-review-date"
-            type="text"
-            inputMode="numeric"
-            placeholder="dd/mm/yyyy"
+            type="date"
             value={reviewDate}
             onChange={(event) => setReviewDate(event.target.value)}
           />

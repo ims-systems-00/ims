@@ -30,21 +30,36 @@ export function formatReviewDateDisplay(
   return formatted === "—" ? "Not set" : formatted;
 }
 
-/** Text-field value as `dd/mm/yyyy` from an ISO/date string. */
-export function toUkDateInputValue(value: string | null | undefined): string {
+/** Native `<input type="date">` value (`yyyy-mm-dd`) from an ISO/date string. */
+export function toDateInputValue(value: string | null | undefined): string {
   const date = parseDisplayDate(value);
   if (!date) return "";
-  const dd = String(date.getDate()).padStart(2, "0");
+  const yyyy = date.getFullYear();
   const mm = String(date.getMonth() + 1).padStart(2, "0");
-  return `${dd}/${mm}/${date.getFullYear()}`;
+  const dd = String(date.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
 }
 
-/**
- * Parse `dd/mm/yyyy` or `dd-mm-yyyy` (also accepts yyyy-mm-dd) to ISO midnight UTC.
- */
-export function fromUkDateInputValue(value: string): string | null {
+/** Parse native date-input `yyyy-mm-dd` (also accepts dd/mm/yyyy) to ISO midnight UTC. */
+export function fromDateInputValue(value: string): string | null {
   const trimmed = value.trim();
   if (!trimmed) return null;
+
+  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
+  if (iso) {
+    const year = Number(iso[1]);
+    const month = Number(iso[2]);
+    const day = Number(iso[3]);
+    const date = new Date(Date.UTC(year, month - 1, day));
+    if (
+      date.getUTCFullYear() !== year ||
+      date.getUTCMonth() !== month - 1 ||
+      date.getUTCDate() !== day
+    ) {
+      return null;
+    }
+    return date.toISOString();
+  }
 
   const uk = /^(\d{1,2})[\/\-\s](\d{1,2})[\/\-\s](\d{4})$/.exec(trimmed);
   if (uk) {
@@ -63,22 +78,7 @@ export function fromUkDateInputValue(value: string): string | null {
     return date.toISOString();
   }
 
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed);
-  if (iso) {
-    return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
-  }
-
   return null;
-}
-
-/** @deprecated Prefer toUkDateInputValue for document forms. */
-export function toDateInputValue(value: string | null | undefined): string {
-  return toUkDateInputValue(value);
-}
-
-/** @deprecated Prefer fromUkDateInputValue for document forms. */
-export function fromDateInputValue(value: string): string | null {
-  return fromUkDateInputValue(value);
 }
 
 /**

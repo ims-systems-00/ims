@@ -10,6 +10,7 @@ export type InvitationOrganisation = {
   id: string;
   name: string;
   licences: OrganisationLicences;
+  auth0OrganizationId?: string | null;
 };
 
 export interface InvitationOrganisationPort {

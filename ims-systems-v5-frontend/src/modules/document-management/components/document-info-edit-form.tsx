@@ -7,10 +7,7 @@ import { notify } from "@/shared/lib/toast";
 import { cn } from "@/shared/lib/utils";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { useUpdateDocumentNodeMutation } from "../hooks/use-document-management";
-import {
-  fromUkDateInputValue,
-  toUkDateInputValue,
-} from "../lib/format";
+import { fromDateInputValue, toDateInputValue } from "../lib/format";
 import { updateDocumentInfoFormSchema } from "../schemas";
 import type { DocumentTreeNode } from "../types";
 import {
@@ -57,7 +54,7 @@ export function DocumentInfoEditForm({
     setPurpose(data.purpose);
     setModules([...(data.applicableModules ?? [])]);
     setOwners([...(data.owners ?? [])]);
-    setReviewDate(toUkDateInputValue(data.reviewDate));
+    setReviewDate(toDateInputValue(data.reviewDate));
     setError(undefined);
   }, [data, node.id]);
 
@@ -94,10 +91,10 @@ export function DocumentInfoEditForm({
 
     const reviewIso =
       parsed.data.reviewDate && parsed.data.reviewDate.trim()
-        ? fromUkDateInputValue(parsed.data.reviewDate)
+        ? fromDateInputValue(parsed.data.reviewDate)
         : null;
     if (parsed.data.reviewDate?.trim() && !reviewIso) {
-      setError("Use review date as dd/mm/yyyy");
+      setError("Select a valid review date");
       return;
     }
 
@@ -176,16 +173,10 @@ export function DocumentInfoEditForm({
         />
       </FormField>
 
-      <FormField
-        label="Document review date"
-        htmlFor="edit-doc-review"
-        description="Format: dd/mm/yyyy"
-      >
+      <FormField label="Document review date" htmlFor="edit-doc-review">
         <Input
           id="edit-doc-review"
-          type="text"
-          inputMode="numeric"
-          placeholder="dd/mm/yyyy"
+          type="date"
           value={reviewDate}
           onChange={(event) => setReviewDate(event.target.value)}
         />
