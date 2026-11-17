@@ -5,6 +5,10 @@ export type {
   OutgoingEmail,
   SendEmailResult,
 } from "./types";
+export {
+  loadOnboardingAttachments,
+  loadServiceCharterAttachment,
+} from "./onboarding-attachments";
 export { createEmailTransport } from "./create-transport";
 export { createLoggingEmailTransport } from "./logging.transport";
 export { createMailtrapEmailTransport } from "./mailtrap.transport";

@@ -12,6 +12,8 @@ import {
   LayoutGrid,
   LayoutList,
   Loader2,
+  Pin,
+  PinOff,
   RefreshCw,
   Trash2,
   Upload,
@@ -47,6 +49,10 @@ import {
   type RepoSortDir,
   type RepoSortField,
 } from "../lib/sort-nodes";
+import {
+  MAX_PINNED_FOLDERS,
+  usePinnedFoldersStore,
+} from "../store/use-pinned-folders-store";
 import type { DocumentTreeNode } from "../types";
 import { DOCUMENT_PURPOSE_LABELS } from "../types";
 import { ChangeRepositoryDialog } from "./change-repository-dialog";
@@ -107,6 +113,22 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
     next.delete("upload");
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
+
+  useEffect(() => {
+    const folderId = searchParams.get("folder");
+    if (!folderId) return;
+    setParentNodeId(folderId);
+    setSelectedId(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete("folder");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  const pinFolder = usePinnedFoldersStore((state) => state.pinFolder);
+  const unpinFolder = usePinnedFoldersStore((state) => state.unpinFolder);
+  const isPinned = usePinnedFoldersStore((state) => state.isPinned);
+  const pinnedByOrg = usePinnedFoldersStore((state) => state.byOrg);
+
   const [copyOpen, setCopyOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
   const [changeRepoOpen, setChangeRepoOpen] = useState(false);
@@ -279,6 +301,34 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
     setParentNodeId(node.id);
     setSelectedId(null);
   }
+
+  function handleTogglePin(node: DocumentTreeNode) {
+    if (node.type !== "folder") return;
+    const alreadyPinned = isPinned(repositoryId, node.id);
+    if (alreadyPinned) {
+      unpinFolder(repositoryId, node.id);
+      notify.success("Folder unpinned");
+      return;
+    }
+    const result = pinFolder({
+      repositoryId,
+      folderId: node.id,
+      name: node.name,
+      repositoryName: repoQuery.data?.name ?? "Repository",
+    });
+    if (!result.ok) {
+      if (result.reason === "limit") {
+        notify.error(
+          `You can pin up to ${MAX_PINNED_FOLDERS} folders. Unpin one first.`
+        );
+      }
+      return;
+    }
+    notify.success("Folder pinned to overview");
+  }
+
+  // Subscribe so pin labels refresh when localStorage-backed store changes.
+  void pinnedByOrg;
 
   const allVisibleSelected =
     sortedItems.length > 0 &&
@@ -593,6 +643,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                       <td className="px-3 py-2.5 text-right">
                         <NodeActions
                           node={node}
+                          pinned={isPinned(repositoryId, node.id)}
                           onSelect={() => selectNode(node)}
                           onDelete={() => setPendingDelete(node)}
                           onMove={() => {
@@ -603,6 +654,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                             selectNode(node);
                             setChangeRepoOpen(true);
                           }}
+                          onTogglePin={() => handleTogglePin(node)}
                         />
                       </td>
                     </EntityTableRow>
@@ -767,6 +819,13 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                             size="lg"
                             className="drop-shadow-sm"
                           />
+                          {node.type === "folder" &&
+                          isPinned(repositoryId, node.id) ? (
+                            <span className="absolute -right-0.5 -top-0.5 rounded-full bg-primary p-0.5 text-primary-foreground shadow-sm">
+                              <Pin className="size-2.5" aria-hidden />
+                              <span className="sr-only">Pinned</span>
+                            </span>
+                          ) : null}
                           {node.type === "document" &&
                           node.status !== "Published" ? (
                             <span className="absolute -right-1 -top-1">
@@ -800,81 +859,131 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
             </div>
           )}
 
-          {viewMode === "grid" && selected && selected.type === "document" ? (
+          {viewMode === "grid" && selected ? (
             <div className="flex flex-wrap gap-2 rounded-md border border-border-subtle p-3">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => openDocument(selected)}
-              >
-                Open
-              </Button>
-              {selected.status === "Published" ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setVersionMode("version");
-                    setVersionOpen(true);
-                  }}
-                >
-                  <GitBranch className="size-3.5" />
-                  New version
-                </Button>
-              ) : null}
-              {selected.status === "Pending" ? (
+              {selected.type === "folder" ? (
                 <>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => {
-                      setVersionMode("revision");
-                      setVersionOpen(true);
-                    }}
+                    onClick={() => openFolder(selected)}
                   >
-                    <RefreshCw className="size-3.5" />
-                    Revise
+                    Open
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => void handleDecide(selected, "Approved")}
+                    onClick={() => handleTogglePin(selected)}
                   >
-                    <Check className="size-3.5" />
-                    Approve
+                    {isPinned(repositoryId, selected.id) ? (
+                      <>
+                        <PinOff className="size-3.5" />
+                        Unpin
+                      </>
+                    ) : (
+                      <>
+                        <Pin className="size-3.5" />
+                        Pin to overview
+                      </>
+                    )}
                   </Button>
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    onClick={() => void handleDecide(selected, "Rejected")}
+                    onClick={() => setMoveOpen(true)}
                   >
-                    <X className="size-3.5" />
-                    Reject
+                    <FolderInput className="size-3.5" />
+                    Move
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPendingDelete(selected)}
+                  >
+                    <Trash2 className="size-3.5" />
                   </Button>
                 </>
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setMoveOpen(true)}
-              >
-                <FolderInput className="size-3.5" />
-                Move
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="ghost"
-                onClick={() => setPendingDelete(selected)}
-              >
-                <Trash2 className="size-3.5" />
-              </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openDocument(selected)}
+                  >
+                    Open
+                  </Button>
+                  {selected.status === "Published" ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        setVersionMode("version");
+                        setVersionOpen(true);
+                      }}
+                    >
+                      <GitBranch className="size-3.5" />
+                      New version
+                    </Button>
+                  ) : null}
+                  {selected.status === "Pending" ? (
+                    <>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                          setVersionMode("revision");
+                          setVersionOpen(true);
+                        }}
+                      >
+                        <RefreshCw className="size-3.5" />
+                        Revise
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void handleDecide(selected, "Approved")}
+                      >
+                        <Check className="size-3.5" />
+                        Approve
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => void handleDecide(selected, "Rejected")}
+                      >
+                        <X className="size-3.5" />
+                        Reject
+                      </Button>
+                    </>
+                  ) : null}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setMoveOpen(true)}
+                  >
+                    <FolderInput className="size-3.5" />
+                    Move
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPendingDelete(selected)}
+                  >
+                    <Trash2 className="size-3.5" />
+                  </Button>
+                </>
+              )}
             </div>
           ) : null}
         </div>
@@ -943,20 +1052,24 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
 
 function NodeActions({
   node,
+  pinned,
   onSelect,
   onDelete,
   onMove,
   onChangeRepo,
+  onTogglePin,
   onNewVersion,
   onRevise,
   onApprove,
   onReject,
 }: {
   node: DocumentTreeNode;
+  pinned?: boolean;
   onSelect: () => void;
   onDelete: () => void;
   onMove: () => void;
   onChangeRepo: () => void;
+  onTogglePin?: () => void;
   onNewVersion?: () => void;
   onRevise?: () => void;
   onApprove?: () => void;
@@ -967,6 +1080,15 @@ function NodeActions({
   // and it flips above the trigger near the bottom of the viewport.
   const actions: RowActionItem[] = [
     { id: "details", label: "Details", onSelect },
+    ...(node.type === "folder" && onTogglePin
+      ? [
+          {
+            id: "pin",
+            label: pinned ? "Unpin from overview" : "Pin to overview",
+            onSelect: onTogglePin,
+          } satisfies RowActionItem,
+        ]
+      : []),
     { id: "move", label: "Move…", onSelect: onMove },
     {
       id: "change-repository",

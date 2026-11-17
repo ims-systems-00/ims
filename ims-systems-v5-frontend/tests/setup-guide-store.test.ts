@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   completedCount,
+  consumeSetupGuidePendingOpen,
+  markSetupGuidePendingOpen,
   nextUndoneStepId,
   useSetupGuideStore,
 } from "@/modules/setup-guide/store";
@@ -24,6 +26,7 @@ function resetStore() {
   try {
     localStorage.removeItem("ims.setup-guide.progress");
     localStorage.removeItem("ims.setup-guide.hidden");
+    localStorage.removeItem("ims.setup-guide.pendingOpenOrgId");
   } catch {
     /* ignore */
   }
@@ -99,5 +102,12 @@ describe("useSetupGuideStore", () => {
     useSetupGuideStore.getState().openChecklist();
     expect(useSetupGuideStore.getState().checklistHidden).toBe(false);
     expect(useSetupGuideStore.getState().checklistOpen).toBe(true);
+  });
+
+  it("consumes pending open only once for the matching org", () => {
+    markSetupGuidePendingOpen("org-a");
+    expect(consumeSetupGuidePendingOpen("org-b")).toBe(false);
+    expect(consumeSetupGuidePendingOpen("org-a")).toBe(true);
+    expect(consumeSetupGuidePendingOpen("org-a")).toBe(false);
   });
 });

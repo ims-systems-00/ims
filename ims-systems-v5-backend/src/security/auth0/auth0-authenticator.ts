@@ -35,6 +35,12 @@ export type Auth0EnsureUserInput = {
   name?: string;
 };
 
+export type Auth0EnsureUserResult = {
+  user: Auth0LinkedUser;
+  /** True only when a new IMS user document was inserted. */
+  created: boolean;
+};
+
 export type Auth0AuthenticatorLookups = {
   findUserByAuth0SubjectId(
     auth0SubjectId: string
@@ -42,7 +48,9 @@ export type Auth0AuthenticatorLookups = {
   /**
    * Resolve or create an IMS user for a verified Auth0 subject (self-signup).
    */
-  ensureUserFromAuth0(input: Auth0EnsureUserInput): Promise<Auth0LinkedUser | null>;
+  ensureUserFromAuth0(
+    input: Auth0EnsureUserInput
+  ): Promise<Auth0EnsureUserResult | null>;
   findOrganisationByAuth0OrganizationId(
     auth0OrganizationId: string
   ): Promise<Auth0LinkedOrganisation | null>;
@@ -162,11 +170,12 @@ export class Auth0Authenticator implements Authenticator {
       }
     }
 
-    const user = await this.lookups.ensureUserFromAuth0({
+    const ensured = await this.lookups.ensureUserFromAuth0({
       auth0SubjectId: verified.sub,
       email,
       name,
     });
+    const user = ensured?.user ?? null;
     if (!user) return null;
     if (!isUserAllowed(user, new Date())) return null;
 

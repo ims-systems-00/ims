@@ -23,6 +23,7 @@ export type {
   ComplianceToolkitPort,
   MembershipLookupPort,
   OwnershipIntegrityPort,
+  SendWelcomeOptions,
   SessionPort,
   UserNotificationPort,
 } from "./ports";

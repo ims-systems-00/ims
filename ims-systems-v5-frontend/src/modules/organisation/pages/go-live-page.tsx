@@ -18,6 +18,7 @@ import {
   OnboardHeader,
 } from "../components/onboarding-ui";
 import { COMPLIANCE_TOOLKIT_NAMES } from "@/modules/compliance/types";
+import { markSetupGuidePendingOpen } from "@/modules/setup-guide";
 import {
   useCardPaymentSessionMutation,
   useCurrentOrganisationQuery,
@@ -121,6 +122,8 @@ export function GoLivePage() {
         body: parsed.data,
       });
       notify.success(`${result.organisation.name} is now live`);
+      // One-shot: open the setup guide when they first land in the app shell.
+      markSetupGuidePendingOpen(result.organisation.id);
       if (result.paymentSession?.url) {
         window.location.assign(result.paymentSession.url);
         return;
@@ -130,7 +133,7 @@ export function GoLivePage() {
           "Your organisation is live, but card payment hasn't started yet. Complete it from Organisation → Licenses → Card payment."
         );
       }
-      navigate("/organisation", { replace: true });
+      navigate("/", { replace: true });
     } catch (error) {
       notify.fromError(error, "Unable to complete Go Live");
     }

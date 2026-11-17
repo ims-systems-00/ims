@@ -1,19 +1,17 @@
 import { useEffect, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
-import { BadgePoundSterling, CreditCard, KeyRound, Settings2 } from "lucide-react";
+import { BadgeCheck, CreditCard, KeyRound, Settings2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
 import { toolkitDisplayLabel } from "@/modules/compliance/types";
 import {
-  organisationKeys,
   useBillingPortalSessionMutation,
   useCardPaymentSessionMutation,
   useSmeLicenceCheckoutMutation,
 } from "../hooks/use-organisations";
-import type {
-  OrganisationLicences,
-  OrganisationPaymentSystem,
+import {
+  organisationHasSmeLicence,
+  type OrganisationLicences,
+  type OrganisationPaymentSystem,
 } from "../types";
 import { LicenceRequestHistory } from "./licence-request-history";
 import { RequestLicenceSheet } from "./request-licence-sheet";
@@ -55,8 +53,6 @@ export function OrganisationLicencesPanel({
   isCustomer,
   paymentSystem,
 }: OrganisationLicencesPanelProps) {
-  const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
   const [requestOpen, setRequestOpen] = useState(false);
   const [openingSme, setOpeningSme] = useState(false);
   const [openingCard, setOpeningCard] = useState(false);
@@ -64,9 +60,10 @@ export function OrganisationLicencesPanel({
   const cardPayment = useCardPaymentSessionMutation();
   const smeLicence = useSmeLicenceCheckoutMutation();
   const billingPortal = useBillingPortalSessionMutation();
+  const hasSme = organisationHasSmeLicence(licences);
 
   // Stripe return / browser back (bfcache) can restore a mid-checkout pending
-  // mutation and leave the SME button stuck disabled/"Opening…".
+  // mutation and leave billing buttons stuck disabled/"Opening…".
   useEffect(() => {
     function clearCheckoutUiState() {
       setOpeningSme(false);
@@ -88,25 +85,6 @@ export function OrganisationLicencesPanel({
     // Intentionally once on mount + bfcache restore only.
     // eslint-disable-next-line react-hooks/exhaustive-deps -- reset helpers are stable enough for mount
   }, []);
-
-  const smeCheckoutResult = searchParams.get("sme");
-  useEffect(() => {
-    if (smeCheckoutResult !== "success" && smeCheckoutResult !== "cancelled") {
-      return;
-    }
-
-    const next = new URLSearchParams(searchParams);
-    next.delete("sme");
-    setSearchParams(next, { replace: true });
-
-    void queryClient.invalidateQueries({
-      queryKey: organisationKeys.current(),
-    });
-
-    if (smeCheckoutResult === "success") {
-      notify.success("SME licence checkout completed");
-    }
-  }, [queryClient, searchParams, setSearchParams, smeCheckoutResult]);
 
   if (!isCustomer) {
     return (
@@ -190,16 +168,22 @@ export function OrganisationLicencesPanel({
             </p>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2">
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={billingBusy}
-              onClick={() => void openSmeCheckout()}
-            >
-              <BadgePoundSterling className="size-3.5" />
-              {openingSme ? "Opening…" : "SME License"}
-            </Button>
+            {hasSme ? (
+              <Button type="button" size="sm" variant="outline" disabled>
+                <BadgeCheck className="size-3.5" />
+                SME active
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={billingBusy}
+                onClick={() => void openSmeCheckout()}
+              >
+                {openingSme ? "Opening…" : "Get SME licence"}
+              </Button>
+            )}
             <Button
               type="button"
               size="sm"

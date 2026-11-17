@@ -59,6 +59,10 @@ export const organisationIdParamSchema = z.object({
   id: objectIdSchema,
 });
 
+export const confirmSmeLicenceBodySchema = z.object({
+  sessionId: z.string().trim().min(1).max(200).optional(),
+});
+
 export const requestOrganisationLicenceBodySchema = z
   .object({
     superUser: z.coerce.number().int().min(0).max(10_000).optional().default(0),

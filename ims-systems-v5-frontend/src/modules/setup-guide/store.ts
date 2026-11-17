@@ -4,6 +4,38 @@ import { getSetupStep, SETUP_STEPS } from "./catalog";
 
 const PROGRESS_KEY = "ims.setup-guide.progress";
 const HIDDEN_KEY = "ims.setup-guide.hidden";
+/** One-shot: open checklist after a new org Go Live (org id value). */
+const PENDING_OPEN_KEY = "ims.setup-guide.pendingOpenOrgId";
+
+/** Mark the setup-guide checklist to open once after new-org Go Live. */
+export function markSetupGuidePendingOpen(organizationId: string) {
+  const id = organizationId.trim();
+  if (!id) return;
+  try {
+    localStorage.setItem(PENDING_OPEN_KEY, id);
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+/**
+ * Consume the pending-open flag for the active org.
+ * Returns true only once per Go Live (clears the flag).
+ */
+export function consumeSetupGuidePendingOpen(
+  organizationId: string | null | undefined
+): boolean {
+  const id = organizationId?.trim();
+  if (!id) return false;
+  try {
+    const pending = localStorage.getItem(PENDING_OPEN_KEY);
+    if (!pending || pending !== id) return false;
+    localStorage.removeItem(PENDING_OPEN_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 function readDone(): Record<string, boolean> {
   try {

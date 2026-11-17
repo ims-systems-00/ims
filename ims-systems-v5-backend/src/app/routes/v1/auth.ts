@@ -6,12 +6,14 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { AppConfig } from "../../../config";
+import type { Logger } from "../../../infrastructure/logging/logger";
 import {
   Auth0AuthenticationApi,
   createAuth0AuthenticationApiFromConfig,
   type Auth0TokenResponse,
 } from "../../../security/auth0/auth0-authentication-api";
 import { createMongoAuth0Lookups } from "../../../security/auth0/create-auth0-lookups";
+import type { UserNotificationPort } from "../../../modules/users/ports";
 import { ValidationAppError } from "../../../shared/errors/app-error";
 import { sendSuccess } from "../../../shared/http/response";
 import { parseWithSchema } from "../../../shared/validation/parse";
@@ -41,15 +43,17 @@ async function ensureImsUserAfterAuth(input: {
   accessToken: string;
   email: string;
   name?: string;
-}): Promise<void> {
+}): Promise<{ created: boolean } | null> {
   const sub = subjectFromAccessToken(input.accessToken);
-  if (!sub) return;
+  if (!sub) return null;
   const lookups = createMongoAuth0Lookups();
-  await lookups.ensureUserFromAuth0({
+  const ensured = await lookups.ensureUserFromAuth0({
     auth0SubjectId: sub,
     email: input.email,
     name: input.name,
   });
+  if (!ensured) return null;
+  return { created: ensured.created };
 }
 
 const registerBodySchema = z.object({
@@ -86,12 +90,17 @@ export type AuthRouterDeps = {
   config: AppConfig;
   /** Injected Auth0 client (tests). */
   auth0Api?: Auth0AuthenticationApi;
+  /** Account lifecycle emails (welcome on register). */
+  notifications?: UserNotificationPort;
+  logger?: Logger;
 };
 
 export function createAuthRouter(deps: AuthRouterDeps): Router {
   const router = Router();
   const auth0 =
     deps.auth0Api ?? createAuth0AuthenticationApiFromConfig(deps.config);
+  const notifications = deps.notifications;
+  const logger = deps.logger;
 
   router.post("/register", async (req, res, next) => {
     try {
@@ -104,11 +113,29 @@ export function createAuthRouter(deps: AuthRouterDeps): Router {
         phone: body.phone,
       });
       const tokens = await auth0.loginWithPassword(body.email, body.password);
-      await ensureImsUserAfterAuth({
+      const displayName = `${body.firstName} ${body.lastName}`.trim();
+      const ensured = await ensureImsUserAfterAuth({
         accessToken: tokens.accessToken,
         email: body.email,
-        name: `${body.firstName} ${body.lastName}`.trim(),
+        name: displayName,
       });
+
+      if (ensured?.created && notifications) {
+        try {
+          await notifications.sendWelcome(body.email, displayName, undefined, {
+            attachServiceCharter: true,
+          });
+        } catch (error) {
+          logger?.warn(
+            {
+              email: body.email,
+              err: error instanceof Error ? error.message : String(error),
+            },
+            "Welcome email failed after registration"
+          );
+        }
+      }
+
       sendSuccess(res, toTokenPayload(tokens), 201, req.correlationId);
     } catch (error) {
       next(error);

@@ -3,6 +3,7 @@ import { useAuthClient } from "@/security";
 import { setActiveOrganisationContext } from "@/shared/lib/active-organisation";
 import {
   composeOrganisationMail,
+  confirmSmeLicenceCheckoutSession,
   createBillingPortalSession,
   createCardPaymentSession,
   createSmeLicenceCheckoutSession,
@@ -129,6 +130,20 @@ export function useSmeLicenceCheckoutMutation() {
   return useMutation({
     mutationFn: (organizationId: string) =>
       createSmeLicenceCheckoutSession(organizationId),
+  });
+}
+
+export function useConfirmSmeLicenceMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { organizationId: string; sessionId?: string }) =>
+      confirmSmeLicenceCheckoutSession(input.organizationId, input.sessionId),
+    onSuccess: (organisation) => {
+      queryClient.setQueryData(organisationKeys.current(), organisation);
+      void queryClient.invalidateQueries({
+        queryKey: organisationKeys.current(),
+      });
+    },
   });
 }
 

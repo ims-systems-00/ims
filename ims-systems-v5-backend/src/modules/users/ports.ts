@@ -210,11 +210,17 @@ export class NoOpSessionAdapter implements SessionPort {
   }
 }
 
+export type SendWelcomeOptions = {
+  /** When true, attach the iMS OS Service Charter PDF. */
+  attachServiceCharter?: boolean;
+};
+
 export interface UserNotificationPort {
   sendWelcome(
     email: string,
     name: string,
-    organizationId?: string
+    organizationId?: string,
+    options?: SendWelcomeOptions
   ): Promise<void>;
   sendAccessRevoked(
     email: string,
@@ -233,7 +239,8 @@ export class NoOpUserNotificationAdapter implements UserNotificationPort {
   async sendWelcome(
     _email: string,
     _name: string,
-    _organizationId?: string
+    _organizationId?: string,
+    _options?: SendWelcomeOptions
   ): Promise<void> {
     return;
   }

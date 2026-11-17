@@ -33,17 +33,29 @@ export function renderInvitation(data: {
   );
 }
 
-export function renderWelcome(data: { name: string }): RenderedEmail {
+export function renderWelcome(data: {
+  name: string;
+  includeServiceCharter?: boolean;
+}): RenderedEmail {
+  const paragraphs = [
+    "Your iMS Systems account is now active. Sign in to start working with your organisation’s records, documents, and compliance tools.",
+  ];
+  if (data.includeServiceCharter) {
+    paragraphs.push(
+      "We’ve attached the iMS OS Service Charter so you can review how we support your organisation."
+    );
+  }
+  paragraphs.push(
+    "If anything looks unexpected, contact your organisation administrator or our support team."
+  );
+
   return renderEmailLayout("Welcome to iMS Systems", {
     mode: "success",
     eyebrow: "Welcome",
     statusChip: { label: "Account ready", tone: "success" },
     title: "Your workspace is ready",
     greeting: `Hi ${data.name},`,
-    paragraphs: [
-      "Your iMS Systems account is now active. Sign in to start working with your organisation’s records, documents, and compliance tools.",
-      "If anything looks unexpected, contact your organisation administrator or our support team.",
-    ],
+    paragraphs,
     closing: ["We’re glad you’re here."],
   });
 }

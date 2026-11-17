@@ -1,10 +1,12 @@
 import { useState } from "react";
 import { ArrowLeft, Loader2 } from "lucide-react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { PageHeader } from "@/shared/layout";
 import { SearchInput } from "@/shared/components/search-input";
+import { cn } from "@/shared/lib/utils";
+import { FileTypeIcon } from "../components/file-type-icon";
 import { usePublishedDocumentsQuery } from "../hooks/use-document-management";
 import { formatDocumentDate } from "../lib/format";
 import {
@@ -16,6 +18,7 @@ import {
 /** Purpose-filtered published documents (spec §10 insight list). */
 export function DocumentPurposePage() {
   const { purpose: rawPurpose } = useParams<{ purpose: string }>();
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const purpose = (DOCUMENT_PURPOSES as readonly string[]).includes(
     rawPurpose ?? ""
@@ -80,43 +83,52 @@ export function DocumentPurposePage() {
           description={`No published documents with purpose ${DOCUMENT_PURPOSE_LABELS[purpose]} were found.`}
         />
       ) : (
-        <div className="overflow-hidden rounded-xl border border-border-subtle bg-card">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border-subtle text-left text-xs text-muted-foreground">
-                <th className="px-4 py-3 font-medium">Reference</th>
-                <th className="px-4 py-3 font-medium">Name</th>
-                <th className="px-4 py-3 font-medium">Version</th>
-                <th className="px-4 py-3 font-medium">Updated</th>
-              </tr>
-            </thead>
-            <tbody>
-              {query.data.items.map((node) => (
-                <tr
+        <div
+          className="min-h-[18rem] rounded-xl border border-border-subtle bg-muted/15 p-3 sm:p-4"
+          role="list"
+          aria-label={`${DOCUMENT_PURPOSE_LABELS[purpose]} documents`}
+        >
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(7rem,1fr))] gap-x-2 gap-y-3 sm:grid-cols-[repeat(auto-fill,minmax(8rem,1fr))]">
+            {query.data.items.map((node) => {
+              const fileName =
+                node.documentData?.storageInfo?.Name ?? node.name;
+              return (
+                <button
                   key={node.id}
-                  className="border-b border-border-subtle last:border-0 hover:bg-muted/30"
+                  type="button"
+                  role="listitem"
+                  title={`${node.name} · v${node.documentData?.dvID ?? "—"} · ${formatDocumentDate(node.updatedOn ?? node.createdOn)}`}
+                  className={cn(
+                    "group flex flex-col items-center gap-2 rounded-lg px-2 py-3 text-center outline-none transition-colors",
+                    "hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring/40"
+                  )}
+                  onClick={() =>
+                    navigate(
+                      `/documents/repositories/${node.repositoryId}/nodes/${node.id}`
+                    )
+                  }
                 >
-                  <td className="px-4 py-3 font-mono text-xs">
+                  <div className="relative flex size-16 items-center justify-center sm:size-[4.5rem]">
+                    <FileTypeIcon
+                      type="document"
+                      fileName={fileName}
+                      size="lg"
+                      className="drop-shadow-sm"
+                    />
+                  </div>
+                  <span className="line-clamp-2 w-full break-words px-0.5 text-[0.75rem] leading-snug font-medium text-foreground">
+                    {node.name}
+                  </span>
+                  <span className="line-clamp-1 w-full px-0.5 font-mono text-[0.625rem] text-muted-foreground">
                     {node.reference}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Link
-                      className="font-medium text-foreground underline-offset-2 hover:underline"
-                      to={`/documents/repositories/${node.repositoryId}/nodes/${node.id}`}
-                    >
-                      {node.name}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 tabular-nums">
+                  </span>
+                  <span className="text-[0.625rem] tabular-nums text-muted-foreground">
                     v{node.documentData?.dvID ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">
-                    {formatDocumentDate(node.updatedOn ?? node.createdOn)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>

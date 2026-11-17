@@ -15,10 +15,19 @@ export type OrganisationBillingPort = {
     licences: StripeCheckoutLicences;
   }): Promise<CheckoutSessionResult>;
 
-  /** Monthly £1 SME licence Checkout (subscription mode). */
+  /** SME licence Checkout via STRIPE_SME_PRICE (subscription mode). */
   createSmeLicenceCheckoutSession(input: {
     organizationId: string;
   }): Promise<CheckoutSessionResult>;
+
+  /**
+   * Confirm a completed SME Checkout session and allocate the SME module.
+   * Used when the browser returns from Stripe (webhooks may not reach local/dev).
+   */
+  confirmSmeLicenceCheckoutSession(input: {
+    organizationId: string;
+    sessionId?: string;
+  }): Promise<{ allocated: boolean; organizationId: string }>;
 
   createBillingPortalSession(organizationId: string): Promise<{ url: string }>;
 

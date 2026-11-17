@@ -94,6 +94,7 @@ describe("organisation billing service", () => {
         id: "cs_1",
       })),
       createSmeLicenceCheckoutSession: vi.fn(),
+        confirmSmeLicenceCheckoutSession: vi.fn(),
       createBillingPortalSession: vi.fn(),
       upgradeSubscription: vi.fn(),
     };
@@ -137,6 +138,7 @@ describe("organisation billing service", () => {
       billing: {
         createCheckoutSessionForOrg: vi.fn(),
         createSmeLicenceCheckoutSession: vi.fn(),
+        confirmSmeLicenceCheckoutSession: vi.fn(),
         createBillingPortalSession: vi.fn(),
         upgradeSubscription: vi.fn(),
       },
@@ -155,6 +157,7 @@ describe("organisation billing service", () => {
         url: "https://checkout.stripe.test/sme",
         id: "cs_sme",
       })),
+      confirmSmeLicenceCheckoutSession: vi.fn(),
       createBillingPortalSession: vi.fn(),
       upgradeSubscription: vi.fn(),
     };
@@ -212,6 +215,7 @@ describe("organisation billing service", () => {
       billing: {
         createCheckoutSessionForOrg: vi.fn(),
         createSmeLicenceCheckoutSession: vi.fn(),
+        confirmSmeLicenceCheckoutSession: vi.fn(),
         createBillingPortalSession: vi.fn(),
         upgradeSubscription,
       },

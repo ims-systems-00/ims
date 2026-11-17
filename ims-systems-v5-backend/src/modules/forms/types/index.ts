@@ -29,6 +29,7 @@ export const FORM_ELEMENT_TYPES = [
   "FileDropzone",
   "Table",
   "NC_OFI",
+  "Matrix",
 ] as const;
 export type FormElementType = (typeof FORM_ELEMENT_TYPES)[number];
 

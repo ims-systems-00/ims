@@ -1,21 +1,20 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Building2, Loader2, Mail } from "lucide-react";
+import { Loader2, Mail } from "lucide-react";
 import { PageHeader } from "@/shared/layout";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
-import { ImageUploadControl } from "@/modules/files/components/image-upload-control";
-import { notify } from "@/shared/lib/toast";
 import { ComposeMailSheet } from "../components/compose-mail-sheet";
 import { DocumentManagementRemindersPanel } from "../components/document-management-reminders-panel";
 import { EmailCustomisePanel } from "../components/email-customise-panel";
 import { IncidentResolutionTargetsPanel } from "../components/incident-resolution-targets-panel";
 import { OrganisationLicencesPanel } from "../components/organisation-licences-panel";
+import { OrganisationProfileHeader } from "../components/organisation-profile-header";
+import { OrganisationSmeLicenceCard } from "../components/organisation-sme-licence-card";
 import {
   useCurrentOrganisationQuery,
   useOrganisationLogoUrl,
-  useUpdateOrganisationLogoMutation,
 } from "../hooks/use-organisations";
 import {
   DOCUMENT_REVIEW_REMINDER_OPTIONS,
@@ -91,7 +90,6 @@ function formatAddress(address: OrganisationProfile["address"]): string {
 export function MyOrganisationPage() {
   const orgQuery = useCurrentOrganisationQuery();
   const membersQuery = useUsersQuery({ page: 1, pageSize: 1 });
-  const logoMutation = useUpdateOrganisationLogoMutation();
   const resolvedLogoUrl = useOrganisationLogoUrl(orgQuery.data);
   const [composeOpen, setComposeOpen] = useState(false);
 
@@ -165,82 +163,18 @@ export function MyOrganisationPage() {
 
       <ComposeMailSheet open={composeOpen} onOpenChange={setComposeOpen} />
 
-      <section className="ims-panel overflow-hidden">
-        <div className="flex flex-wrap items-start gap-4 px-4 py-5">
-          {canManageLogo ? (
-            <ImageUploadControl
-              shape="rounded"
-              tileClassName="size-14 text-base"
-              imageUrl={logoUrl}
-              alt={`${organisation.name} logo`}
-              fallbackLabel={organisation.name.slice(0, 2).toUpperCase()}
-              uploadPath="general"
-              uploadLabel="Upload logo"
-              changeLabel="Change logo"
-              onUploaded={async (meta, viewUrl) => {
-                await logoMutation.mutateAsync({
-                  logoSrc: viewUrl,
-                  logoStorage: {
-                    bucket: meta.Bucket,
-                    key: meta.Key || meta.key,
-                    fileName: meta.Name,
-                  },
-                });
-                notify.success("Organisation logo updated");
-              }}
-              onRemove={async () => {
-                await logoMutation.mutateAsync({
-                  logoSrc: null,
-                  logoStorage: null,
-                });
-                notify.success("Organisation logo removed");
-              }}
-            />
-          ) : logoUrl ? (
-            <img
-              src={logoUrl}
-              alt={`${organisation.name} logo`}
-              className="size-14 shrink-0 rounded-md border border-border object-cover"
-            />
-          ) : (
-            <span
-              aria-hidden
-              className="inline-flex size-14 shrink-0 items-center justify-center rounded-md border border-border bg-surface-muted text-muted-foreground"
-            >
-              <Building2 className="size-6" />
-            </span>
-          )}
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[1.125rem] font-semibold tracking-[-0.015em] text-foreground">
-                {organisation.name}
-              </h2>
-              <StatusBadge
-                tone={organisation.status === "Running" ? "success" : "warning"}
-              >
-                {organisation.status}
-              </StatusBadge>
-              {organisation.isCustomer ? (
-                <StatusBadge tone="info">Customer</StatusBadge>
-              ) : null}
-            </div>
-            <p className="truncate text-[0.8125rem] text-muted-foreground">
-              {organisation.officeEmail}
-            </p>
-            <p className="ims-text-meta font-mono">{organisation.reference}</p>
-            <p className="text-[0.8125rem] text-muted-foreground">
-              {[organisation.industry, String(organisation.sizeOfOrganisation)]
-                .filter(Boolean)
-                .join(" · ")}
-            </p>
-            {organisation.membership ? (
-              <p className="text-[0.8125rem] text-muted-foreground">
-                Your role: {organisation.membership.role}
-              </p>
-            ) : null}
-          </div>
-        </div>
-      </section>
+      <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
+        <OrganisationProfileHeader
+          organisation={organisation}
+          logoUrl={logoUrl}
+          canManageLogo={canManageLogo}
+          className="h-full lg:col-span-2"
+        />
+        <OrganisationSmeLicenceCard
+          organisation={organisation}
+          className="h-full"
+        />
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <OrgCard title="Basic information">

@@ -20,8 +20,6 @@ import type {
 
 const SUPPORT_PERCENTAGE = 0.25;
 
-/** Fixed SME licence monthly amount (GBP pence). */
-export const SME_LICENCE_AMOUNT_PENCE = 100;
 export const SME_LICENCE_MODULE_NAME = "SME";
 
 export type StripePaymentService = ReturnType<typeof createStripePaymentService>;
@@ -38,6 +36,51 @@ function stripeErrorMessage(error: unknown, fallback: string): string {
     return message.trim() ? `Stripe: ${message}` : fallback;
   }
   return fallback;
+}
+
+async function allocateSmeLicenceFromCheckoutSession(
+  session: Stripe.Checkout.Session,
+  expectedOrganizationId?: string
+): Promise<string> {
+  if (session.metadata?.ims_sme_licence !== "true") {
+    throw new ValidationAppError(
+      "This Stripe checkout session is not an SME licence purchase."
+    );
+  }
+
+  const organizationId = session.metadata.org_id?.trim() ?? "";
+  if (!organizationId) {
+    throw new ValidationAppError(
+      "SME checkout session is missing organisation metadata."
+    );
+  }
+  if (
+    expectedOrganizationId &&
+    expectedOrganizationId !== organizationId
+  ) {
+    throw new ValidationAppError(
+      "SME checkout session does not belong to this organisation."
+    );
+  }
+
+  if (session.status && session.status !== "complete") {
+    throw new ValidationAppError(
+      "SME checkout session is not complete yet. Finish payment in Stripe and try again."
+    );
+  }
+
+  const paymentStatus = session.payment_status;
+  if (
+    paymentStatus &&
+    paymentStatus !== "paid" &&
+    paymentStatus !== "no_payment_required"
+  ) {
+    throw new ValidationAppError(
+      "SME checkout payment is not complete yet."
+    );
+  }
+
+  return organizationId;
 }
 
 export function createStripePaymentService(deps: {
@@ -224,8 +267,7 @@ export function createStripePaymentService(deps: {
     },
 
     /**
-     * Monthly £1 SME licence Checkout (subscription mode).
-     * Uses STRIPE_SME_PRICE when set; otherwise inline recurring price_data.
+     * SME licence Checkout (subscription mode) using STRIPE_SME_PRICE catalog Price id.
      */
     async createSmeLicenceCheckoutSession(input: {
       organizationId: string;
@@ -233,33 +275,20 @@ export function createStripePaymentService(deps: {
       const org = await organisations.findById(input.organizationId);
       if (!org) throw new NotFoundError("Organisation not found");
 
+      const smePriceId = config.STRIPE_SME_PRICE?.trim() ?? "";
+      if (!smePriceId) {
+        throw new ValidationAppError(
+          "Stripe SME price is not configured. Set STRIPE_SME_PRICE to a Stripe Price id (price_…)."
+        );
+      }
+
       const { customerId, organizationName } = await ensureCustomer(
         input.organizationId
       );
       const clientUrl = config.CLIENT_URL.replace(/\/+$/, "");
-      const smePriceId = config.STRIPE_SME_PRICE?.trim() ?? "";
-
-      const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] =
-        smePriceId
-          ? [{ price: smePriceId, quantity: 1 }]
-          : [
-              {
-                quantity: 1,
-                price_data: {
-                  currency: "gbp",
-                  unit_amount: SME_LICENCE_AMOUNT_PENCE,
-                  recurring: { interval: "month" },
-                  product_data: {
-                    name: "SME Licence",
-                    description:
-                      "iMS Systems SME licence — £1 per month",
-                  },
-                },
-              },
-            ];
 
       logger?.info(
-        { organizationId: input.organizationId, customerId },
+        { organizationId: input.organizationId, customerId, smePriceId },
         "Creating Stripe SME licence checkout session"
       );
 
@@ -268,8 +297,8 @@ export function createStripePaymentService(deps: {
         session = await stripe.checkout.sessions.create({
           mode: "subscription",
           customer: customerId,
-          line_items: lineItems,
-          success_url: `${clientUrl}/organisation?sme=success`,
+          line_items: [{ price: smePriceId, quantity: 1 }],
+          success_url: `${clientUrl}/organisation?sme=success&session_id={CHECKOUT_SESSION_ID}`,
           cancel_url: `${clientUrl}/organisation?sme=cancelled`,
           metadata: {
             ims_sme_licence: "true",
@@ -294,7 +323,7 @@ export function createStripePaymentService(deps: {
         throw new ValidationAppError(
           stripeErrorMessage(
             error,
-            "Unable to create SME licence checkout. Confirm Stripe is configured."
+            "Unable to create SME licence checkout. Confirm STRIPE_SME_PRICE exists in the same Stripe account/mode as STRIPE_PRIVATE_KEY."
           )
         );
       }
@@ -305,6 +334,73 @@ export function createStripePaymentService(deps: {
         );
       }
       return { url: session.url, id: session.id };
+    },
+
+    /**
+     * Allocate SME after Checkout completes (success redirect and/or webhook).
+     */
+    async confirmSmeLicenceCheckoutSession(input: {
+      organizationId: string;
+      sessionId?: string;
+    }): Promise<{ allocated: boolean; organizationId: string }> {
+      const org = await organisations.findById(input.organizationId);
+      if (!org) throw new NotFoundError("Organisation not found");
+
+      const alreadyHasSme = (org.licences.additionalModules ?? []).some(
+        (name) => name.trim().toUpperCase() === SME_LICENCE_MODULE_NAME
+      );
+      if (alreadyHasSme) {
+        return { allocated: false, organizationId: input.organizationId };
+      }
+
+      let session: Stripe.Checkout.Session | null = null;
+      const sessionId = input.sessionId?.trim() ?? "";
+
+      try {
+        if (sessionId) {
+          session = await stripe.checkout.sessions.retrieve(sessionId);
+        } else if (org.paymentSystem.stripeCustomerId) {
+          const listed = await stripe.checkout.sessions.list({
+            customer: org.paymentSystem.stripeCustomerId,
+            limit: 15,
+          });
+          session =
+            listed.data.find(
+              (row) =>
+                row.metadata?.ims_sme_licence === "true" &&
+                row.status === "complete" &&
+                (row.metadata?.org_id === input.organizationId ||
+                  !row.metadata?.org_id)
+            ) ?? null;
+        }
+      } catch (error) {
+        throw new ValidationAppError(
+          stripeErrorMessage(
+            error,
+            "Unable to verify SME checkout session with Stripe."
+          )
+        );
+      }
+
+      if (!session) {
+        throw new ValidationAppError(
+          "No completed SME licence checkout session was found for this organisation."
+        );
+      }
+
+      const organizationId = await allocateSmeLicenceFromCheckoutSession(
+        session,
+        input.organizationId
+      );
+      await organisations.applyLicenceRequest(organizationId, {
+        additionalModules: [SME_LICENCE_MODULE_NAME],
+      });
+      logger?.info(
+        { organizationId, sessionId: session.id },
+        "SME licence allocated after Checkout confirm"
+      );
+
+      return { allocated: true, organizationId };
     },
 
     async createBillingPortalSession(organizationId: string): Promise<{
@@ -392,15 +488,25 @@ export function createStripePaymentService(deps: {
           const session = event.data.object as Stripe.Checkout.Session;
           logger?.info({ type: event.type }, "Checkout session completed");
           if (session.metadata?.ims_sme_licence === "true") {
-            const organizationId = session.metadata.org_id?.trim();
-            if (organizationId) {
+            try {
+              const organizationId =
+                await allocateSmeLicenceFromCheckoutSession(session);
               await organisations.applyLicenceRequest(organizationId, {
                 additionalModules: [SME_LICENCE_MODULE_NAME],
               });
               logger?.info(
                 { organizationId, sessionId: session.id },
-                "SME licence allocated after Checkout"
+                "SME licence allocated after Checkout webhook"
               );
+            } catch (error) {
+              logger?.error(
+                {
+                  sessionId: session.id,
+                  err: error instanceof Error ? error.message : String(error),
+                },
+                "SME licence webhook allocation failed"
+              );
+              throw error;
             }
           }
           break;

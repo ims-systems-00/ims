@@ -79,6 +79,10 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
     "/:id/sme-licence-checkout",
     controller.createSmeLicenceCheckoutSession
   );
+  router.post(
+    "/:id/sme-licence-confirm",
+    controller.confirmSmeLicenceCheckoutSession
+  );
   router.get("/:id/billing-session", controller.createBillingPortalSession);
   router.get("/:id", controller.getById);
 

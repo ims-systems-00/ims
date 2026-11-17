@@ -31,6 +31,8 @@ COPY ims-systems-v5-backend/package.json ./ims-systems-v5-backend/
 RUN pnpm install --filter ims-systems-v5-backend... --prod --frozen-lockfile
 
 COPY --from=build /app/ims-systems-v5-backend/dist ./ims-systems-v5-backend/dist
+# Welcome / Go Live emails attach Service Charter + Adoption Pack from here.
+COPY --from=build /app/ims-systems-v5-backend/assets ./ims-systems-v5-backend/assets
 
 WORKDIR /app/ims-systems-v5-backend
 EXPOSE 3001

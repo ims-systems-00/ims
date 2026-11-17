@@ -62,7 +62,7 @@ export function createMongoAuth0Lookups(): Auth0AuthenticatorLookups {
 
     async ensureUserFromAuth0(input) {
       const existing = await users.findByAuth0SubjectId(input.auth0SubjectId);
-      if (existing) return toLinked(existing);
+      if (existing) return { user: toLinked(existing), created: false };
 
       const email = (input.email ?? "").trim().toLowerCase();
       if (!email || !email.includes("@")) {
@@ -75,7 +75,10 @@ export function createMongoAuth0Lookups(): Auth0AuthenticatorLookups {
           byEmail.id,
           input.auth0SubjectId
         );
-        return linked ? toLinked(linked) : toLinked(byEmail);
+        return {
+          user: linked ? toLinked(linked) : toLinked(byEmail),
+          created: false,
+        };
       }
 
       const { firstName, lastName } = splitName(input.name, email);
@@ -95,7 +98,10 @@ export function createMongoAuth0Lookups(): Auth0AuthenticatorLookups {
         created.id,
         input.auth0SubjectId
       );
-      return linked ? toLinked(linked) : toLinked(created);
+      return {
+        user: linked ? toLinked(linked) : toLinked(created),
+        created: true,
+      };
     },
 
     async findOrganisationByAuth0OrganizationId(auth0OrganizationId) {

@@ -11,9 +11,7 @@
  * still sent without them.
  */
 
-import { readFileSync } from "node:fs";
-import path from "node:path";
-import type { EmailAttachment } from "../../../infrastructure/email";
+import { loadOnboardingAttachments } from "../../../infrastructure/email/onboarding-attachments";
 import {
   DEFAULT_IMS_EMAIL_BRANDING,
   renderEmail,
@@ -22,40 +20,6 @@ import {
 import type { Logger } from "../../../infrastructure/logging/logger";
 import type { EmailSystem } from "../../../infrastructure/queue";
 import type { OrganisationGoLiveSideEffectsPort } from "../ports";
-
-const ONBOARDING_ASSETS: Array<{ filename: string; type: string }> = [
-  {
-    filename: "ims-systems-adoption-pack.pptx",
-    type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  },
-  { filename: "service-charter.pdf", type: "application/pdf" },
-];
-
-let cachedAttachments: EmailAttachment[] | undefined;
-
-function loadOnboardingAttachments(logger?: Logger): EmailAttachment[] {
-  if (cachedAttachments) return cachedAttachments;
-  // Adapters live at <root>/{src|dist}/modules/organisation/adapters.
-  const assetsDir = path.resolve(__dirname, "../../../../assets/onboarding");
-  const attachments: EmailAttachment[] = [];
-  for (const asset of ONBOARDING_ASSETS) {
-    try {
-      const content = readFileSync(path.join(assetsDir, asset.filename));
-      attachments.push({
-        filename: asset.filename,
-        contentBase64: content.toString("base64"),
-        type: asset.type,
-      });
-    } catch {
-      logger?.warn(
-        { filename: asset.filename, assetsDir },
-        "Onboard-success attachment missing; sending without it"
-      );
-    }
-  }
-  cachedAttachments = attachments;
-  return attachments;
-}
 
 export function createGoLiveNotifySideEffectsAdapter(deps: {
   email: EmailSystem;

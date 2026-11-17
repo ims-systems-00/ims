@@ -17,6 +17,8 @@ export {
   useSetupGuideStore,
   nextUndoneStepId,
   completedCount,
+  markSetupGuidePendingOpen,
+  consumeSetupGuidePendingOpen,
 } from "./store";
 export {
   SETUP_STEPS,

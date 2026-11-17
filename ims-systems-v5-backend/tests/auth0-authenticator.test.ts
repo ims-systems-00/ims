@@ -56,7 +56,10 @@ function mockLookups(
   };
   return {
     findUserByAuth0SubjectId: vi.fn().mockResolvedValue(linkedUser),
-    ensureUserFromAuth0: vi.fn().mockResolvedValue(linkedUser),
+    ensureUserFromAuth0: vi.fn().mockResolvedValue({
+      user: linkedUser,
+      created: false,
+    }),
     findOrganisationByAuth0OrganizationId: vi.fn().mockResolvedValue({
       id: "bbbbbbbbbbbbbbbbbbbbbbbb",
       status: "Running",

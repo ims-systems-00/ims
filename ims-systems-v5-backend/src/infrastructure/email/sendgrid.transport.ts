@@ -35,13 +35,26 @@ export function createSendGridEmailTransport(
         ...(message.replyTo ? { replyTo: message.replyTo } : {}),
         ...(message.attachments?.length
           ? {
-              attachments: message.attachments.map((item) => ({
-                filename: item.filename,
-                content: item.contentBase64,
-                type: item.type,
-                disposition: item.disposition,
-                contentId: item.contentId,
-              })),
+              attachments: message.attachments.map((item) => {
+                const disposition = item.disposition ?? "attachment";
+                const contentId = item.contentId?.trim();
+                // SendGrid Mail Send API expects snake_case `content_id`.
+                // Inline cid logos must include it; file downloads must not use inline.
+                if (disposition === "inline" && !contentId) {
+                  throw new Error(
+                    `SendGrid inline attachment "${item.filename}" is missing content_id`
+                  );
+                }
+                return {
+                  filename: item.filename,
+                  content: item.contentBase64,
+                  type: item.type,
+                  disposition,
+                  ...(disposition === "inline" && contentId
+                    ? { content_id: contentId }
+                    : {}),
+                };
+              }),
             }
           : {}),
         trackingSettings: {

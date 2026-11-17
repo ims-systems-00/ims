@@ -2,6 +2,7 @@ import type { RequestHandler } from "express";
 import { parseWithSchema, sendSuccess } from "../../../shared";
 import {
   composeOrganisationMailBodySchema,
+  confirmSmeLicenceBodySchema,
   createOrganisationBodySchema,
   goLiveOrganisationBodySchema,
   organisationIdParamSchema,
@@ -22,6 +23,7 @@ export type OrganisationController = {
   listMine: RequestHandler;
   createCardPaymentSession: RequestHandler;
   createSmeLicenceCheckoutSession: RequestHandler;
+  confirmSmeLicenceCheckoutSession: RequestHandler;
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
   updateIncidentResolutionTargets: RequestHandler;
@@ -113,6 +115,25 @@ export function createOrganisationController(
       const data = await service.createSmeLicenceCheckoutSession(
         req.identity,
         id
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const confirmSmeLicenceCheckoutSession: RequestHandler = async (
+    req,
+    res,
+    next
+  ) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const body = parseWithSchema(confirmSmeLicenceBodySchema, req.body ?? {});
+      const data = await service.confirmSmeLicenceCheckoutSession(
+        req.identity,
+        id,
+        body.sessionId
       );
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
@@ -229,6 +250,7 @@ export function createOrganisationController(
     listMine,
     createCardPaymentSession,
     createSmeLicenceCheckoutSession,
+    confirmSmeLicenceCheckoutSession,
     createBillingPortalSession,
     updateDocumentReviewReminders,
     updateIncidentResolutionTargets,

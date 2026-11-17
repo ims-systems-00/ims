@@ -49,6 +49,7 @@ describe("forms module schemas", () => {
     expect(FORMS_RESOURCE).toBe("forms");
     expect(FORM_ELEMENT_TYPES).toContain("NC_OFI");
     expect(FORM_ELEMENT_TYPES).toContain("FileDropzone");
+    expect(FORM_ELEMENT_TYPES).toContain("Matrix");
     expect(ENFORCED_RESOURCE_TYPES.has("forms")).toBe(true);
   });
 });

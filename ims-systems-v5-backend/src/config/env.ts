@@ -345,8 +345,8 @@ const envSchema = z
     STRIPE_ADD_MODULE_PRICE: z.string().default(""),
     STRIPE_SUPPORT_PRICE: z.string().default(""),
     /**
-     * Optional Stripe Price id for the £1/month SME licence subscription.
-     * When empty, Checkout uses inline recurring price_data (GBP 100 / month).
+     * Stripe Price id for the SME licence subscription (Dashboard catalog product).
+     * Required for SME Checkout when STRIPE_ENABLED — e.g. price_…
      */
     STRIPE_SME_PRICE: z.string().default(""),
     /** FE origin for Checkout success/cancel and Billing Portal return. */

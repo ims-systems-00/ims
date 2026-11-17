@@ -391,6 +391,7 @@ export const runConnectivityChecks = async (
         config.STRIPE_COMPLIANCE_PRICE,
         config.STRIPE_ADD_MODULE_PRICE,
         config.STRIPE_SUPPORT_PRICE,
+        config.STRIPE_SME_PRICE,
       ].filter(Boolean);
       const sample = priceIds.slice(0, 3);
       for (const id of sample) await stripe.prices.retrieve(id);

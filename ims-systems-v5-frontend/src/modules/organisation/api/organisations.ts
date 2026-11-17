@@ -97,6 +97,19 @@ export function createSmeLicenceCheckoutSession(
   );
 }
 
+export function confirmSmeLicenceCheckoutSession(
+  organizationId: string,
+  sessionId?: string
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>(
+    `/organisations/${organizationId}/sme-licence-confirm`,
+    {
+      method: "POST",
+      body: sessionId ? { sessionId } : {},
+    }
+  );
+}
+
 export function createBillingPortalSession(
   organizationId: string
 ): Promise<OrganisationPaymentSession> {

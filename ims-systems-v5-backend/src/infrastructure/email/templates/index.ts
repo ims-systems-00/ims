@@ -99,7 +99,7 @@ export type EmailTemplateDataMap = {
     acceptUrl: string;
     expiresAt: Date;
   };
-  welcome: { name: string };
+  welcome: { name: string; includeServiceCharter?: boolean };
   "access-revoked": { name: string };
   "email-verification": { name: string };
   "licence-request-support": LicenceRequestEmailData;

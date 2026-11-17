@@ -250,7 +250,19 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use(createHealthRouter(mongo));
   router.use("/security", createSecurityRouter(security.authorizer));
   if (config) {
-    router.use("/auth", createAuthRouter({ config, auth0Api }));
+    router.use(
+      "/auth",
+      createAuthRouter({
+        config,
+        auth0Api,
+        notifications: createUserNotificationAdapter(
+          email,
+          undefined,
+          logger
+        ),
+        logger,
+      })
+    );
   }
 
   // Public marketing endpoints (no authorizer): email-only enquiries and
@@ -414,7 +426,11 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const users = createUsersModule({
     authorizer: security.authorizer,
     // N-12: account lifecycle emails via EmailSystem (NoOp only if absent).
-    notifications: createUserNotificationAdapter(email, resolveEmailBranding),
+    notifications: createUserNotificationAdapter(
+      email,
+      resolveEmailBranding,
+      logger
+    ),
     // N-13: revoke Auth0 grants/sessions on access revoke/delete when
     // the Management API M2M app is configured (else NoOp + preflight warn).
     ...(auth0Mgmt

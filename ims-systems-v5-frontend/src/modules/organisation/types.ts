@@ -136,6 +136,15 @@ export function normalizeOrganisationLicences(
   };
 }
 
+/** True when the org has the Stripe-allocated SME module. */
+export function organisationHasSmeLicence(
+  licences: Partial<OrganisationLicences> | null | undefined
+): boolean {
+  return (licences?.additionalModules ?? []).some(
+    (name) => name.trim().toUpperCase() === "SME"
+  );
+}
+
 export type OrganisationMembership = {
   id: string;
   organizationId: string;

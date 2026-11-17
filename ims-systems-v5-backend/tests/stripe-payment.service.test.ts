@@ -203,7 +203,7 @@ describe("stripe payment service", () => {
     expect(organisations.updatePaymentSystem).not.toHaveBeenCalled();
   });
 
-  it("creates an SME licence checkout session with monthly GBP 100 price", async () => {
+  it("creates an SME licence checkout session from STRIPE_SME_PRICE", async () => {
     const org = makeOrg();
     const organisations = {
       findById: vi.fn(async () => org),
@@ -233,7 +233,7 @@ describe("stripe payment service", () => {
     const service = createStripePaymentService({
       stripe: stripe as never,
       config: {
-        STRIPE_SME_PRICE: "",
+        STRIPE_SME_PRICE: "price_sme_test",
         STRIPE_WEBHOOK_SECRET: "whsec_test",
         CLIENT_URL: "http://localhost:3000/",
       } as never,
@@ -249,7 +249,9 @@ describe("stripe payment service", () => {
       expect.objectContaining({
         mode: "subscription",
         customer: "cus_test",
-        success_url: "http://localhost:3000/organisation?sme=success",
+        line_items: [{ price: "price_sme_test", quantity: 1 }],
+        success_url:
+          "http://localhost:3000/organisation?sme=success&session_id={CHECKOUT_SESSION_ID}",
         metadata: expect.objectContaining({
           ims_sme_licence: "true",
           org_id: org.id,
@@ -262,21 +264,107 @@ describe("stripe payment service", () => {
         }),
       })
     );
-    const lineItems = stripe.checkout.sessions.create.mock.calls[0]![0]
-      .line_items as Array<{
-      price_data?: {
-        currency: string;
-        unit_amount: number;
-        recurring?: { interval: string };
-      };
-    }>;
-    expect(lineItems[0]?.price_data).toEqual(
-      expect.objectContaining({
-        currency: "gbp",
-        unit_amount: 100,
-        recurring: { interval: "month" },
+  });
+
+  it("rejects SME checkout when STRIPE_SME_PRICE is missing", async () => {
+    const org = makeOrg();
+    const organisations = {
+      findById: vi.fn(async () => org),
+      updatePaymentSystem: vi.fn(),
+      applyLicenceRequest: vi.fn(),
+      findByStripeSubscriptionId: vi.fn(),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: { create: vi.fn() },
+      prices: { retrieve: vi.fn() },
+      checkout: {
+        sessions: {
+          create: vi.fn(),
+        },
+      },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: { constructEvent: vi.fn() },
+      subscriptionItems: { list: vi.fn(), update: vi.fn() },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_SME_PRICE: "",
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000/",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    await expect(
+      service.createSmeLicenceCheckoutSession({
+        organizationId: org.id,
       })
-    );
+    ).rejects.toMatchObject({
+      name: "ValidationAppError",
+      message: expect.stringContaining("STRIPE_SME_PRICE"),
+    });
+    expect(stripe.checkout.sessions.create).not.toHaveBeenCalled();
+  });
+
+  it("confirms SME licence from a completed Checkout session id", async () => {
+    const org = makeOrg();
+    const applyLicenceRequest = vi.fn(async () => org);
+    const organisations = {
+      findById: vi.fn(async () => org),
+      updatePaymentSystem: vi.fn(),
+      applyLicenceRequest,
+      findByStripeSubscriptionId: vi.fn(),
+      markSubscribedByStripeCustomerId: vi.fn(),
+      markUnsubscribedByStripeCustomerId: vi.fn(),
+      resetPaymentSystemByStripeCustomerId: vi.fn(),
+    };
+    const stripe = {
+      customers: { create: vi.fn() },
+      prices: { retrieve: vi.fn() },
+      checkout: {
+        sessions: {
+          create: vi.fn(),
+          retrieve: vi.fn(async () => ({
+            id: "cs_sme_paid",
+            status: "complete",
+            payment_status: "paid",
+            metadata: {
+              ims_sme_licence: "true",
+              org_id: org.id,
+            },
+          })),
+          list: vi.fn(),
+        },
+      },
+      billingPortal: { sessions: { create: vi.fn() } },
+      webhooks: { constructEvent: vi.fn() },
+      subscriptionItems: { list: vi.fn(), update: vi.fn() },
+      invoiceItems: { create: vi.fn() },
+    };
+    const service = createStripePaymentService({
+      stripe: stripe as never,
+      config: {
+        STRIPE_SME_PRICE: "price_sme_test",
+        STRIPE_WEBHOOK_SECRET: "whsec_test",
+        CLIENT_URL: "http://localhost:3000",
+      } as never,
+      organisations: organisations as never,
+    });
+
+    const result = await service.confirmSmeLicenceCheckoutSession({
+      organizationId: org.id,
+      sessionId: "cs_sme_paid",
+    });
+
+    expect(result).toEqual({ allocated: true, organizationId: org.id });
+    expect(applyLicenceRequest).toHaveBeenCalledWith(org.id, {
+      additionalModules: ["SME"],
+    });
   });
 
   it("allocates SME module on checkout.session.completed", async () => {

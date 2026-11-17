@@ -10,7 +10,12 @@ import {
   createOrganisationAddressSchema,
   createOrganisationBasicSchema,
 } from "../schemas";
-import { DEFAULT_COUNTRY, ORGANISATION_INDUSTRIES } from "../lib/industries";
+import {
+  DEFAULT_COUNTRY,
+  findOrganisationCountry,
+  ORGANISATION_COUNTRIES,
+  ORGANISATION_INDUSTRIES,
+} from "../lib/industries";
 import type { CreateOrganisationInput } from "../types";
 
 type FieldErrors = Record<string, string>;
@@ -51,6 +56,9 @@ export function CreateOrganisationWizard({
   const [city, setCity] = useState("");
   const [county, setCounty] = useState("");
   const [postCode, setPostCode] = useState("");
+  const [countryCode, setCountryCode] = useState(DEFAULT_COUNTRY.code);
+  const selectedCountry =
+    findOrganisationCountry(countryCode) ?? DEFAULT_COUNTRY;
 
   // Partner referral: prefilled from the signup link (?partnerCode=) or
   // the cached code. Codes arriving via the partner signup URL are locked
@@ -98,10 +106,10 @@ export function CreateOrganisationWizard({
       city,
       county,
       postCode,
-      countryName: DEFAULT_COUNTRY.name,
-      countryCode: DEFAULT_COUNTRY.code,
-      countryCurrency: DEFAULT_COUNTRY.currency,
-      countryPhoneCode: DEFAULT_COUNTRY.phoneCode,
+      countryName: selectedCountry.name,
+      countryCode: selectedCountry.code,
+      countryCurrency: selectedCountry.currency,
+      countryPhoneCode: selectedCountry.phoneCode,
     };
   }
 
@@ -366,13 +374,25 @@ export function CreateOrganisationWizard({
                 onChange={(e) => setPostCode(e.target.value)}
               />
             </FormField>
-            <FormField label="Country" htmlFor="org-country">
-              <input
+            <FormField
+              label="Country"
+              htmlFor="org-country"
+              required
+              error={errors.countryName || errors.countryCode}
+            >
+              <select
                 id="org-country"
-                className="ims-field"
-                value={DEFAULT_COUNTRY.name}
-                disabled
-              />
+                className="ims-select"
+                value={countryCode}
+                disabled={pending}
+                onChange={(e) => setCountryCode(e.target.value)}
+              >
+                {ORGANISATION_COUNTRIES.map((country) => (
+                  <option key={country.code} value={country.code}>
+                    {country.name}
+                  </option>
+                ))}
+              </select>
             </FormField>
           </div>
           <div className="flex justify-between gap-2">
@@ -418,7 +438,7 @@ export function CreateOrganisationWizard({
             <div className="sm:col-span-2">
               <dt className="ims-detail-label">Address</dt>
               <dd className="ims-detail-value">
-                {[line1, line2, city, county, postCode, DEFAULT_COUNTRY.name]
+                {[line1, line2, city, county, postCode, selectedCountry.name]
                   .filter(Boolean)
                   .join(", ") || "—"}
               </dd>

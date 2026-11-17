@@ -27,12 +27,16 @@ import {
   attrBool,
   attrOptions,
   attrString,
+  buildMultipleChoiceValue,
+  multipleChoiceOtherText,
+  multipleChoiceSelection,
   requireIfNeeded,
   singleChoiceOtherText,
   singleChoiceSelection,
   type ElementAttributes,
   type ElementDefinition,
 } from "./element-types";
+import { matrixElement } from "./matrix-element";
 
 function FieldShell({
   label,
@@ -376,7 +380,7 @@ function makeChoiceElement(
       label,
       description: "",
       required: false,
-      ...(multiple ? {} : { allowOther: false }),
+      allowOther: false,
       options: [
         { label: "Option A", value: "a" },
         { label: "Option B", value: "b" },
@@ -384,7 +388,7 @@ function makeChoiceElement(
     },
     Designer: ({ attributes }) => {
       const options = attrOptions(attributes);
-      const allowOther = !multiple && attrBool(attributes, "allowOther");
+      const allowOther = attrBool(attributes, "allowOther");
       return (
         <FieldShell
           label={attrString(attributes, "label", label)}
@@ -400,7 +404,7 @@ function makeChoiceElement(
             {allowOther ? (
               <label className="flex flex-col gap-1.5 text-sm">
                 <span className="inline-flex items-center gap-2">
-                  <input type="radio" disabled />
+                  <input type={multiple ? "checkbox" : "radio"} disabled />
                   Other (please specify)
                 </span>
                 <input
@@ -414,45 +418,43 @@ function makeChoiceElement(
         </FieldShell>
       );
     },
-    Properties: (props) =>
-      multiple ? (
-        <OptionsProps {...props} />
-      ) : (
-        <OptionsProps
-          {...props}
-          extrasAfterOptions={
-            <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border-subtle px-3 py-2.5 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5 size-3.5 accent-primary"
-                checked={attrBool(props.attributes, "allowOther")}
-                onChange={(e) =>
-                  props.onChange({
-                    ...props.attributes,
-                    allowOther: e.target.checked,
-                  })
-                }
-              />
-              <span>
-                <span className="block font-medium">
-                  Other (please specify)
-                </span>
-                <span className="mt-0.5 block text-[0.75rem] text-muted-foreground">
-                  Let respondents pick Other and type their own answer when
-                  none of the options fit.
-                </span>
+    Properties: (props) => (
+      <OptionsProps
+        {...props}
+        extrasAfterOptions={
+          <label className="flex cursor-pointer items-start gap-2.5 rounded-md border border-border-subtle px-3 py-2.5 text-sm">
+            <input
+              type="checkbox"
+              className="mt-0.5 size-3.5 accent-primary"
+              checked={attrBool(props.attributes, "allowOther")}
+              onChange={(e) =>
+                props.onChange({
+                  ...props.attributes,
+                  allowOther: e.target.checked,
+                })
+              }
+            />
+            <span>
+              <span className="block font-medium">Other (please specify)</span>
+              <span className="mt-0.5 block text-[0.75rem] text-muted-foreground">
+                Let respondents pick Other and type their own answer when none
+                of the options fit.
               </span>
-            </label>
-          }
-        />
-      ),
+            </span>
+          </label>
+        }
+      />
+    ),
     Response: ({ attributes, value, onChange, disabled }) => {
       const options = attrOptions(attributes);
-      const allowOther = !multiple && attrBool(attributes, "allowOther");
+      const allowOther = attrBool(attributes, "allowOther");
       const fieldName = attrString(attributes, "label", label);
 
       if (multiple) {
-        const selected = Array.isArray(value) ? (value as string[]) : [];
+        const selected = multipleChoiceSelection(value);
+        const otherText = multipleChoiceOtherText(value);
+        const otherSelected = selected.includes(OTHER_CHOICE_VALUE);
+
         return (
           <FieldShell
             label={fieldName}
@@ -473,12 +475,51 @@ function makeChoiceElement(
                       const set = new Set(selected);
                       if (set.has(opt.value)) set.delete(opt.value);
                       else set.add(opt.value);
-                      onChange([...set]);
+                      onChange(
+                        buildMultipleChoiceValue([...set], otherText)
+                      );
                     }}
                   />
                   {opt.label}
                 </label>
               ))}
+              {allowOther ? (
+                <div className="space-y-1.5">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      name={fieldName}
+                      disabled={disabled}
+                      checked={otherSelected}
+                      onChange={() => {
+                        const set = new Set(selected);
+                        if (set.has(OTHER_CHOICE_VALUE)) {
+                          set.delete(OTHER_CHOICE_VALUE);
+                        } else {
+                          set.add(OTHER_CHOICE_VALUE);
+                        }
+                        onChange(
+                          buildMultipleChoiceValue([...set], otherText)
+                        );
+                      }}
+                    />
+                    Other (please specify)
+                  </label>
+                  {otherSelected ? (
+                    <input
+                      disabled={disabled}
+                      className="ml-6 w-full rounded-md border border-border px-2 py-1.5 text-sm"
+                      placeholder="Please specify"
+                      value={otherText}
+                      onChange={(e) =>
+                        onChange(
+                          buildMultipleChoiceValue(selected, e.target.value)
+                        )
+                      }
+                    />
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           </FieldShell>
         );
@@ -534,12 +575,26 @@ function makeChoiceElement(
       );
     },
     validate: (value, attributes) => {
-      if (multiple) return requireIfNeeded(value, attributes);
-
       const allowOther = attrBool(attributes, "allowOther");
+      const required = attrBool(attributes, "required");
+
+      if (multiple) {
+        const selected = multipleChoiceSelection(value);
+        const otherText = multipleChoiceOtherText(value).trim();
+
+        if (selected.includes(OTHER_CHOICE_VALUE)) {
+          if (!allowOther) return "Other is not allowed for this field";
+          if (!otherText) return "Please specify your answer";
+        }
+
+        if (required && selected.length === 0) {
+          return "This field is required";
+        }
+        return null;
+      }
+
       const selected = singleChoiceSelection(value);
       const otherText = singleChoiceOtherText(value).trim();
-      const required = attrBool(attributes, "required");
 
       if (selected === OTHER_CHOICE_VALUE) {
         if (!allowOther) return "Other is not allowed for this field";
@@ -963,6 +1018,7 @@ const definitions: ElementDefinition[] = [
   fileElement,
   tableElement,
   ncOfiElement,
+  matrixElement,
 ];
 
 export const FormElements: Record<string, ElementDefinition> = Object.fromEntries(
@@ -991,6 +1047,7 @@ export const PALETTE_SECTIONS: Array<{
       "FileDropzone",
       "Table",
       "NC_OFI",
+      "Matrix",
     ],
   },
   {

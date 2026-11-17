@@ -1,7 +1,13 @@
+import { useEffect } from "react";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
+import { getActiveOrganisationId } from "@/shared/lib/active-organisation";
 import { getSetupStep } from "../catalog";
 import { useSetupOutcomeListener } from "../hooks/use-setup-outcome";
 import { useSetupSeed } from "../hooks/use-setup-seed";
-import { useSetupGuideStore } from "../store";
+import {
+  consumeSetupGuidePendingOpen,
+  useSetupGuideStore,
+} from "../store";
 import { AliceAuditAssistSheet } from "./alice-audit-assist-sheet";
 import { AliceDocsAssistSheet } from "./alice-docs-assist-sheet";
 import { AliceLinkAssistSheet } from "./alice-link-assist-sheet";
@@ -21,6 +27,16 @@ import { SetupSpotlight } from "./setup-spotlight";
 export function SetupGuideHost() {
   useSetupOutcomeListener();
   useSetupSeed();
+
+  const openChecklist = useSetupGuideStore((s) => s.openChecklist);
+  const currentOrg = useCurrentOrganisationQuery();
+
+  // After new-org Go Live, open the setup checklist once on first shell load.
+  useEffect(() => {
+    const orgId = currentOrg.data?.id ?? getActiveOrganisationId();
+    if (!consumeSetupGuidePendingOpen(orgId)) return;
+    openChecklist();
+  }, [currentOrg.data?.id, openChecklist]);
 
   const activeStepId = useSetupGuideStore((s) => s.activeStepId);
   const subIndex = useSetupGuideStore((s) => s.subIndex);

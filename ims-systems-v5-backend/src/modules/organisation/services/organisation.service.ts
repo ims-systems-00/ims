@@ -542,7 +542,7 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     },
 
     /**
-     * Monthly £1 SME licence Stripe Checkout.
+     * SME licence Stripe Checkout (STRIPE_SME_PRICE catalog Price).
      */
     async createSmeLicenceCheckoutSession(
       identity: SecurityIdentity | null | undefined,
@@ -572,6 +572,45 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
         organizationId,
       });
       return { url: session.url };
+    },
+
+    /**
+     * Confirm SME Checkout after Stripe redirect (allocates module without waiting for webhook).
+     */
+    async confirmSmeLicenceCheckoutSession(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string,
+      sessionId?: string
+    ) {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId || authed.organizationId !== organizationId) {
+        throw new ForbiddenError(
+          "You don't have permission to confirm an SME licence for this organisation."
+        );
+      }
+      await assertAllowed(authed, "manage", organizationId);
+      await assertMember(subjectId, organizationId);
+
+      const org = await organisations.findById(organizationId);
+      if (!org) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const payments = requireBilling();
+      await payments.confirmSmeLicenceCheckoutSession({
+        organizationId,
+        sessionId,
+      });
+
+      const updated = await organisations.findById(organizationId);
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        organizationId
+      );
+      return { ...updated, membership };
     },
 
     /**
