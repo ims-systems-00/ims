@@ -4,6 +4,7 @@ import type { ObjectStoragePort } from "../../files/ports";
 import type { NotificationsApplicationPort } from "../../notifications";
 import type { EmailSystem } from "../../../infrastructure/queue/create-email-system";
 import { createOrganisationMembershipRepository } from "../../organisation/repositories/organisation-membership.repository";
+import { createOrganisationRepository } from "../../organisation/repositories/organisation.repository";
 import { createUserRepository } from "../../users/repositories/user.repository";
 import type {
   DocumentActivityPort,
@@ -11,6 +12,7 @@ import type {
   DocumentFilesPort,
   DocumentMembershipPort,
   DocumentNotificationPort,
+  DocumentReviewReminderOrgPort,
   DocumentUsersPort,
 } from "../ports";
 
@@ -199,6 +201,15 @@ export function createDocumentNotificationAdapter(
           screenIdentifier: "document-repositories",
         })),
       });
+    },
+  };
+}
+
+export function createDocumentReviewReminderOrgAdapter(): DocumentReviewReminderOrgPort {
+  const organisations = createOrganisationRepository();
+  return {
+    async listForReminders() {
+      return organisations.listForDocumentReviewReminders();
     },
   };
 }

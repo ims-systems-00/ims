@@ -409,6 +409,30 @@ export function createOrganisationRepository() {
       return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
+    /**
+     * Lightweight org list for the document-review reminder job.
+     * on_day is always sent even when offsets are empty.
+     */
+    async listForDocumentReviewReminders(): Promise<
+      Array<{
+        id: string;
+        name: string;
+        documentReviewReminderOffsets: DocumentReviewReminderOffset[];
+      }>
+    > {
+      const docs = await Model.find({})
+        .select({ name: 1, documentReviewReminderOffsets: 1 })
+        .lean();
+      return docs.map((doc) => {
+        const domain = toDomain(doc as OrganisationDocument);
+        return {
+          id: domain.id,
+          name: domain.name,
+          documentReviewReminderOffsets: domain.documentReviewReminderOffsets,
+        };
+      });
+    },
+
     async findByIds(ids: string[]): Promise<Organisation[]> {
       if (ids.length === 0) return [];
       const docs = await Model.find({ _id: { $in: ids } }).lean();

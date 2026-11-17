@@ -42,6 +42,31 @@ export function formatDate(
   return `${pad(date.getDate())}-${pad(date.getMonth() + 1)}-${date.getFullYear()}`;
 }
 
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
+
+/** Long date — `12 January 2027`. */
+export function formatDateLong(
+  value: string | Date | null | undefined,
+  empty = "—"
+): string {
+  const date = parseDisplayDate(value);
+  if (!date) return empty;
+  return `${date.getDate()} ${MONTH_NAMES[date.getMonth()]} ${date.getFullYear()}`;
+}
+
 /** Date + time — `23-10-2026 14:05`. */
 export function formatDateTime(
   value: string | Date | null | undefined,

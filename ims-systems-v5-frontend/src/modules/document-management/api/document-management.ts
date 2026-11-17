@@ -158,7 +158,11 @@ export function getNodePath(
 
 export function createFolderNode(
   repositoryId: string,
-  body: { name: string; parentNodeId?: string | null }
+  body: {
+    name: string;
+    parentNodeId?: string | null;
+    reviewDate?: string | null;
+  }
 ): Promise<DocumentTreeNode> {
   return apiRequest<DocumentTreeNode>(
     `/document-repositories/${repositoryId}/folder-nodes`,
@@ -167,7 +171,24 @@ export function createFolderNode(
       body: {
         name: body.name,
         parentNode: body.parentNodeId ?? null,
+        ...(body.reviewDate !== undefined
+          ? { reviewDate: body.reviewDate }
+          : {}),
       },
+    }
+  );
+}
+
+export function updateFolderNode(
+  repositoryId: string,
+  nodeId: string,
+  body: { name?: string; reviewDate?: string | null }
+): Promise<DocumentTreeNode> {
+  return apiRequest<DocumentTreeNode>(
+    `/document-repositories/${repositoryId}/folder-nodes/${nodeId}`,
+    {
+      method: "PUT",
+      body,
     }
   );
 }

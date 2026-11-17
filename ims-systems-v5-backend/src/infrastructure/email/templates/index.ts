@@ -25,6 +25,7 @@ import {
 } from "./catalog/contact-ims";
 import {
   renderDocumentAuthorisationRequested,
+  renderDocumentReviewReminder,
   renderDocumentShared,
   renderDocumentSignatureRequested,
   renderDocumentSignedCopy,
@@ -136,6 +137,14 @@ export type EmailTemplateDataMap = {
     expiresAt?: Date;
   };
   "document-signed-copy": { documentName: string; viewUrl: string };
+  "document-review-reminder": {
+    title: string;
+    entityLabel: string;
+    entityName: string;
+    reviewDateLabel: string;
+    body: string;
+    viewUrl?: string;
+  };
   "audit-report": {
     recipientName: string;
     reference: string;
@@ -206,6 +215,7 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "document-authorisation-requested": renderDocumentAuthorisationRequested,
   "document-signature-requested": renderDocumentSignatureRequested,
   "document-signed-copy": renderDocumentSignedCopy,
+  "document-review-reminder": renderDocumentReviewReminder,
   "audit-report": renderAuditReport,
   notification: renderNotification,
   "campaign-wrap": renderCampaignWrap,

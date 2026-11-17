@@ -24,6 +24,7 @@ export {
   createDocumentEmailAdapter,
   createDocumentMembershipAdapter,
   createDocumentUsersAdapter,
+  createDocumentReviewReminderOrgAdapter,
 } from "./adapters";
 
 export {
@@ -39,6 +40,7 @@ export {
   NoOpDocumentEmailAdapter,
   NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentUsersAdapter,
+  NoOpDocumentReviewReminderOrgAdapter,
   type DocumentFilesPort,
   type DocumentActivityPort,
   type DocumentNotificationPort,
@@ -46,6 +48,7 @@ export {
   type DocumentMembershipPort,
   type DocumentUsersPort,
   type DocumentComplianceLinkPort,
+  type DocumentReviewReminderOrgPort,
 } from "./ports";
 
 export {

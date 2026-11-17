@@ -36,6 +36,12 @@ export const createRepositoryFormSchema = z
 
 export const createFolderFormSchema = z.object({
   name: z.string().trim().min(1, "Folder name is required").max(255),
+  reviewDate: z.string().trim().nullable().optional(),
+});
+
+export const updateFolderFormSchema = z.object({
+  name: z.string().trim().min(1, "Folder name is required").max(255),
+  reviewDate: z.string().trim().nullable().optional(),
 });
 
 export const uploadDocumentFormSchema = z

@@ -7,6 +7,7 @@ import {
   createDocumentRepository,
   createFileNodes,
   createFolderNode,
+  updateFolderNode,
   decideNodeAuthorisation,
   getDocumentOverview,
   getDocumentRepository,
@@ -273,8 +274,27 @@ export function useHardDeleteDocumentRepositoryMutation() {
 export function useCreateFolderNodeMutation(repositoryId: string) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (body: { name: string; parentNodeId?: string | null }) =>
-      createFolderNode(repositoryId, body),
+    mutationFn: (body: {
+      name: string;
+      parentNodeId?: string | null;
+      reviewDate?: string | null;
+    }) => createFolderNode(repositoryId, body),
+    onSuccess: async () => {
+      await invalidateDocumentQueries(queryClient, repositoryId);
+    },
+  });
+}
+
+export function useUpdateFolderNodeMutation(repositoryId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      nodeId,
+      body,
+    }: {
+      nodeId: string;
+      body: { name?: string; reviewDate?: string | null };
+    }) => updateFolderNode(repositoryId, nodeId, body),
     onSuccess: async () => {
       await invalidateDocumentQueries(queryClient, repositoryId);
     },

@@ -104,6 +104,21 @@ export function createDocumentRepositoryStore() {
       return docs.map((doc) => toDomain(doc as DocumentRepositoryDocument));
     },
 
+    /** Active repositories for reminder scheduling (createdOn + reviewInterval). */
+    async listActiveForReviewReminders(
+      organizationId: string
+    ): Promise<DocumentRepository[]> {
+      const docs = await Model.find({
+        organizationId,
+        deletedAt: null,
+        createdOn: { $ne: null },
+        reviewInterval: { $exists: true, $ne: null },
+      })
+        .limit(5_000)
+        .lean();
+      return docs.map((doc) => toDomain(doc as DocumentRepositoryDocument));
+    },
+
     async list(
       organizationId: string,
       query: ListDocumentRepositoriesQuery,

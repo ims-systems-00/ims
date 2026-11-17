@@ -126,6 +126,25 @@ export class NoOpDocumentNotificationAdapter
   }
 }
 
+/** Orgs + reminder offsets for the daily review reminder job. */
+export type DocumentReviewReminderOrg = {
+  id: string;
+  name: string;
+  documentReviewReminderOffsets: string[];
+};
+
+export type DocumentReviewReminderOrgPort = {
+  listForReminders(): Promise<DocumentReviewReminderOrg[]>;
+};
+
+export class NoOpDocumentReviewReminderOrgAdapter
+  implements DocumentReviewReminderOrgPort
+{
+  async listForReminders(): Promise<DocumentReviewReminderOrg[]> {
+    return [];
+  }
+}
+
 export type DocumentComplianceLinkPair = {
   toolkitId: string;
   clauseIds: string[];

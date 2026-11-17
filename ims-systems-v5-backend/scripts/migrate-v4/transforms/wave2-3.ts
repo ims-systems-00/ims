@@ -951,13 +951,30 @@ export function transformDocumentReviewReminder(
   doc: Record<string, unknown>,
   organizationId: string
 ): Record<string, unknown> {
+  const entityId = asId(doc.entityId ?? doc.documentNodeId);
+  const rawEntityType = String(doc.entityType ?? "documenttree").toLowerCase();
+  const entityType =
+    rawEntityType.includes("folder")
+      ? "folder"
+      : rawEntityType.includes("repo")
+        ? "repository"
+        : "document";
+  const reviewSnapshot = doc.reviewDateSnapshot ?? doc.reviewDate;
+  const reviewDateKey =
+    typeof reviewSnapshot === "string"
+      ? reviewSnapshot.slice(0, 10)
+      : reviewSnapshot instanceof Date
+        ? reviewSnapshot.toISOString().slice(0, 10)
+        : String(doc.reviewDateKey ?? "");
   return {
     _id: asId(doc._id)!,
     organizationId: orgId(doc, organizationId),
-    documentNodeId: asId(doc.entityId ?? doc.documentNodeId),
-    offset: doc.offset ?? doc.entityType,
-    reviewDateKey: doc.reviewDateKey ?? String(doc.reviewDate ?? ""),
-    sentAt: doc.sentAt ?? null,
+    entityType,
+    entityId,
+    documentNodeId: entityId,
+    offset: doc.reminderOffset ?? doc.offset ?? "on_day",
+    reviewDateKey,
+    sentOn: doc.sentAt ?? doc.sentOn ?? new Date(),
     recipients: asIdList(doc.recipients),
   };
 }

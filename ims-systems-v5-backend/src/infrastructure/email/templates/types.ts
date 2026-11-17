@@ -90,6 +90,7 @@ export type EmailTemplateId =
   | "document-authorisation-requested"
   | "document-signature-requested"
   | "document-signed-copy"
+  | "document-review-reminder"
   | "audit-report"
   | "notification"
   | "campaign-wrap"

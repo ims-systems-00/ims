@@ -52,11 +52,11 @@ export function DocumentManagementRemindersPanel({
       </div>
       <div className="space-y-4 px-4 py-4">
         <p className="text-[0.8125rem] leading-relaxed text-muted-foreground">
-          Choose how far in advance document owners should be reminded before a
-          document review date. A reminder is always sent on the exact review
-          date. Any options you select below are sent in addition to that.
-          Reminder emails and system notifications are sent on the same day as
-          each selected reminder.
+          Choose how far in advance owners should be reminded before a document,
+          folder, or repository review date. A reminder is always sent on the
+          exact review date. Any options you select below are sent in addition
+          to that. Reminder emails and system notifications are sent on the same
+          day as each selected reminder.
         </p>
 
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">

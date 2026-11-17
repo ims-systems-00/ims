@@ -18,6 +18,7 @@ import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-or
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { signalSetupEvent } from "@/modules/setup-guide";
 import { useCreateFileNodesMutation } from "../hooks/use-document-management";
+import { fromUkDateInputValue } from "../lib/format";
 import { uploadDocumentFormSchema } from "../schemas";
 import {
   COMPLIANCE_TOOLKIT_TO_DOCUMENT_TOOL,
@@ -38,12 +39,6 @@ type UploadDocumentSheetProps = {
   repositoryId: string;
   parentNodeId: string | null;
 };
-
-function fromDateInputValue(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  return new Date(`${trimmed}T00:00:00.000Z`).toISOString();
-}
 
 export function UploadDocumentSheet({
   open,
@@ -165,6 +160,15 @@ export function UploadDocumentSheet({
       return;
     }
 
+    const reviewIso =
+      parsed.data.reviewDate && parsed.data.reviewDate.trim()
+        ? fromUkDateInputValue(parsed.data.reviewDate)
+        : null;
+    if (parsed.data.reviewDate?.trim() && !reviewIso) {
+      setFormError("Use review date as dd/mm/yyyy");
+      return;
+    }
+
     setUploading(true);
     try {
       const payloads = [];
@@ -176,7 +180,7 @@ export function UploadDocumentSheet({
           applicableModules: parsed.data.applicableModules,
           complianceTools: parsed.data.complianceTools,
           owners: parsed.data.owners,
-          reviewDate: fromDateInputValue(parsed.data.reviewDate ?? ""),
+          reviewDate: reviewIso,
           authorisation: parsed.data.requireAuthorisation
             ? [parsed.data.authoriserId]
             : [],
@@ -374,10 +378,16 @@ export function UploadDocumentSheet({
           />
         </FormField>
 
-        <FormField label="Document review date" htmlFor="doc-review-date">
+        <FormField
+          label="Document review date"
+          htmlFor="doc-review-date"
+          description="Format: dd/mm/yyyy"
+        >
           <Input
             id="doc-review-date"
-            type="date"
+            type="text"
+            inputMode="numeric"
+            placeholder="dd/mm/yyyy"
             value={reviewDate}
             onChange={(event) => setReviewDate(event.target.value)}
           />

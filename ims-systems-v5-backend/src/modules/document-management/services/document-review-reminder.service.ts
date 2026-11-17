@@ -1,42 +1,93 @@
 /**
- * Daily document review reminders (on-day).
- * Spec: docs/module-specifications/notifications.md / document-management.md
+ * Daily document / folder / repository review reminders.
+ * Spec: docs/module-specifications/document-management.md
+ *
+ * - on_day is always sent
+ * - org-selected advance offsets are also sent
+ * - in-app notification + transactional email per recipient
  */
 
+import type { EmailBranding } from "../../../infrastructure/email/templates";
+import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  renderEmail,
+} from "../../../infrastructure/email/templates";
 import type { Logger } from "../../../infrastructure/logging/logger";
-import type { DocumentNotificationPort } from "../ports";
+import {
+  buildReminderMessage,
+  computeRepoReviewDateOnOrAfter,
+  formatReviewDateLabel,
+  getEffectiveReminderOffsets,
+  getReviewDateTargetForOffset,
+  reminderTitle,
+  utcDayRange,
+  type DocumentReviewReminderEntityType,
+} from "../lib/document-review-reminder-offsets";
+import type {
+  DocumentEmailPort,
+  DocumentNotificationPort,
+  DocumentReviewReminderOrgPort,
+  DocumentUsersPort,
+} from "../ports";
 import { getDocumentReviewReminderModel } from "../repositories/document-review-reminder.model";
+import type { DocumentRepositoryStore } from "../repositories/document-repository.repository";
 import type { DocumentTreeStore } from "../repositories/document-tree.repository";
+import type { DocumentRepository, DocumentTreeNode } from "../types";
 
-function utcDayRange(runDate: Date): { start: Date; end: Date; key: string } {
-  const start = new Date(
-    Date.UTC(
-      runDate.getUTCFullYear(),
-      runDate.getUTCMonth(),
-      runDate.getUTCDate(),
-      0,
-      0,
-      0,
-      0
-    )
-  );
-  const end = new Date(start);
-  end.setUTCDate(end.getUTCDate() + 1);
-  const key = start.toISOString().slice(0, 10);
-  return { start, end, key };
+type ReminderCandidate = {
+  entityType: DocumentReviewReminderEntityType;
+  entityId: string;
+  organizationId: string;
+  name: string;
+  reviewDate: Date;
+  recipientUserIds: string[];
+  createdBy: string;
+  repositoryId?: string;
+};
+
+function uniqueIds(ids: Array<string | null | undefined>): string[] {
+  return [...new Set(ids.filter((id): id is string => Boolean(id?.trim())))];
 }
 
-function formatReviewDate(date: Date): string {
-  try {
-    return date.toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-      timeZone: "UTC",
-    });
-  } catch {
-    return date.toISOString().slice(0, 10);
+function documentRecipients(
+  node: DocumentTreeNode,
+  repo?: DocumentRepository | null
+): string[] {
+  const owners = node.documentData?.owners ?? [];
+  if (owners.length) return uniqueIds(owners);
+  if (repo?.owners?.length) return uniqueIds(repo.owners);
+  return uniqueIds([node.createdBy]);
+}
+
+function folderRecipients(
+  node: DocumentTreeNode,
+  repo?: DocumentRepository | null
+): string[] {
+  if (repo?.owners?.length) return uniqueIds([...repo.owners, node.createdBy]);
+  return uniqueIds([node.createdBy]);
+}
+
+function repositoryRecipients(repo: DocumentRepository): string[] {
+  if (repo.owners?.length) return uniqueIds(repo.owners);
+  return uniqueIds([repo.createdBy]);
+}
+
+function entityLabel(type: DocumentReviewReminderEntityType): string {
+  if (type === "folder") return "Folder";
+  if (type === "repository") return "Repository";
+  return "Document";
+}
+
+function viewPath(candidate: ReminderCandidate, baseUrl?: string): string | undefined {
+  if (!baseUrl?.trim()) return undefined;
+  const root = baseUrl.replace(/\/$/, "");
+  if (candidate.entityType === "repository") {
+    return `${root}/document-management/repositories/${candidate.entityId}`;
   }
+  if (candidate.repositoryId) {
+    return `${root}/document-management/repositories/${candidate.repositoryId}?nodeId=${candidate.entityId}`;
+  }
+  return `${root}/document-management`;
 }
 
 export type DocumentReviewReminderService = {
@@ -45,75 +96,289 @@ export type DocumentReviewReminderService = {
 
 export function createDocumentReviewReminderService(deps: {
   trees: DocumentTreeStore;
+  repositories: DocumentRepositoryStore;
+  organisations: DocumentReviewReminderOrgPort;
   notifications: DocumentNotificationPort;
+  email?: DocumentEmailPort;
+  users?: DocumentUsersPort;
+  resolveEmailBranding?: (organizationId: string) => Promise<EmailBranding>;
+  accessLinkBaseUrl?: string;
   logger?: Logger;
 }): DocumentReviewReminderService {
-  const { trees, notifications, logger } = deps;
+  const {
+    trees,
+    repositories,
+    organisations,
+    notifications,
+    email,
+    users,
+    resolveEmailBranding,
+    accessLinkBaseUrl,
+    logger,
+  } = deps;
   const Ledger = getDocumentReviewReminderModel();
+
+  async function brandingFor(organizationId: string): Promise<EmailBranding> {
+    if (!resolveEmailBranding) return DEFAULT_IMS_EMAIL_BRANDING;
+    try {
+      return await resolveEmailBranding(organizationId);
+    } catch {
+      return DEFAULT_IMS_EMAIL_BRANDING;
+    }
+  }
+
+  async function collectCandidates(input: {
+    organizationId: string;
+    targetStart: Date;
+    targetEnd: Date;
+  }): Promise<ReminderCandidate[]> {
+    const [docs, folders, repos] = await Promise.all([
+      trees.listDocumentsDueForReviewOnDay(
+        input.organizationId,
+        input.targetStart,
+        input.targetEnd
+      ),
+      trees.listFoldersDueForReviewOnDay(
+        input.organizationId,
+        input.targetStart,
+        input.targetEnd
+      ),
+      repositories.listActiveForReviewReminders(input.organizationId),
+    ]);
+
+    const repoById = new Map(repos.map((repo) => [repo.id, repo]));
+    const candidates: ReminderCandidate[] = [];
+
+    for (const node of docs) {
+      const reviewDate = node.documentData?.reviewDate;
+      if (!reviewDate) continue;
+      const repo = repoById.get(node.repositoryId) ?? null;
+      candidates.push({
+        entityType: "document",
+        entityId: node.id,
+        organizationId: node.organizationId,
+        name: node.name,
+        reviewDate,
+        recipientUserIds: documentRecipients(node, repo),
+        createdBy: node.createdBy,
+        repositoryId: node.repositoryId,
+      });
+    }
+
+    for (const node of folders) {
+      const reviewDate = node.folderData?.reviewDate;
+      if (!reviewDate) continue;
+      const repo = repoById.get(node.repositoryId) ?? null;
+      candidates.push({
+        entityType: "folder",
+        entityId: node.id,
+        organizationId: node.organizationId,
+        name: node.name,
+        reviewDate,
+        recipientUserIds: folderRecipients(node, repo),
+        createdBy: node.createdBy,
+        repositoryId: node.repositoryId,
+      });
+    }
+
+    for (const repo of repos) {
+      const anniversary = computeRepoReviewDateOnOrAfter(
+        repo.createdOn,
+        repo.reviewInterval,
+        input.targetStart
+      );
+      if (!anniversary) continue;
+      if (
+        anniversary.getTime() < input.targetStart.getTime() ||
+        anniversary.getTime() >= input.targetEnd.getTime()
+      ) {
+        continue;
+      }
+      candidates.push({
+        entityType: "repository",
+        entityId: repo.id,
+        organizationId: repo.organizationId,
+        name: repo.name,
+        reviewDate: anniversary,
+        recipientUserIds: repositoryRecipients(repo),
+        createdBy: repo.createdBy,
+        repositoryId: repo.id,
+      });
+    }
+
+    return candidates;
+  }
+
+  async function claimLedger(input: {
+    organizationId: string;
+    entityType: DocumentReviewReminderEntityType;
+    entityId: string;
+    offset: string;
+    reviewDateKey: string;
+  }): Promise<boolean> {
+    try {
+      await Ledger.create({
+        organizationId: input.organizationId,
+        entityType: input.entityType,
+        entityId: input.entityId,
+        documentNodeId: input.entityId,
+        offset: input.offset,
+        reviewDateKey: input.reviewDateKey,
+        sentOn: new Date(),
+      });
+      return true;
+    } catch (error) {
+      const code =
+        error && typeof error === "object" && "code" in error
+          ? (error as { code?: number }).code
+          : undefined;
+      if (code === 11000) return false;
+      logger?.error(
+        { err: error, entityId: input.entityId, offset: input.offset },
+        "Document review reminder ledger write failed"
+      );
+      return false;
+    }
+  }
+
+  async function deliver(input: {
+    candidate: ReminderCandidate;
+    offset: string;
+    reviewDateKey: string;
+  }): Promise<number> {
+    const { candidate, offset } = input;
+    const recipients = candidate.recipientUserIds;
+    if (recipients.length === 0) return 0;
+
+    const reviewLabel = formatReviewDateLabel(candidate.reviewDate);
+    const title = reminderTitle(candidate.entityType);
+    const message = buildReminderMessage({
+      entityType: candidate.entityType,
+      name: candidate.name,
+      reviewDateLabel: reviewLabel,
+      offset,
+    }).slice(0, 150);
+
+    try {
+      await notifications.notify({
+        organizationId: candidate.organizationId,
+        createdBy: candidate.createdBy || recipients[0]!,
+        recipients: recipients.map((recipientUserId) => ({
+          recipientUserId,
+          title,
+          message,
+          referenceModuleId: candidate.entityId,
+        })),
+      });
+    } catch (error) {
+      logger?.error(
+        { err: error, entityId: candidate.entityId },
+        "Document review reminder notify failed"
+      );
+    }
+
+    if (email && users) {
+      try {
+        const profiles = await users.findIdentitySummariesByIds(recipients);
+        const emails = [
+          ...new Set(
+            profiles
+              .map((profile) => profile.email?.trim().toLowerCase())
+              .filter((value): value is string => Boolean(value))
+          ),
+        ];
+        if (emails.length > 0) {
+          const viewUrl = viewPath(candidate, accessLinkBaseUrl);
+          const rendered = renderEmail(
+            "document-review-reminder",
+            {
+              title,
+              entityLabel: entityLabel(candidate.entityType),
+              entityName: candidate.name,
+              reviewDateLabel: reviewLabel,
+              body: message,
+              ...(viewUrl ? { viewUrl } : {}),
+            },
+            { branding: await brandingFor(candidate.organizationId) }
+          );
+          await email.sendDocumentEmail({
+            to: emails,
+            subject: rendered.subject,
+            html: rendered.html,
+            text: rendered.text,
+            organizationId: candidate.organizationId,
+          });
+        }
+      } catch (error) {
+        logger?.error(
+          { err: error, entityId: candidate.entityId },
+          "Document review reminder email failed"
+        );
+      }
+    }
+
+    return recipients.length;
+  }
 
   return {
     async processRun(runDate = new Date()) {
-      const { start, end, key } = utcDayRange(runDate);
-      const due = await trees.listDueForReviewOnDay(start, end);
+      const orgs = await organisations.listForReminders();
       let sent = 0;
+      let dueCount = 0;
 
-      for (const node of due) {
-        const owners = node.documentData?.owners ?? [];
-        const recipients = [...new Set(owners.length ? owners : [node.createdBy])]
-          .filter(Boolean);
-        if (recipients.length === 0) continue;
+      for (const org of orgs) {
+        const offsets = getEffectiveReminderOffsets(
+          org.documentReviewReminderOffsets
+        );
 
-        try {
-          await Ledger.create({
-            organizationId: node.organizationId,
-            documentNodeId: node.id,
-            offset: "on_day",
-            reviewDateKey: key,
-            sentOn: new Date(),
-          });
-        } catch (error) {
-          // Duplicate key → already reminded for this day.
-          const code =
-            error && typeof error === "object" && "code" in error
-              ? (error as { code?: number }).code
-              : undefined;
-          if (code === 11000) continue;
-          logger?.error(
-            { err: error, documentNodeId: node.id },
-            "Document review reminder ledger write failed"
-          );
-          continue;
-        }
+        for (const offset of offsets) {
+          const target = getReviewDateTargetForOffset(runDate, offset);
+          if (!target) continue;
+          const { start, end, key } = utcDayRange(target);
 
-        const reviewLabel = node.documentData?.reviewDate
-          ? formatReviewDate(node.documentData.reviewDate)
-          : key;
+          let candidates: ReminderCandidate[] = [];
+          try {
+            candidates = await collectCandidates({
+              organizationId: org.id,
+              targetStart: start,
+              targetEnd: end,
+            });
+          } catch (error) {
+            logger?.error(
+              { err: error, organizationId: org.id, offset },
+              "Document review reminder collect failed"
+            );
+            continue;
+          }
 
-        try {
-          await notifications.notify({
-            organizationId: node.organizationId,
-            createdBy: node.createdBy,
-            recipients: recipients.map((recipientUserId) => ({
-              recipientUserId,
-              title: "Document review due",
-              message: `Document "${node.name}" is due for review today (${reviewLabel}).`.slice(
-                0,
-                150
-              ),
-              referenceModuleId: node.id,
-            })),
-          });
-          sent += recipients.length;
-        } catch (error) {
-          logger?.error(
-            { err: error, documentNodeId: node.id },
-            "Document review reminder notify failed"
-          );
+          dueCount += candidates.length;
+
+          for (const candidate of candidates) {
+            const claimed = await claimLedger({
+              organizationId: candidate.organizationId,
+              entityType: candidate.entityType,
+              entityId: candidate.entityId,
+              offset,
+              reviewDateKey: key,
+            });
+            if (!claimed) continue;
+
+            sent += await deliver({
+              candidate,
+              offset,
+              reviewDateKey: key,
+            });
+          }
         }
       }
 
       logger?.info(
-        { dueCount: due.length, notificationsSent: sent, day: key },
+        {
+          organisationCount: orgs.length,
+          dueCount,
+          notificationsSent: sent,
+          day: utcDayRange(runDate).key,
+        },
         "Document review reminders processed"
       );
       return sent;

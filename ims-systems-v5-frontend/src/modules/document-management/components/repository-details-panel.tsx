@@ -3,12 +3,18 @@ import { StatusBadge } from "@/shared/components/status-badge";
 import { BusinessUnitLabel } from "@/modules/functional-units";
 import type { DocumentRepository, DocumentTreeNode } from "../types";
 import { DOCUMENT_PURPOSE_LABELS } from "../types";
-import { computeRepoReviewDate, formatDocumentDate } from "../lib/format";
+import {
+  computeRepoReviewDate,
+  formatDocumentDateLong,
+  formatReviewDateDisplay,
+} from "../lib/format";
 import { UserChip } from "./user-chip";
 
 type RepositoryDetailsPanelProps = {
   repository: DocumentRepository;
   selected: DocumentTreeNode | null;
+  /** Current folder being browsed (for document folder-review fallback). */
+  visitingFolder?: DocumentTreeNode | null;
   userNames: Record<string, string>;
 };
 
@@ -45,17 +51,55 @@ function People({
 }
 
 /**
+ * Resolve folder review date like V4 AboutRepository:
+ * - selected folder → its own folderData.reviewDate (or Not set)
+ * - selected document → visiting/parent folder date, else repo-derived date
+ */
+function resolveFolderReviewDate(input: {
+  selected: DocumentTreeNode | null;
+  visitingFolder: DocumentTreeNode | null | undefined;
+  repoReviewLabel: string;
+}): string | null {
+  const { selected, visitingFolder, repoReviewLabel } = input;
+  if (!selected) return null;
+
+  if (selected.type === "folder") {
+    return formatReviewDateDisplay(selected.folderData?.reviewDate);
+  }
+
+  if (selected.type === "document") {
+    if (!selected.parentNodeId) {
+      return repoReviewLabel;
+    }
+    const parentReview =
+      visitingFolder?.folderData?.reviewDate ?? null;
+    return parentReview
+      ? formatReviewDateDisplay(parentReview)
+      : repoReviewLabel;
+  }
+
+  return null;
+}
+
+/**
  * Right-rail details: repository summary, or folder/document when selected.
  */
 export function RepositoryDetailsPanel({
   repository,
   selected,
+  visitingFolder,
   userNames,
 }: RepositoryDetailsPanelProps) {
   const repoReview = computeRepoReviewDate(
     repository.createdOn,
     repository.reviewInterval
   );
+  const repoReviewLabel = formatReviewDateDisplay(repoReview);
+  const folderReviewLabel = resolveFolderReviewDate({
+    selected,
+    visitingFolder,
+    repoReviewLabel,
+  });
 
   const repoBlock = (
     <>
@@ -78,10 +122,10 @@ export function RepositoryDetailsPanel({
         )}
       </Row>
       <Row label="Created Date">
-        {formatDocumentDate(repository.createdOn)}
+        {formatDocumentDateLong(repository.createdOn)}
       </Row>
       <Row label="Review interval">{repository.reviewInterval}</Row>
-      <Row label="Repo Review Date">{formatDocumentDate(repoReview)}</Row>
+      <Row label="Repo Review Date">{repoReviewLabel}</Row>
     </>
   );
 
@@ -120,14 +164,12 @@ export function RepositoryDetailsPanel({
               </StatusBadge>
             </Row>
             <Row label="Version">v{selected.documentData.dvID}</Row>
-            <Row label="Repo Review Date">
-              {formatDocumentDate(repoReview)}
-            </Row>
-            <Row label="Folder Review Date">
-              {formatDocumentDate(selected.folderData?.reviewDate)}
-            </Row>
+            <Row label="Repo Review Date">{repoReviewLabel}</Row>
+            {folderReviewLabel !== null ? (
+              <Row label="Folder Review Date">{folderReviewLabel}</Row>
+            ) : null}
             <Row label="Document Review Date">
-              {formatDocumentDate(selected.documentData.reviewDate)}
+              {formatReviewDateDisplay(selected.documentData.reviewDate)}
             </Row>
             <Row label="Modified By">
               {selected.updatedBy ? (
@@ -140,7 +182,7 @@ export function RepositoryDetailsPanel({
               )}
             </Row>
             <Row label="Modified Date">
-              {formatDocumentDate(selected.updatedOn ?? selected.updatedAt)}
+              {formatDocumentDateLong(selected.updatedOn ?? selected.updatedAt)}
             </Row>
             <Row label="Document Owner(s)">
               <People
@@ -155,8 +197,9 @@ export function RepositoryDetailsPanel({
         {selected?.type === "folder" ? (
           <>
             <Row label="Folder">{selected.name}</Row>
+            <Row label="Repo Review Date">{repoReviewLabel}</Row>
             <Row label="Folder Review Date">
-              {formatDocumentDate(selected.folderData?.reviewDate)}
+              {folderReviewLabel ?? "Not set"}
             </Row>
             <Row label="Modified By">
               {selected.folderData?.modifiedBy ? (
@@ -174,7 +217,7 @@ export function RepositoryDetailsPanel({
               )}
             </Row>
             <Row label="Modified Date">
-              {formatDocumentDate(
+              {formatDocumentDateLong(
                 selected.folderData?.modifiedOn ??
                   selected.updatedOn ??
                   selected.updatedAt

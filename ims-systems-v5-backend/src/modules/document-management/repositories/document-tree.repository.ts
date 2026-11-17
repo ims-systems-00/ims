@@ -688,18 +688,38 @@ export function createDocumentTreeStore() {
     },
 
     /**
-     * Published documents whose reviewDate falls on the given calendar day (UTC).
+     * Non-deleted documents whose reviewDate falls on the given calendar day (UTC).
      * Used by the document-review reminder job.
      */
-    async listDueForReviewOnDay(
+    async listDocumentsDueForReviewOnDay(
+      organizationId: string,
       dayStart: Date,
       dayEnd: Date
     ): Promise<DocumentTreeNode[]> {
       const docs = await Model.find({
+        organizationId,
         type: "document",
-        status: "Published",
         deletedAt: null,
         "documentData.reviewDate": { $gte: dayStart, $lt: dayEnd },
+      })
+        .limit(2_000)
+        .lean();
+      return docs.map((doc) => toDomain(doc as DocumentTreeDocument));
+    },
+
+    /**
+     * Non-deleted folders whose folderData.reviewDate falls on the given day (UTC).
+     */
+    async listFoldersDueForReviewOnDay(
+      organizationId: string,
+      dayStart: Date,
+      dayEnd: Date
+    ): Promise<DocumentTreeNode[]> {
+      const docs = await Model.find({
+        organizationId,
+        type: "folder",
+        deletedAt: null,
+        "folderData.reviewDate": { $gte: dayStart, $lt: dayEnd },
       })
         .limit(2_000)
         .lean();

@@ -13,6 +13,7 @@ import {
 } from "@/shared/components/ui/dialog";
 import { notify } from "@/shared/lib/toast";
 import { useCreateFolderNodeMutation } from "../hooks/use-document-management";
+import { fromUkDateInputValue } from "../lib/format";
 import { createFolderFormSchema } from "../schemas";
 
 type CreateFolderDialogProps = {
@@ -30,22 +31,41 @@ export function CreateFolderDialog({
 }: CreateFolderDialogProps) {
   const createMutation = useCreateFolderNodeMutation(repositoryId);
   const [name, setName] = useState("");
+  const [reviewDate, setReviewDate] = useState("");
   const [error, setError] = useState<string | undefined>();
 
+  function reset() {
+    setName("");
+    setReviewDate("");
+    setError(undefined);
+  }
+
   async function handleSubmit() {
-    const parsed = createFolderFormSchema.safeParse({ name });
+    const parsed = createFolderFormSchema.safeParse({
+      name,
+      reviewDate: reviewDate.trim() ? reviewDate : null,
+    });
     if (!parsed.success) {
       setError(parsed.error.issues[0]?.message);
       return;
     }
+    const reviewIso =
+      parsed.data.reviewDate && parsed.data.reviewDate.trim()
+        ? fromUkDateInputValue(parsed.data.reviewDate)
+        : null;
+    if (parsed.data.reviewDate?.trim() && !reviewIso) {
+      setError("Use review date as dd/mm/yyyy");
+      return;
+    }
+
     try {
       await createMutation.mutateAsync({
         name: parsed.data.name,
         parentNodeId,
+        reviewDate: reviewIso,
       });
       notify.success("Folder created");
-      setName("");
-      setError(undefined);
+      reset();
       onOpenChange(false);
     } catch (err) {
       notify.fromError(err, "Unable to create folder");
@@ -56,10 +76,7 @@ export function CreateFolderDialog({
     <Dialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) {
-          setName("");
-          setError(undefined);
-        }
+        if (!next) reset();
         onOpenChange(next);
       }}
     >
@@ -67,18 +84,40 @@ export function CreateFolderDialog({
         <DialogHeader>
           <DialogTitle>New folder</DialogTitle>
           <DialogDescription>
-            Folders organise documents inside this repository.
+            Folders organise documents inside this repository. Optionally set a
+            folder review date for documents that inherit it.
           </DialogDescription>
         </DialogHeader>
-        <FormField label="Folder name" htmlFor="folder-name" required error={error}>
-          <Input
-            id="folder-name"
-            value={name}
-            onChange={(event) => setName(event.target.value)}
-            placeholder="e.g. Policies"
-            autoFocus
-          />
-        </FormField>
+        <div className="space-y-3">
+          <FormField
+            label="Folder name"
+            htmlFor="folder-name"
+            required
+            error={error}
+          >
+            <Input
+              id="folder-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="e.g. Policies"
+              autoFocus
+            />
+          </FormField>
+          <FormField
+            label="Folder review date"
+            htmlFor="folder-review-date"
+            description="Format: dd/mm/yyyy"
+          >
+            <Input
+              id="folder-review-date"
+              type="text"
+              inputMode="numeric"
+              placeholder="dd/mm/yyyy"
+              value={reviewDate}
+              onChange={(event) => setReviewDate(event.target.value)}
+            />
+          </FormField>
+        </div>
         <DialogFooter>
           <Button
             type="button"

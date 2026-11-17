@@ -7,12 +7,14 @@ import {
   NoOpDocumentEmailAdapter,
   NoOpDocumentFilesAdapter,
   NoOpDocumentNotificationAdapter,
+  NoOpDocumentReviewReminderOrgAdapter,
   type DocumentActivityPort,
   type DocumentComplianceLinkPort,
   type DocumentEmailPort,
   type DocumentFilesPort,
   type DocumentMembershipPort,
   type DocumentNotificationPort,
+  type DocumentReviewReminderOrgPort,
   type DocumentUsersPort,
 } from "../ports";
 import { createDocumentRepositoryStore } from "../repositories/document-repository.repository";
@@ -37,13 +39,13 @@ export type DocumentManagementRouterDeps = {
   email?: DocumentEmailPort;
   memberships?: DocumentMembershipPort;
   users?: DocumentUsersPort;
+  organisations?: DocumentReviewReminderOrgPort;
   complianceLinks?: DocumentComplianceLinkPort;
   /** Base URL for emailed access links (share / signature). */
   accessLinkBaseUrl?: string;
   resolveEmailBranding?: DocumentManagementServiceDeps["resolveEmailBranding"];
   onlyOffice?: OnlyOfficeRuntimeConfig;
 };
-
 /**
  * Compose Document Management module.
  *
@@ -86,7 +88,14 @@ export function createDocumentManagementModule(
   });
   const reviewReminders = createDocumentReviewReminderService({
     trees,
+    repositories,
+    organisations:
+      deps.organisations ?? new NoOpDocumentReviewReminderOrgAdapter(),
     notifications: notificationsPort,
+    email: deps.email ?? new NoOpDocumentEmailAdapter(),
+    users: deps.users,
+    resolveEmailBranding: deps.resolveEmailBranding,
+    accessLinkBaseUrl: deps.accessLinkBaseUrl,
   });
   const controller = createDocumentManagementController(service);
 

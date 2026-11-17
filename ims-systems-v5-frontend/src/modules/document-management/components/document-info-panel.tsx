@@ -4,8 +4,8 @@ import type { DocumentRepository, DocumentTreeNode } from "../types";
 import { DOCUMENT_PURPOSE_LABELS } from "../types";
 import {
   computeRepoReviewDate,
-  formatDocumentDate,
-  formatDocumentDateShort,
+  formatDocumentDateLong,
+  formatReviewDateDisplay,
 } from "../lib/format";
 import { UserChip } from "./user-chip";
 
@@ -70,6 +70,12 @@ export function DocumentInfoPanel({
     repository.createdOn,
     repository.reviewInterval
   );
+  const repoReviewLabel = formatReviewDateDisplay(repoReview);
+  const folderReviewLabel = !node.parentNodeId
+    ? repoReviewLabel
+    : parentFolder?.folderData?.reviewDate
+      ? formatReviewDateDisplay(parentFolder.folderData.reviewDate)
+      : "Not set";
   const fileName = data.storageInfo?.Name || node.name;
   const versionLabel = `V${Math.max(data.dvID, 1)}`;
 
@@ -142,24 +148,17 @@ export function DocumentInfoPanel({
         </Section>
 
         <Section title="Review dates">
-          <Field label="Repo Review Date">
-            {formatDocumentDate(repoReview)}
-          </Field>
-          <Field label="Folder Review Date">
-            {formatDocumentDate(
-              parentFolder?.folderData?.reviewDate ??
-                node.folderData?.reviewDate
-            )}
-          </Field>
+          <Field label="Repo Review Date">{repoReviewLabel}</Field>
+          <Field label="Folder Review Date">{folderReviewLabel}</Field>
           <Field label="Document Review Date">
-            {formatDocumentDate(data.reviewDate)}
+            {formatReviewDateDisplay(data.reviewDate)}
           </Field>
         </Section>
 
         <Section title="Other information">
           <p>
             Document was uploaded on{" "}
-            {formatDocumentDateShort(node.createdOn)}
+            {formatDocumentDateLong(node.createdOn)}
           </p>
           <Field label="Audience">{repository.privacy}</Field>
           {data.classification ? (

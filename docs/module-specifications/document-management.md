@@ -391,10 +391,10 @@ None further.
 
 ### Send automated document review reminders
 
-- **Capability:** Organisation-configured advance reminder offsets plus an always-on **on-the-day** reminder for documents whose `documentData.reviewDate` matches the target calendar day.
-- **Who uses it:** Document owners (recipients); schedule runs for all organisations (backend cron, daily at midnight).
-- **Outcome:** In-app notifications such as *Document "…" is due for review today* or *… This is your N reminder*. A **document review reminder ledger** (`documentreviewreminders`) records entity, offset, review-date snapshot, recipients, and sent time so the same reminder is not sent twice.
-- **Conditions:** Organisation field `documentReviewReminderOffsets` selects advance offsets (`3_months`, `2_months`, `1_month`, `3_weeks`, `2_weeks`, `1_week`, `5_days`, `1_day`). Offset `on_day` is always included. Only non-deleted document nodes are considered.
+- **Capability:** Organisation-configured advance reminder offsets plus an always-on **on-the-day** reminder for **documents** (`documentData.reviewDate`), **folders** (`folderData.reviewDate`), and **repositories** (next anniversary from `createdOn` + `reviewInterval`) whose review date matches the target calendar day.
+- **Who uses it:** Document owners / folder creators / repository owners (recipients); schedule runs for all organisations (backend cron, daily).
+- **Outcome:** In-app notifications and transactional emails such as *Document "…" is due for review today* or *… This is your N reminder* (same pattern for folders and repositories). A **document review reminder ledger** (`documentreviewreminders`) records entity type/id, offset, review-date key, and sent time so the same reminder is not sent twice.
+- **Conditions:** Organisation field `documentReviewReminderOffsets` selects advance offsets (`3_months`, `2_months`, `1_month`, `3_weeks`, `2_weeks`, `1_week`, `5_days`, `1_day`). Offset `on_day` is always included. Only non-deleted documents/folders and active repositories are considered.
 
 ### Calculate and show signature conformance %
 

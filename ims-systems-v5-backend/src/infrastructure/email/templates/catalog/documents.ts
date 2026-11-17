@@ -97,3 +97,28 @@ export function renderDocumentSignedCopy(data: {
     cta: { label: "Download signed copy", href: data.viewUrl },
   });
 }
+
+export function renderDocumentReviewReminder(data: {
+  title: string;
+  entityLabel: string;
+  entityName: string;
+  reviewDateLabel: string;
+  body: string;
+  viewUrl?: string;
+}): RenderedEmail {
+  return renderEmailLayout(data.title, {
+    mode: "action",
+    eyebrow: "Document Management",
+    statusChip: { label: "Review reminder", tone: "warning" },
+    title: data.title,
+    hero: data.entityName,
+    paragraphs: [data.body],
+    meta: [
+      { label: data.entityLabel, value: data.entityName },
+      { label: "Review date", value: data.reviewDateLabel },
+    ],
+    ...(data.viewUrl
+      ? { cta: { label: "Open in iMS", href: data.viewUrl } }
+      : {}),
+  });
+}

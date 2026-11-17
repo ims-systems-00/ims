@@ -39,6 +39,7 @@ import {
   useDocumentRepositoryQuery,
   useDownloadRepoNodesZipMutation,
   useNodePathQuery,
+  useRepoNodeQuery,
   useRepoNodesQuery,
   useSoftDeleteNodeMutation,
 } from "../hooks/use-document-management";
@@ -58,6 +59,7 @@ import { DOCUMENT_PURPOSE_LABELS } from "../types";
 import { ChangeRepositoryDialog } from "./change-repository-dialog";
 import { CopyFolderStructureDialog } from "./copy-folder-structure-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
+import { EditFolderDialog } from "./edit-folder-dialog";
 import { FileTypeIcon } from "./file-type-icon";
 import { MoveNodeDialog } from "./move-node-dialog";
 import { NewVersionSheet } from "./new-version-sheet";
@@ -104,6 +106,10 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
     () => readStoredSort().dir
   );
   const [folderOpen, setFolderOpen] = useState(false);
+  const [editFolderOpen, setEditFolderOpen] = useState(false);
+  const [editFolderNode, setEditFolderNode] = useState<DocumentTreeNode | null>(
+    null
+  );
   const [uploadOpen, setUploadOpen] = useState(false);
 
   useEffect(() => {
@@ -149,6 +155,10 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
     sortDir: "asc",
   });
   const pathQuery = useNodePathQuery(repositoryId, parentNodeId);
+  const visitingFolderQuery = useRepoNodeQuery(
+    repositoryId,
+    parentNodeId ?? undefined
+  );
   const softDeleteMutation = useSoftDeleteNodeMutation(repositoryId);
   const decideMutation = useDecideAuthorisationMutation(repositoryId);
   const downloadZipMutation = useDownloadRepoNodesZipMutation(repositoryId);
@@ -645,6 +655,11 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                           node={node}
                           pinned={isPinned(repositoryId, node.id)}
                           onSelect={() => selectNode(node)}
+                          onEdit={() => {
+                            selectNode(node);
+                            setEditFolderNode(node);
+                            setEditFolderOpen(true);
+                          }}
                           onDelete={() => setPendingDelete(node)}
                           onMove={() => {
                             selectNode(node);
@@ -875,6 +890,17 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                     type="button"
                     size="sm"
                     variant="outline"
+                    onClick={() => {
+                      setEditFolderNode(selected);
+                      setEditFolderOpen(true);
+                    }}
+                  >
+                    Edit
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
                     onClick={() => handleTogglePin(selected)}
                   >
                     {isPinned(repositoryId, selected.id) ? (
@@ -991,6 +1017,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
         <RepositoryDetailsPanel
           repository={repo}
           selected={selected}
+          visitingFolder={visitingFolderQuery.data ?? null}
           userNames={userNames}
         />
       </div>
@@ -1000,6 +1027,15 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
         onOpenChange={setFolderOpen}
         repositoryId={repositoryId}
         parentNodeId={parentNodeId}
+      />
+      <EditFolderDialog
+        open={editFolderOpen}
+        onOpenChange={(open) => {
+          setEditFolderOpen(open);
+          if (!open) setEditFolderNode(null);
+        }}
+        repositoryId={repositoryId}
+        folder={editFolderNode}
       />
       <UploadDocumentSheet
         open={uploadOpen}
@@ -1054,6 +1090,7 @@ function NodeActions({
   node,
   pinned,
   onSelect,
+  onEdit,
   onDelete,
   onMove,
   onChangeRepo,
@@ -1066,6 +1103,7 @@ function NodeActions({
   node: DocumentTreeNode;
   pinned?: boolean;
   onSelect: () => void;
+  onEdit?: () => void;
   onDelete: () => void;
   onMove: () => void;
   onChangeRepo: () => void;
@@ -1080,6 +1118,15 @@ function NodeActions({
   // and it flips above the trigger near the bottom of the viewport.
   const actions: RowActionItem[] = [
     { id: "details", label: "Details", onSelect },
+    ...(node.type === "folder" && onEdit
+      ? [
+          {
+            id: "edit",
+            label: "Edit folder…",
+            onSelect: onEdit,
+          } satisfies RowActionItem,
+        ]
+      : []),
     ...(node.type === "folder" && onTogglePin
       ? [
           {
