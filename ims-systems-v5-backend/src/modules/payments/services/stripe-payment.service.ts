@@ -12,6 +12,7 @@ import {
   ValidationAppError,
 } from "../../../shared";
 import type { OrganisationRepository } from "../../organisation/repositories/organisation.repository";
+import { billableSuperUserQuantity } from "../lib/super-user-billing-credit";
 import type {
   CheckoutSessionResult,
   StripeCheckoutLicences,
@@ -135,7 +136,8 @@ export function createStripePaymentService(deps: {
   }
 
   async function buildLineItems(
-    licences: StripeCheckoutLicences
+    licences: StripeCheckoutLicences,
+    billingContext: { organizationId: string; officeEmail?: string | null }
   ): Promise<Stripe.Checkout.SessionCreateParams.LineItem[]> {
     const [unitBuPrice, unitSuPrice, unitUPrice] = await Promise.all([
       stripe.prices.retrieve(config.STRIPE_BU_PRICE),
@@ -144,7 +146,11 @@ export function createStripePaymentService(deps: {
     ]);
 
     const groups = Math.max(0, Math.floor(licences.groups));
-    const superUser = Math.max(0, Math.floor(licences.superUser));
+    const superUser = billableSuperUserQuantity(licences.superUser, {
+      organizationId: billingContext.organizationId,
+      officeEmail: billingContext.officeEmail,
+      complimentaryOrgIdsFromEnv: config.STRIPE_SA_COMPLIMENTARY_ORG_IDS,
+    });
     const users = Math.max(0, Math.floor(licences.users));
 
     const totalSupportUnit =
@@ -205,7 +211,25 @@ export function createStripePaymentService(deps: {
       );
       let lineItems: Stripe.Checkout.SessionCreateParams.LineItem[];
       try {
-        lineItems = await buildLineItems(input.licences);
+        lineItems = await buildLineItems(input.licences, {
+          organizationId: input.organizationId,
+          officeEmail: org.officeEmail,
+        });
+        const billedSu = billableSuperUserQuantity(input.licences.superUser, {
+          organizationId: input.organizationId,
+          officeEmail: org.officeEmail,
+          complimentaryOrgIdsFromEnv: config.STRIPE_SA_COMPLIMENTARY_ORG_IDS,
+        });
+        if (billedSu !== Math.max(0, Math.floor(input.licences.superUser))) {
+          logger?.info(
+            {
+              organizationId: input.organizationId,
+              allocatedSuperUser: input.licences.superUser,
+              billedSuperUser: billedSu,
+            },
+            "Applied complimentary Super Admin seat on Stripe Checkout"
+          );
+        }
       } catch (error) {
         logger?.error(
           {

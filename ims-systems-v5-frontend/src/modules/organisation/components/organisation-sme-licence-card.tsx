@@ -150,12 +150,6 @@ export function OrganisationSmeLicenceCard({
               <dt className="ims-detail-label">Organisation</dt>
               <dd className="ims-detail-value break-words">{organisation.name}</dd>
             </div>
-            <div>
-              <dt className="ims-detail-label">Reference</dt>
-              <dd className="ims-detail-value break-all font-mono text-[0.75rem]">
-                {organisation.reference}
-              </dd>
-            </div>
           </dl>
         </div>
       </section>

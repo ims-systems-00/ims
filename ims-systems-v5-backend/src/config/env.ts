@@ -349,6 +349,11 @@ const envSchema = z
      * Required for SME Checkout when STRIPE_ENABLED — e.g. price_…
      */
     STRIPE_SME_PRICE: z.string().default(""),
+    /**
+     * Comma-separated organisation Mongo ids that receive 1 complimentary
+     * Super Admin seat on Stripe Checkout (bill allocated − 1). DB allocation unchanged.
+     */
+    STRIPE_SA_COMPLIMENTARY_ORG_IDS: z.string().default(""),
     /** FE origin for Checkout success/cancel and Billing Portal return. */
     CLIENT_URL: z.string().default("http://localhost:3000"),
 
