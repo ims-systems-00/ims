@@ -1893,6 +1893,24 @@ export function createDocumentManagementService(
         throw new NotFoundError("Document node not found");
       }
 
+      // Pending/Rejected are sibling version nodes — withdraw only that node so
+      // the live Published (and Archived) copies stay intact.
+      const withdrawOnly =
+        node.type === "document" &&
+        (node.status === "Pending" || node.status === "Rejected");
+
+      if (withdrawOnly) {
+        const deleted = await trees.softDeleteById(
+          organizationId,
+          node.id,
+          subjectId
+        );
+        if (!deleted) {
+          throw new NotFoundError("Document node not found");
+        }
+        return { id: nodeId, movedToBin: true };
+      }
+
       const binList = await trees.listChildren(organizationId, repositoryId, {
         page: 1,
         pageSize: 20,
@@ -1929,6 +1947,35 @@ export function createDocumentManagementService(
         throw new NotFoundError("Deleted document node not found");
       }
 
+      const restoreOnly =
+        node.type === "document" &&
+        (node.status === "Pending" || node.status === "Rejected");
+
+      if (restoreOnly) {
+        // May sit beside a live Published sibling — restore this node only.
+        const livePending = await trees.findActiveByName(
+          organizationId,
+          repositoryId,
+          node.parentNodeId,
+          node.name,
+          { status: node.status }
+        );
+        if (livePending && livePending.id !== node.id) {
+          throw new ConflictError(
+            `Cannot restore: a ${node.status.toLowerCase()} copy already exists in the live folder`
+          );
+        }
+        const restored = await trees.restoreById(
+          organizationId,
+          node.id,
+          subjectId
+        );
+        if (!restored) {
+          throw new NotFoundError("Deleted document node not found");
+        }
+        return restored;
+      }
+
       const live = await trees.findActiveByName(
         organizationId,
         repositoryId,
@@ -1963,19 +2010,30 @@ export function createDocumentManagementService(
         throw new NotFoundError("Document node not found");
       }
 
-      // Hard-delete the whole name family at that location.
-      const family = await trees.listChildren(organizationId, repositoryId, {
-        page: 1,
-        pageSize: 200,
-        parentNodeId: node.parentNodeId,
-        deleted: node.deletedAt != null,
-        search: node.name,
-      });
-      const targets = family.items.filter((item) => item.name === node.name);
-      const toDelete =
-        targets.length > 0
-          ? targets
-          : [node];
+      const hardDeleteOnly =
+        node.type === "document" &&
+        (node.status === "Pending" || node.status === "Rejected");
+
+      const toDelete: DocumentTreeNode[] = hardDeleteOnly
+        ? [node]
+        : await (async () => {
+            // Hard-delete the whole name family at that location.
+            const family = await trees.listChildren(
+              organizationId,
+              repositoryId,
+              {
+                page: 1,
+                pageSize: 200,
+                parentNodeId: node.parentNodeId,
+                deleted: node.deletedAt != null,
+                search: node.name,
+              }
+            );
+            const targets = family.items.filter(
+              (item) => item.name === node.name
+            );
+            return targets.length > 0 ? targets : [node];
+          })();
 
       for (const item of toDelete) {
         if (item.documentData?.storageInfo) {

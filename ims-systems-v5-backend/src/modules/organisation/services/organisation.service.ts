@@ -54,6 +54,7 @@ import {
   UpdateIncidentResolutionTargetsInput,
   type UpdateOrganisationEmailBrandingInput,
   type UpdateOrganisationLogoInput,
+  type UpdateOrganisationProfileInput,
 } from "../types";
 
 function requireIdentity(identity: SecurityIdentity | null | undefined): {
@@ -146,7 +147,7 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     );
     if (!membership || membership.role !== "Super Admin") {
       throw new ForbiddenError(
-        "Only a Super Admin can activate this organisation"
+        "Only a Super Admin can perform this organisation action"
       );
     }
   }
@@ -693,6 +694,32 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
       }
 
       return requireBilling().createBillingPortalSession(organizationId);
+    },
+
+    async updateProfile(
+      identity: SecurityIdentity | null | undefined,
+      input: UpdateOrganisationProfileInput
+    ): Promise<OrganisationProfile> {
+      const { identity: authed, subjectId } = requireIdentity(identity);
+      if (!authed.organizationId) {
+        throw new ForbiddenError("Organisation context is required");
+      }
+      await assertAllowed(authed, "manage", authed.organizationId);
+      await assertSuperAdmin(subjectId, authed.organizationId);
+
+      const updated = await organisations.updateProfile(
+        authed.organizationId,
+        input
+      );
+      if (!updated) {
+        throw new NotFoundError("Organisation not found");
+      }
+
+      const membership = await memberships.findByUserAndOrg(
+        subjectId,
+        updated.id
+      );
+      return { ...updated, membership };
     },
 
     async updateLogo(

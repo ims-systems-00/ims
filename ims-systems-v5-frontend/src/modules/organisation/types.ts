@@ -166,6 +166,11 @@ export type Organisation = {
   contactNumber: string;
   companyNumber: string;
   vatNumber: string;
+  bankName?: string;
+  sortCode?: string;
+  accountNumber?: string;
+  /** Optional mileage rate; null/absent when unset. */
+  costPerMile?: number | null;
   address: OrganisationAddress;
   country: OrganisationCountry;
   isCustomer: boolean;
@@ -208,6 +213,25 @@ export type OrganisationEmailBranding = {
   enabled: boolean;
   themeId: string | null;
   colors: OrganisationEmailBrandColors | null;
+};
+
+/** Safe profile fields editable by Super Admin (no licences/billing/status). */
+export type UpdateOrganisationProfileInput = {
+  name: string;
+  officeEmail: string;
+  companyNumber?: string;
+  vatNumber?: string;
+  bankName?: string;
+  sortCode?: string;
+  accountNumber?: string;
+  costPerMile?: number | null;
+  address: {
+    line1: string;
+    line2?: string;
+    city: string;
+    county: string;
+    postCode: string;
+  };
 };
 
 export type UpdateOrganisationEmailBrandingInput = {

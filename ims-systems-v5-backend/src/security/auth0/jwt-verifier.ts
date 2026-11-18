@@ -19,7 +19,11 @@ export type AccessTokenVerifier = {
 };
 
 export type Auth0JwtVerifierConfig = {
-  issuer: string;
+  /**
+   * Expected token `iss`. Pass multiple when using an Auth0 custom domain
+   * (SPA tokens) alongside the canonical tenant domain (BFF ROPG / refresh).
+   */
+  issuer: string | string[];
   audience: string;
   /** Optional override for tests (local JWKS). */
   getKey?: JWTVerifyGetKey;
@@ -41,18 +45,28 @@ function asSingleString(value: unknown): string | undefined {
  * Build a JWT verifier for Auth0 access tokens (Bearer).
  * Uses remote JWKS by default; tests can inject `getKey`.
  */
+function normalizeIssuer(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+  return trimmed.endsWith("/") ? trimmed : `${trimmed}/`;
+}
+
 export function createAuth0AccessTokenVerifier(
   config: Auth0JwtVerifierConfig
 ): AccessTokenVerifier {
-  const issuer = config.issuer.endsWith("/")
-    ? config.issuer
-    : `${config.issuer}/`;
+  const issuers = (
+    Array.isArray(config.issuer) ? config.issuer : [config.issuer]
+  )
+    .map(normalizeIssuer)
+    .filter(Boolean);
+  const issuer = issuers.length === 1 ? issuers[0]! : issuers;
+  const primaryIssuer = issuers[0] ?? "";
   const getKey =
     config.getKey ??
     createRemoteJWKSet(
       new URL(
         config.jwksUrl ??
-          new URL(".well-known/jwks.json", issuer).toString()
+          new URL(".well-known/jwks.json", primaryIssuer).toString()
       )
     );
 

@@ -118,31 +118,55 @@ describe("Auth0Authenticator", () => {
     ).toBeNull();
   });
 
-  it("returns null when user or organisation mapping is missing", async () => {
+  it("falls through to user-only when Auth0 org is not linked in IMS", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const lookups = mockLookups({
+      findOrganisationByAuth0OrganizationId: vi.fn().mockResolvedValue(null),
+    });
+    const authenticator = new Auth0Authenticator({ verifier, lookups });
+    const token = await sign({
+      sub: "auth0|ada",
+      org_id: "org_unlinked",
+      email: "ada@example.com",
+    });
+    const identity = await authenticator.authenticate({
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(identity).toEqual({
+      subjectId: "aaaaaaaaaaaaaaaaaaaaaaaa",
+      email: "ada@example.com",
+      organizationId: undefined,
+    });
+  });
+
+  it("falls through to user-only when Mongo membership is missing for Auth0 org", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const lookups = mockLookups({
+      hasMembership: vi.fn().mockResolvedValue(false),
+    });
+    const authenticator = new Auth0Authenticator({ verifier, lookups });
+    const token = await sign({
+      sub: "auth0|ada",
+      org_id: "org_demo1",
+      email: "ada@example.com",
+    });
+    const identity = await authenticator.authenticate({
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(identity?.subjectId).toBe("aaaaaaaaaaaaaaaaaaaaaaaa");
+    expect(identity?.organizationId).toBeUndefined();
+  });
+
+  it("returns null when org-bound subject is unknown and email is missing", async () => {
     const { verifier, sign } = await createTestSigner();
     const authenticator = new Auth0Authenticator({
       verifier,
       lookups: mockLookups({
         findUserByAuth0SubjectId: vi.fn().mockResolvedValue(null),
+        ensureUserFromAuth0: vi.fn().mockResolvedValue(null),
       }),
     });
     const token = await sign({ sub: "auth0|unknown", org_id: "org_demo1" });
-    expect(
-      await authenticator.authenticate({
-        headers: { authorization: `Bearer ${token}` },
-      })
-    ).toBeNull();
-  });
-
-  it("returns null when Mongo membership is missing", async () => {
-    const { verifier, sign } = await createTestSigner();
-    const authenticator = new Auth0Authenticator({
-      verifier,
-      lookups: mockLookups({
-        hasMembership: vi.fn().mockResolvedValue(false),
-      }),
-    });
-    const token = await sign({ sub: "auth0|ada", org_id: "org_demo1" });
     expect(
       await authenticator.authenticate({
         headers: { authorization: `Bearer ${token}` },

@@ -57,6 +57,7 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   router.get("/current", controller.getCurrent);
   // Licence requests live in the licence-requests module
   // (POST /api/v1/licence-requests) so every request gets a record.
+  router.put("/current/profile", controller.updateProfile);
   router.put("/current/logo", controller.updateLogo);
   router.put("/current/email-branding", controller.updateEmailBranding);
   router.post(

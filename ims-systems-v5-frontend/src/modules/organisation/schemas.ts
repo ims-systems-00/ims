@@ -50,3 +50,29 @@ export const goLiveOrganisationSchema = z.object({
 });
 
 export type GoLiveOrganisationValues = z.infer<typeof goLiveOrganisationSchema>;
+
+export const updateOrganisationProfileSchema = z.object({
+  name: z.string().trim().min(3, "Name must be at least 3 characters").max(200),
+  officeEmail: z.string().trim().email("Enter a valid organisation email"),
+  companyNumber: z.string().trim().max(80).optional().default(""),
+  vatNumber: z.string().trim().max(80).optional().default(""),
+  bankName: z.string().trim().max(120).optional().default(""),
+  sortCode: z.string().trim().max(40).optional().default(""),
+  accountNumber: z.string().trim().max(40).optional().default(""),
+  costPerMile: z
+    .union([
+      z.literal(""),
+      z.coerce.number().min(0, "Cost per mile cannot be negative"),
+    ])
+    .optional()
+    .transform((value) => (value === "" || value === undefined ? null : value)),
+  line1: z.string().trim().min(1, "Building is required").max(200),
+  line2: z.string().trim().max(200).optional().default(""),
+  city: z.string().trim().min(2, "City is required").max(120),
+  county: z.string().trim().min(2, "State / province is required").max(120),
+  postCode: z.string().trim().min(2, "Post code is required").max(40),
+});
+
+export type UpdateOrganisationProfileValues = z.infer<
+  typeof updateOrganisationProfileSchema
+>;

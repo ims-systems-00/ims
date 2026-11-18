@@ -17,6 +17,7 @@ import {
   updateIncidentResolutionTargets,
   updateOrganisationEmailBranding,
   updateOrganisationLogo,
+  updateOrganisationProfile,
 } from "../api/organisations";
 import type {
   ComposeOrganisationMailInput,
@@ -27,6 +28,7 @@ import type {
   Organisation,
   RequestOrganisationLicenceInput,
   UpdateOrganisationEmailBrandingInput,
+  UpdateOrganisationProfileInput,
 } from "../types";
 import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
 
@@ -178,6 +180,18 @@ export function useOrganisationLogoUrl(
   );
   if (view.data?.url) return view.data.url;
   return organisation?.logoSrc ?? null;
+}
+
+export function useUpdateOrganisationProfileMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (body: UpdateOrganisationProfileInput) =>
+      updateOrganisationProfile(body),
+    onSuccess: async (organisation) => {
+      queryClient.setQueryData(organisationKeys.current(), organisation);
+      await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
+    },
+  });
 }
 
 export function useUpdateOrganisationLogoMutation() {

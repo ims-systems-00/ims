@@ -187,8 +187,8 @@ export function DocumentPreviewPanel({
                   type="button"
                   size="sm"
                   variant="ghost"
-                  aria-label="Expand preview"
-                  title="Expand preview"
+                  aria-label="Open full-screen preview"
+                  title="Full-screen preview"
                   onClick={() => setExpanded(true)}
                 >
                   <Expand className="size-3.5" />

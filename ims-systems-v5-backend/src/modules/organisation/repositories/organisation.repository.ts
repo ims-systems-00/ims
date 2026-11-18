@@ -10,6 +10,7 @@ import type {
   OrganisationLogoStorage,
   OrganisationPaymentStatus,
   OrganisationPaymentType,
+  UpdateOrganisationProfileInput,
 } from "../types";
 import { DOCUMENT_REVIEW_REMINDER_OFFSETS } from "../types";
 import {
@@ -90,6 +91,13 @@ function toDomain(doc: OrganisationDocument): Organisation {
     contactNumber: doc.contactNumber ?? "",
     companyNumber: doc.companyNumber ?? "",
     vatNumber: doc.vatNumber ?? "",
+    bankName: (doc as { bankName?: string }).bankName ?? "",
+    sortCode: (doc as { sortCode?: string }).sortCode ?? "",
+    accountNumber: (doc as { accountNumber?: string }).accountNumber ?? "",
+    costPerMile: (() => {
+      const value = (doc as { costPerMile?: number | null }).costPerMile;
+      return typeof value === "number" && Number.isFinite(value) ? value : null;
+    })(),
     address: {
       line1: address.line1,
       line2: address.line2 ?? "",
@@ -560,6 +568,46 @@ export function createOrganisationRepository() {
         { upsert: true, returnDocument: "after", setDefaultsOnInsert: true }
       ).lean();
       return toDomain(doc as OrganisationDocument);
+    },
+
+    async updateProfile(
+      id: string,
+      input: UpdateOrganisationProfileInput
+    ): Promise<Organisation | null> {
+      const existing = await Model.findById(id).lean();
+      if (!existing) return null;
+      const existingAddress = (existing.address ?? {}) as {
+        country?: string;
+      };
+      const doc = await Model.findByIdAndUpdate(
+        id,
+        {
+          $set: {
+            name: input.name,
+            officeEmail: input.officeEmail,
+            companyNumber: input.companyNumber ?? "",
+            vatNumber: input.vatNumber ?? "",
+            bankName: input.bankName ?? "",
+            sortCode: input.sortCode ?? "",
+            accountNumber: input.accountNumber ?? "",
+            costPerMile:
+              typeof input.costPerMile === "number" &&
+              Number.isFinite(input.costPerMile)
+                ? input.costPerMile
+                : null,
+            address: {
+              line1: input.address.line1,
+              line2: input.address.line2 ?? "",
+              city: input.address.city,
+              county: input.address.county,
+              postCode: input.address.postCode,
+              country: existingAddress.country ?? "",
+            },
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationDocument) : null;
     },
 
     async updateLogo(

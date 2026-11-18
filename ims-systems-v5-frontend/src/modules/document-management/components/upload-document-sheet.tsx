@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Upload } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Loader2, Upload, X } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
@@ -31,7 +31,18 @@ import {
   type DocumentComplianceTool,
   type DocumentPurpose,
 } from "../types";
+import { FileTypeIcon } from "./file-type-icon";
 import { OwnerMultiSelect } from "./owner-multi-select";
+
+function formatFileSize(size: number): string {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function fileKey(file: File): string {
+  return `${file.name}:${file.size}:${file.lastModified}`;
+}
 
 type UploadDocumentSheetProps = {
   open: boolean;
@@ -53,7 +64,7 @@ export function UploadDocumentSheet({
     loadPublicEnv().VITE_SECURITY_PROVIDER === "auth0-openfga";
   const orgQuery = useCurrentOrganisationQuery(isAuth0Mode);
 
-  const [files, setFiles] = useState<FileList | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [purpose, setPurpose] = useState<DocumentPurpose>("Document");
   const [modules, setModules] = useState<DocumentApplicableModule[]>([]);
   const [complianceTools, setComplianceTools] = useState<
@@ -65,6 +76,7 @@ export function UploadDocumentSheet({
   const [authoriserId, setAuthoriserId] = useState("");
   const [uploading, setUploading] = useState(false);
   const [formError, setFormError] = useState<string | undefined>();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const complianceSelected = modules.includes("compliancecontrols");
 
@@ -110,7 +122,7 @@ export function UploadDocumentSheet({
   }, [open, defaultOwnerId]);
 
   function reset() {
-    setFiles(null);
+    setFiles([]);
     setPurpose("Document");
     setModules([]);
     setComplianceTools([]);
@@ -118,6 +130,29 @@ export function UploadDocumentSheet({
     setReviewDate("");
     setRequireAuthorisation(false);
     setAuthoriserId("");
+    setFormError(undefined);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function addFiles(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    setFiles((current) => {
+      const seen = new Set(current.map(fileKey));
+      const next = [...current];
+      for (const file of Array.from(list)) {
+        const key = fileKey(file);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        next.push(file);
+      }
+      return next;
+    });
+    setFormError(undefined);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  function removeFile(index: number) {
+    setFiles((current) => current.filter((_, i) => i !== index));
     setFormError(undefined);
   }
 
@@ -155,7 +190,7 @@ export function UploadDocumentSheet({
       setFormError(parsed.error.issues[0]?.message);
       return;
     }
-    if (!files || files.length === 0) {
+    if (files.length === 0) {
       setFormError("Select at least one file");
       return;
     }
@@ -172,7 +207,7 @@ export function UploadDocumentSheet({
     setUploading(true);
     try {
       const payloads = [];
-      for (const file of Array.from(files)) {
+      for (const file of files) {
         const storageInfo = await uploadFileViaHandler(file, "general");
         payloads.push({
           storageInfo: { ...storageInfo, Size: file.size },
@@ -215,7 +250,7 @@ export function UploadDocumentSheet({
   }
 
   const pending = uploading || createMutation.isPending;
-  const fileCount = files?.length ?? 0;
+  const fileCount = files.length;
 
   return (
     <AppSheet
@@ -256,23 +291,70 @@ export function UploadDocumentSheet({
           label="Files"
           htmlFor="doc-files"
           required
-          error={formError}
+          error={
+            formError &&
+            !formError.toLowerCase().includes("authoris") &&
+            !formError.toLowerCase().includes("compliance standard")
+              ? formError
+              : undefined
+          }
           description={
             fileCount > 0
-              ? `${fileCount} file${fileCount === 1 ? "" : "s"} selected`
+              ? `${fileCount} file${fileCount === 1 ? "" : "s"} ready to upload. Click × to remove.`
               : "You can upload multiple files in one go."
           }
         >
           <Input
+            ref={fileInputRef}
             id="doc-files"
             type="file"
             multiple
-            onChange={(event) => {
-              setFiles(event.target.files);
-              setFormError(undefined);
-            }}
+            disabled={pending}
+            onChange={(event) => addFiles(event.target.files)}
           />
         </FormField>
+
+        {fileCount > 0 ? (
+          <ul
+            className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+            aria-label="Selected files"
+          >
+            {files.map((file, index) => (
+              <li
+                key={fileKey(file)}
+                className="relative flex flex-col items-center gap-2 rounded-md border border-border-subtle bg-muted/20 px-2 pb-3 pt-4 text-center"
+              >
+                <button
+                  type="button"
+                  className="absolute right-1 top-1 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
+                  aria-label={`Remove ${file.name}`}
+                  title="Remove"
+                  disabled={pending}
+                  onClick={() => removeFile(index)}
+                >
+                  <X className="size-3.5" />
+                </button>
+                <FileTypeIcon
+                  type="document"
+                  fileName={file.name}
+                  size="md"
+                  className="drop-shadow-sm"
+                />
+                <div className="min-w-0 w-full space-y-0.5 px-1">
+                  <p
+                    className="truncate text-[0.75rem] font-medium text-foreground"
+                    title={file.name}
+                  >
+                    {file.name}
+                  </p>
+                  <p className="text-[0.6875rem] text-muted-foreground">
+                    {formatFileSize(file.size)}
+                  </p>
+                </div>
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         <FormField
           label="Purpose"

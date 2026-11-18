@@ -59,10 +59,12 @@ import { DOCUMENT_PURPOSE_LABELS } from "../types";
 import { ChangeRepositoryDialog } from "./change-repository-dialog";
 import { CopyFolderStructureDialog } from "./copy-folder-structure-dialog";
 import { CreateFolderDialog } from "./create-folder-dialog";
+import { DocumentGoBackButton } from "./document-go-back-button";
 import { EditFolderDialog } from "./edit-folder-dialog";
 import { FileTypeIcon } from "./file-type-icon";
 import { MoveNodeDialog } from "./move-node-dialog";
 import { NewVersionSheet } from "./new-version-sheet";
+import { NodeDetailsDialog } from "./node-details-dialog";
 import { RepositoryDetailsPanel } from "./repository-details-panel";
 import { UploadDocumentSheet } from "./upload-document-sheet";
 
@@ -95,7 +97,8 @@ function readStoredSort(): { field: RepoSortField; dir: RepoSortDir } {
 export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [parentNodeId, setParentNodeId] = useState<string | null>(null);
+  /** Current folder is URL-backed so browser / Go back steps one folder at a time. */
+  const parentNodeId = searchParams.get("folder");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
   const [viewMode, setViewMode] = useState<ViewMode>("list");
@@ -110,25 +113,31 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   const [editFolderNode, setEditFolderNode] = useState<DocumentTreeNode | null>(
     null
   );
+  const [detailsNode, setDetailsNode] = useState<DocumentTreeNode | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("upload") !== "1") return;
     setUploadOpen(true);
-    const next = new URLSearchParams(searchParams);
-    next.delete("upload");
-    setSearchParams(next, { replace: true });
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.delete("upload");
+        return next;
+      },
+      { replace: true }
+    );
   }, [searchParams, setSearchParams]);
 
-  useEffect(() => {
-    const folderId = searchParams.get("folder");
-    if (!folderId) return;
-    setParentNodeId(folderId);
+  function navigateToFolder(folderId: string | null) {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (folderId) next.set("folder", folderId);
+      else next.delete("folder");
+      return next;
+    });
     setSelectedId(null);
-    const next = new URLSearchParams(searchParams);
-    next.delete("folder");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
+  }
 
   const pinFolder = usePinnedFoldersStore((state) => state.pinFolder);
   const unpinFolder = usePinnedFoldersStore((state) => state.unpinFolder);
@@ -150,7 +159,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   const nodesQuery = useRepoNodesQuery(repositoryId, {
     page: 1,
     pageSize: 100,
-    parentNodeId,
+    parentNodeId: parentNodeId,
     sort: "name",
     sortDir: "asc",
   });
@@ -221,9 +230,17 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
 
   async function handleSoftDelete() {
     if (!pendingDelete) return;
+    const withdrawingVersion =
+      pendingDelete.type === "document" &&
+      (pendingDelete.status === "Pending" ||
+        pendingDelete.status === "Rejected");
     try {
       await softDeleteMutation.mutateAsync(pendingDelete.id);
-      notify.success("Moved to bin");
+      notify.success(
+        withdrawingVersion
+          ? "Pending version withdrawn"
+          : "Moved to bin"
+      );
       if (selectedId === pendingDelete.id) setSelectedId(null);
       setCheckedIds((current) => {
         if (!current.has(pendingDelete.id)) return current;
@@ -233,7 +250,12 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
       });
       setPendingDelete(null);
     } catch (error) {
-      notify.fromError(error, "Unable to move item to bin");
+      notify.fromError(
+        error,
+        withdrawingVersion
+          ? "Unable to withdraw this version"
+          : "Unable to move item to bin"
+      );
     }
   }
 
@@ -308,8 +330,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   }
 
   function openFolder(node: DocumentTreeNode) {
-    setParentNodeId(node.id);
-    setSelectedId(null);
+    navigateToFolder(node.id);
   }
 
   function handleTogglePin(node: DocumentTreeNode) {
@@ -374,21 +395,26 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border-subtle pb-4">
-        <div className="min-w-0 space-y-1">
-          <p className="text-[0.75rem] text-muted-foreground">
-            <Link to="/documents" className="hover:text-foreground">
-              Documents
-            </Link>
-            <span className="mx-1.5">/</span>
-            <span>{repo.reference}</span>
-          </p>
-          <h1 className="ims-text-page-title">{repo.name}</h1>
-          {plainTextFromPossiblyRich(repo.description) ? (
-            <p className="max-w-2xl text-[0.8125rem] text-muted-foreground">
-              {plainTextFromPossiblyRich(repo.description)}
+      <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3 border-b border-border-subtle pb-4">
+        <div className="min-w-0 space-y-2">
+          <div className="min-w-0 space-y-1">
+            <p className="text-[0.75rem] text-muted-foreground">
+              <Link to="/documents" className="hover:text-foreground">
+                Documents
+              </Link>
+              <span className="mx-1.5">/</span>
+              <span>{repo.reference}</span>
             </p>
-          ) : null}
+            <h1 className="ims-text-page-title">{repo.name}</h1>
+            {plainTextFromPossiblyRich(repo.description) ? (
+              <p className="max-w-2xl text-[0.8125rem] text-muted-foreground">
+                {plainTextFromPossiblyRich(repo.description)}
+              </p>
+            ) : null}
+          </div>
+          <DocumentGoBackButton
+            fallbackTo="/documents"
+          />
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex items-center gap-1">
@@ -491,10 +517,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
         <button
           type="button"
           className="rounded-sm px-1.5 py-0.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-          onClick={() => {
-            setParentNodeId(null);
-            setSelectedId(null);
-          }}
+          onClick={() => navigateToFolder(null)}
         >
           Root
         </button>
@@ -504,10 +527,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
             <button
               type="button"
               className="rounded-sm px-1.5 py-0.5 text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-              onClick={() => {
-                setParentNodeId(item.nodeId);
-                setSelectedId(null);
-              }}
+              onClick={() => navigateToFolder(item.nodeId)}
             >
               {item.name}
             </button>
@@ -615,7 +635,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                         selectedId === node.id && "bg-muted/40",
                         checkedIds.has(node.id) && "bg-primary/5"
                       )}
-                      onOpen={() => openFolder(node)}
+                      onOpen={() => selectNode(node)}
                     >
                       <td className="px-3 py-2.5">
                         <input
@@ -633,7 +653,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                           className="inline-flex items-center gap-2 font-medium"
                           onClick={(event) => {
                             event.stopPropagation();
-                            selectNode(node);
+                            openFolder(node);
                           }}
                         >
                           <FileTypeIcon
@@ -655,6 +675,10 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                           node={node}
                           pinned={isPinned(repositoryId, node.id)}
                           onSelect={() => selectNode(node)}
+                          onDetails={() => {
+                            selectNode(node);
+                            setDetailsNode(node);
+                          }}
                           onEdit={() => {
                             selectNode(node);
                             setEditFolderNode(node);
@@ -681,10 +705,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                         selectedId === node.id && "bg-muted/40",
                         checkedIds.has(node.id) && "bg-primary/5"
                       )}
-                      onOpen={() => {
-                        selectNode(node);
-                        openDocument(node);
-                      }}
+                      onOpen={() => selectNode(node)}
                     >
                       <td className="px-3 py-2.5">
                         <input
@@ -702,7 +723,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                           className="text-left"
                           onClick={(event) => {
                             event.stopPropagation();
-                            selectNode(node);
+                            openDocument(node);
                           }}
                         >
                           <span className="inline-flex items-center gap-2 font-medium">
@@ -752,6 +773,10 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                         <NodeActions
                           node={node}
                           onSelect={() => selectNode(node)}
+                          onDetails={() => {
+                            selectNode(node);
+                            setDetailsNode(node);
+                          }}
                           onDelete={() => setPendingDelete(node)}
                           onMove={() => {
                             selectNode(node);
@@ -1022,6 +1047,16 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
         />
       </div>
 
+      <NodeDetailsDialog
+        open={Boolean(detailsNode)}
+        onOpenChange={(open) => {
+          if (!open) setDetailsNode(null);
+        }}
+        repository={repo}
+        node={detailsNode}
+        visitingFolder={visitingFolderQuery.data ?? null}
+        userNames={userNames}
+      />
       <CreateFolderDialog
         open={folderOpen}
         onOpenChange={setFolderOpen}
@@ -1072,13 +1107,29 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
         onOpenChange={(open) => {
           if (!open) setPendingDelete(null);
         }}
-        title="Move to recycle bin?"
-        description={
-          pendingDelete
-            ? `"${pendingDelete.name}" will be soft-deleted from this location.`
-            : "This item will be soft-deleted."
+        title={
+          pendingDelete?.type === "document" &&
+          (pendingDelete.status === "Pending" ||
+            pendingDelete.status === "Rejected")
+            ? "Withdraw this version?"
+            : "Move to recycle bin?"
         }
-        confirmLabel="Move to bin"
+        description={
+          pendingDelete?.type === "document" &&
+          (pendingDelete.status === "Pending" ||
+            pendingDelete.status === "Rejected")
+            ? `"${pendingDelete.name}" (${pendingDelete.status.toLowerCase()}) will be removed. The published version stays live.`
+            : pendingDelete
+              ? `"${pendingDelete.name}" and its versions at this location will be soft-deleted.`
+              : "This item will be soft-deleted."
+        }
+        confirmLabel={
+          pendingDelete?.type === "document" &&
+          (pendingDelete.status === "Pending" ||
+            pendingDelete.status === "Rejected")
+            ? "Withdraw version"
+            : "Move to bin"
+        }
         pending={softDeleteMutation.isPending}
         onConfirm={() => void handleSoftDelete()}
       />
@@ -1090,6 +1141,7 @@ function NodeActions({
   node,
   pinned,
   onSelect,
+  onDetails,
   onEdit,
   onDelete,
   onMove,
@@ -1103,6 +1155,7 @@ function NodeActions({
   node: DocumentTreeNode;
   pinned?: boolean;
   onSelect: () => void;
+  onDetails: () => void;
   onEdit?: () => void;
   onDelete: () => void;
   onMove: () => void;
@@ -1117,7 +1170,7 @@ function NodeActions({
   // table's overflow container, so it is never clipped by table height,
   // and it flips above the trigger near the bottom of the viewport.
   const actions: RowActionItem[] = [
-    { id: "details", label: "Details", onSelect },
+    { id: "details", label: "Details", onSelect: onDetails },
     ...(node.type === "folder" && onEdit
       ? [
           {
@@ -1180,7 +1233,11 @@ function NodeActions({
       : []),
     {
       id: "delete",
-      label: "Move to bin",
+      label:
+        node.type === "document" &&
+        (node.status === "Pending" || node.status === "Rejected")
+          ? "Withdraw version"
+          : "Move to bin",
       variant: "destructive",
       onSelect: onDelete,
     },

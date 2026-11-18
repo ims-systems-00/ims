@@ -84,7 +84,7 @@ describe("DocumentPreviewPanel", () => {
     expect(screen.getByText("preview-body:policy.pdf")).toBeTruthy();
     expect(screen.getByText("PDF")).toBeTruthy();
     expect(screen.getByLabelText("Download file")).toBeTruthy();
-    expect(screen.getByLabelText("Expand preview")).toBeTruthy();
+    expect(screen.getByLabelText("Open full-screen preview")).toBeTruthy();
     expect(screen.getByLabelText("Open preview in a new tab")).toBeTruthy();
     expect(screen.queryByLabelText("Edit document")).toBeNull();
   });
@@ -100,7 +100,7 @@ describe("DocumentPreviewPanel", () => {
       expect.objectContaining({ onError: expect.any(Function) })
     );
 
-    fireEvent.click(screen.getByLabelText("Expand preview"));
+    fireEvent.click(screen.getByLabelText("Open full-screen preview"));
     expect(screen.getByText("expanded-preview")).toBeTruthy();
   });
 

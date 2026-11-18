@@ -11,6 +11,7 @@ import {
   previewOrganisationEmailBrandingBodySchema,
   updateOrganisationEmailBrandingBodySchema,
   updateOrganisationLogoBodySchema,
+  updateOrganisationProfileBodySchema,
 } from "../schemas";
 import type { OrganisationService } from "../services/organisation.service";
 
@@ -27,6 +28,7 @@ export type OrganisationController = {
   createBillingPortalSession: RequestHandler;
   updateDocumentReviewReminders: RequestHandler;
   updateIncidentResolutionTargets: RequestHandler;
+  updateProfile: RequestHandler;
   updateLogo: RequestHandler;
   updateEmailBranding: RequestHandler;
   previewEmailBranding: RequestHandler;
@@ -155,6 +157,19 @@ export function createOrganisationController(
     }
   };
 
+  const updateProfile: RequestHandler = async (req, res, next) => {
+    try {
+      const body = parseWithSchema(
+        updateOrganisationProfileBodySchema,
+        req.body
+      );
+      const data = await service.updateProfile(req.identity, body);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const updateLogo: RequestHandler = async (req, res, next) => {
     try {
       const body = parseWithSchema(updateOrganisationLogoBodySchema, req.body);
@@ -254,6 +269,7 @@ export function createOrganisationController(
     createBillingPortalSession,
     updateDocumentReviewReminders,
     updateIncidentResolutionTargets,
+    updateProfile,
     updateLogo,
     updateEmailBranding,
     previewEmailBranding,

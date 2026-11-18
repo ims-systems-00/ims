@@ -124,49 +124,71 @@ export class Auth0Authenticator implements Authenticator {
     if (!verified) return null;
 
     // ── Org-bound token (existing tenant members) ──────────────────────────
+    // If Auth0 org_id is present but not linked in IMS yet (or membership is
+    // missing), fall through to user-only auth so list-mine / onboard still
+    // work. Hard-failing here locks users out after a failed org link.
     if (verified.orgId) {
-      const [user, organisation] = await Promise.all([
+      const [boundUser, organisation] = await Promise.all([
         this.lookups.findUserByAuth0SubjectId(verified.sub),
         this.lookups.findOrganisationByAuth0OrganizationId(verified.orgId),
       ]);
 
-      if (!user || !organisation) return null;
-      if (!isUserAllowed(user, new Date())) return null;
-      if (organisation.status !== "Running") return null;
-
-      const member = await this.lookups.hasMembership(user.id, organisation.id);
-      if (!member) return null;
-
-      const clientOrgHint = extractClientOrgHint(input.headers);
-      if (clientOrgHint && clientOrgHint !== organisation.id) {
+      // Known IMS user who is blocked/locked must not fall through.
+      if (boundUser && !isUserAllowed(boundUser, new Date())) {
         return null;
       }
 
-      return {
-        subjectId: user.id,
-        email: verified.email ?? user.email,
-        organizationId: organisation.id,
-      };
+      if (
+        boundUser &&
+        organisation &&
+        organisation.status === "Running"
+      ) {
+        const member = await this.lookups.hasMembership(
+          boundUser.id,
+          organisation.id
+        );
+        if (member) {
+          const clientOrgHint = extractClientOrgHint(input.headers);
+          if (clientOrgHint && clientOrgHint !== organisation.id) {
+            return null;
+          }
+
+          return {
+            subjectId: boundUser.id,
+            email: verified.email ?? boundUser.email,
+            organizationId: organisation.id,
+          };
+        }
+      }
     }
 
-    // ── User-only token (self-signup / pre-tenant) ─────────────────────────
+    // ── User-only token (self-signup / pre-tenant / unlinked Auth0 org) ────
     let email = verified.email;
     let name = verified.name;
 
     // Password-grant access tokens often omit email; resolve via /userinfo.
+    // Call the same host as the token `iss` (custom domain vs canonical tenant).
     if ((!email || !email.includes("@")) && this.domain) {
-      const profile = await fetchAuth0UserInfo({
-        domain: this.domain,
-        accessToken: token,
-        fetchFn: this.fetchFn,
-      });
-      if (profile?.email?.includes("@")) {
-        email = profile.email;
-      }
-      if (!name && profile?.name) {
-        name = profile.name;
-      } else if (!name && profile?.nickname) {
-        name = profile.nickname;
+      const issHost =
+        typeof verified.payload.iss === "string"
+          ? verified.payload.iss.replace(/^https?:\/\//, "").replace(/\/$/, "")
+          : "";
+      const userInfoHosts = [...new Set([issHost, this.domain].filter(Boolean))];
+      for (const host of userInfoHosts) {
+        const profile = await fetchAuth0UserInfo({
+          domain: host,
+          accessToken: token,
+          fetchFn: this.fetchFn,
+        });
+        if (profile?.email?.includes("@")) {
+          email = profile.email;
+        }
+        if (!name && profile?.name) {
+          name = profile.name;
+        } else if (!name && profile?.nickname) {
+          name = profile.nickname;
+        }
+        if (email?.includes("@")) break;
       }
     }
 

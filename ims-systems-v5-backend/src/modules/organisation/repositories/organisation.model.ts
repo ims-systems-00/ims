@@ -25,6 +25,11 @@ const organisationSchema = new Schema(
     contactNumber: { type: String, default: "", trim: true },
     companyNumber: { type: String, default: "", trim: true },
     vatNumber: { type: String, default: "", trim: true },
+    /** Optional banking / mileage details (V4 parity; editable by Super Admin). */
+    bankName: { type: String, default: "", trim: true },
+    sortCode: { type: String, default: "", trim: true },
+    accountNumber: { type: String, default: "", trim: true },
+    costPerMile: { type: Number, default: null },
     address: {
       line1: { type: String, required: true, trim: true },
       line2: { type: String, default: "", trim: true },

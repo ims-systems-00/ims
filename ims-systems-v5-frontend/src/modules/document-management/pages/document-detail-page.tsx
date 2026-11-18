@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Loader2, Share2 } from "lucide-react";
+import { Loader2, Share2 } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
@@ -7,6 +7,7 @@ import { PageHeader } from "@/shared/layout";
 import { cn } from "@/shared/lib/utils";
 import { signalSetupEvent } from "@/modules/setup-guide";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
+import { DocumentGoBackButton } from "../components/document-go-back-button";
 import { DocumentInfoPanel } from "../components/document-info-panel";
 import { DocumentPreviewPanel } from "../components/document-preview-panel";
 import { DocumentVersionsPanel } from "../components/document-versions-panel";
@@ -189,11 +190,12 @@ export function DocumentDetailPage() {
 
   return (
     <div className="space-y-5" data-tour="docs.document.page">
-      <PageHeader
-        title={node.name}
-        description={`${node.reference} · ${repoQuery.data.name}`}
-        actions={
-          <div className="flex gap-2">
+      <div className="space-y-2 border-b border-border-subtle pb-4">
+        <PageHeader
+          className="border-b-0 pb-0"
+          title={node.name}
+          description={`${node.reference} · ${repoQuery.data.name}`}
+          actions={
             <Button
               type="button"
               variant="outline"
@@ -203,15 +205,12 @@ export function DocumentDetailPage() {
               <Share2 className="size-3.5" />
               Share
             </Button>
-            <Button type="button" variant="outline" size="sm" asChild>
-              <Link to={`/documents/repositories/${repositoryId}`}>
-                <ArrowLeft className="size-3.5" />
-                Back to repository
-              </Link>
-            </Button>
-          </div>
-        }
-      />
+          }
+        />
+        <DocumentGoBackButton
+          fallbackTo={`/documents/repositories/${repositoryId}`}
+        />
+      </div>
 
       <div
         className="flex flex-wrap gap-1 border-b border-border-subtle"

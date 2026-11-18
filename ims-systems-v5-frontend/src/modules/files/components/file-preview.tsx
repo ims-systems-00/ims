@@ -10,12 +10,18 @@ import {
 } from "../lib/file-preview";
 import type { FileMetaInfo } from "../types";
 
+type FilePreviewProps = {
+  file: FileMetaInfo;
+  /** Stretch preview to fill the parent (full-screen modal). */
+  fill?: boolean;
+};
+
 /**
  * Shared in-app preview body: PDF viewer, inline image, Office Online
  * embed, or an unsupported fallback with a download action.
  * Used by the preview modal and embedded preview panels.
  */
-export function FilePreview({ file }: { file: FileMetaInfo }) {
+export function FilePreview({ file, fill = false }: FilePreviewProps) {
   const viewQuery = useFileViewUrlQuery(file);
   const downloadMutation = useDownloadFileMutation();
   const [officeLoaded, setOfficeLoaded] = useState(false);
@@ -23,6 +29,9 @@ export function FilePreview({ file }: { file: FileMetaInfo }) {
   const kind = getFilePreviewKind(file.Name);
   const url = viewQuery.data?.url;
   const isMemory = url?.startsWith("memory://");
+  const frameClass = fill
+    ? "h-full min-h-0 w-full flex-1 border-0 bg-white"
+    : "min-h-[32rem] w-full flex-1 border-0 bg-white";
 
   if (viewQuery.isLoading) {
     return (
@@ -76,14 +85,14 @@ export function FilePreview({ file }: { file: FileMetaInfo }) {
       <iframe
         title={`Preview of ${file.Name}`}
         src={url}
-        className="min-h-[32rem] w-full flex-1 border-0 bg-white"
+        className={frameClass}
       />
     );
   }
 
   if (kind === "image") {
     return (
-      <div className="flex flex-1 items-center justify-center overflow-auto p-4">
+      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-auto p-4">
         <img
           src={url}
           alt={file.Name}
@@ -99,9 +108,9 @@ export function FilePreview({ file }: { file: FileMetaInfo }) {
 
   if (kind === "office") {
     return (
-      <div className="relative flex flex-1 flex-col">
+      <div className="relative flex h-full min-h-0 flex-1 flex-col">
         {!officeLoaded ? (
-          <div className="flex items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
+          <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-muted/20 p-8 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
             Preparing your document…
           </div>
@@ -109,7 +118,7 @@ export function FilePreview({ file }: { file: FileMetaInfo }) {
         <iframe
           title={`Preview of ${file.Name}`}
           src={buildOfficeViewerUrl(url)}
-          className="min-h-[32rem] w-full flex-1 border-0 bg-white"
+          className={frameClass}
           onLoad={() => setOfficeLoaded(true)}
         />
       </div>

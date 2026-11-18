@@ -17,6 +17,7 @@ import type {
   EmailBrandingPreviewResult,
   PreviewOrganisationEmailBrandingInput,
   UpdateOrganisationEmailBrandingInput,
+  UpdateOrganisationProfileInput,
 } from "../types";
 
 export function createOrganisation(
@@ -116,6 +117,15 @@ export function createBillingPortalSession(
   return apiRequest<OrganisationPaymentSession>(
     `/organisations/${organizationId}/billing-session`
   );
+}
+
+export function updateOrganisationProfile(
+  body: UpdateOrganisationProfileInput
+): Promise<OrganisationProfile> {
+  return apiRequest<OrganisationProfile>("/organisations/current/profile", {
+    method: "PUT",
+    body,
+  });
 }
 
 export function updateOrganisationLogo(body: {

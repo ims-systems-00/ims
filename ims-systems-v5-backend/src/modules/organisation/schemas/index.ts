@@ -86,6 +86,27 @@ export const requestOrganisationLicenceBodySchema = z
     "Request at least one licence seat, toolkit, or module"
   );
 
+export const updateOrganisationProfileBodySchema = z.object({
+  name: z.string().trim().min(3).max(200),
+  officeEmail: z.string().trim().email().max(320),
+  companyNumber: z.string().trim().max(80).optional().default(""),
+  vatNumber: z.string().trim().max(80).optional().default(""),
+  bankName: z.string().trim().max(120).optional().default(""),
+  sortCode: z.string().trim().max(40).optional().default(""),
+  accountNumber: z.string().trim().max(40).optional().default(""),
+  costPerMile: z
+    .union([z.coerce.number().min(0).max(1_000_000), z.null()])
+    .optional()
+    .default(null),
+  address: z.object({
+    line1: z.string().trim().min(1).max(200),
+    line2: z.string().trim().max(200).optional().default(""),
+    city: z.string().trim().min(2).max(120),
+    county: z.string().trim().min(2).max(120),
+    postCode: z.string().trim().min(2).max(40),
+  }),
+});
+
 export const updateOrganisationLogoBodySchema = z.object({
   logoSrc: z
     .union([z.string().trim().url().max(2000), z.null()])

@@ -15,6 +15,10 @@ function makeOrg(overrides: Partial<Organisation> = {}): Organisation {
     contactNumber: "+44 20 0000 0000",
     companyNumber: "",
     vatNumber: "",
+    bankName: "",
+    sortCode: "",
+    accountNumber: "",
+    costPerMile: null,
     address: {
       line1: "1 High St",
       line2: "",

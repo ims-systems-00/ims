@@ -483,6 +483,27 @@ export function createDocumentTreeStore() {
       return result.modifiedCount;
     },
 
+    /** Soft-delete a single node (e.g. withdraw Pending without touching Published). */
+    async softDeleteById(
+      organizationId: string,
+      id: string,
+      actorId: string
+    ): Promise<DocumentTreeNode | null> {
+      const now = new Date();
+      const doc = await Model.findOneAndUpdate(
+        { _id: id, organizationId, deletedAt: null },
+        {
+          $set: {
+            deletedAt: now,
+            updatedBy: actorId,
+            updatedOn: now,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as DocumentTreeDocument) : null;
+    },
+
     async softDeleteByRepository(
       organizationId: string,
       repositoryId: string,
@@ -525,6 +546,27 @@ export function createDocumentTreeStore() {
         }
       );
       return result.modifiedCount;
+    },
+
+    /** Restore a single soft-deleted node (Pending/Rejected withdraw undo). */
+    async restoreById(
+      organizationId: string,
+      id: string,
+      actorId: string
+    ): Promise<DocumentTreeNode | null> {
+      const now = new Date();
+      const doc = await Model.findOneAndUpdate(
+        { _id: id, organizationId, deletedAt: { $ne: null } },
+        {
+          $set: {
+            deletedAt: null,
+            updatedBy: actorId,
+            updatedOn: now,
+          },
+        },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as DocumentTreeDocument) : null;
     },
 
     async hardDeleteById(

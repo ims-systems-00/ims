@@ -51,6 +51,17 @@ export function PostLoginMembershipGate() {
     }
   }, [isStub, orgsQuery.isSuccess, orgsQuery.data]);
 
+  useEffect(() => {
+    if (isStub || !orgsQuery.isError) return;
+    const err = orgsQuery.error;
+    const apiErr = isApiClientError(err) ? err : null;
+    if (apiErr?.status === 401 || apiErr?.code === "UNAUTHORIZED") {
+      // Stale Auth0 org id in localStorage forces org-bound tokens that 401
+      // when the Auth0 Organisation is not linked in IMS yet.
+      clearActiveOrganisation();
+    }
+  }, [isStub, orgsQuery.isError, orgsQuery.error]);
+
   if (isStub) {
     return <Outlet />;
   }
@@ -89,7 +100,13 @@ export function PostLoginMembershipGate() {
           </p>
         ) : null}
         <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
-          <Button type="button" onClick={() => void orgsQuery.refetch()}>
+          <Button
+            type="button"
+            onClick={() => {
+              clearActiveOrganisation();
+              void orgsQuery.refetch();
+            }}
+          >
             Retry
           </Button>
           {isUnauthorized ? (

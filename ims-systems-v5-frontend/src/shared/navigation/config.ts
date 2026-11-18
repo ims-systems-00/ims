@@ -99,6 +99,12 @@ export function buildNavigationSections(
         icon: Building2,
         children: [
           {
+            id: "my-organisation",
+            label: "My organisation",
+            href: "/organisation",
+            icon: Building2,
+          },
+          {
             id: "functional-units",
             label: "Functional Units",
             href: "/functional-units",

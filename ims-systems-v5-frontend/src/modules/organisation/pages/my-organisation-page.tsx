@@ -1,12 +1,13 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Pencil } from "lucide-react";
 import { PageHeader } from "@/shared/layout";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { Button } from "@/shared/components/ui/button";
 import { useUsersQuery } from "@/modules/users/hooks/use-users";
 import { ComposeMailSheet } from "../components/compose-mail-sheet";
 import { DocumentManagementRemindersPanel } from "../components/document-management-reminders-panel";
+import { EditOrganisationProfileSheet } from "../components/edit-organisation-profile-sheet";
 import { EmailCustomisePanel } from "../components/email-customise-panel";
 import { IncidentResolutionTargetsPanel } from "../components/incident-resolution-targets-panel";
 import { OrganisationLicencesPanel } from "../components/organisation-licences-panel";
@@ -92,6 +93,7 @@ export function MyOrganisationPage() {
   const membersQuery = useUsersQuery({ page: 1, pageSize: 1 });
   const resolvedLogoUrl = useOrganisationLogoUrl(orgQuery.data);
   const [composeOpen, setComposeOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
 
   if (orgQuery.isLoading) {
     return (
@@ -132,6 +134,7 @@ export function MyOrganisationPage() {
   const canManageLogo =
     organisation.membership?.role === "Super Admin" ||
     organisation.membership?.role === "Head of Service";
+  const canEditProfile = organisation.membership?.role === "Super Admin";
   const canComposeMail =
     organisation.membership?.role === "Super Admin" ||
     organisation.membership?.role === "Head of Service";
@@ -143,6 +146,17 @@ export function MyOrganisationPage() {
         description="Tenant identity and contact details for the organisation in this session."
         actions={
           <div className="flex flex-wrap items-center gap-2">
+            {canEditProfile ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEditOpen(true)}
+              >
+                <Pencil className="size-3.5" />
+                Edit
+              </Button>
+            ) : null}
             {canComposeMail ? (
               <Button
                 type="button"
@@ -161,6 +175,11 @@ export function MyOrganisationPage() {
         }
       />
 
+      <EditOrganisationProfileSheet
+        open={editOpen}
+        onOpenChange={setEditOpen}
+        organisation={organisation}
+      />
       <ComposeMailSheet open={composeOpen} onOpenChange={setComposeOpen} />
 
       <div className="grid gap-4 lg:grid-cols-3 lg:items-stretch">
@@ -194,6 +213,27 @@ export function MyOrganisationPage() {
               value={organisation.vatNumber || "—"}
             />
             <DetailItem
+              label="Bank name"
+              value={organisation.bankName || "—"}
+            />
+            <DetailItem
+              label="Sort code"
+              value={organisation.sortCode || "—"}
+            />
+            <DetailItem
+              label="Account number"
+              value={organisation.accountNumber || "—"}
+            />
+            <DetailItem
+              label="Cost per mile"
+              value={
+                organisation.costPerMile === null ||
+                organisation.costPerMile === undefined
+                  ? "—"
+                  : String(organisation.costPerMile)
+              }
+            />
+            <DetailItem
               label="Status"
               value={
                 <StatusBadge
@@ -219,16 +259,16 @@ export function MyOrganisationPage() {
               value={organisation.contactNumber || "—"}
             />
             <DetailItem
-              label="Address line 1"
+              label="Building"
               value={organisation.address.line1 || "—"}
             />
             <DetailItem
-              label="Address line 2"
+              label="Street"
               value={organisation.address.line2 || "—"}
             />
             <DetailItem label="City" value={organisation.address.city || "—"} />
             <DetailItem
-              label="County"
+              label="State / province"
               value={organisation.address.county || "—"}
             />
             <DetailItem

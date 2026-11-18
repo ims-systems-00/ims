@@ -46,10 +46,27 @@ export function createSecurityPorts(config: AppConfig): SecurityPorts {
   }
 
   if (config.SECURITY_PROVIDER === "auth0-openfga") {
+    const canonicalDomain = config.AUTH0_DOMAIN.replace(
+      /^https?:\/\//,
+      ""
+    ).replace(/\/$/, "");
+    // Custom-domain SPA tokens use AUTH0_ISSUER; BFF password/refresh tokens
+    // use the canonical tenant domain. Accept both issuers.
+    const customIssuerHost = config.AUTH0_ISSUER.replace(/^https?:\/\//, "")
+      .replace(/\/$/, "")
+      .trim();
+    const issuers = [
+      config.AUTH0_ISSUER.trim(),
+      canonicalDomain ? `https://${canonicalDomain}/` : "",
+    ].filter(Boolean);
+    const uniqueIssuers = [...new Set(issuers)];
+    // Prefer custom-domain JWKS/userinfo when configured; keys match the tenant.
+    const identityDomain = customIssuerHost || canonicalDomain;
+
     const verifier = createAuth0AccessTokenVerifier({
-      issuer: config.AUTH0_ISSUER,
+      issuer: uniqueIssuers.length === 1 ? uniqueIssuers[0]! : uniqueIssuers,
       audience: config.AUTH0_AUDIENCE,
-      jwksUrl: `https://${config.AUTH0_DOMAIN.replace(/^https?:\/\//, "").replace(/\/$/, "")}/.well-known/jwks.json`,
+      jwksUrl: `https://${identityDomain}/.well-known/jwks.json`,
     });
 
     const gateway = createOpenFgaSdkGateway(config);
@@ -62,7 +79,8 @@ export function createSecurityPorts(config: AppConfig): SecurityPorts {
       authenticator: new Auth0Authenticator({
         verifier,
         lookups: createMongoAuth0Lookups(),
-        domain: config.AUTH0_DOMAIN,
+        // userinfo must match the token host; authenticator overrides via iss.
+        domain: canonicalDomain || identityDomain,
       }),
       authorizer: new HybridAuthorizer(
         openfgaAuthorizer,
