@@ -51,6 +51,11 @@ export function getFilePreviewKind(fileName: string): FilePreviewKind {
   return "unsupported";
 }
 
+/** Office Online viewer embed for a (signed) document URL. */
+export function buildOfficeViewerUrl(fileUrl: string): string {
+  return `https://view.officeapps.live.com/op/embed.aspx?src=${encodeURIComponent(fileUrl)}`;
+}
+
 export function formatFileSize(bytes: number | undefined): string {
   if (bytes === undefined || !Number.isFinite(bytes) || bytes < 0) return "";
   if (bytes < 1024) return `${bytes} B`;
