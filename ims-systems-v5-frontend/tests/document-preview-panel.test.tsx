@@ -26,9 +26,11 @@ vi.mock("@/modules/files", () => ({
   getFilePreviewKind: (name: string) => {
     const lower = name.toLowerCase();
     if (lower.endsWith(".pdf")) return "pdf";
-    if (lower.endsWith(".docx") || lower.endsWith(".doc")) return "office";
+    if (lower.endsWith(".docx")) return "docx";
+    if (lower.endsWith(".xlsx") || lower.endsWith(".xls")) return "excel";
     return "unsupported";
   },
+  ONLYOFFICE_EDITABLE_KINDS: new Set(["pdf", "docx", "excel"]),
   useFileViewUrlQuery: () => ({
     data: { url: "https://storage.example/view.pdf?sig=1" },
   }),
@@ -124,7 +126,7 @@ describe("DocumentPreviewPanel", () => {
       />
     );
 
-    expect(screen.getByText("Office document")).toBeTruthy();
+    expect(screen.getByText("Word document")).toBeTruthy();
     expect(screen.getByLabelText("Edit document")).toBeTruthy();
   });
 

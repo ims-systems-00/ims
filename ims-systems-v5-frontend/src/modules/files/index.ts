@@ -21,7 +21,7 @@ export {
   formatFileSize,
   getFileExtension,
   getFilePreviewKind,
-  buildOfficeViewerUrl,
+  ONLYOFFICE_EDITABLE_KINDS,
   type FilePreviewKind,
 } from "./lib/file-preview";
 export { FileDropZone } from "./components/file-drop-zone";

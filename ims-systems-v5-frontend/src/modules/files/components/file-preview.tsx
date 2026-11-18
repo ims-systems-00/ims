@@ -1,14 +1,15 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http";
 import { useDownloadFileMutation, useFileViewUrlQuery } from "../hooks/use-files";
-import {
-  buildOfficeViewerUrl,
-  getFilePreviewKind,
-} from "../lib/file-preview";
+import { getFilePreviewKind } from "../lib/file-preview";
 import type { FileMetaInfo } from "../types";
+import { CsvViewer } from "./viewers/csv-viewer";
+import { DocxViewer } from "./viewers/docx-viewer";
+import { ExcelViewer } from "./viewers/excel-viewer";
+import { MediaViewer } from "./viewers/media-viewer";
+import { PdfViewer } from "./viewers/pdf-viewer";
 
 type FilePreviewProps = {
   file: FileMetaInfo;
@@ -17,27 +18,23 @@ type FilePreviewProps = {
 };
 
 /**
- * Shared in-app preview body: PDF viewer, inline image, Office Online
- * embed, or an unsupported fallback with a download action.
+ * Shared in-app preview body: specialized viewers for PDF / DOCX / Excel /
+ * CSV / media, plain-text inline, or an unsupported fallback with download.
  * Used by the preview modal and embedded preview panels.
  */
 export function FilePreview({ file, fill = false }: FilePreviewProps) {
   const viewQuery = useFileViewUrlQuery(file);
   const downloadMutation = useDownloadFileMutation();
-  const [officeLoaded, setOfficeLoaded] = useState(false);
 
   const kind = getFilePreviewKind(file.Name);
   const url = viewQuery.data?.url;
   const isMemory = url?.startsWith("memory://");
-  const frameClass = fill
-    ? "h-full min-h-0 w-full flex-1 border-0 bg-white"
-    : "min-h-[32rem] w-full flex-1 border-0 bg-white";
 
   if (viewQuery.isLoading) {
     return (
       <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        {kind === "office" ? "Preparing your document…" : "Loading preview…"}
+        Loading preview…
       </div>
     );
   }
@@ -81,48 +78,29 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
   }
 
   if (kind === "pdf") {
-    return (
-      <iframe
-        title={`Preview of ${file.Name}`}
-        src={url}
-        className={frameClass}
-      />
-    );
+    return <PdfViewer url={url} fileName={file.Name} fill={fill} />;
   }
 
-  if (kind === "image") {
+  if (kind === "docx") {
+    return <DocxViewer url={url} fileName={file.Name} fill={fill} />;
+  }
+
+  if (kind === "excel") {
+    return <ExcelViewer url={url} fileName={file.Name} fill={fill} />;
+  }
+
+  if (kind === "csv") {
+    return <CsvViewer url={url} fileName={file.Name} fill={fill} />;
+  }
+
+  if (kind === "image" || kind === "video" || kind === "audio") {
     return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-auto p-4">
-        <img
-          src={url}
-          alt={file.Name}
-          className="max-h-full max-w-full object-contain"
-        />
-      </div>
+      <MediaViewer url={url} fileName={file.Name} kind={kind} fill={fill} />
     );
   }
 
   if (kind === "text") {
     return <TextFilePreview url={url} fileName={file.Name} />;
-  }
-
-  if (kind === "office") {
-    return (
-      <div className="relative flex h-full min-h-0 flex-1 flex-col">
-        {!officeLoaded ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-muted/20 p-8 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Preparing your document…
-          </div>
-        ) : null}
-        <iframe
-          title={`Preview of ${file.Name}`}
-          src={buildOfficeViewerUrl(url)}
-          className={frameClass}
-          onLoad={() => setOfficeLoaded(true)}
-        />
-      </div>
-    );
   }
 
   return <UnsupportedPreview file={file} />;

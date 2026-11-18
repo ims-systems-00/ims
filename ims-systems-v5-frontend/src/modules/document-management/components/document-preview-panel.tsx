@@ -15,6 +15,7 @@ import {
   FilePreview,
   FilePreviewModal,
   getFilePreviewKind,
+  ONLYOFFICE_EDITABLE_KINDS,
   useDownloadFileMutation,
   useFileViewUrlQuery,
   type FilePreviewKind,
@@ -37,8 +38,12 @@ type DocumentPreviewPanelProps = {
 
 const KIND_LABELS: Record<FilePreviewKind, string> = {
   pdf: "PDF",
+  docx: "Word document",
+  excel: "Spreadsheet",
+  csv: "CSV",
   image: "Image",
-  office: "Office document",
+  video: "Video",
+  audio: "Audio",
   text: "Text",
   unsupported: "File",
 };
@@ -53,10 +58,10 @@ function isOnlyOfficeConfigured(): boolean {
 
 /**
  * In-app document preview panel (document detail page). Delegates the
- * rendering to the shared File Handler preview: PDF inline, images,
- * Office Online embed, plain-text inline, download fallback otherwise.
- * When OnlyOffice is configured and the node is published Office or PDF,
- * Edit opens a WYSIWYG session; saves create a new pending/published version.
+ * rendering to the shared File Handler preview (react-pdf, docx-preview,
+ * SheetJS, PapaParse, native media, or text). When OnlyOffice is configured
+ * and the node is published DOCX / Excel / PDF, Edit opens a WYSIWYG session;
+ * saves create a new pending/published version.
  */
 export function DocumentPreviewPanel({
   storageInfo,
@@ -76,7 +81,7 @@ export function DocumentPreviewPanel({
   const onlyOfficeReady = isOnlyOfficeConfigured();
   const showEdit =
     canEditInPreview &&
-    (kind === "office" || kind === "pdf") &&
+    ONLYOFFICE_EDITABLE_KINDS.has(kind) &&
     onlyOfficeReady &&
     Boolean(repositoryId && nodeId);
 

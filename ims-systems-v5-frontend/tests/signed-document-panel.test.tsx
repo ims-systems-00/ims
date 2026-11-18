@@ -15,6 +15,7 @@ vi.mock("@/modules/files", () => ({
     open ? <div>expanded-preview</div> : null,
   getFilePreviewKind: (name: string) =>
     name.toLowerCase().endsWith(".pdf") ? "pdf" : "unsupported",
+  ONLYOFFICE_EDITABLE_KINDS: new Set(["pdf", "docx", "excel"]),
   useFileViewUrlQuery: () => ({
     data: { url: "https://storage.example/signed.pdf?sig=1" },
   }),

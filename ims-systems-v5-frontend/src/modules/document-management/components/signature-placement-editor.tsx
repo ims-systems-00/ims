@@ -80,7 +80,8 @@ export function SignaturePlacementEditor({
         pdfjs.GlobalWorkerOptions.workerSrc = workerUrl;
         const response = await fetch(viewUrl);
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const data = await response.arrayBuffer();
+        // Copy into a fresh Uint8Array — pdf.js may transfer the buffer.
+        const data = new Uint8Array(await response.arrayBuffer());
         const doc = await pdfjs.getDocument({ data }).promise;
         if (cancelled) {
           void doc.destroy();
@@ -132,7 +133,12 @@ export function SignaturePlacementEditor({
         canvas.height = Math.floor(viewport.height);
 
         renderTaskRef.current?.cancel();
-        const task = pdfPage.render({ canvasContext: context, viewport });
+        // pdf.js v4 expects both canvas + canvasContext (types omit `canvas`).
+        const task = pdfPage.render({
+          canvasContext: context,
+          canvas,
+          viewport,
+        } as Parameters<typeof pdfPage.render>[0]);
         renderTaskRef.current = task;
         await task.promise;
       } catch {
