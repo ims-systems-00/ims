@@ -254,11 +254,18 @@ export type MembershipWorkShift = {
   sunday: MembershipDayHours;
 };
 
+/** Per-organisation access — Blocked users keep login + other orgs. */
+export const MEMBERSHIP_ACCESS_STATUSES = ["Active", "Blocked"] as const;
+export type MembershipAccessStatus =
+  (typeof MEMBERSHIP_ACCESS_STATUSES)[number];
+
 export type OrganisationMembership = {
   id: string;
   organizationId: string;
   userId: string;
   role: OrganisationRole;
+  /** Org-scoped access. Defaults to Active when missing on legacy rows. */
+  accessStatus: MembershipAccessStatus;
   jobTitle: string;
   workLocationType: "On-site" | "Remote";
   salary: number;

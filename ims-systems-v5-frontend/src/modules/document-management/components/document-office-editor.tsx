@@ -6,6 +6,8 @@ type DocumentOfficeEditorProps = {
   session: DocumentEditorSession;
   onDocumentSaved?: () => void;
   onError?: (message: string) => void;
+  /** OnlyOffice reported a stale cached version — remint a fresh session. */
+  onOutdatedVersion?: () => void;
 };
 
 type DocsApiEditor = {
@@ -20,6 +22,7 @@ type DocsApiFactory = {
         onDocumentStateChange?: (event: { data?: boolean }) => void;
         onError?: (event: { data?: string }) => void;
         onAppReady?: () => void;
+        onOutdatedVersion?: () => void;
       };
       height?: string;
       width?: string;
@@ -136,6 +139,7 @@ export function DocumentOfficeEditor({
   session,
   onDocumentSaved,
   onError,
+  onOutdatedVersion,
 }: DocumentOfficeEditorProps) {
   const reactId = useId().replace(/:/g, "");
   const elementId = `onlyoffice-editor-${reactId}`;
@@ -145,11 +149,13 @@ export function DocumentOfficeEditor({
   const savedNotified = useRef(false);
   const onDocumentSavedRef = useRef(onDocumentSaved);
   const onErrorRef = useRef(onError);
+  const onOutdatedVersionRef = useRef(onOutdatedVersion);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   onDocumentSavedRef.current = onDocumentSaved;
   onErrorRef.current = onError;
+  onOutdatedVersionRef.current = onOutdatedVersion;
 
   const sessionKey = [
     session.documentServerUrl,
@@ -222,6 +228,10 @@ export function DocumentOfficeEditor({
               const message = formatOnlyOfficeError(event);
               setError(message);
               onErrorRef.current?.(message);
+            },
+            onOutdatedVersion: () => {
+              // OO cached this key from a prior edit; remint a new session key.
+              onOutdatedVersionRef.current?.();
             },
           },
         };

@@ -207,7 +207,9 @@ describe("Auth0Authenticator", () => {
     expect(identity?.organizationId).toBe("bbbbbbbbbbbbbbbbbbbbbbbb");
   });
 
-  it("returns null when user system access is not Active", async () => {
+  it("allows login when global system access is Blocked (org-scoped block)", async () => {
+    // Legacy global Blocked must not ban the whole platform; org access is
+    // enforced via membership.hasMembership (active-only).
     const { verifier, sign } = await createTestSigner();
     const authenticator = new Auth0Authenticator({
       verifier,
@@ -221,11 +223,35 @@ describe("Auth0Authenticator", () => {
       }),
     });
     const token = await sign({ sub: "auth0|ada", org_id: "org_demo1" });
-    expect(
-      await authenticator.authenticate({
+    const identity = await authenticator.authenticate({
+      headers: { authorization: `Bearer ${token}` },
+    });
+    expect(identity?.subjectId).toBe("aaaaaaaaaaaaaaaaaaaaaaaa");
+    expect(identity?.organizationId).toBe("bbbbbbbbbbbbbbbbbbbbbbbb");
+  });
+
+  it("throws ACCOUNT_BLOCKED when user is Deactivated", async () => {
+    const { verifier, sign } = await createTestSigner();
+    const authenticator = new Auth0Authenticator({
+      verifier,
+      lookups: mockLookups({
+        findUserByAuth0SubjectId: vi.fn().mockResolvedValue({
+          id: "aaaaaaaaaaaaaaaaaaaaaaaa",
+          email: "ada@example.com",
+          systemAccessStatus: "Deactivated",
+          lockedUntil: null,
+        }),
+      }),
+    });
+    const token = await sign({ sub: "auth0|ada", org_id: "org_demo1" });
+    await expect(
+      authenticator.authenticate({
         headers: { authorization: `Bearer ${token}` },
       })
-    ).toBeNull();
+    ).rejects.toMatchObject({
+      code: "ACCOUNT_BLOCKED",
+      statusCode: 403,
+    });
   });
 
   it("accepts user-only tokens and JIT-ensures the IMS user", async () => {

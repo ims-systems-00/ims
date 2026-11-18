@@ -14,7 +14,10 @@ import {
 } from "../../../security/auth0/auth0-authentication-api";
 import { createMongoAuth0Lookups } from "../../../security/auth0/create-auth0-lookups";
 import type { UserNotificationPort } from "../../../modules/users/ports";
-import { ValidationAppError } from "../../../shared/errors/app-error";
+import {
+  AccountBlockedError,
+  ValidationAppError,
+} from "../../../shared/errors/app-error";
 import { sendSuccess } from "../../../shared/http/response";
 import { parseWithSchema } from "../../../shared/validation/parse";
 
@@ -54,6 +57,28 @@ async function ensureImsUserAfterAuth(input: {
   });
   if (!ensured) return null;
   return { created: ensured.created };
+}
+
+/**
+ * Reject login only for platform deactivation / lock.
+ * Org-scoped Block must not prevent sign-in or access to other organisations.
+ */
+async function assertImsUserAllowedToSignIn(accessToken: string): Promise<void> {
+  const sub = subjectFromAccessToken(accessToken);
+  if (!sub) return;
+  const lookups = createMongoAuth0Lookups();
+  const user = await lookups.findUserByAuth0SubjectId(sub);
+  if (!user) return;
+  if (user.lockedUntil && user.lockedUntil.getTime() > Date.now()) {
+    throw new AccountBlockedError(
+      "Your account is temporarily locked. Try again later or contact a Super Admin."
+    );
+  }
+  if (user.systemAccessStatus === "Deactivated") {
+    throw new AccountBlockedError(
+      "Your account is no longer active. Contact a Super Admin for help."
+    );
+  }
 }
 
 const registerBodySchema = z.object({
@@ -150,6 +175,7 @@ export function createAuthRouter(deps: AuthRouterDeps): Router {
         accessToken: tokens.accessToken,
         email: body.email,
       });
+      await assertImsUserAllowedToSignIn(tokens.accessToken);
       sendSuccess(res, toTokenPayload(tokens), 200, req.correlationId);
     } catch (error) {
       next(error);

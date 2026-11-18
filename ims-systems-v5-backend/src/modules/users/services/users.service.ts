@@ -1,4 +1,8 @@
-import type { Authorizer, SecurityIdentity } from "../../../security";
+import type {
+  Authorizer,
+  MembershipProjection,
+  SecurityIdentity,
+} from "../../../security";
 import {
   ConflictError,
   ForbiddenError,
@@ -6,6 +10,7 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
+import type { OrganisationRole } from "../../organisation/types";
 import type {
   ComplianceToolkitPort,
   MembershipLookupPort,
@@ -13,6 +18,7 @@ import type {
   SessionPort,
   UserNotificationPort,
 } from "../ports";
+import type { UnitMembershipRepository } from "../repositories/unit-membership.repository";
 import type { UserRepository } from "../repositories/user.repository";
 import {
   generateTemporaryPassword,
@@ -31,7 +37,6 @@ import {
   type UpdatePreferencesInput,
   type UpdateProfileImageInput,
   type UpdateSignatureInput,
-  type UpdateSystemAccessInput,
   type UpdateEmploymentInput,
   type UpdateUserProfileInput,
   type User,
@@ -97,6 +102,8 @@ export type UsersServiceDeps = {
   notifications: UserNotificationPort;
   ownership: OwnershipIntegrityPort;
   toolkits: ComplianceToolkitPort;
+  unitMemberships?: UnitMembershipRepository;
+  membershipProjection?: MembershipProjection;
 };
 
 export function createUsersService(deps: UsersServiceDeps) {
@@ -108,6 +115,8 @@ export function createUsersService(deps: UsersServiceDeps) {
     notifications,
     ownership,
     toolkits,
+    unitMemberships,
+    membershipProjection,
   } = deps;
 
   async function assertAllowed(
@@ -409,50 +418,6 @@ export function createUsersService(deps: UsersServiceDeps) {
       return updated;
     },
 
-    async updateSystemAccess(
-      identity: SecurityIdentity | null | undefined,
-      id: string,
-      input: UpdateSystemAccessInput
-    ): Promise<User> {
-      const actor = requireOrgIdentity(identity);
-      await assertAllowed(actor.identity, "create", id);
-      await requireOrgMember(actor.organizationId, id);
-
-      const user = await repository.findById(id);
-      if (!user) {
-        throw new NotFoundError("User not found");
-      }
-
-      const expires = computeAccessExpiry(
-        user.systemAccess.period,
-        input.status
-      );
-      const updated = await repository.updateSystemAccess(id, {
-        status: input.status,
-        expires,
-      });
-      if (!updated) {
-        throw new NotFoundError("User not found");
-      }
-
-      if (input.status === "Active") {
-        await notifications.sendWelcome(
-          updated.email,
-          updated.name,
-          actor.organizationId
-        );
-      } else {
-        await notifications.sendAccessRevoked(
-          updated.email,
-          updated.name,
-          actor.organizationId
-        );
-        await sessions.clearSessionsForUser(updated.id);
-      }
-
-      return updated;
-    },
-
     async updateProfileImage(
       identity: SecurityIdentity | null | undefined,
       id: string,
@@ -728,6 +693,11 @@ export function createUsersService(deps: UsersServiceDeps) {
       if (!source || !destination) {
         throw new NotFoundError("User not found");
       }
+      if (destination.deletedAt || destination.systemAccess.status === "Deactivated") {
+        throw new ValidationAppError(
+          "Destination user must be an active organisation member"
+        );
+      }
       if (id === destinationUserId) {
         throw new ValidationAppError(
           "Destination user must be different from the source user"
@@ -740,6 +710,95 @@ export function createUsersService(deps: UsersServiceDeps) {
         destinationUserId,
         initiatorUserId: actor.identity.subjectId,
       });
+    },
+
+    /**
+     * Org offboarding — hard-delete membership, clear FU links / OpenFGA /
+     * sessions. Does not anonymise the global user record.
+     */
+    async removeFromOrganisation(
+      identity: SecurityIdentity | null | undefined,
+      id: string
+    ): Promise<{ message: string }> {
+      const actor = requireOrgIdentity(identity);
+      await assertAllowed(actor.identity, "delete", id);
+
+      const user = await repository.findById(id);
+      if (!user) {
+        throw new NotFoundError("User not found");
+      }
+      if (isSelf(actor.identity, user)) {
+        throw new ForbiddenError(
+          "You cannot remove yourself from the organisation"
+        );
+      }
+
+      const membership = await memberships.findByOrganizationAndUser(
+        actor.organizationId,
+        id
+      );
+      if (!membership) {
+        throw new NotFoundError("User not found in organisation");
+      }
+
+      if (membership.role === "Super Admin") {
+        const saCount = memberships.countByRole
+          ? await memberships.countByRole(actor.organizationId, "Super Admin")
+          : 1;
+        if (saCount <= 1) {
+          throw new ForbiddenError(
+            "Cannot remove the last Super Admin from the organisation"
+          );
+        }
+        throw new ForbiddenError(
+          "Change their role before removing a Super Admin from the organisation"
+        );
+      }
+
+      const owned = await ownership.check({
+        organizationId: actor.organizationId,
+        userId: id,
+      });
+      if (owned.hasOwnedData) {
+        throw new ValidationAppError(
+          `Transfer ownership of ${owned.modules.join(", ") || "owned records"} before removing this user`
+        );
+      }
+
+      if (!memberships.deleteByUserAndOrg) {
+        throw new ValidationAppError(
+          "Organisation membership removal is not available in this environment"
+        );
+      }
+
+      const deleted = await memberships.deleteByUserAndOrg(
+        actor.organizationId,
+        id
+      );
+      if (!deleted) {
+        throw new ConflictError("Membership could not be removed");
+      }
+
+      if (unitMemberships) {
+        await unitMemberships.removeAllForUserInOrg(actor.organizationId, id);
+      }
+
+      if (membershipProjection) {
+        await membershipProjection.onMembershipRemoved({
+          userId: id,
+          organizationId: actor.organizationId,
+          role: membership.role as OrganisationRole,
+        });
+      }
+
+      await notifications.sendAccessRevoked(
+        user.email,
+        user.name,
+        actor.organizationId
+      );
+      await sessions.clearSessionsForUser(id);
+
+      return { message: "User removed from organisation" };
     },
   };
 }

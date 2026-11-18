@@ -229,6 +229,15 @@ describe("Document Management OnlyOffice editor session", () => {
     // OnlyOffice rejects keys with ":" (403 on /downloadfile).
     expect(session.config.document.key).toMatch(/^[0-9A-Za-z\-._=]+$/);
     expect(session.config.document.key).not.toContain(":");
+
+    // Each editor open must get a unique key so OO does not serve a stale
+    // cached version after reject / prior save.
+    const again = await service.createEditorSession(
+      DEV_STUB_IDENTITY,
+      "repo-1",
+      "node-pub"
+    );
+    expect(again.config.document.key).not.toBe(session.config.document.key);
   });
 
   it("rewrites localhost file URLs so OnlyOffice can fetch from Docker", () => {

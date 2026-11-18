@@ -129,6 +129,33 @@ export function DocumentPreviewPanel({
     notify.error(message);
   }, []);
 
+  const handleOutdatedVersion = useCallback(() => {
+    // Close the stuck OO instance, then open a fresh session with a new key.
+    setEditing(false);
+    setEditorSession(null);
+    notify.info("Document cache was outdated — reopening the editor…");
+    void (async () => {
+      if (!nodeId || !repositoryId) return;
+      try {
+        const session = await editorMutation.mutateAsync(nodeId);
+        if (
+          !session?.documentServerUrl ||
+          !session.config?.document?.key ||
+          !session.config?.token
+        ) {
+          notify.error(
+            "Editor session was incomplete. Check OnlyOffice config."
+          );
+          return;
+        }
+        setEditorSession(session);
+        setEditing(true);
+      } catch (error) {
+        notify.fromError(error, "Unable to reopen the document editor");
+      }
+    })();
+  }, [editorMutation, nodeId, repositoryId]);
+
   return (
     <div className="flex min-h-[28rem] flex-col overflow-hidden rounded-md border border-border-subtle bg-card">
       <div className="flex items-center justify-between gap-3 border-b border-border-subtle px-3 py-2.5">
@@ -236,6 +263,7 @@ export function DocumentPreviewPanel({
               session={editorSession}
               onDocumentSaved={handleDocumentSaved}
               onError={handleEditorError}
+              onOutdatedVersion={handleOutdatedVersion}
             />
           </ErrorBoundary>
         ) : hasFile && storageInfo ? (

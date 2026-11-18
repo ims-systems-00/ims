@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Loader2 } from "lucide-react";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { DeleteFunctionalUnitDialog } from "./delete-functional-unit-dialog";
 import {
   FunctionalUnitForm,
   FunctionalUnitFormActions,
@@ -28,6 +31,7 @@ type FunctionalUnitSheetProps = {
   onOpenChange: (open: boolean) => void;
   onModeChange: (mode: FunctionalUnitSheetMode) => void;
   onCreated?: (unit: FunctionalUnit) => void;
+  onDeleted?: () => void;
   /** Setup Guide deep-link: preselect access type on create. */
   createAccessType?: CreateFunctionalUnitInput["accessType"];
 };
@@ -39,8 +43,13 @@ export function FunctionalUnitSheet({
   onOpenChange,
   onModeChange,
   onCreated,
+  onDeleted,
   createAccessType,
 }: FunctionalUnitSheetProps) {
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const orgQuery = useCurrentOrganisationQuery();
+  const isSuperAdmin = orgQuery.data?.membership?.role === "Super Admin";
+
   const unitQuery = useFunctionalUnitQuery(
     mode === "create" ? undefined : (unitId ?? undefined)
   );
@@ -81,6 +90,7 @@ export function FunctionalUnitSheet({
         : unit?.reference;
 
   return (
+    <>
     <AppSheet
       open={open}
       onOpenChange={onOpenChange}
@@ -103,18 +113,31 @@ export function FunctionalUnitSheet({
             onCancel={() => onModeChange("view")}
           />
         ) : unit && !unit.isSystemDefault ? (
-          <>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Close
-            </Button>
-            <Button type="button" onClick={() => onModeChange("edit")}>
-              Edit
-            </Button>
-          </>
+          <div className="flex w-full flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap gap-2">
+              {isSuperAdmin ? (
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={() => setDeleteOpen(true)}
+                >
+                  Delete
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onOpenChange(false)}
+              >
+                Close
+              </Button>
+              <Button type="button" onClick={() => onModeChange("edit")}>
+                Edit
+              </Button>
+            </div>
+          </div>
         ) : (
           <Button
             type="button"
@@ -181,6 +204,21 @@ export function FunctionalUnitSheet({
         />
       ) : null}
     </AppSheet>
+
+    {unit && !unit.isSystemDefault ? (
+      <DeleteFunctionalUnitDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        unitId={unit.id}
+        unitName={unit.name}
+        memberCount={unit.totalMembers}
+        onDeleted={() => {
+          onOpenChange(false);
+          onDeleted?.();
+        }}
+      />
+    ) : null}
+    </>
   );
 }
 

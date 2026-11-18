@@ -1,5 +1,5 @@
 import { Router } from "express";
-import type { Authorizer } from "../../../security";
+import type { Authorizer, MembershipProjection } from "../../../security";
 import {
   DevAllActiveUsersMembershipAdapter,
   NoOpComplianceToolkitAdapter,
@@ -13,6 +13,8 @@ import {
   type UserNotificationPort,
 } from "../ports";
 import { createUserRepository } from "../repositories/user.repository";
+import { createUnitMembershipRepository } from "../repositories/unit-membership.repository";
+import type { UnitMembershipRepository } from "../repositories/unit-membership.repository";
 import {
   createUsersService,
   type UsersService,
@@ -26,6 +28,8 @@ export type UsersRouterDeps = {
   notifications?: UserNotificationPort;
   ownership?: OwnershipIntegrityPort;
   toolkits?: ComplianceToolkitPort;
+  unitMemberships?: UnitMembershipRepository;
+  membershipProjection?: MembershipProjection;
 };
 
 /**
@@ -43,6 +47,9 @@ export function createUsersModule(deps: UsersRouterDeps): {
       repository.listAllActiveIds()
     );
 
+  const unitMemberships =
+    deps.unitMemberships ?? createUnitMembershipRepository();
+
   const service = createUsersService({
     repository,
     authorizer: deps.authorizer,
@@ -51,6 +58,8 @@ export function createUsersModule(deps: UsersRouterDeps): {
     notifications: deps.notifications ?? new NoOpUserNotificationAdapter(),
     ownership: deps.ownership ?? new NoOpOwnershipIntegrityAdapter(),
     toolkits: deps.toolkits ?? new NoOpComplianceToolkitAdapter(),
+    unitMemberships,
+    membershipProjection: deps.membershipProjection,
   });
   const controller = createUsersController(service);
   const router = Router();
@@ -69,7 +78,6 @@ export function createUsersModule(deps: UsersRouterDeps): {
   router.put("/:id/profile-image", controller.updateProfileImage);
   router.put("/:id/signature", controller.updateSignature);
   router.put("/:id/preferences", controller.updatePreferences);
-  router.put("/:id/ims-access", controller.updateSystemAccess);
   router.put("/:id/change-password", controller.changePassword);
   router.post("/:id/locations", controller.addLocation);
   router.delete("/:id/locations/:locationId", controller.removeLocation);
@@ -79,6 +87,7 @@ export function createUsersModule(deps: UsersRouterDeps): {
   router.post("/:id/resend-verification", controller.resendVerification);
   router.post("/:id/ownership-checks", controller.checkOwnership);
   router.post("/:id/ownership-transfer", controller.transferOwnership);
+  router.post("/:id/remove-from-organisation", controller.removeFromOrganisation);
 
   router.patch("/:id", controller.updateProfile);
   router.put("/:id", controller.updateProfile);

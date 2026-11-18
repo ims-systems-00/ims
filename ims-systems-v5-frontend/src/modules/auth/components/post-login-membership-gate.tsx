@@ -55,9 +55,14 @@ export function PostLoginMembershipGate() {
     if (isStub || !orgsQuery.isError) return;
     const err = orgsQuery.error;
     const apiErr = isApiClientError(err) ? err : null;
-    if (apiErr?.status === 401 || apiErr?.code === "UNAUTHORIZED") {
+    if (
+      apiErr?.status === 401 ||
+      apiErr?.code === "UNAUTHORIZED" ||
+      apiErr?.code === "ACCOUNT_BLOCKED"
+    ) {
       // Stale Auth0 org id in localStorage forces org-bound tokens that 401
       // when the Auth0 Organisation is not linked in IMS yet.
+      // Also clear when access is blocked so retry does not keep a dead tenant.
       clearActiveOrganisation();
     }
   }, [isStub, orgsQuery.isError, orgsQuery.error]);
@@ -82,6 +87,38 @@ export function PostLoginMembershipGate() {
       (err instanceof Error ? err.message : "Unexpected error");
     const isUnauthorized =
       apiErr?.status === 401 || apiErr?.code === "UNAUTHORIZED";
+    const isBlocked =
+      apiErr?.code === "ACCOUNT_BLOCKED" ||
+      (apiErr?.status === 403 && /blocked|no longer active|locked/i.test(detail));
+
+    if (isBlocked) {
+      return (
+        <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
+          <h1 className="text-base font-medium text-foreground">
+            Access blocked
+          </h1>
+          <p className="max-w-md text-sm text-muted-foreground">
+            {detail ||
+              "Your account access has been blocked. Contact a Super Admin to restore access."}
+          </p>
+          {apiErr?.correlationId ? (
+            <p className="font-mono text-[11px] text-muted-foreground/80">
+              Ref: {apiErr.correlationId}
+            </p>
+          ) : null}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => {
+              clearActiveOrganisation();
+              void authClient.logout();
+            }}
+          >
+            Sign out
+          </Button>
+        </div>
+      );
+    }
 
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">

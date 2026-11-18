@@ -1,12 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
+  checkUserOwnership,
   getCurrentUser,
   getUser,
   listUsers,
+  removeUserFromOrganisation,
   setUserLineManagers,
+  transferUserOwnership,
   updateProfileImage,
   updateUserEmployment,
   updateUserProfile,
+  type OwnershipCheckResult,
   type UpdateProfileImageInput,
 } from "../api/users";
 import { useFileViewUrlQuery } from "@/modules/files/hooks/use-files";
@@ -24,6 +28,7 @@ export const userKeys = {
   details: () => [...userKeys.all, "detail"] as const,
   detail: (id: string) => [...userKeys.details(), id] as const,
   me: () => [...userKeys.all, "me"] as const,
+  ownership: (id: string) => [...userKeys.detail(id), "ownership"] as const,
 };
 
 /**
@@ -178,3 +183,38 @@ export function useUpdateUserEmploymentMutation(userId: string) {
     },
   });
 }
+
+export function useUserOwnershipQuery(userId: string | undefined, enabled = true) {
+  return useQuery({
+    queryKey: userKeys.ownership(userId ?? ""),
+    queryFn: () => checkUserOwnership(userId!),
+    enabled: Boolean(userId) && enabled,
+  });
+}
+
+export function useTransferUserOwnershipMutation(userId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (destinationUserId: string) =>
+      transferUserOwnership(userId, destinationUserId),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({
+        queryKey: userKeys.ownership(userId),
+      });
+    },
+  });
+}
+
+export function useRemoveUserFromOrganisationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (userId: string) => removeUserFromOrganisation(userId),
+    onSuccess: async (_data, userId) => {
+      await queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+      queryClient.removeQueries({ queryKey: userKeys.detail(userId) });
+      queryClient.removeQueries({ queryKey: userKeys.ownership(userId) });
+    },
+  });
+}
+
+export type { OwnershipCheckResult };

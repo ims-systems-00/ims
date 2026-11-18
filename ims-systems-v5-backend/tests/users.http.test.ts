@@ -211,18 +211,14 @@ describe("Users HTTP", () => {
     expect(response.text).toBe("");
   });
 
-  it("PUT ims-access blocks a user", async () => {
+  it("PUT ims-access is removed", async () => {
     const user = await seedUser({ email: "access@example.com" });
 
     const response = await request(ctx!.app)
       .put(`/api/v1/users/${user.id}/ims-access`)
       .send({ status: "Blocked" });
 
-    expect(response.status).toBe(200);
-    expect(response.body.data.systemAccess.status).toBe("Blocked");
-
-    const list = await request(ctx!.app).get("/api/v1/users");
-    expect(list.body.data.total).toBe(0);
+    expect(response.status).toBe(404);
   });
 
   it("POST locations and DELETE location work", async () => {
@@ -282,6 +278,36 @@ describe("Users HTTP", () => {
       inProgress: false,
       modules: [],
     });
+  });
+
+  it("POST ownership-transfer rejects same source and destination", async () => {
+    const user = await seedUser({ email: "xfer@example.com" });
+    const response = await request(ctx!.app)
+      .post(`/api/v1/users/${user.id}/ownership-transfer`)
+      .send({ destinationUserId: user.id });
+    expect(response.status).toBe(400);
+  });
+
+  it("POST remove-from-organisation removes membership for another user", async () => {
+    const user = await seedUser({ email: "offboard@example.com" });
+    const response = await request(ctx!.app).post(
+      `/api/v1/users/${user.id}/remove-from-organisation`
+    );
+    expect(response.status).toBe(200);
+    expect(response.body.data.message).toMatch(/removed from organisation/i);
+
+    // Soft-delete path is separate — global user remains Active.
+    const raw = await getUserModel().findById(user.id).lean();
+    expect(raw?.systemAccess?.status).toBe("Active");
+    expect(raw?.deletedAt).toBeFalsy();
+  });
+
+  it("POST remove-from-organisation blocks self", async () => {
+    const self = await seedUser({ email: DEV_STUB_IDENTITY.email! });
+    const response = await request(ctx!.app).post(
+      `/api/v1/users/${self.id}/remove-from-organisation`
+    );
+    expect(response.status).toBe(403);
   });
 
   it("POST expired-users blocks listed members", async () => {

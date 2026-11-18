@@ -119,7 +119,8 @@ export function createMongoAuth0Lookups(): Auth0AuthenticatorLookups {
         userId,
         organizationId
       );
-      return Boolean(membership);
+      // Org-blocked members keep the row but must not bind that tenant.
+      return Boolean(membership) && membership!.accessStatus !== "Blocked";
     },
   };
 }

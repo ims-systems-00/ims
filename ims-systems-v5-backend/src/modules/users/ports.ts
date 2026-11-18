@@ -30,6 +30,19 @@ export interface MembershipLookupPort {
     userId: string,
     input: UpdateEmploymentInput
   ): Promise<OrgMembershipView | null>;
+  /** Optional — hard-delete membership (org offboarding). */
+  deleteByUserAndOrg?(
+    organizationId: string,
+    userId: string
+  ): Promise<boolean>;
+  /** Optional — count members with a given role (last Super Admin guard). */
+  countByRole?(organizationId: string, role: string): Promise<number>;
+  /** Optional — org-scoped block / restore (not global login ban). */
+  setAccessStatus?(
+    organizationId: string,
+    userId: string,
+    accessStatus: "Active" | "Blocked"
+  ): Promise<OrgMembershipView | null>;
 }
 
 /**
@@ -103,6 +116,7 @@ export class DevAllActiveUsersMembershipAdapter
   implements MembershipLookupPort
 {
   private readonly overrides = new Map<string, EmploymentOverride>();
+  private readonly removed = new Set<string>();
 
   constructor(
     private readonly listActiveUsers: () => Promise<
@@ -114,13 +128,16 @@ export class DevAllActiveUsersMembershipAdapter
     _organizationId: string
   ): Promise<OrgMembershipView[]> {
     const users = await this.listActiveUsers();
-    return users.map((user) => this.membershipFor(user.id));
+    return users
+      .filter((user) => !this.removed.has(user.id))
+      .map((user) => this.membershipFor(user.id));
   }
 
   async findByOrganizationAndUser(
     _organizationId: string,
     userId: string
   ): Promise<OrgMembershipView | null> {
+    if (this.removed.has(userId)) return null;
     const users = await this.listActiveUsers();
     const found = users.find((user) => user.id === userId);
     if (!found) return null;
@@ -166,12 +183,50 @@ export class DevAllActiveUsersMembershipAdapter
     return this.membershipFor(userId);
   }
 
+  async deleteByUserAndOrg(
+    _organizationId: string,
+    userId: string
+  ): Promise<boolean> {
+    const users = await this.listActiveUsers();
+    if (!users.some((user) => user.id === userId)) return false;
+    this.removed.add(userId);
+    return true;
+  }
+
+  async countByRole(
+    _organizationId: string,
+    role: string
+  ): Promise<number> {
+    const users = await this.listActiveUsers();
+    let count = 0;
+    for (const user of users) {
+      if (this.removed.has(user.id)) continue;
+      if (this.membershipFor(user.id).role === role) count += 1;
+    }
+    return count;
+  }
+
+  private accessByUser = new Map<string, "Active" | "Blocked">();
+
+  async setAccessStatus(
+    _organizationId: string,
+    userId: string,
+    accessStatus: "Active" | "Blocked"
+  ): Promise<OrgMembershipView | null> {
+    if (this.removed.has(userId)) return null;
+    const users = await this.listActiveUsers();
+    if (!users.some((user) => user.id === userId)) return null;
+    this.accessByUser.set(userId, accessStatus);
+    return this.membershipFor(userId);
+  }
+
   private membershipFor(userId: string): OrgMembershipView {
     const meta = DEMO_MEMBERSHIP_META[userId];
     const overridden = this.overrides.get(userId);
     return {
       userId,
       role: meta?.role ?? "Basic User",
+      accessStatus: this.accessByUser.get(userId) ?? "Active",
       jobTitle: overridden?.jobTitle ?? meta?.jobTitle ?? "Not set",
       salary: overridden?.salary ?? 0,
       workLocationType: overridden?.workLocationType ?? "On-site",

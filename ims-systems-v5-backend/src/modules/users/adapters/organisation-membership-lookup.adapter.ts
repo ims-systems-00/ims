@@ -2,6 +2,7 @@
  * Real MembershipLookupPort — org memberships from Mongo (auth0-openfga).
  */
 
+import type { OrganisationRole } from "../../organisation/types";
 import { createOrganisationMembershipRepository } from "../../organisation/repositories/organisation-membership.repository";
 import type { MembershipLookupPort } from "../ports";
 import type {
@@ -25,6 +26,7 @@ function emptyShift() {
 function toView(row: {
   userId: string;
   role: string;
+  accessStatus?: "Active" | "Blocked";
   jobTitle?: string;
   workLocationType?: string;
   salary?: number;
@@ -37,6 +39,7 @@ function toView(row: {
   return {
     userId: row.userId,
     role: row.role,
+    accessStatus: row.accessStatus === "Blocked" ? "Blocked" : "Active",
     jobTitle: row.jobTitle?.trim() ? row.jobTitle : "Not set",
     salary: row.salary ?? 0,
     workLocationType: row.workLocationType ?? "On-site",
@@ -95,6 +98,24 @@ export function createOrganisationMembershipLookupAdapter(): MembershipLookupPor
         lineManagerIds: input.lineManagerIds,
         workShift: input.workShift ?? undefined,
       });
+      if (!row) return null;
+      return toView(row);
+    },
+
+    async deleteByUserAndOrg(organizationId, userId) {
+      return memberships.deleteByUserAndOrg(userId, organizationId);
+    },
+
+    async countByRole(organizationId, role) {
+      return memberships.countByRole(organizationId, role as OrganisationRole);
+    },
+
+    async setAccessStatus(organizationId, userId, accessStatus) {
+      const row = await memberships.setAccessStatus(
+        userId,
+        organizationId,
+        accessStatus
+      );
       if (!row) return null;
       return toView(row);
     },

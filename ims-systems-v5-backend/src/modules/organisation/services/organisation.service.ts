@@ -135,6 +135,11 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
     if (!membership) {
       throw new ForbiddenError("You are not a member of this organisation");
     }
+    if (membership.accessStatus === "Blocked") {
+      throw new ForbiddenError(
+        "Your access to this organisation has been blocked"
+      );
+    }
   }
 
   async function assertSuperAdmin(

@@ -28,6 +28,16 @@ export type UnitMembershipRepository = {
     organizationId: string,
     functionalUnitId: string
   ) => Promise<number>;
+  /** Remove every unit membership for a user in an organisation (org offboarding). */
+  removeAllForUserInOrg: (
+    organizationId: string,
+    userId: string
+  ) => Promise<number>;
+  /** Remove every member of a functional unit (unit delete cascade). */
+  removeAllForUnit: (
+    organizationId: string,
+    functionalUnitId: string
+  ) => Promise<number>;
 };
 
 export function createUnitMembershipRepository(): UnitMembershipRepository {
@@ -85,6 +95,20 @@ export function createUnitMembershipRepository(): UnitMembershipRepository {
 
     async countForUnit(organizationId, functionalUnitId) {
       return model.countDocuments({ organizationId, functionalUnitId }).exec();
+    },
+
+    async removeAllForUserInOrg(organizationId, userId) {
+      const result = await model
+        .deleteMany({ organizationId, userId })
+        .exec();
+      return result.deletedCount ?? 0;
+    },
+
+    async removeAllForUnit(organizationId, functionalUnitId) {
+      const result = await model
+        .deleteMany({ organizationId, functionalUnitId })
+        .exec();
+      return result.deletedCount ?? 0;
     },
   };
 }

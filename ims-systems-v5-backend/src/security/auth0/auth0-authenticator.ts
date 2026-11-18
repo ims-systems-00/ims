@@ -9,6 +9,7 @@
  * AuthZ remains separate (OpenFGA).
  */
 
+import { AccountBlockedError } from "../../shared";
 import type {
   Authenticator,
   AuthRequestView,
@@ -91,12 +92,21 @@ function extractClientOrgHint(headers: AuthRequestView["headers"]): string | nul
   return trimmed || null;
 }
 
-function isUserAllowed(user: Auth0LinkedUser, now: Date): boolean {
-  if (user.systemAccessStatus !== "Active") return false;
+/**
+ * Platform-level gates only (lock / deactivated).
+ * Org-scoped Block lives on membership and must not ban login or other orgs.
+ */
+function assertUserAllowed(user: Auth0LinkedUser, now: Date): void {
   if (user.lockedUntil && user.lockedUntil.getTime() > now.getTime()) {
-    return false;
+    throw new AccountBlockedError(
+      "Your account is temporarily locked. Try again later or contact a Super Admin."
+    );
   }
-  return true;
+  if (user.systemAccessStatus === "Deactivated") {
+    throw new AccountBlockedError(
+      "Your account is no longer active. Contact a Super Admin for help."
+    );
+  }
 }
 
 /**
@@ -133,9 +143,9 @@ export class Auth0Authenticator implements Authenticator {
         this.lookups.findOrganisationByAuth0OrganizationId(verified.orgId),
       ]);
 
-      // Known IMS user who is blocked/locked must not fall through.
-      if (boundUser && !isUserAllowed(boundUser, new Date())) {
-        return null;
+      // Known IMS user who is blocked/locked must not fall through as 401.
+      if (boundUser) {
+        assertUserAllowed(boundUser, new Date());
       }
 
       if (
@@ -199,7 +209,7 @@ export class Auth0Authenticator implements Authenticator {
     });
     const user = ensured?.user ?? null;
     if (!user) return null;
-    if (!isUserAllowed(user, new Date())) return null;
+    assertUserAllowed(user, new Date());
 
     const clientOrgHint = extractClientOrgHint(input.headers);
     if (clientOrgHint) {

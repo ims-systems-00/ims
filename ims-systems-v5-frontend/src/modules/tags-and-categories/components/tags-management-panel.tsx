@@ -323,94 +323,106 @@ export function TagsManagementPanel({
 
       <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
         <SheetContent className="flex flex-col gap-0 sm:max-w-md">
-          <SheetHeader>
-            <SheetTitle>{editing ? "Edit category" : "Create category"}</SheetTitle>
-            <SheetDescription>
-              {editing
-                ? "Name and description can be updated. Applicable modules stay as originally set."
-                : "Define a reusable classification label for one or more modules."}
-            </SheetDescription>
-          </SheetHeader>
-          <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
-            <FormField label="Name" htmlFor="tag-name" required error={formError}>
-              <input
-                id="tag-name"
-                className="ims-field"
-                value={name}
-                disabled={pending}
-                onChange={(event) => setName(event.target.value)}
-              />
-            </FormField>
-            <FormField label="Description" htmlFor="tag-desc" required>
-              <Textarea
-                id="tag-desc"
-                rows={4}
-                value={desc}
-                disabled={pending}
-                onChange={(event) => setDesc(event.target.value)}
-              />
-            </FormField>
-            {!editing ? (
-              <fieldset className="space-y-2">
-                <legend className="ims-text-label">Applicable modules</legend>
-                <div className="grid grid-cols-2 gap-2">
-                  {moduleOptions.map((module) => {
-                    const checked = modules.includes(module);
-                    const locked =
-                      Boolean(applicableModule) && module === applicableModule;
-                    return (
-                      <label
-                        key={module}
-                        className={cn(
-                          "flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-2 text-[0.75rem]",
-                          locked ? "bg-surface-muted" : "bg-surface"
-                        )}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={checked || locked}
-                          disabled={pending || Boolean(applicableModule)}
-                          onChange={() => toggleModule(module)}
-                        />
-                        {APPLICABLE_MODULE_LABELS[module]}
-                      </label>
-                    );
-                  })}
+          <form
+            className="flex h-full flex-col gap-0"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handleSubmit();
+            }}
+          >
+            <SheetHeader>
+              <SheetTitle>
+                {editing ? "Edit category" : "Create category"}
+              </SheetTitle>
+              <SheetDescription>
+                {editing
+                  ? "Name and description can be updated. Applicable modules stay as originally set."
+                  : "Define a reusable classification label for one or more modules."}
+              </SheetDescription>
+            </SheetHeader>
+            <div className="flex-1 space-y-4 overflow-y-auto px-4 py-4">
+              <FormField
+                label="Name"
+                htmlFor="tag-name"
+                required
+                error={formError}
+              >
+                <input
+                  id="tag-name"
+                  className="ims-field"
+                  value={name}
+                  disabled={pending}
+                  onChange={(event) => setName(event.target.value)}
+                />
+              </FormField>
+              <FormField label="Description" htmlFor="tag-desc" required>
+                <Textarea
+                  id="tag-desc"
+                  rows={4}
+                  value={desc}
+                  disabled={pending}
+                  onChange={(event) => setDesc(event.target.value)}
+                />
+              </FormField>
+              {!editing ? (
+                <fieldset className="space-y-2">
+                  <legend className="ims-text-label">Applicable modules</legend>
+                  <div className="grid grid-cols-2 gap-2">
+                    {moduleOptions.map((module) => {
+                      const checked = modules.includes(module);
+                      const locked =
+                        Boolean(applicableModule) &&
+                        module === applicableModule;
+                      return (
+                        <label
+                          key={module}
+                          className={cn(
+                            "flex items-center gap-2 rounded-md border border-border-subtle px-2.5 py-2 text-[0.75rem]",
+                            locked ? "bg-surface-muted" : "bg-surface"
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked || locked}
+                            disabled={pending || Boolean(applicableModule)}
+                            onChange={() => toggleModule(module)}
+                          />
+                          {APPLICABLE_MODULE_LABELS[module]}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              ) : (
+                <div className="space-y-1.5">
+                  <p className="ims-text-label">Applicable modules</p>
+                  <div className="flex flex-wrap gap-1">
+                    {editing.applicableModules.map((module) => (
+                      <StatusBadge key={module} tone="neutral">
+                        {APPLICABLE_MODULE_LABELS[module] ?? module}
+                      </StatusBadge>
+                    ))}
+                  </div>
+                  <p className="ims-text-meta">
+                    Modules cannot be changed after create.
+                  </p>
                 </div>
-              </fieldset>
-            ) : (
-              <div className="space-y-1.5">
-                <p className="ims-text-label">Applicable modules</p>
-                <div className="flex flex-wrap gap-1">
-                  {editing.applicableModules.map((module) => (
-                    <StatusBadge key={module} tone="neutral">
-                      {APPLICABLE_MODULE_LABELS[module] ?? module}
-                    </StatusBadge>
-                  ))}
-                </div>
-                <p className="ims-text-meta">
-                  Modules cannot be changed after create.
-                </p>
-              </div>
-            )}
-          </div>
-          <SheetFooter>
-            <Button
-              type="button"
-              variant="outline"
-              disabled={pending}
-              onClick={() => setSheetOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="button"
-              disabled={pending}
-              onClick={() => void handleSubmit()}
-            >
-              {pending ? "Saving…" : editing ? "Update" : "Add"}
-            </Button>
-          </SheetFooter>
+              )}
+            </div>
+            <SheetFooter>
+              <Button
+                type="button"
+                variant="outline"
+                disabled={pending}
+                onClick={() => setSheetOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={pending}>
+                {pending ? "Saving…" : editing ? "Update" : "Add"}
+              </Button>
+            </SheetFooter>
+          </form>
         </SheetContent>
       </Sheet>
 

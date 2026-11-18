@@ -1623,12 +1623,18 @@ export function createDocumentManagementService(
       );
 
       const base = published.documentData!;
-      // OnlyOffice allows key chars: 0-9 a-z A-Z -._= (no ":"). Colons
-      // produce 403 on /downloadfile and crash the PDF extended check.
+      // OnlyOffice caches by document.key. Reusing the same key after a
+      // previous edit/reject (or any content change) triggers
+      // "Version changed — The page will be reloaded" and can leave the
+      // editor stuck. Mint a unique key per session; concurrent edits are
+      // already blocked by the pending-sibling check above.
+      // Allowed chars: 0-9 a-z A-Z -._= (no ":").
+      const sessionNonce = randomUUID().replace(/-/g, "").slice(0, 16);
       const documentKey = [
         base.threadId || published.id,
         String(base.dvID ?? 0),
         published.id,
+        sessionNonce,
       ]
         .join("_")
         .replace(/[^0-9A-Za-z\-._=]/g, "_")

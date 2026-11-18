@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState } from "react";
 import { Loader2, Plus } from "lucide-react";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
@@ -58,8 +58,7 @@ export function CategorySelectField({
     [listQuery.data]
   );
 
-  async function handleCreate(event: FormEvent) {
-    event.preventDefault();
+  async function handleCreate() {
     const parsed = createTagAndCategoryFormSchema.safeParse({
       name,
       description,
@@ -124,10 +123,9 @@ export function CategorySelectField({
       </FormField>
 
       {openCreate ? (
-        <form
-          className="space-y-3 rounded-md border border-border-subtle bg-surface-muted/40 p-3"
-          onSubmit={(event) => void handleCreate(event)}
-        >
+        // Must not be a nested <form> — this field sits inside AssetForm's
+        // <form>, and nested forms cause the browser to submit/reload the page.
+        <div className="space-y-3 rounded-md border border-border-subtle bg-surface-muted/40 p-3">
           <p className="text-[0.75rem] text-muted-foreground">
             Missing a category? Create a new one for{" "}
             <span className="font-medium text-foreground">
@@ -142,6 +140,12 @@ export function CategorySelectField({
               value={name}
               disabled={createMutation.isPending}
               onChange={(event) => setName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleCreate();
+                }
+              }}
             />
           </FormField>
           <FormField label="Description" htmlFor="inline-cat-desc" required>
@@ -154,7 +158,12 @@ export function CategorySelectField({
             />
           </FormField>
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={createMutation.isPending}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={createMutation.isPending}
+              onClick={() => void handleCreate()}
+            >
               {createMutation.isPending ? (
                 <>
                   <Loader2 className="size-3.5 animate-spin" aria-hidden />
@@ -174,7 +183,7 @@ export function CategorySelectField({
               Cancel
             </Button>
           </div>
-        </form>
+        </div>
       ) : null}
     </div>
   );

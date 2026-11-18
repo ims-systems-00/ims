@@ -453,6 +453,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     ...(config?.SECURITY_PROVIDER === "auth0-openfga"
       ? { ownership: createOwnershipIntegrityAdapter() }
       : {}),
+    membershipProjection: security.membershipProjection,
   });
 
   const invitations = createInvitationModule({

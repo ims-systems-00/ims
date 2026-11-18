@@ -54,6 +54,16 @@ export class ForbiddenError extends AppError {
   }
 }
 
+/** IMS system access is Blocked / Deactivated — distinct from session expiry. */
+export class AccountBlockedError extends AppError {
+  constructor(
+    message = "Your account access has been blocked. Contact a Super Admin to restore access."
+  ) {
+    super({ message, statusCode: 403, code: "ACCOUNT_BLOCKED" });
+    this.name = "AccountBlockedError";
+  }
+}
+
 export class ConflictError extends AppError {
   constructor(message = "Conflict") {
     super({ message, statusCode: 409, code: "CONFLICT" });

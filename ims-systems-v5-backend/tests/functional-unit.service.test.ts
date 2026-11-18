@@ -84,6 +84,7 @@ describe("FunctionalUnitService", () => {
     groupLicence = {
       assertCanCreateUnit: vi.fn().mockResolvedValue(undefined),
       consumeUnitLicence: vi.fn().mockResolvedValue(undefined),
+      releaseUnitLicence: vi.fn().mockResolvedValue(undefined),
     };
     dashboardInit = {
       initialiseBusinessFunctionDashboard: vi
@@ -95,6 +96,7 @@ describe("FunctionalUnitService", () => {
       listEligible: vi.fn().mockResolvedValue([]),
       addMember: vi.fn(),
       removeMember: vi.fn(),
+      removeAllMembers: vi.fn().mockResolvedValue(0),
       countMembers: vi.fn().mockResolvedValue(0),
     };
     invitations = {
@@ -227,13 +229,27 @@ describe("FunctionalUnitService", () => {
     ).rejects.toBeInstanceOf(ForbiddenError);
   });
 
-  it("soft-deletes non-default units", async () => {
+  it("soft-deletes non-default units, cascades members, and releases licence", async () => {
     vi.mocked(repository.findById).mockResolvedValue(makeUnit());
     vi.mocked(repository.softDelete).mockResolvedValue(true);
+    vi.mocked(repository.setTotalMembers).mockResolvedValue(makeUnit());
+    vi.mocked(unitUsers.removeAllMembers).mockResolvedValue(2);
     await expect(
       service().remove(DEV_STUB_IDENTITY, "aaaaaaaaaaaaaaaaaaaaaaaa")
     ).resolves.toBeUndefined();
+    expect(unitUsers.removeAllMembers).toHaveBeenCalledWith(
+      DEV_STUB_IDENTITY.organizationId,
+      "aaaaaaaaaaaaaaaaaaaaaaaa"
+    );
+    expect(repository.setTotalMembers).toHaveBeenCalledWith(
+      DEV_STUB_IDENTITY.organizationId,
+      "aaaaaaaaaaaaaaaaaaaaaaaa",
+      0
+    );
     expect(repository.softDelete).toHaveBeenCalled();
+    expect(groupLicence.releaseUnitLicence).toHaveBeenCalledWith(
+      DEV_STUB_IDENTITY.organizationId
+    );
   });
 
   it("lists members via Users port", async () => {

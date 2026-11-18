@@ -4,6 +4,7 @@ export {
   ValidationAppError,
   UnauthorizedError,
   ForbiddenError,
+  AccountBlockedError,
   ConflictError,
 } from "./errors/app-error";
 export { sendSuccess, sendError } from "./http/response";

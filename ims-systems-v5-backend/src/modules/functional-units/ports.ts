@@ -15,6 +15,8 @@ export class InsufficientGroupLicenceError extends Error {
 export interface GroupLicencePort {
   assertCanCreateUnit(organizationId: string): Promise<void>;
   consumeUnitLicence(organizationId: string): Promise<void>;
+  /** Reclaim one group licence seat after a functional unit is deleted. */
+  releaseUnitLicence(organizationId: string): Promise<void>;
 }
 
 /** Development adapter — always allows creation (Organisation module missing). */
@@ -24,6 +26,10 @@ export class AlwaysAllowGroupLicenceAdapter implements GroupLicencePort {
   }
 
   async consumeUnitLicence(_organizationId: string): Promise<void> {
+    return;
+  }
+
+  async releaseUnitLicence(_organizationId: string): Promise<void> {
     return;
   }
 }

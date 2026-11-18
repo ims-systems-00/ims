@@ -128,6 +128,8 @@ export type MembershipWorkShiftView = {
 export type OrgMembershipView = {
   userId: string;
   role: string;
+  /** Org-scoped access (Active | Blocked). Defaults to Active. */
+  accessStatus?: "Active" | "Blocked";
   jobTitle?: string | null;
   salary?: number | null;
   workLocationType?: string | null;

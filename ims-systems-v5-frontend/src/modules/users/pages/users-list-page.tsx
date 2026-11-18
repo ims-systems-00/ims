@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Loader2, UserPlus, Users } from "lucide-react";
+import { Eye, Loader2, UserMinus, UserPlus, Users } from "lucide-react";
 import { InviteUserDialog, InvitationsPanel } from "@/modules/invitations";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
@@ -11,10 +12,11 @@ import { StatusBadge } from "@/shared/components/status-badge";
 import { PageHeader } from "@/shared/layout";
 import { cn } from "@/shared/lib/utils";
 import { isApiClientError } from "@/shared/lib/http/errors";
+import { RemoveUserDialog } from "../components/remove-user-dialog";
 import { UserAvatar } from "../components/user-avatar";
 import { UserDetailsSheet } from "../components/user-details-sheet";
 import { signalTourAction, useTourAction } from "@/modules/setup-guide";
-import { useUsersQuery } from "../hooks/use-users";
+import { useSessionUserQuery, useUsersQuery } from "../hooks/use-users";
 
 type UsersTab = "members" | "invitations";
 
@@ -33,16 +35,31 @@ const USER_TABS: Array<{ id: UsersTab; label: string }> = [
  * - `?invite=1` → Add user dialog
  * - `?user=<id>` → User Details sheet
  */
+type PendingUserAction = {
+  id: string;
+  name: string;
+  role: string | null;
+};
+
 export function UsersListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<UsersTab>("members");
   const [searchInput, setSearchInput] = useState("");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [removeTarget, setRemoveTarget] = useState<PendingUserAction | null>(
+    null
+  );
 
   const inviteOpen = searchParams.get("invite") === "1";
   const userId = searchParams.get("user");
   const sheetOpen = Boolean(userId);
+
+  const orgQuery = useCurrentOrganisationQuery();
+  const sessionQuery = useSessionUserQuery();
+  const actorRole = orgQuery.data?.membership?.role ?? null;
+  const isSuperAdmin = actorRole === "Super Admin";
+  const selfId = sessionQuery.data?.user.id;
 
   function setInviteOpen(open: boolean) {
     setSearchParams(open ? { invite: "1" } : {});
@@ -216,6 +233,24 @@ export function UsersListPage() {
                           icon: <Eye />,
                           onSelect: () => openUser(user.id),
                         },
+                        ...(isSuperAdmin &&
+                        user.id !== selfId &&
+                        membership?.role !== "Super Admin"
+                          ? [
+                              {
+                                id: "remove",
+                                label: "Remove from organisation",
+                                icon: <UserMinus />,
+                                variant: "destructive" as const,
+                                onSelect: () =>
+                                  setRemoveTarget({
+                                    id: user.id,
+                                    name: user.name,
+                                    role: membership?.role ?? null,
+                                  }),
+                              },
+                            ]
+                          : []),
                       ]}
                     />
                   </td>
@@ -272,7 +307,23 @@ export function UsersListPage() {
         onOpenChange={(open) => {
           if (!open) closeSheet();
         }}
+        onRemoved={() => closeSheet()}
       />
+
+      {removeTarget ? (
+        <RemoveUserDialog
+          open={Boolean(removeTarget)}
+          onOpenChange={(open) => {
+            if (!open) setRemoveTarget(null);
+          }}
+          userId={removeTarget.id}
+          userName={removeTarget.name}
+          userRole={removeTarget.role}
+          onRemoved={() => {
+            if (userId === removeTarget.id) closeSheet();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

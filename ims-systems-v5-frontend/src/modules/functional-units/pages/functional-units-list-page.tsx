@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Building2, Eye, Loader2, Plus } from "lucide-react";
+import { Building2, Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
@@ -9,6 +10,7 @@ import { SearchInput } from "@/shared/components/search-input";
 import { PageHeader } from "@/shared/layout";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { notify } from "@/shared/lib/toast";
+import { DeleteFunctionalUnitDialog } from "../components/delete-functional-unit-dialog";
 import {
   FunctionalUnitSheet,
   type FunctionalUnitSheetMode,
@@ -23,7 +25,7 @@ import type { AccessType } from "../types";
  * - `?unit=<id>` → view (edit is in-sheet local mode)
  * Create/edit business flow stays on `/functional-units`.
  *
- * Delete is intentionally not exposed in the Functional Units UI.
+ * Delete is Super Admin only; system-default units stay protected.
  */
 export function FunctionalUnitsListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -31,6 +33,14 @@ export function FunctionalUnitsListPage() {
   const [page, setPage] = useState(1);
   const [accessType, setAccessType] = useState<AccessType | "">("");
   const [editMode, setEditMode] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string;
+    name: string;
+    memberCount: number;
+  } | null>(null);
+
+  const orgQuery = useCurrentOrganisationQuery();
+  const isSuperAdmin = orgQuery.data?.membership?.role === "Super Admin";
 
   const createOpen = searchParams.get("create") === "1";
   const unitId = searchParams.get("unit");
@@ -216,6 +226,22 @@ export function FunctionalUnitsListPage() {
                               icon: <Eye />,
                               onSelect: () => openUnit(unit.id),
                             },
+                            ...(isSuperAdmin
+                              ? [
+                                  {
+                                    id: "delete",
+                                    label: "Delete",
+                                    icon: <Trash2 />,
+                                    variant: "destructive" as const,
+                                    onSelect: () =>
+                                      setDeleteTarget({
+                                        id: unit.id,
+                                        name: unit.name,
+                                        memberCount: unit.totalMembers,
+                                      }),
+                                  },
+                                ]
+                              : []),
                           ]}
                         />
                       )}
@@ -272,7 +298,23 @@ export function FunctionalUnitsListPage() {
           setEditMode(false);
           setSearchParams({ unit: unit.id });
         }}
+        onDeleted={() => closeSheet()}
       />
+
+      {deleteTarget ? (
+        <DeleteFunctionalUnitDialog
+          open={Boolean(deleteTarget)}
+          onOpenChange={(open) => {
+            if (!open) setDeleteTarget(null);
+          }}
+          unitId={deleteTarget.id}
+          unitName={deleteTarget.name}
+          memberCount={deleteTarget.memberCount}
+          onDeleted={() => {
+            if (unitId === deleteTarget.id) closeSheet();
+          }}
+        />
+      ) : null}
     </div>
   );
 }

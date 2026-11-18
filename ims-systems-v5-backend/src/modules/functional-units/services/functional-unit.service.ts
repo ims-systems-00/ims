@@ -244,10 +244,15 @@ export function createFunctionalUnitService(deps: FunctionalUnitServiceDeps) {
         );
       }
 
+      await unitUsers.removeAllMembers(actor.organizationId, id);
+      await repository.setTotalMembers(actor.organizationId, id, 0);
+
       const deleted = await repository.softDelete(actor.organizationId, id);
       if (!deleted) {
         throw new ConflictError("Functional unit could not be deleted");
       }
+
+      await groupLicence.releaseUnitLicence(actor.organizationId);
     },
 
     async attachPolicy(

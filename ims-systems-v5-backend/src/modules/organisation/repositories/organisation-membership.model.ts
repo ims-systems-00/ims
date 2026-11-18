@@ -32,6 +32,12 @@ const organisationMembershipSchema = new Schema(
       enum: [...ORGANISATION_ROLES],
       required: true,
     },
+    /** Org-scoped IMS access. Blocked ≠ global login ban. */
+    accessStatus: {
+      type: String,
+      enum: ["Active", "Blocked"],
+      default: "Active",
+    },
     jobTitle: { type: String, default: "Not set", trim: true },
     workLocationType: {
       type: String,

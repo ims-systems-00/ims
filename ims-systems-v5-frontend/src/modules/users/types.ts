@@ -19,6 +19,8 @@ export type UserListItem = {
 export type OrgMembershipSummary = {
   userId: string;
   role: string;
+  /** Org-scoped access — Blocked users keep login and other orgs. */
+  accessStatus?: "Active" | "Blocked";
   jobTitle?: string | null;
 };
 
@@ -127,6 +129,8 @@ export type MembershipWorkShiftView = {
 export type OrgMembershipView = {
   userId: string;
   role: string;
+  /** Org-scoped access — Blocked users keep login and other orgs. */
+  accessStatus?: "Active" | "Blocked";
   jobTitle?: string | null;
   salary?: number | null;
   workLocationType?: string | null;

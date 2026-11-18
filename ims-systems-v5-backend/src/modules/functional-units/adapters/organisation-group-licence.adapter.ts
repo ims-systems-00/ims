@@ -42,5 +42,13 @@ export function createOrganisationGroupLicenceAdapter(): GroupLicencePort {
       if (!OBJECT_ID_PATTERN.test(organizationId)) return;
       await organisations.incrementGroupsUsed(organizationId, 1);
     },
+
+    async releaseUnitLicence(organizationId) {
+      if (!OBJECT_ID_PATTERN.test(organizationId)) return;
+      const organisation = await organisations.findById(organizationId);
+      if (!organisation) return;
+      if (organisation.licences.groups.used <= 0) return;
+      await organisations.incrementGroupsUsed(organizationId, -1);
+    },
   };
 }

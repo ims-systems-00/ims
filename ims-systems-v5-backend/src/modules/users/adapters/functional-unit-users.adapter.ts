@@ -159,6 +159,10 @@ export function createFunctionalUnitUsersAdapter(
       return removed;
     },
 
+    async removeAllMembers(organizationId, functionalUnitId) {
+      return unitMemberships.removeAllForUnit(organizationId, functionalUnitId);
+    },
+
     async countMembers(organizationId, functionalUnitId) {
       return unitMemberships.countForUnit(organizationId, functionalUnitId);
     },

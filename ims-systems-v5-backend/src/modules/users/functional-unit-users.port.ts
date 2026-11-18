@@ -50,6 +50,12 @@ export interface FunctionalUnitUsersPort {
     userId: string
   ): Promise<boolean>;
 
+  /** Remove every member of a unit (unit delete cascade). */
+  removeAllMembers(
+    organizationId: string,
+    functionalUnitId: string
+  ): Promise<number>;
+
   countMembers(
     organizationId: string,
     functionalUnitId: string

@@ -105,6 +105,9 @@ describe("UsersService", () => {
         jobTitle: "Engineer",
         salary: 50000,
       }),
+      deleteByUserAndOrg: vi.fn().mockResolvedValue(true),
+      countByRole: vi.fn().mockResolvedValue(1),
+      setAccessStatus: vi.fn(),
     };
     sessions = { clearSessionsForUser: vi.fn().mockResolvedValue(undefined) };
     notifications = {
@@ -324,22 +327,6 @@ describe("UsersService", () => {
     ).rejects.toBeInstanceOf(ValidationAppError);
   });
 
-  it("updates system access and notifies on block", async () => {
-    const user = makeUser();
-    vi.mocked(repository.findById).mockResolvedValue(user);
-    vi.mocked(repository.updateSystemAccess).mockResolvedValue({
-      ...user,
-      systemAccess: { ...user.systemAccess, status: "Blocked" },
-    });
-
-    await service().updateSystemAccess(DEV_STUB_IDENTITY, user.id, {
-      status: "Blocked",
-    });
-
-    expect(notifications.sendAccessRevoked).toHaveBeenCalled();
-    expect(sessions.clearSessionsForUser).toHaveBeenCalledWith(user.id);
-  });
-
   it("blocks expired users in bulk", async () => {
     const user = makeUser();
     vi.mocked(repository.findById).mockResolvedValue(user);
@@ -378,5 +365,169 @@ describe("UsersService", () => {
       "aaaaaaaaaaaaaaaaaaaaaaaa"
     );
     expect(result.hasOwnedData).toBe(false);
+  });
+
+  it("transfers ownership to another active org member", async () => {
+    const source = makeUser({ id: "aaaaaaaaaaaaaaaaaaaaaaaa" });
+    const destination = makeUser({
+      id: "bbbbbbbbbbbbbbbbbbbbbbbb",
+      email: "bob@example.com",
+    });
+    vi.mocked(repository.findById).mockImplementation(async (id) => {
+      if (id === source.id) return source;
+      if (id === destination.id) return destination;
+      return null;
+    });
+    vi.mocked(memberships.findByOrganizationAndUser).mockResolvedValue({
+      userId: source.id,
+      role: "Basic User",
+      jobTitle: "Engineer",
+    });
+
+    await service().transferOwnership(
+      DEV_STUB_IDENTITY,
+      source.id,
+      destination.id
+    );
+
+    expect(ownership.transfer).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sourceUserId: source.id,
+        destinationUserId: destination.id,
+      })
+    );
+  });
+
+  it("rejects ownership transfer to a deactivated destination", async () => {
+    const source = makeUser({ id: "aaaaaaaaaaaaaaaaaaaaaaaa" });
+    const destination = makeUser({
+      id: "bbbbbbbbbbbbbbbbbbbbbbbb",
+      email: "bob@example.com",
+      deletedAt: new Date(),
+      systemAccess: {
+        status: "Deactivated",
+        period: "Full time",
+        expires: null,
+        updatedOn: new Date(),
+      },
+    });
+    vi.mocked(repository.findById).mockImplementation(async (id) => {
+      if (id === source.id) return source;
+      if (id === destination.id) return destination;
+      return null;
+    });
+
+    await expect(
+      service().transferOwnership(DEV_STUB_IDENTITY, source.id, destination.id)
+    ).rejects.toBeInstanceOf(ValidationAppError);
+  });
+
+  it("removes a basic user from the organisation", async () => {
+    const user = makeUser();
+    const unitMemberships = {
+      listUserIdsForUnit: vi.fn(),
+      listUnitIdsForUser: vi.fn(),
+      isMember: vi.fn(),
+      add: vi.fn(),
+      remove: vi.fn(),
+      countForUnit: vi.fn(),
+      removeAllForUserInOrg: vi.fn().mockResolvedValue(1),
+      removeAllForUnit: vi.fn(),
+    };
+    const membershipProjection = {
+      onMembershipCreated: vi.fn(),
+      onMembershipRoleChanged: vi.fn(),
+      onMembershipRemoved: vi.fn().mockResolvedValue(undefined),
+    };
+    vi.mocked(repository.findById).mockResolvedValue(user);
+
+    const svc = createUsersService({
+      repository,
+      authorizer,
+      memberships,
+      sessions,
+      notifications,
+      ownership,
+      toolkits,
+      unitMemberships,
+      membershipProjection,
+    });
+
+    const result = await svc.removeFromOrganisation(DEV_STUB_IDENTITY, user.id);
+
+    expect(result.message).toMatch(/removed from organisation/i);
+    expect(memberships.deleteByUserAndOrg).toHaveBeenCalledWith(
+      DEV_STUB_IDENTITY.organizationId,
+      user.id
+    );
+    expect(unitMemberships.removeAllForUserInOrg).toHaveBeenCalledWith(
+      DEV_STUB_IDENTITY.organizationId,
+      user.id
+    );
+    expect(membershipProjection.onMembershipRemoved).toHaveBeenCalledWith(
+      expect.objectContaining({
+        userId: user.id,
+        role: "Basic User",
+      })
+    );
+    expect(sessions.clearSessionsForUser).toHaveBeenCalledWith(user.id);
+    expect(notifications.sendAccessRevoked).toHaveBeenCalled();
+  });
+
+  it("blocks self remove-from-organisation", async () => {
+    const self = makeUser({
+      id: DEV_STUB_IDENTITY.subjectId,
+      email: DEV_STUB_IDENTITY.email!,
+    });
+    vi.mocked(repository.findById).mockResolvedValue(self);
+    await expect(
+      service().removeFromOrganisation(DEV_STUB_IDENTITY, self.id)
+    ).rejects.toBeInstanceOf(ForbiddenError);
+  });
+
+  it("blocks removing a Super Admin", async () => {
+    const user = makeUser();
+    vi.mocked(repository.findById).mockResolvedValue(user);
+    vi.mocked(memberships.findByOrganizationAndUser).mockResolvedValue({
+      userId: user.id,
+      role: "Super Admin",
+      jobTitle: "Admin",
+    });
+    vi.mocked(memberships.countByRole!).mockResolvedValue(2);
+
+    await expect(
+      service().removeFromOrganisation(DEV_STUB_IDENTITY, user.id)
+    ).rejects.toBeInstanceOf(ForbiddenError);
+    expect(memberships.deleteByUserAndOrg).not.toHaveBeenCalled();
+  });
+
+  it("blocks removing the last Super Admin", async () => {
+    const user = makeUser();
+    vi.mocked(repository.findById).mockResolvedValue(user);
+    vi.mocked(memberships.findByOrganizationAndUser).mockResolvedValue({
+      userId: user.id,
+      role: "Super Admin",
+      jobTitle: "Admin",
+    });
+    vi.mocked(memberships.countByRole!).mockResolvedValue(1);
+
+    await expect(
+      service().removeFromOrganisation(DEV_STUB_IDENTITY, user.id)
+    ).rejects.toThrow(/last Super Admin/i);
+  });
+
+  it("blocks remove when ownership remains", async () => {
+    const user = makeUser();
+    vi.mocked(repository.findById).mockResolvedValue(user);
+    vi.mocked(ownership.check).mockResolvedValue({
+      hasOwnedData: true,
+      inProgress: false,
+      modules: ["Risks", "Tasks"],
+    });
+
+    await expect(
+      service().removeFromOrganisation(DEV_STUB_IDENTITY, user.id)
+    ).rejects.toBeInstanceOf(ValidationAppError);
+    expect(memberships.deleteByUserAndOrg).not.toHaveBeenCalled();
   });
 });

@@ -99,3 +99,38 @@ export function updateProfileImage(
     body,
   });
 }
+
+export type OwnershipCheckResult = {
+  hasOwnedData: boolean;
+  inProgress: boolean;
+  modules: string[];
+};
+
+/** POST /users/:id/ownership-checks */
+export function checkUserOwnership(id: string): Promise<OwnershipCheckResult> {
+  return apiRequest<OwnershipCheckResult>(`/users/${id}/ownership-checks`, {
+    method: "POST",
+  });
+}
+
+/** POST /users/:id/ownership-transfer */
+export function transferUserOwnership(
+  id: string,
+  destinationUserId: string
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(`/users/${id}/ownership-transfer`, {
+    method: "POST",
+    body: { destinationUserId },
+  });
+}
+
+/** POST /users/:id/remove-from-organisation — Super Admin org offboarding. */
+export function removeUserFromOrganisation(
+  id: string
+): Promise<{ message: string }> {
+  return apiRequest<{ message: string }>(
+    `/users/${id}/remove-from-organisation`,
+    { method: "POST" }
+  );
+}
+

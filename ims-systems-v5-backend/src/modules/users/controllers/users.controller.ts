@@ -15,7 +15,6 @@ import {
   preferencesBodySchema,
   profileImageBodySchema,
   signatureBodySchema,
-  systemAccessBodySchema,
   updateUserProfileBodySchema,
 } from "../schemas";
 import type { UsersService } from "../services/users.service";
@@ -30,7 +29,6 @@ export type UsersController = {
   changePassword: RequestHandler;
   resetPassword: RequestHandler;
   updatePreferences: RequestHandler;
-  updateSystemAccess: RequestHandler;
   getProfileImage: RequestHandler;
   updateProfileImage: RequestHandler;
   updateSignature: RequestHandler;
@@ -44,6 +42,7 @@ export type UsersController = {
   resendVerification: RequestHandler;
   checkOwnership: RequestHandler;
   transferOwnership: RequestHandler;
+  removeFromOrganisation: RequestHandler;
 };
 
 export function createUsersController(
@@ -141,20 +140,6 @@ export function createUsersController(
       const { id } = parseWithSchema(idParamSchema, req.params);
       const body = parseWithSchema(preferencesBodySchema, req.body);
       const data = await service.updatePreferences(req.identity, id, body);
-      sendSuccess(res, data, 200, req.correlationId);
-    } catch (error) {
-      next(error);
-    }
-  };
-
-  const updateSystemAccess: RequestHandler = async (req, res, next) => {
-    try {
-      const { id } = parseWithSchema(idParamSchema, req.params);
-      const body = parseWithSchema(systemAccessBodySchema, {
-        ...req.body,
-        ...req.query,
-      });
-      const data = await service.updateSystemAccess(req.identity, id, body);
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -335,6 +320,16 @@ export function createUsersController(
     }
   };
 
+  const removeFromOrganisation: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const data = await service.removeFromOrganisation(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   return {
     list,
     create,
@@ -345,7 +340,6 @@ export function createUsersController(
     changePassword,
     resetPassword,
     updatePreferences,
-    updateSystemAccess,
     getProfileImage,
     updateProfileImage,
     updateSignature,
@@ -359,5 +353,6 @@ export function createUsersController(
     resendVerification,
     checkOwnership,
     transferOwnership,
+    removeFromOrganisation,
   };
 }

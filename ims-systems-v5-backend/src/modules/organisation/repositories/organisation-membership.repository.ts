@@ -41,6 +41,7 @@ function toDomain(
     organizationId: doc.organizationId,
     userId: doc.userId,
     role: doc.role as OrganisationRole,
+    accessStatus: doc.accessStatus === "Blocked" ? "Blocked" : "Active",
     jobTitle: doc.jobTitle?.trim() ? doc.jobTitle : "Not set",
     workLocationType:
       doc.workLocationType === "Remote" ? "Remote" : "On-site",
@@ -104,8 +105,27 @@ export function createOrganisationMembershipRepository() {
     },
 
     async listOrganizationIdsForUser(userId: string): Promise<string[]> {
-      const docs = await Model.find({ userId }).select("organizationId").lean();
+      // Exclude org-blocked memberships so post-login can still reach other orgs.
+      const docs = await Model.find({
+        userId,
+        accessStatus: { $ne: "Blocked" },
+      })
+        .select("organizationId")
+        .lean();
       return docs.map((doc) => String(doc.organizationId));
+    },
+
+    async setAccessStatus(
+      userId: string,
+      organizationId: string,
+      accessStatus: "Active" | "Blocked"
+    ): Promise<OrganisationMembership | null> {
+      const doc = await Model.findOneAndUpdate(
+        { userId, organizationId },
+        { $set: { accessStatus } },
+        { returnDocument: "after" }
+      ).lean();
+      return doc ? toDomain(doc as OrganisationMembershipDocument) : null;
     },
 
     async listByLineManager(
@@ -123,6 +143,22 @@ export function createOrganisationMembershipRepository() {
 
     async countActiveMembers(organizationId: string): Promise<number> {
       return Model.countDocuments({ organizationId });
+    },
+
+    async countByRole(
+      organizationId: string,
+      role: OrganisationRole
+    ): Promise<number> {
+      return Model.countDocuments({ organizationId, role });
+    },
+
+    /** Hard-delete membership (org offboarding). */
+    async deleteByUserAndOrg(
+      userId: string,
+      organizationId: string
+    ): Promise<boolean> {
+      const result = await Model.deleteOne({ userId, organizationId });
+      return result.deletedCount === 1;
     },
 
     /** Replace a member's granted compliance toolkits (U-07). */

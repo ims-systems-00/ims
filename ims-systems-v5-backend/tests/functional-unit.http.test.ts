@@ -135,11 +135,18 @@ describe("Functional Units HTTP", () => {
     expect(updated.body.data.accessType).toBe("Internal business function");
   });
 
-  it("DELETE soft-deletes and hides from list/get", async () => {
+  it("DELETE soft-deletes, cascades members, and hides from list/get", async () => {
     const created = await request(ctx!.app)
       .post("/api/v1/functional-units")
       .send(businessPayload);
     const id = created.body.data.id as string;
+    const user = await seedUser("cascade@example.com", "Cascade User");
+
+    const added = await request(ctx!.app)
+      .post(`/api/v1/functional-units/${id}/members`)
+      .send({ userIds: [user.id] });
+    expect(added.status).toBe(200);
+    expect(added.body.data.unit.totalMembers).toBe(1);
 
     const deleted = await request(ctx!.app).delete(
       `/api/v1/functional-units/${id}`
@@ -153,6 +160,16 @@ describe("Functional Units HTTP", () => {
 
     const list = await request(ctx!.app).get("/api/v1/functional-units");
     expect(list.body.data.total).toBe(0);
+
+    // Unit memberships cleared; org user remains.
+    const remaining = await getUnitMembershipModel().countDocuments({
+      functionalUnitId: id,
+    });
+    expect(remaining).toBe(0);
+    const stillExists = await request(ctx!.app).get(
+      `/api/v1/users/${user.id}/classified-info`
+    );
+    expect(stillExists.status).toBe(200);
   });
 
   it("attaches policy and assigns compliance toolkits", async () => {
