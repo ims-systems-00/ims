@@ -22,6 +22,7 @@ export {
   getFileExtension,
   getFilePreviewKind,
   buildOfficeViewerUrl,
+  isOfficeOnlineCompatibleUrl,
   type FilePreviewKind,
 } from "./lib/file-preview";
 export { FileDropZone } from "./components/file-drop-zone";

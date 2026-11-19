@@ -6,9 +6,12 @@ import { isApiClientError } from "@/shared/lib/http";
 import { useDownloadFileMutation, useFileViewUrlQuery } from "../hooks/use-files";
 import {
   buildOfficeViewerUrl,
+  getFileExtension,
   getFilePreviewKind,
+  isOfficeOnlineCompatibleUrl,
 } from "../lib/file-preview";
 import type { FileMetaInfo } from "../types";
+import { DocxViewer } from "./viewers/docx-viewer";
 
 type FilePreviewProps = {
   file: FileMetaInfo;
@@ -107,6 +110,13 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
   }
 
   if (kind === "office") {
+    const ext = getFileExtension(file.Name);
+    // Office Online cannot fetch localhost/private signed URLs — use
+    // in-browser docx-preview for .docx in those environments.
+    if (ext === "docx" && !isOfficeOnlineCompatibleUrl(url)) {
+      return <DocxViewer url={url} fileName={file.Name} fill={fill} />;
+    }
+
     return (
       <div className="relative flex h-full min-h-0 flex-1 flex-col">
         {!officeLoaded ? (

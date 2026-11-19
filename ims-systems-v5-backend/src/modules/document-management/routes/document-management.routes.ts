@@ -122,6 +122,10 @@ export function createDocumentManagementModule(
   );
   repositoriesRouter.post("/:id/download-zip", controller.downloadNodesZip);
   repositoriesRouter.post("/:id/folder-nodes", controller.createFolder);
+  repositoriesRouter.post(
+    "/:id/folder-nodes/ensure",
+    controller.ensureFolder
+  );
   repositoriesRouter.post("/:id/file-nodes", controller.createFiles);
   repositoriesRouter.get("/:id/nodes", controller.listNodes);
   repositoriesRouter.get("/:id/nodes/:nodeId", controller.getNode);

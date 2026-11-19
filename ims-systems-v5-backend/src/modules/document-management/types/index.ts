@@ -248,6 +248,17 @@ export type CreateFolderNodeInput = {
   reviewDate?: string | null;
 };
 
+export type EnsureFolderNodeInput = {
+  name: string;
+  parentNodeId?: string | null;
+};
+
+export type EnsureFolderNodeResult = {
+  node: DocumentTreeNode;
+  /** True when a new folder was created; false when an existing sibling was reused. */
+  created: boolean;
+};
+
 export type CreateFileNodeItemInput = {
   storageInfo: DocumentFileMeta;
   purpose?: DocumentPurpose;
