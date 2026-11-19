@@ -11,6 +11,7 @@ import {
   copyFolderStructureBodySchema,
   createFileNodesBodySchema,
   createFolderBodySchema,
+  ensureFolderBodySchema,
   createRepositoryBodySchema,
   decideAuthorisationBodySchema,
   downloadNodesZipBodySchema,
@@ -45,6 +46,7 @@ export type DocumentManagementController = {
   downloadNodesZip: RequestHandler;
   listCrossOrgCopySources: RequestHandler;
   createFolder: RequestHandler;
+  ensureFolder: RequestHandler;
   createFiles: RequestHandler;
   listNodes: RequestHandler;
   getNode: RequestHandler;
@@ -224,6 +226,20 @@ export function createDocumentManagementController(
         reviewDate: body.reviewDate ?? body.data?.reviewDate,
       });
       sendSuccess(res, data, 201, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const ensureFolder: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const body = parseWithSchema(ensureFolderBodySchema, req.body);
+      const data = await service.ensureFolder(req.identity, id, {
+        name: body.name,
+        parentNodeId: body.parentNodeId ?? body.parentNode ?? null,
+      });
+      sendSuccess(res, data, data.created ? 201 : 200, req.correlationId);
     } catch (error) {
       next(error);
     }
@@ -715,6 +731,7 @@ export function createDocumentManagementController(
     downloadNodesZip,
     listCrossOrgCopySources,
     createFolder,
+    ensureFolder,
     createFiles,
     listNodes,
     getNode,

@@ -75,6 +75,8 @@ import {
   type CreateFileNodesInput,
   type CreateFileNodesResult,
   type CreateFolderNodeInput,
+  type EnsureFolderNodeInput,
+  type EnsureFolderNodeResult,
   type DecideAuthorisationInput,
   type DocumentEditorSession,
   type DocumentOverviewCounts,
@@ -802,6 +804,72 @@ export function createDocumentManagementService(
         createdBy: subjectId,
         createdOn: new Date(),
       });
+    },
+
+    /**
+     * Get-or-create a folder by sibling name. Used by nested folder import so
+     * re-imports merge into existing folders instead of ConflictError.
+     * If a document already occupies the name, fails with ConflictError.
+     */
+    async ensureFolder(
+      identity: SecurityIdentity | null | undefined,
+      repositoryId: string,
+      input: EnsureFolderNodeInput
+    ): Promise<EnsureFolderNodeResult> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "create");
+      await requireRepository(organizationId, repositoryId);
+
+      const name = input.name.trim();
+      const parentNodeId = input.parentNodeId ?? null;
+      if (parentNodeId) {
+        const parent = await requireNode(organizationId, parentNodeId);
+        if (parent.repositoryId !== repositoryId) {
+          throw new ValidationAppError("Parent node is not in this repository");
+        }
+        if (parent.type !== "folder") {
+          throw new ValidationAppError("Parent node must be a folder");
+        }
+      }
+
+      const existing = await trees.findActiveByName(
+        organizationId,
+        repositoryId,
+        parentNodeId,
+        name
+      );
+      if (existing) {
+        if (existing.type !== "folder") {
+          throw new ConflictError(
+            `A document named "${name}" already exists at this location; cannot create a folder with the same name`
+          );
+        }
+        return { node: existing, created: false };
+      }
+
+      await assertFolderDepth(organizationId, parentNodeId);
+      const count = await trees.countSiblingNames(
+        organizationId,
+        repositoryId,
+        parentNodeId
+      );
+      if (count >= MAX_SIBLING_NAMES) {
+        throw new ValidationAppError(
+          `A folder may have at most ${MAX_SIBLING_NAMES} distinct sibling names`
+        );
+      }
+
+      const node = await trees.createFolder(organizationId, {
+        reference: nextReference("DOC"),
+        repositoryId,
+        name,
+        parentNodeId,
+        reviewDate: null,
+        createdBy: subjectId,
+        createdOn: new Date(),
+      });
+      return { node, created: true };
     },
 
     async createFileNodes(

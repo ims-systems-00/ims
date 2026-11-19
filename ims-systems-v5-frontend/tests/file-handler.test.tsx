@@ -29,6 +29,7 @@ import { FileDropZone } from "@/modules/files/components/file-drop-zone";
 import {
   formatFileSize,
   getFilePreviewKind,
+  isOfficeOnlineCompatibleUrl,
 } from "@/modules/files/lib/file-preview";
 import * as filesApi from "@/modules/files/api/files";
 
@@ -63,6 +64,25 @@ describe("file preview classification", () => {
     expect(formatFileSize(512)).toBe("512 B");
     expect(formatFileSize(2048)).toBe("2.0 KB");
     expect(formatFileSize(undefined)).toBe("");
+  });
+
+  it("detects URLs Office Online cannot fetch", () => {
+    expect(
+      isOfficeOnlineCompatibleUrl(
+        "http://localhost:3001/api/v1/files/local/object?bucket=b&key=k"
+      )
+    ).toBe(false);
+    expect(
+      isOfficeOnlineCompatibleUrl("http://127.0.0.1:3001/files?x=1")
+    ).toBe(false);
+    expect(
+      isOfficeOnlineCompatibleUrl("http://192.168.1.10/api/files?x=1")
+    ).toBe(false);
+    expect(
+      isOfficeOnlineCompatibleUrl(
+        "https://cdn.example.com/docs/file.docx?sig=1"
+      )
+    ).toBe(true);
   });
 });
 

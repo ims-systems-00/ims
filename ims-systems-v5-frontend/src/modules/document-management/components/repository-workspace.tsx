@@ -8,6 +8,7 @@ import {
   Download,
   FolderInput,
   FolderPlus,
+  FolderTree,
   GitBranch,
   LayoutGrid,
   LayoutList,
@@ -66,6 +67,7 @@ import { MoveNodeDialog } from "./move-node-dialog";
 import { NewVersionSheet } from "./new-version-sheet";
 import { NodeDetailsDialog } from "./node-details-dialog";
 import { RepositoryDetailsPanel } from "./repository-details-panel";
+import { ImportFolderSheet } from "./import-folder-sheet";
 import { UploadDocumentSheet } from "./upload-document-sheet";
 
 type RepositoryWorkspaceProps = {
@@ -115,6 +117,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
   );
   const [detailsNode, setDetailsNode] = useState<DocumentTreeNode | null>(null);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
   useEffect(() => {
     if (searchParams.get("upload") !== "1") return;
@@ -501,6 +504,15 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
           <Button
             type="button"
             size="sm"
+            variant="outline"
+            onClick={() => setImportOpen(true)}
+          >
+            <FolderTree className="size-3.5" />
+            Import folder
+          </Button>
+          <Button
+            type="button"
+            size="sm"
             data-tour="docs.upload"
             onClick={() => setUploadOpen(true)}
           >
@@ -589,7 +601,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
               title="This folder is empty"
               description="Create a folder or upload documents to get started."
               action={
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   <Button
                     type="button"
                     size="sm"
@@ -598,6 +610,15 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
                   >
                     <FolderPlus className="size-3.5" />
                     New folder
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setImportOpen(true)}
+                  >
+                    <FolderTree className="size-3.5" />
+                    Import folder
                   </Button>
                   <Button
                     type="button"
@@ -1075,6 +1096,12 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
       <UploadDocumentSheet
         open={uploadOpen}
         onOpenChange={setUploadOpen}
+        repositoryId={repositoryId}
+        parentNodeId={parentNodeId}
+      />
+      <ImportFolderSheet
+        open={importOpen}
+        onOpenChange={setImportOpen}
         repositoryId={repositoryId}
         parentNodeId={parentNodeId}
       />

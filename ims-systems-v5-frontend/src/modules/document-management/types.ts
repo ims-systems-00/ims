@@ -250,6 +250,11 @@ export type CreateFileNodesResult = {
   skipped: string[];
 };
 
+export type EnsureFolderNodeResult = {
+  node: DocumentTreeNode;
+  created: boolean;
+};
+
 export type ListRepositoriesParams = {
   page?: number;
   pageSize?: number;

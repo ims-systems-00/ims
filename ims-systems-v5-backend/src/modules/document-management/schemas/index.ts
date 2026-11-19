@@ -114,6 +114,13 @@ export const createFolderBodySchema = z.object({
     .optional(),
 });
 
+/** Idempotent folder create for nested folder import (merge on name clash). */
+export const ensureFolderBodySchema = z.object({
+  name: z.string().trim().min(1).max(MAX_NODE_NAME_LENGTH),
+  parentNodeId: nullableObjectId,
+  parentNode: nullableObjectId,
+});
+
 export const createFileNodesBodySchema = z.object({
   parentNodeId: nullableObjectId,
   parentNode: nullableObjectId,

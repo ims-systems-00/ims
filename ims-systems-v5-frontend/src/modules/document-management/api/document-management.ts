@@ -2,6 +2,7 @@ import { apiBlobRequest, apiRequest } from "@/shared/lib/http";
 import type {
   CreateDocumentRepositoryInput,
   CreateFileNodesResult,
+  EnsureFolderNodeResult,
   DocumentOverviewCounts,
   DocumentRepository,
   DocumentTreeNode,
@@ -174,6 +175,26 @@ export function createFolderNode(
         ...(body.reviewDate !== undefined
           ? { reviewDate: body.reviewDate }
           : {}),
+      },
+    }
+  );
+}
+
+/** Get-or-create folder by sibling name (nested folder import merge). */
+export function ensureFolderNode(
+  repositoryId: string,
+  body: {
+    name: string;
+    parentNodeId?: string | null;
+  }
+): Promise<EnsureFolderNodeResult> {
+  return apiRequest<EnsureFolderNodeResult>(
+    `/document-repositories/${repositoryId}/folder-nodes/ensure`,
+    {
+      method: "POST",
+      body: {
+        name: body.name,
+        parentNode: body.parentNodeId ?? null,
       },
     }
   );
