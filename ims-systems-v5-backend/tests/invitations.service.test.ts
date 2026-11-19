@@ -221,6 +221,36 @@ describe("createInvitationService", () => {
     expect(repository.remove).toHaveBeenCalledWith(stored.id);
   });
 
+  it("accept allows a Super Admin invite when one allocated seat is free", async () => {
+    // allocated=2, used=1, and this pending invite must not count against itself.
+    const invite: Invitation = {
+      ...stored,
+      role: "Super Admin",
+      email: "su@acme.example",
+    };
+    const { service, membershipsCreated } = makeService({
+      repository: fakeRepository(invite),
+      allocatedSuper: 2,
+      members: [{ userId: "admin-1", role: "Super Admin" }],
+      existingUser: { id: "user-su", email: invite.email, name: "Second SU" },
+    });
+
+    const result = await service.accept(
+      { subjectId: "user-su", email: invite.email },
+      "raw-token"
+    );
+
+    expect(result.alreadyMember).toBe(false);
+    expect(result.role).toBe("Super Admin");
+    expect(membershipsCreated).toEqual([
+      {
+        organizationId: ORG_ID,
+        userId: "user-su",
+        role: "Super Admin",
+      },
+    ]);
+  });
+
   it("accept returns alreadyMember when the user is already in the org", async () => {
     const { service, repository, membershipsCreated } = makeService({
       repository: fakeRepository(stored),

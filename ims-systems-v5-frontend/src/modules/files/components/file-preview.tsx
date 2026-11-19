@@ -6,9 +6,7 @@ import { isApiClientError } from "@/shared/lib/http";
 import { useDownloadFileMutation, useFileViewUrlQuery } from "../hooks/use-files";
 import {
   buildOfficeViewerUrl,
-  getFileExtension,
   getFilePreviewKind,
-  isOfficeOnlineCompatibleUrl,
 } from "../lib/file-preview";
 import type { FileMetaInfo } from "../types";
 import { CsvViewer } from "./viewers/csv-viewer";

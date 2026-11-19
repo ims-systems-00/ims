@@ -54,6 +54,10 @@ import {
 import { InvoicesListPage } from "@/modules/invoices";
 import { LeavesListPage } from "@/modules/leaves";
 import { CalendarPage } from "@/modules/calendar";
+import {
+  PublicAslSharePage,
+  PublicAslUploadPage,
+} from "@/modules/supplier";
 import { SuppliersListPage } from "@/modules/suppliers";
 import { TasksListPage } from "@/modules/tasks";
 import {
@@ -87,6 +91,9 @@ export function App() {
       <Route path="forgot-password" element={<ForgotPasswordPage />} />
       {/* Public, token-gated external e-signing (no login). */}
       <Route path="documents/sign/:token" element={<PublicSignPage />} />
+      {/* ASL public share / supplier upload portals (no login). */}
+      <Route path="supplier/public/:token" element={<PublicAslSharePage />} />
+      <Route path="supplier/upload/:token" element={<PublicAslUploadPage />} />
       {/* Public marketing surfaces (no login, not in sidebar nav). */}
       <Route path="contact" element={<ContactImsPage />} />
       <Route

@@ -105,6 +105,26 @@ import {
   type SupplierIncidentStatsPort,
   type SupplierTaskPort,
 } from "../../../modules/suppliers";
+import {
+  createAslChaseService,
+  createAslEmailAdapter,
+  createAslFilesAdapter,
+  createAslIncidentAdapter,
+  createAslNotificationAdapter,
+  createAslOrgAdapter,
+  createAslSupplierModule,
+  createAslTaskAdapter,
+  startAslChaseSchedule,
+} from "../../../modules/supplier";
+import {
+  createTaskRepository,
+  newActivityEntry as newTaskActivityEntry,
+} from "../../../modules/tasks/repositories/task.repository";
+import {
+  createIncidentRepository,
+  newActivityEntry as newIncidentActivityEntry,
+} from "../../../modules/incidents/repositories/incident.repository";
+import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
 import { createFormsModule } from "../../../modules/forms";
 import {
   createCustomerModule,
@@ -161,7 +181,6 @@ import {
 } from "../../../modules/ai";
 import { createInvoiceModule } from "../../../modules/invoices";
 import { createInvoiceNotificationAdapter } from "../../../modules/invoices/adapters/notification.adapter";
-import { createOrganisationRepository } from "../../../modules/organisation/repositories/organisation.repository";
 import { createAuth0ManagementApiFromConfig } from "../../../security/auth0/auth0-management-api";
 import { createComplianceAutomationQueue } from "../../../infrastructure/queue/automation-queue";
 import { createDataImportQueue } from "../../../infrastructure/queue/data-import-queue";
@@ -934,6 +953,124 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     }),
   });
 
+  const aslTaskRepository = createTaskRepository();
+  const aslIncidentRepository = createIncidentRepository();
+  const aslSupplierModule = createAslSupplierModule({
+    authorizer: security.authorizer,
+    email: email ? createAslEmailAdapter(email) : undefined,
+    files: objectStorage
+      ? createAslFilesAdapter(objectStorage, {
+          resolveBucket: (organizationId) => {
+            if (config?.NODE_ENV === "production" && config.AWS_BUCKET_SUFFIX) {
+              return `${organizationId}${config.AWS_BUCKET_SUFFIX}`;
+            }
+            if (config?.AWS_PRIVATE_BUCKET?.trim()) {
+              return config.AWS_PRIVATE_BUCKET.trim();
+            }
+            if (config?.AWS_BUCKET_SUFFIX) {
+              return `${organizationId}${config.AWS_BUCKET_SUFFIX}`;
+            }
+            return `ims-v5-${organizationId}`;
+          },
+        })
+      : undefined,
+    org: createAslOrgAdapter({
+      getName: async (organizationId) => {
+        const org =
+          await createOrganisationRepository().findById(organizationId);
+        return org?.name ?? null;
+      },
+    }),
+    tasks: createAslTaskAdapter({
+      createTask: async (input) => {
+        const created = await aslTaskRepository.create(input.organizationId, {
+          reference: `TSK-ASL-${Date.now().toString(36).toUpperCase()}`,
+          name: input.title,
+          description: input.description,
+          dueDate: new Date(),
+          priority: "High",
+          teamPriority: false,
+          assignees: [],
+          status: "Pending",
+          attachments: [],
+          source: {
+            moduleType: input.moduleType,
+            moduleId: input.moduleId,
+          },
+          activity: [
+            newTaskActivityEntry("created", "ASL escalation task", input.createdBy),
+          ],
+          createdBy: input.createdBy,
+          createdOn: new Date(),
+        });
+        return { id: created.id };
+      },
+    }),
+    incidents: createAslIncidentAdapter({
+      createIncident: async (input) => {
+        const created = await aslIncidentRepository.create(
+          input.organizationId,
+          {
+            reference: `INC-ASL-${Date.now().toString(36).toUpperCase()}`,
+            title: input.title,
+            description: input.description,
+            priority: "P3",
+            privacy: "Business unit",
+            attachments: [],
+            activity: [
+              newIncidentActivityEntry(
+                "raised",
+                "Raised from ASL low evaluation score",
+                input.createdBy
+              ),
+            ],
+            source: {
+              moduleType: input.moduleType,
+              moduleId: input.moduleId,
+            },
+            raisedBy: input.createdBy,
+            raisedOn: new Date(),
+          }
+        );
+        return { id: created.id };
+      },
+    }),
+    notifications: createAslNotificationAdapter({
+      notify: async (input) => {
+        if (!input.userId) return;
+        await notifications.application.createForRecipients({
+          organizationId: input.organizationId,
+          createdBy: "system",
+          recipients: [
+            {
+              recipientUserId: input.userId,
+              title: input.title,
+              message: input.body,
+              referenceType: "suppliers",
+              referenceModuleId: input.organizationId,
+              screenIdentifier: "suppliers",
+              params: { id: input.organizationId },
+            },
+          ],
+        });
+      },
+    }),
+    tokenSecret:
+      config?.ONLYOFFICE_JWT_SECRET?.trim() || "dev-asl-token-secret",
+    publicApiBaseUrl: (
+      config?.CLIENT_URL || `http://127.0.0.1:${config?.PORT ?? 3001}`
+    ).replace(/\/$/, ""),
+    clientUrl: (config?.CLIENT_URL || "http://localhost:3000").replace(
+      /\/$/,
+      ""
+    ),
+    defaultFromEmail: config?.MAIL_FROM?.trim() || "noreply@imssystems.tech",
+  });
+  const aslChase = createAslChaseService({
+    service: aslSupplierModule.service,
+    logger: logger ?? createLogger({ level: "silent", name: "asl-chase" }),
+  });
+
   const emailCampaigns = createEmailCampaignModule({
     authorizer: security.authorizer,
     email,
@@ -1131,6 +1268,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   router.use("/ai", ai.router);
   router.use("/compliance", compliance.router);
   router.use("/suppliers", suppliers.router);
+  router.use("/supplier", aslSupplierModule.router);
   const forms = createFormsModule({
     authorizer: security.authorizer,
   });
@@ -1142,10 +1280,19 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   return {
     router,
-    startBackgroundJobs: () =>
-      startDocumentReviewReminderSchedule({
+    startBackgroundJobs: () => {
+      const stopReview = startDocumentReviewReminderSchedule({
         service: documentManagement.reviewReminders,
         logger,
-      }),
+      });
+      startAslChaseSchedule({
+        service: aslChase,
+        logger: logger ?? createLogger({ level: "info", name: "asl-chase" }),
+      });
+      return () => {
+        stopReview?.();
+        aslChase.stop();
+      };
+    },
   };
 }

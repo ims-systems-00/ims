@@ -131,7 +131,15 @@ export function createInvitationService(deps: InvitationServiceDeps) {
 
   async function assertLicenceAvailable(
     organizationId: string,
-    role: OrganisationRole
+    role: OrganisationRole,
+    options?: {
+      /**
+       * When accepting, exclude this invitation from the pending-seat count —
+       * otherwise the invite being claimed is treated as an extra taken seat
+       * and a free allocated seat (e.g. allocated=2, used=1) incorrectly fails.
+       */
+      excludeInvitationId?: string;
+    }
   ): Promise<void> {
     const organisation = await organisations.findById(organizationId);
     if (!organisation) {
@@ -150,6 +158,7 @@ export function createInvitationService(deps: InvitationServiceDeps) {
       await repository.listAllByOrganization(organizationId)
     ).filter(
       (invitation) =>
+        invitation.id !== options?.excludeInvitationId &&
         invitation.expiresAt.getTime() > Date.now() &&
         isSuperAdminRole(invitation.role) === isSuperAdminRole(role)
     ).length;
@@ -404,7 +413,8 @@ export function createInvitationService(deps: InvitationServiceDeps) {
 
       await assertLicenceAvailable(
         invitation.organizationId,
-        invitation.role
+        invitation.role,
+        { excludeInvitationId: invitation.id }
       );
 
       const membership = await memberships.create({
