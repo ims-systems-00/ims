@@ -1,21 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+/** Cap for tabular previews (Excel / CSV). */
+export const PREVIEW_TABLE_ROW_CAP = 500;
 
 /**
- * Fetch signed-URL bytes for client-side preview libraries
- * (docx-preview, SheetJS, etc.).
+ * Fetch raw bytes from a signed view URL for client-side document parsers.
  */
-export function usePreviewBytesQuery(url: string | undefined, fileName: string) {
-  return useQuery({
-    queryKey: ["files", "preview-bytes", url],
-    enabled: Boolean(url),
-    queryFn: async () => {
-      if (!url) throw new Error("Missing preview URL");
-      const response = await fetch(url);
-      if (!response.ok) {
-        throw new Error(`Unable to load ${fileName} (${response.status})`);
-      }
-      return response.arrayBuffer();
-    },
-    staleTime: 5 * 60 * 1000,
-  });
+export async function fetchPreviewBytes(url: string): Promise<ArrayBuffer> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Unable to load file (${response.status})`);
+  }
+  return response.arrayBuffer();
 }

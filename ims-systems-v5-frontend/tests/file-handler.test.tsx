@@ -46,12 +46,17 @@ function withQueryClient(node: ReactNode) {
 }
 
 describe("file preview classification", () => {
-  it("classifies pdf, images, office and unsupported types", () => {
+  it("classifies pdf, office, media and unsupported types", () => {
     expect(getFilePreviewKind("report.PDF")).toBe("pdf");
     expect(getFilePreviewKind("photo.png")).toBe("image");
-    expect(getFilePreviewKind("sheet.xlsx")).toBe("office");
+    expect(getFilePreviewKind("brief.docx")).toBe("docx");
+    expect(getFilePreviewKind("sheet.xlsx")).toBe("excel");
+    expect(getFilePreviewKind("export.csv")).toBe("csv");
+    expect(getFilePreviewKind("clip.mp4")).toBe("video");
+    expect(getFilePreviewKind("voice.mp3")).toBe("audio");
     expect(getFilePreviewKind("notes.txt")).toBe("text");
     expect(getFilePreviewKind("data.json")).toBe("text");
+    expect(getFilePreviewKind("slides.pptx")).toBe("unsupported");
     expect(getFilePreviewKind("archive.zip")).toBe("unsupported");
   });
 

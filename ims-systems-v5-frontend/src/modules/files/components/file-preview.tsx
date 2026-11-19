@@ -11,7 +11,9 @@ import {
   isOfficeOnlineCompatibleUrl,
 } from "../lib/file-preview";
 import type { FileMetaInfo } from "../types";
-import { DocxViewer } from "./viewers/docx-viewer";
+import { CsvViewer } from "./viewers/csv-viewer";
+import { ExcelViewer } from "./viewers/excel-viewer";
+import { MediaViewer } from "./viewers/media-viewer";
 
 type FilePreviewProps = {
   file: FileMetaInfo;
@@ -20,8 +22,8 @@ type FilePreviewProps = {
 };
 
 /**
- * Shared in-app preview body: PDF viewer, inline image, Office Online
- * embed, or an unsupported fallback with a download action.
+ * Shared in-app preview body: native PDF iframe, Office Online for DOCX,
+ * specialized Excel/CSV/media viewers, plain-text inline, or download fallback.
  * Used by the preview modal and embedded preview panels.
  */
 export function FilePreview({ file, fill = false }: FilePreviewProps) {
@@ -40,7 +42,7 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
     return (
       <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
         <Loader2 className="size-4 animate-spin" />
-        {kind === "office" ? "Preparing your document…" : "Loading preview…"}
+        {kind === "docx" ? "Preparing your document…" : "Loading preview…"}
       </div>
     );
   }
@@ -93,30 +95,7 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
     );
   }
 
-  if (kind === "image") {
-    return (
-      <div className="flex h-full min-h-0 flex-1 items-center justify-center overflow-auto p-4">
-        <img
-          src={url}
-          alt={file.Name}
-          className="max-h-full max-w-full object-contain"
-        />
-      </div>
-    );
-  }
-
-  if (kind === "text") {
-    return <TextFilePreview url={url} fileName={file.Name} />;
-  }
-
-  if (kind === "office") {
-    const ext = getFileExtension(file.Name);
-    // Office Online cannot fetch localhost/private signed URLs — use
-    // in-browser docx-preview for .docx in those environments.
-    if (ext === "docx" && !isOfficeOnlineCompatibleUrl(url)) {
-      return <DocxViewer url={url} fileName={file.Name} fill={fill} />;
-    }
-
+  if (kind === "docx") {
     return (
       <div className="relative flex h-full min-h-0 flex-1 flex-col">
         {!officeLoaded ? (
@@ -133,6 +112,24 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
         />
       </div>
     );
+  }
+
+  if (kind === "excel") {
+    return <ExcelViewer url={url} fileName={file.Name} fill={fill} />;
+  }
+
+  if (kind === "csv") {
+    return <CsvViewer url={url} fileName={file.Name} fill={fill} />;
+  }
+
+  if (kind === "image" || kind === "video" || kind === "audio") {
+    return (
+      <MediaViewer url={url} fileName={file.Name} kind={kind} fill={fill} />
+    );
+  }
+
+  if (kind === "text") {
+    return <TextFilePreview url={url} fileName={file.Name} />;
   }
 
   return <UnsupportedPreview file={file} />;

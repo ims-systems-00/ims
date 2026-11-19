@@ -7,6 +7,7 @@
 
 /** Organisation officeEmail values that receive 1 complimentary Super Admin seat. */
 const COMPLIMENTARY_SUPER_USER_OFFICE_EMAILS = new Set([
+  "helen@mbsgm.com",
   "millie@seecleargroup.co.uk",
   "tledgerton@t4eg.co.uk",
   "robert.bowles@richfordgroup.com",
