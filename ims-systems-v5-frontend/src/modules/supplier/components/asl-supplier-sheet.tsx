@@ -1,5 +1,16 @@
-import { useEffect, useMemo, useState } from "react";
-import { Loader2, Mail, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  CalendarCheck,
+  Download,
+  Eye,
+  FileText,
+  Loader2,
+  Mail,
+  Pencil,
+  ShieldCheck,
+  Trash2,
+  UserRound,
+} from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { FormField, FormSection } from "@/shared/components/form-field";
@@ -7,6 +18,9 @@ import { Button } from "@/shared/components/ui/button";
 import { SheetPanelTabs } from "@/modules/activities";
 import {
   FileDropZone,
+  FilePreviewModal,
+  formatFileSize,
+  useDownloadFileMutation,
   type FileMetaInfo,
 } from "@/modules/files";
 import { notify } from "@/shared/lib/toast";
@@ -26,6 +40,7 @@ import {
   useUpdateAslSupplierMutation,
 } from "../hooks/use-asl-supplier";
 import type {
+  AslFileMeta,
   AslSupplier,
   CreateAslSupplierInput,
   UpdateAslSupplierInput,
@@ -202,89 +217,90 @@ export function AslSupplierSheet({
           ) : undefined
         }
       >
-        <div className="flex-1 overflow-y-auto px-4 py-4">
-          {mode === "create" ? (
-            <AslSupplierForm
-              mode="create"
-              pending={pending}
-              onSubmit={handleCreate}
-              onCancel={() => onOpenChange(false)}
+        {mode === "create" ? (
+          <AslSupplierForm
+            mode="create"
+            pending={pending}
+            onSubmit={handleCreate}
+            onCancel={() => onOpenChange(false)}
+          />
+        ) : mode === "edit" && supplier ? (
+          <AslSupplierForm
+            mode="edit"
+            initial={supplier}
+            pending={pending}
+            onSubmit={handleUpdate}
+            onCancel={() => onModeChange("view")}
+          />
+        ) : supplierQuery.isLoading || !supplier ? (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" /> Loading…
+          </div>
+        ) : (
+          <>
+            <SheetPanelTabs
+              tabs={SHEET_TABS}
+              value={panelTab}
+              onChange={setPanelTab}
             />
-          ) : mode === "edit" && supplier ? (
-            <AslSupplierForm
-              mode="edit"
-              initial={supplier}
-              pending={pending}
-              onSubmit={handleUpdate}
-              onCancel={() => onModeChange("view")}
-            />
-          ) : supplierQuery.isLoading || !supplier ? (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" /> Loading…
-            </div>
-          ) : (
-            <>
-              <SheetPanelTabs
-                tabs={SHEET_TABS}
-                value={panelTab}
-                onChange={setPanelTab}
+            {panelTab === "overview" ? (
+              <OverviewTab supplier={supplier} />
+            ) : null}
+            {panelTab === "documents" ? (
+              <DocumentsTab
+                supplier={supplier}
+                lead={settingsQuery.data?.lead ?? 30}
+                pending={pending}
+                canEdit={canCreate}
+                onAdd={async (input) => {
+                  try {
+                    await addDocMutation.mutateAsync(input);
+                    notify.success("Document saved");
+                  } catch (error) {
+                    notify.fromError(error, "Unable to save document");
+                  }
+                }}
+                onUpdate={async (docId, input) => {
+                  try {
+                    await updateDocMutation.mutateAsync({
+                      docId,
+                      body: input,
+                    });
+                    notify.success("Document updated");
+                  } catch (error) {
+                    notify.fromError(error, "Unable to update document");
+                  }
+                }}
+                onDelete={async (docId) => {
+                  try {
+                    await deleteDocMutation.mutateAsync(docId);
+                    notify.success("Document removed");
+                  } catch (error) {
+                    notify.fromError(error, "Unable to remove document");
+                  }
+                }}
               />
-              {panelTab === "overview" ? (
-                <OverviewTab supplier={supplier} />
-              ) : null}
-              {panelTab === "documents" ? (
-                <DocumentsTab
-                  supplier={supplier}
-                  lead={settingsQuery.data?.lead ?? 30}
-                  pending={pending}
-                  canEdit={canCreate}
-                  onAdd={async (input) => {
-                    try {
-                      await addDocMutation.mutateAsync(input);
-                      notify.success("Document saved");
-                    } catch (error) {
-                      notify.fromError(error, "Unable to save document");
-                    }
-                  }}
-                  onUpdate={async (docId, input) => {
-                    try {
-                      await updateDocMutation.mutateAsync({ docId, body: input });
-                      notify.success("Document updated");
-                    } catch (error) {
-                      notify.fromError(error, "Unable to update document");
-                    }
-                  }}
-                  onDelete={async (docId) => {
-                    try {
-                      await deleteDocMutation.mutateAsync(docId);
-                      notify.success("Document removed");
-                    } catch (error) {
-                      notify.fromError(error, "Unable to remove document");
-                    }
-                  }}
-                />
-              ) : null}
-              {panelTab === "evaluations" ? (
-                <EvaluationsTab
-                  supplier={supplier}
-                  criteria={settingsQuery.data?.criteria ?? []}
-                  pending={pending}
-                  canEdit={canCreate}
-                  onSubmit={async (scores, note) => {
-                    try {
-                      await addEvalMutation.mutateAsync({ scores, note });
-                      notify.success("Evaluation recorded");
-                    } catch (error) {
-                      notify.fromError(error, "Unable to save evaluation");
-                    }
-                  }}
-                />
-              ) : null}
-              {panelTab === "comms" ? <CommsTab supplier={supplier} /> : null}
-              {panelTab === "trail" ? <TrailTab supplier={supplier} /> : null}
-            </>
-          )}
-        </div>
+            ) : null}
+            {panelTab === "evaluations" ? (
+              <EvaluationsTab
+                supplier={supplier}
+                criteria={settingsQuery.data?.criteria ?? []}
+                pending={pending}
+                canEdit={canCreate}
+                onSubmit={async (scores, note) => {
+                  try {
+                    await addEvalMutation.mutateAsync({ scores, note });
+                    notify.success("Evaluation recorded");
+                  } catch (error) {
+                    notify.fromError(error, "Unable to save evaluation");
+                  }
+                }}
+              />
+            ) : null}
+            {panelTab === "comms" ? <CommsTab supplier={supplier} /> : null}
+            {panelTab === "trail" ? <TrailTab supplier={supplier} /> : null}
+          </>
+        )}
       </AppSheet>
 
       {supplierId ? (
@@ -320,41 +336,121 @@ export function AslSupplierSheet({
 
 function OverviewTab({ supplier }: { supplier: AslSupplier }) {
   return (
-    <div className="space-y-4 text-sm">
-      <div className="flex flex-wrap gap-2">
-        <AslStatusBadge status={supplier.status} />
-        <AslCritBadge crit={supplier.crit} />
+    <div className="space-y-5 text-sm">
+      <div className="overflow-hidden rounded-xl border border-border-subtle bg-gradient-to-br from-muted/50 via-card to-card">
+        <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-4">
+          <div className="min-w-0 space-y-1">
+            <p className="ims-text-meta">Supplier profile</p>
+            <p className="truncate text-base font-semibold tracking-tight">
+              {supplier.name}
+            </p>
+            <p className="ims-text-meta">
+              {supplier.reference} · {supplier.cat}
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            <AslStatusBadge status={supplier.status} />
+            <AslCritBadge crit={supplier.crit} />
+          </div>
+        </div>
+        <div className="grid gap-px border-t border-border-subtle bg-border-subtle sm:grid-cols-2">
+          <OverviewFact
+            icon={<UserRound className="size-3.5" />}
+            label="Contact"
+            value={supplier.contact || "—"}
+          />
+          <OverviewFact
+            icon={<Mail className="size-3.5" />}
+            label="Email"
+            value={supplier.email || "—"}
+          />
+          <OverviewFact
+            icon={<CalendarCheck className="size-3.5" />}
+            label="Approved by / on"
+            value={`${supplier.appby || "—"} · ${supplier.appon || "—"}`}
+          />
+          <OverviewFact
+            icon={<ShieldCheck className="size-3.5" />}
+            label="Standards"
+            value={supplier.stds.join(", ") || "—"}
+          />
+        </div>
       </div>
-      <dl className="grid gap-3 sm:grid-cols-2">
-        <div>
-          <dt className="ims-text-meta">Contact</dt>
-          <dd>{supplier.contact || "—"}</dd>
-        </div>
-        <div>
-          <dt className="ims-text-meta">Email</dt>
-          <dd>{supplier.email || "—"}</dd>
-        </div>
-        <div>
-          <dt className="ims-text-meta">Approved by / on</dt>
-          <dd>
-            {supplier.appby || "—"} · {supplier.appon || "—"}
-          </dd>
-        </div>
-        <div>
-          <dt className="ims-text-meta">Standards</dt>
-          <dd>{supplier.stds.join(", ") || "—"}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="ims-text-meta">Scope</dt>
-          <dd className="whitespace-pre-wrap">{supplier.scope || "—"}</dd>
-        </div>
-        <div className="sm:col-span-2">
-          <dt className="ims-text-meta">Requirements (8.4.3)</dt>
-          <dd className="whitespace-pre-wrap">{supplier.reqs || "—"}</dd>
-        </div>
-      </dl>
+
+      <OverviewBlock
+        icon={<FileText className="size-3.5" />}
+        title="Scope"
+        body={supplier.scope || "—"}
+      />
+      <OverviewBlock
+        icon={<ShieldCheck className="size-3.5" />}
+        title="Requirements (8.4.3)"
+        body={supplier.reqs || "—"}
+      />
     </div>
   );
+}
+
+function OverviewFact({
+  icon,
+  label,
+  value,
+}: {
+  icon: ReactNode;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex gap-3 bg-card px-4 py-3">
+      <span className="mt-0.5 text-muted-foreground">{icon}</span>
+      <div className="min-w-0">
+        <p className="ims-text-meta">{label}</p>
+        <p className="mt-0.5 break-words font-medium text-foreground">{value}</p>
+      </div>
+    </div>
+  );
+}
+
+function OverviewBlock({
+  icon,
+  title,
+  body,
+}: {
+  icon: ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <section className="rounded-xl border border-border-subtle px-4 py-3.5">
+      <div className="mb-2 flex items-center gap-2 text-muted-foreground">
+        {icon}
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground">
+          {title}
+        </h3>
+      </div>
+      <p className="whitespace-pre-wrap leading-relaxed text-foreground/90">
+        {body}
+      </p>
+    </section>
+  );
+}
+
+const EVAL_SCORE_MEANINGS: Record<number, string> = {
+  1: "Poor — unacceptable / major issues",
+  2: "Below expectations — needs improvement",
+  3: "Meets requirements — satisfactory",
+  4: "Good — consistently exceeds",
+  5: "Excellent — outstanding performance",
+};
+
+function toAttachmentFile(file: AslFileMeta): FileMetaInfo {
+  const key = file.Key || file.key || "";
+  return {
+    Name: file.Name,
+    Key: key,
+    key,
+    Bucket: file.Bucket,
+  };
 }
 
 function DocumentsTab({
@@ -402,6 +498,9 @@ function DocumentsTab({
   const [exp, setExp] = useState("");
   const [ref, setRef] = useState("");
   const [staged, setStaged] = useState<FileMetaInfo | null>(null);
+  const [dropKey, setDropKey] = useState(0);
+  const [previewFile, setPreviewFile] = useState<FileMetaInfo | null>(null);
+  const downloadMutation = useDownloadFileMutation();
 
   const required = useMemo(() => requiredDocsFor(supplier), [supplier]);
   const gaps = required.filter((req) => {
@@ -412,7 +511,7 @@ function DocumentsTab({
   return (
     <div className="space-y-5">
       {gaps.length ? (
-        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm">
+        <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm dark:border-amber-500/30 dark:bg-amber-500/10">
           <p className="font-medium">Missing required</p>
           <ul className="mt-1 list-disc pl-4 text-muted-foreground">
             {gaps.map((g) => (
@@ -422,19 +521,23 @@ function DocumentsTab({
         </div>
       ) : null}
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {supplier.docs.length === 0 ? (
           <p className="text-sm text-muted-foreground">No documents on file.</p>
         ) : (
           supplier.docs.map((doc) => {
             const state = docState(doc, lead);
+            const fileMeta =
+              doc.file?.Bucket && (doc.file.Key || doc.file.key)
+                ? toAttachmentFile(doc.file)
+                : null;
             return (
               <div
                 key={doc.id}
-                className="rounded-md border border-border-subtle px-3 py-2 text-sm"
+                className="space-y-2.5 rounded-xl border border-border-subtle px-3 py-3 text-sm"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <div>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
                     <p className="font-medium">{doc.type}</p>
                     <p className="ims-text-meta">
                       Exp {doc.exp || "n/a"}
@@ -450,6 +553,7 @@ function DocumentsTab({
                         size="sm"
                         variant="ghost"
                         disabled={pending}
+                        aria-label={`Remove ${doc.type}`}
                         onClick={() => void onDelete(doc.id)}
                       >
                         <Trash2 className="size-3.5" />
@@ -457,9 +561,59 @@ function DocumentsTab({
                     ) : null}
                   </div>
                 </div>
+
+                {fileMeta ? (
+                  <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-muted/15 px-2.5 py-2">
+                    <FileText className="size-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {fileMeta.Name}
+                      </p>
+                      {doc.file?.Size ? (
+                        <p className="ims-text-meta">
+                          {formatFileSize(doc.file.Size)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setPreviewFile(fileMeta)}
+                    >
+                      <Eye className="size-3.5" />
+                      View
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="ghost"
+                      disabled={downloadMutation.isPending}
+                      aria-label={`Download ${fileMeta.Name}`}
+                      onClick={() =>
+                        downloadMutation.mutate(fileMeta, {
+                          onError: (error) =>
+                            notify.fromError(error, "Document download failed"),
+                        })
+                      }
+                    >
+                      <Download className="size-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <p className="rounded-md border border-dashed border-border-subtle bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+                    No file attached — upload one below using the same document
+                    type to attach a file.
+                  </p>
+                )}
+
                 {canEdit ? (
-                  <div className="mt-2 flex flex-wrap gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <label className="ims-text-meta" htmlFor={`exp-${doc.id}`}>
+                      Expiry
+                    </label>
                     <input
+                      id={`exp-${doc.id}`}
                       className="ims-field ims-field-sm w-36"
                       type="date"
                       defaultValue={doc.exp ?? ""}
@@ -481,6 +635,14 @@ function DocumentsTab({
           })
         )}
       </div>
+
+      <FilePreviewModal
+        file={previewFile}
+        open={Boolean(previewFile)}
+        onOpenChange={(next) => {
+          if (!next) setPreviewFile(null);
+        }}
+      />
 
       {canEdit ? (
         <FormSection title="Add / replace document">
@@ -518,6 +680,7 @@ function DocumentsTab({
             </FormField>
           </div>
           <FileDropZone
+            key={dropKey}
             path="supplier"
             multiple={false}
             disabled={pending}
@@ -527,30 +690,36 @@ function DocumentsTab({
           <Button
             type="button"
             size="sm"
-            disabled={pending || !type}
+            disabled={pending || !type || !staged}
             onClick={() => {
+              if (!staged) return;
               void onAdd({
                 type,
                 exp: exp || null,
                 ref,
-                storageInfo: staged
-                  ? {
-                      Name: staged.Name,
-                      Key: staged.Key,
-                      key: staged.key,
-                      Bucket: staged.Bucket,
-                      Size: undefined,
-                    }
-                  : null,
+                storageInfo: {
+                  Name: staged.Name,
+                  Key: staged.Key,
+                  key: staged.key,
+                  Bucket: staged.Bucket,
+                  Size: undefined,
+                },
               }).then(() => {
                 setExp("");
                 setRef("");
                 setStaged(null);
+                setDropKey((k) => k + 1);
               });
             }}
           >
             Save document
           </Button>
+          {!staged ? (
+            <p className="ims-text-meta">
+              Upload a file first, then save — you can preview and download it
+              from the list above.
+            </p>
+          ) : null}
         </FormSection>
       ) : null}
     </div>
@@ -579,31 +748,96 @@ function EvaluationsTab({
     setScores(next);
   }, [criteria, supplier.id]);
 
+  const previewScore = useMemo(() => {
+    if (!criteria.length) return 0;
+    let weighted = 0;
+    let weightSum = 0;
+    for (const c of criteria) {
+      weighted += (scores[c.k] ?? 3) * c.w;
+      weightSum += c.w;
+    }
+    return weightSum ? weighted / weightSum : 0;
+  }, [criteria, scores]);
+
   return (
     <div className="space-y-5">
       {canEdit && criteria.length ? (
         <FormSection title="New evaluation">
-          {criteria.map((c) => (
-            <FormField key={c.k} label={`${c.n} (${c.w}%)`}>
-              <select
-                className="ims-select ims-field w-24"
-                value={scores[c.k] ?? 3}
-                disabled={pending}
-                onChange={(e) =>
-                  setScores((prev) => ({
-                    ...prev,
-                    [c.k]: Number(e.target.value),
-                  }))
-                }
-              >
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>
+          <div className="rounded-xl border border-border-subtle bg-muted/20 px-3 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Score guide (1–5)
+            </p>
+            <ul className="mt-2 space-y-1 text-xs text-muted-foreground">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <li key={n} className="flex gap-2">
+                  <span className="w-4 shrink-0 font-semibold text-foreground">
                     {n}
-                  </option>
-                ))}
-              </select>
-            </FormField>
-          ))}
+                  </span>
+                  <span>{EVAL_SCORE_MEANINGS[n]}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="space-y-4">
+            {criteria.map((c) => {
+              const value = scores[c.k] ?? 3;
+              return (
+                <div
+                  key={c.k}
+                  className="rounded-xl border border-border-subtle px-3 py-3"
+                >
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium">
+                        {c.n}{" "}
+                        <span className="font-normal text-muted-foreground">
+                          ({c.w}%)
+                        </span>
+                      </p>
+                      <p className="ims-text-meta mt-0.5">
+                        {EVAL_SCORE_MEANINGS[value]}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-sm font-semibold text-primary">
+                      {value}
+                    </span>
+                  </div>
+                  <div className="mt-3">
+                    <input
+                      type="range"
+                      min={1}
+                      max={5}
+                      step={1}
+                      value={value}
+                      disabled={pending}
+                      aria-label={`${c.n} score`}
+                      className="h-2 w-full cursor-pointer appearance-none rounded-full bg-muted accent-primary disabled:cursor-not-allowed disabled:opacity-60"
+                      onChange={(e) =>
+                        setScores((prev) => ({
+                          ...prev,
+                          [c.k]: Number(e.target.value),
+                        }))
+                      }
+                    />
+                    <div className="mt-1 flex justify-between px-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span>1 Poor</span>
+                      <span>3 Meets</span>
+                      <span>5 Excellent</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex items-center justify-between rounded-lg border border-border-subtle bg-card px-3 py-2 text-sm">
+            <span className="text-muted-foreground">Weighted preview</span>
+            <span className="font-semibold tabular-nums">
+              {previewScore.toFixed(1)} / 5
+            </span>
+          </div>
+
           <FormField label="Notes">
             <textarea
               className="ims-field min-h-[3.5rem] py-2"
@@ -633,13 +867,39 @@ function EvaluationsTab({
             .map((e) => (
               <div
                 key={e.id}
-                className="rounded-md border border-border-subtle px-3 py-2 text-sm"
+                className="space-y-2 rounded-xl border border-border-subtle px-3 py-3 text-sm"
               >
                 <div className="flex justify-between gap-2">
                   <span className="font-medium">{e.date}</span>
-                  <span>Score {e.score.toFixed(1)}</span>
+                  <span className="font-semibold tabular-nums">
+                    Score {e.score.toFixed(1)}
+                  </span>
                 </div>
                 <p className="ims-text-meta">By {e.by}</p>
+                {criteria.length ? (
+                  <ul className="space-y-1.5">
+                    {criteria.map((c) => {
+                      const s = e.scores[c.k];
+                      if (s == null) return null;
+                      return (
+                        <li key={c.k} className="flex items-center gap-2">
+                          <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+                            {c.n}
+                          </span>
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-muted">
+                            <div
+                              className="h-full rounded-full bg-primary"
+                              style={{ width: `${(s / 5) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-4 text-right text-xs font-medium tabular-nums">
+                            {s}
+                          </span>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                ) : null}
                 {e.note ? <p className="mt-1">{e.note}</p> : null}
               </div>
             ))

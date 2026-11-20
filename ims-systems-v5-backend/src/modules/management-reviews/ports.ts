@@ -6,14 +6,24 @@
 import type { ManagementReview } from "./types";
 
 export type ManagementReviewNotificationPort = {
+  /**
+   * One digest notification per attendee for a newly scheduled series
+   * (not one message per occurrence).
+   */
   notifyScheduled(input: {
     organizationId: string;
+    /** Deep-link target — typically the first occurrence in the series. */
     reviewId: string;
     title: string;
-    reference: string;
     attendeeIds: string[];
     privacy: string;
     businessUnitId?: string;
+    interval: string;
+    occurrences: Array<{
+      reviewId: string;
+      reference: string;
+      date: Date;
+    }>;
   }): Promise<void>;
 };
 

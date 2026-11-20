@@ -55,10 +55,10 @@ import { InvoicesListPage } from "@/modules/invoices";
 import { LeavesListPage } from "@/modules/leaves";
 import { CalendarPage } from "@/modules/calendar";
 import {
+  AslHubPage,
   PublicAslSharePage,
   PublicAslUploadPage,
 } from "@/modules/supplier";
-import { SuppliersListPage } from "@/modules/suppliers";
 import { TasksListPage } from "@/modules/tasks";
 import {
   CreateOrganisationPage,
@@ -228,7 +228,7 @@ export function App() {
               path="partner/dashboard"
               element={<PartnerDashboardPage />}
             />
-            <Route path="suppliers" element={<SuppliersListPage />} />
+            <Route path="suppliers" element={<AslHubPage />} />
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="data-import" element={<DataImportPage />} />
             <Route path="report-bug" element={<ReportBugPage />} />

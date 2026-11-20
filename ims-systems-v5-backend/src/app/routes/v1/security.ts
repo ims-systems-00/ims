@@ -56,16 +56,21 @@ export function createSecurityRouter(authorizer: Authorizer): Router {
         throw new ForbiddenError("Organisation context required");
       }
 
+      // SPA gates use `{resource}:{action}` (e.g. suppliers:create). Emit
+      // create/update/delete as well as read — read-only used to hide Add buttons.
+      const capabilityActions = ["read", "create", "update", "delete"] as const;
       const permissions: string[] = [];
       for (const resourceType of NAV_CAPABILITY_RESOURCE_TYPES) {
-        const allowed = await authorizer.allow({
-          identity: req.identity,
-          action: "read",
-          resourceType,
-          organizationId,
-        });
-        if (allowed) {
-          permissions.push(`${resourceType}:read`);
+        for (const action of capabilityActions) {
+          const allowed = await authorizer.allow({
+            identity: req.identity,
+            action,
+            resourceType,
+            organizationId,
+          });
+          if (allowed) {
+            permissions.push(`${resourceType}:${action}`);
+          }
         }
       }
 

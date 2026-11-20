@@ -11,6 +11,16 @@ export const ALICE_FLOAT_SELECTOR = "[data-alice-float]";
 /** Radix dropdown / menu portals — keep non-modal sheets open while menus close. */
 export const MENU_LAYER_SELECTOR =
   "[data-radix-dropdown-menu-content],[data-radix-menu-content],[role='menu']";
+/**
+ * Nested dialogs (Confirm / Notify / etc.) portal above non-modal sheets.
+ * Without this, focus moving into the dialog dismisses the sheet and unmounts
+ * the dialog in the same tick.
+ */
+export const DIALOG_LAYER_SELECTOR =
+  "[data-dialog-layer],[role='dialog'],[role='alertdialog']";
+/** Select / popover portals opened from inside a sheet. */
+export const OVERLAY_PORTAL_LAYER_SELECTOR =
+  "[data-radix-select-content],[data-radix-popover-content],[data-radix-popper-content-wrapper]";
 
 /**
  * Clicks on message/prompt text often target a Text node, not an Element.
@@ -40,6 +50,21 @@ export function isInMenuLayer(
   target: EventTarget | null | undefined
 ): boolean {
   return eventTargetElement(target)?.closest(MENU_LAYER_SELECTOR) !== null;
+}
+
+export function isInDialogLayer(
+  target: EventTarget | null | undefined
+): boolean {
+  return eventTargetElement(target)?.closest(DIALOG_LAYER_SELECTOR) !== null;
+}
+
+export function isInOverlayPortalLayer(
+  target: EventTarget | null | undefined
+): boolean {
+  return (
+    eventTargetElement(target)?.closest(OVERLAY_PORTAL_LAYER_SELECTOR) !==
+    null
+  );
 }
 
 type OutsideInteractionEvent = {
@@ -80,6 +105,20 @@ export function keepOpenForMenuLayer(event: OutsideInteractionEvent): void {
   }
 }
 
+export function keepOpenForDialogLayer(event: OutsideInteractionEvent): void {
+  if (isInDialogLayer(resolveOutsideTarget(event))) {
+    event.preventDefault();
+  }
+}
+
+export function keepOpenForOverlayPortalLayer(
+  event: OutsideInteractionEvent
+): void {
+  if (isInOverlayPortalLayer(resolveOutsideTarget(event))) {
+    event.preventDefault();
+  }
+}
+
 /** Combined dismiss guard for sheets/dialogs that sit beside Alice / the guide. */
 export function keepOpenForFloatingLayers(
   event: OutsideInteractionEvent
@@ -87,4 +126,6 @@ export function keepOpenForFloatingLayers(
   keepOpenForGuideLayer(event);
   keepOpenForAliceFloat(event);
   keepOpenForMenuLayer(event);
+  keepOpenForDialogLayer(event);
+  keepOpenForOverlayPortalLayer(event);
 }

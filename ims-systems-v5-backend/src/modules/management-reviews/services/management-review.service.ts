@@ -238,16 +238,26 @@ export function createManagementReviewService(
         payloads
       );
 
-      for (const review of items) {
+      // One digest notification for the whole series (not one per occurrence).
+      const primary = items[0];
+      if (primary) {
         await notifications.notifyScheduled({
           organizationId: actor.organizationId,
-          reviewId: review.id,
-          title: review.title,
-          reference: review.reference,
-          attendeeIds: review.attendees,
-          privacy: review.privacy,
-          businessUnitId: review.businessUnitId,
+          reviewId: primary.id,
+          title: primary.title,
+          attendeeIds: attendees,
+          privacy: primary.privacy,
+          businessUnitId: primary.businessUnitId,
+          interval: primary.interval,
+          occurrences: items.map((review) => ({
+            reviewId: review.id,
+            reference: review.reference,
+            date: review.date,
+          })),
         });
+      }
+
+      for (const review of items) {
         await syncCalendar(review);
       }
 
