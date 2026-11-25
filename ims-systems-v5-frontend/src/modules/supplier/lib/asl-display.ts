@@ -74,6 +74,24 @@ export function lastEval(supplier: Pick<AslSupplier, "evals">) {
   return [...supplier.evals].sort((a, b) => (a.date < b.date ? 1 : -1))[0] ?? null;
 }
 
+function addMonths(dateIso: string, months: number): string {
+  const d = new Date(dateIso);
+  d.setMonth(d.getMonth() + months);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Manual evalDue overrides computed lastEval/appon + criticality interval. */
+export function nextEvalDate(
+  supplier: Pick<AslSupplier, "evals" | "appon" | "crit" | "evalDue">,
+  interval: Record<AslCriticality, number>
+): string | null {
+  if (supplier.evalDue?.trim()) return supplier.evalDue.trim();
+  const last = lastEval(supplier);
+  const base = last?.date ?? supplier.appon;
+  if (!base) return null;
+  return addMonths(base, interval[supplier.crit] ?? 12);
+}
+
 export function docStateLabel(state: AslDocState): string {
   switch (state) {
     case "missing":

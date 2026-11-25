@@ -14,6 +14,7 @@ import type {
   CrossOrgCopySource,
   DocumentApplicableModule,
   DocumentPurpose,
+  DocumentSourceModule,
   DocumentFileMeta,
   DocumentSignature,
   InviteSignaturesInput,
@@ -39,6 +40,15 @@ function toQuery(
 
 export function getDocumentOverview(): Promise<DocumentOverviewCounts> {
   return apiRequest<DocumentOverviewCounts>("/document-management/overview");
+}
+
+/** Backfill operational module uploads into Document Management libraries. */
+export async function syncModuleDocuments(): Promise<DocumentOverviewCounts> {
+  const result = await apiRequest<{
+    overview: DocumentOverviewCounts;
+    modules?: Record<string, { registered?: number }>;
+  }>("/document-management/module-documents/sync", { method: "POST" });
+  return result.overview;
 }
 
 export function listDocumentRepositories(
@@ -537,6 +547,7 @@ export function listPublishedDocuments(params: {
   search?: string;
   purpose?: DocumentPurpose;
   applicableModule?: DocumentApplicableModule;
+  sourceModule?: DocumentSourceModule;
   /** Matches Compliance Settings links (e.g. "ISO 9001"). */
   complianceToolkitId?: string;
   clauseId?: string;

@@ -7,6 +7,7 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 import {
   DOCUMENT_PRIVACY_VALUES,
   DOCUMENT_REVIEW_INTERVALS,
+  DOCUMENT_SOURCE_MODULES,
 } from "../types";
 
 const documentRepositorySchema = new Schema(
@@ -28,6 +29,11 @@ const documentRepositorySchema = new Schema(
       enum: [...DOCUMENT_REVIEW_INTERVALS],
       default: "Yearly",
     },
+    systemKey: {
+      type: String,
+      enum: [...DOCUMENT_SOURCE_MODULES],
+      default: null,
+    },
     createdBy: { type: String, required: true },
     createdOn: { type: Date, required: true },
     updatedBy: { type: String, default: null },
@@ -41,6 +47,16 @@ documentRepositorySchema.index({ organizationId: 1, deletedAt: 1, createdOn: -1 
 documentRepositorySchema.index({ organizationId: 1, deletedAt: 1, name: 1 });
 documentRepositorySchema.index({ organizationId: 1, reference: 1 }, { unique: true });
 documentRepositorySchema.index({ organizationId: 1, deletedAt: 1, privacy: 1 });
+documentRepositorySchema.index(
+  { organizationId: 1, systemKey: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      systemKey: { $type: "string" },
+      deletedAt: null,
+    },
+  }
+);
 
 export type DocumentRepositoryDocument = InferSchemaType<
   typeof documentRepositorySchema

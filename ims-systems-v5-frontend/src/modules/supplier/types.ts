@@ -127,6 +127,8 @@ export type AslSupplier = {
   reqs: string;
   appby: string;
   appon: string | null;
+  evalDue: string | null;
+  evalDueNotifiedOn: string | null;
   docs: AslDocument[];
   evals: AslEvaluation[];
   comms: AslComm[];
@@ -149,6 +151,7 @@ export type CreateAslSupplierInput = {
   stds?: string[];
   scope?: string;
   reqs?: string;
+  evalDue?: string | null;
 };
 
 export type UpdateAslSupplierInput = {
@@ -163,8 +166,8 @@ export type UpdateAslSupplierInput = {
   reqs?: string;
   appby?: string;
   appon?: string | null;
+  evalDue?: string | null;
 };
-
 export type UpsertAslDocumentInput = {
   type: string;
   exp?: string | null;
@@ -273,6 +276,7 @@ export type AslPublicSnapshot = {
 };
 
 export type AslUploadContext = {
+  orgName: string;
   supplier: {
     id: string;
     name: string;
@@ -282,7 +286,6 @@ export type AslUploadContext = {
   };
   organizationId: string;
 };
-
 export type AslHubView =
   | "overview"
   | "asl"

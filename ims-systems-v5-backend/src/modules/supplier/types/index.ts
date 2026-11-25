@@ -136,6 +136,10 @@ export type AslSupplier = {
   reqs: string;
   appby: string;
   appon: string | null;
+  /** Manual next evaluation due date (YYYY-MM-DD). Overrides computed interval when set. */
+  evalDue: string | null;
+  /** ISO date of last eval-due notification send (dedupe). */
+  evalDueNotifiedOn: string | null;
   docs: AslDocument[];
   evals: AslEvaluation[];
   comms: AslComm[];
@@ -158,6 +162,7 @@ export type CreateAslSupplierInput = {
   stds?: string[];
   scope?: string;
   reqs?: string;
+  evalDue?: string | null;
 };
 
 export type UpdateAslSupplierInput = {
@@ -172,8 +177,8 @@ export type UpdateAslSupplierInput = {
   reqs?: string;
   appby?: string;
   appon?: string | null;
+  evalDue?: string | null;
 };
-
 export type UpsertAslDocumentInput = {
   type: string;
   exp?: string | null;

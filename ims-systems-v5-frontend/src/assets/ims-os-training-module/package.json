@@ -1,0 +1,9 @@
+{
+  "name": "ims-os-training-module",
+  "version": "1.0.0",
+  "description": "iMS OS Training & Competency module: matrix, role requirements, self-service, reference API",
+  "private": true,
+  "scripts": { "start": "node server/server.js", "test": "node --test server/test/*.test.js", "seed": "node server/make-seed.js" },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED"
+}

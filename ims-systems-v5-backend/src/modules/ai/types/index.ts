@@ -21,6 +21,7 @@ export const AI_SOURCE_MODULE_TYPES = [
   "managementreviews",
   "kpiobjectives",
   "suppliers",
+  "inventory",
 ] as const;
 export type AiSourceModuleType = (typeof AI_SOURCE_MODULE_TYPES)[number];
 

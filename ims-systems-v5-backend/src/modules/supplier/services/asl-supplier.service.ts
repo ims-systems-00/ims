@@ -2,6 +2,10 @@
  * Supplier ASL application service — production rules + integrations.
  */
 import { randomUUID } from "node:crypto";
+import {
+  DEFAULT_IMS_EMAIL_BRANDING,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
 import type { Authorizer, SecurityIdentity } from "../../../security";
 import {
   ForbiddenError,
@@ -9,6 +13,11 @@ import {
   UnauthorizedError,
   ValidationAppError,
 } from "../../../shared";
+import {
+  storageInfoFromMeta,
+  type DocumentModuleLibraryPort,
+} from "../../document-management";
+import { createOrganisationEmailBrandingResolver } from "../../organisation/adapters/email-branding.adapter";
 import {
   appendTrail,
   applyEvaluationOutcome,
@@ -29,7 +38,12 @@ import {
   buildAuditorPackPdf,
   buildCsvExport,
 } from "../lib/auditor-pack";
-import { buildSupplierMail, recentChaseType } from "../lib/mail";
+import {
+  buildEvalDueInternalMail,
+  buildEvalDueMail,
+  buildSupplierMail,
+  recentChaseType,
+} from "../lib/mail";
 import {
   signShareToken,
   signUploadToken,
@@ -43,6 +57,7 @@ import type {
   AslNotificationPort,
   AslOrgPort,
   AslTaskPort,
+  AslUsersPort,
 } from "../ports";
 import type { AslSettingsRepository } from "../repositories/asl-settings.repository";
 import {
@@ -103,7 +118,9 @@ export type AslSupplierServiceDeps = {
   tasks: AslTaskPort;
   incidents: AslIncidentPort;
   org: AslOrgPort;
+  users: AslUsersPort;
   notifications: AslNotificationPort;
+  documents: DocumentModuleLibraryPort;
   tokenSecret: string;
   publicApiBaseUrl: string;
   clientUrl: string;
@@ -111,7 +128,60 @@ export type AslSupplierServiceDeps = {
 
 export type AslSupplierService = ReturnType<typeof createAslSupplierService>;
 
+export type AslLibrarySyncResult = {
+  scanned: number;
+  created: number;
+  existing: number;
+  failed: number;
+};
+
 export function createAslSupplierService(deps: AslSupplierServiceDeps) {
+  const resolveEmailBranding = createOrganisationEmailBrandingResolver();
+
+  async function registerSupplierDoc(input: {
+    organizationId: string;
+    createdBy: string;
+    supplierId: string;
+    supplierName: string;
+    doc: AslDocument;
+  }): Promise<"created" | "existing" | "skipped" | "failed"> {
+    const storageInfo = storageInfoFromMeta(input.doc.file);
+    if (!storageInfo) return "skipped";
+    try {
+      const result = await deps.documents.registerDocument({
+        organizationId: input.organizationId,
+        createdBy: input.createdBy,
+        sourceModule: "supplier",
+        sourceKey: `supplier:doc:${input.supplierId}:${input.doc.id}`,
+        name: `${input.supplierName} — ${input.doc.type}`,
+        storageInfo,
+        purpose: "Document",
+        reviewDate: input.doc.exp || null,
+        sourceLabel: input.supplierName,
+        folderName: input.doc.type || "Documents",
+      });
+      if (!result) return "skipped";
+      return result.created ? "created" : "existing";
+    } catch {
+      // Non-fatal — ASL write already succeeded.
+      return "failed";
+    }
+  }
+
+  function queueSupplierDoc(
+    input: Parameters<typeof registerSupplierDoc>[0]
+  ): void {
+    void registerSupplierDoc(input);
+  }
+
+  async function brandingFor(organizationId: string): Promise<EmailBranding> {
+    try {
+      return await resolveEmailBranding(organizationId);
+    } catch {
+      return DEFAULT_IMS_EMAIL_BRANDING;
+    }
+  }
+
   async function assertAllowed(
     identity: SecurityIdentity,
     action: "read" | "create" | "delete",
@@ -456,6 +526,17 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
       if (input.appby !== undefined) set("appby", input.appby.trim());
       if (input.appon !== undefined) set("appon", input.appon);
       if (input.stds !== undefined) set("stds", input.stds);
+      if (input.evalDue !== undefined) {
+        const nextDue = input.evalDue?.trim() || null;
+        if (supplier.evalDue !== nextDue) {
+          changed.push("evalDue");
+          supplier = {
+            ...supplier,
+            evalDue: nextDue,
+            evalDueNotifiedOn: null,
+          };
+        }
+      }
       if (input.status !== undefined && input.status !== supplier.status) {
         changed.push("status");
         supplier = { ...supplier, status: input.status };
@@ -565,6 +646,16 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
         subjectId
       );
       if (!saved) throw new NotFoundError("Supplier not found");
+      const registered = saved.docs.find((d) => d.type === type);
+      if (registered?.file) {
+        queueSupplierDoc({
+          organizationId,
+          createdBy: subjectId,
+          supplierId: saved.id,
+          supplierName: saved.name,
+          doc: registered,
+        });
+      }
       return persistRules(organizationId, saved, subjectId);
     },
 
@@ -614,6 +705,15 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
         subjectId
       );
       if (!saved) throw new NotFoundError("Supplier not found");
+      if (next.file) {
+        queueSupplierDoc({
+          organizationId,
+          createdBy: subjectId,
+          supplierId: saved.id,
+          supplierName: saved.name,
+          doc: next,
+        });
+      }
       return persistRules(organizationId, saved, subjectId);
     },
 
@@ -683,6 +783,8 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
       supplier = {
         ...supplier,
         evals: [...supplier.evals, evaluation],
+        evalDue: null,
+        evalDueNotifiedOn: null,
         trail: appendTrail(
           supplier.trail,
           `Evaluation recorded · score ${score}`,
@@ -721,6 +823,7 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
       await assertAllowed(actor, "create");
       const settings = await deps.settings.getOrCreate(organizationId);
       const orgName = await deps.org.getOrganizationName(organizationId);
+      const branding = await brandingFor(organizationId);
       const who = actorName(actor);
       const today = startOfToday();
       const results: AslNotifyResult[] = [];
@@ -751,6 +854,7 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
           actorName: who,
           uploadUrl: uploadPublicUrl(uploadToken),
           today,
+          branding,
         });
         const type = recentChaseType(supplier, settings.esc, today);
         let sent = false;
@@ -935,7 +1039,9 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
         claims.supplierId
       );
       const settings = await deps.settings.getOrCreate(claims.organizationId);
+      const orgName = await deps.org.getOrganizationName(claims.organizationId);
       return {
+        orgName,
         supplier: {
           id: supplier.id,
           name: supplier.name,
@@ -1040,6 +1146,13 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
         "supplier-portal"
       );
       if (!saved) throw new NotFoundError("Supplier not found");
+      queueSupplierDoc({
+        organizationId: claims.organizationId,
+        createdBy: "supplier-portal",
+        supplierId: saved.id,
+        supplierName: saved.name,
+        doc,
+      });
       return persistRules(
         claims.organizationId,
         saved,
@@ -1047,19 +1160,154 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
       );
     },
 
+    async syncDocumentsToLibrary(
+      identity: SecurityIdentity | null | undefined
+    ): Promise<AslLibrarySyncResult> {
+      const { identity: actor, organizationId, subjectId } =
+        requireOrgIdentity(identity);
+      await assertAllowed(actor, "read");
+      const result: AslLibrarySyncResult = {
+        scanned: 0,
+        created: 0,
+        existing: 0,
+        failed: 0,
+      };
+      const suppliers = await deps.suppliers.listAllLive(organizationId);
+      for (const supplier of suppliers) {
+        for (const doc of supplier.docs || []) {
+          if (!doc.file) continue;
+          const status = await registerSupplierDoc({
+            organizationId,
+            createdBy: subjectId,
+            supplierId: supplier.id,
+            supplierName: supplier.name,
+            doc,
+          });
+          result.scanned += 1;
+          if (status === "created") result.created += 1;
+          else if (status === "existing") result.existing += 1;
+          else if (status === "failed") result.failed += 1;
+        }
+      }
+      return result;
+    },
+
     /** Used by daily chase job. */
     async runDailyChase(organizationId: string): Promise<{
       followUps: number;
       escalations: number;
+      evalDueNotices: number;
     }> {
       const settings = await deps.settings.getOrCreate(organizationId);
       const suppliers = await deps.suppliers.listAllLive(organizationId);
       const orgName = await deps.org.getOrganizationName(organizationId);
+      const branding = await brandingFor(organizationId);
       const today = startOfToday();
+      const todayIso = toIsoDate(today);
       let followUps = 0;
       let escalations = 0;
+      let evalDueNotices = 0;
+
+      const orgUsers = await deps.users.listActiveUsers(organizationId);
+      const orgEmails = [
+        ...new Set(
+          orgUsers
+            .map((u) => u.email.trim())
+            .filter((e) => e.includes("@"))
+        ),
+      ];
 
       for (let supplier of suppliers) {
+        if (
+          supplier.evalDue === todayIso &&
+          supplier.evalDueNotifiedOn !== todayIso &&
+          supplier.status !== "Prospective" &&
+          supplier.status !== "Removed"
+        ) {
+          try {
+            const uploadToken = await signUploadToken(deps.tokenSecret, {
+              organizationId,
+              supplierId: supplier.id,
+            });
+            const uploadUrl = uploadPublicUrl(uploadToken);
+            const supplierMail = buildEvalDueMail({
+              supplier,
+              settings,
+              orgName,
+              actorName: "Alice",
+              evalDue: todayIso,
+              uploadUrl,
+              branding,
+            });
+            const internalMail = buildEvalDueInternalMail({
+              supplier,
+              settings,
+              orgName,
+              evalDue: todayIso,
+              branding,
+            });
+
+            if (supplier.email.trim()) {
+              await deps.email.send({
+                to: [supplier.email.trim()],
+                subject: supplierMail.subject,
+                html: supplierMail.html,
+                text: supplierMail.text,
+                organizationId,
+                from: settings.from,
+              });
+            }
+
+            if (orgEmails.length) {
+              await deps.email.send({
+                to: orgEmails,
+                subject: internalMail.subject,
+                html: internalMail.html,
+                text: internalMail.text,
+                organizationId,
+                from: settings.from,
+              });
+            }
+
+            await deps.notifications.notifyOrgUsers({
+              organizationId,
+              supplierId: supplier.id,
+              title: `Re-evaluation due: ${supplier.name}`,
+              body: `${supplier.name} (${supplier.reference}) is due for re-evaluation today (${todayIso}).`,
+            });
+
+            supplier = {
+              ...supplier,
+              evalDueNotifiedOn: todayIso,
+              comms: [
+                {
+                  id: newEmbeddedId(),
+                  date: todayIso,
+                  type: "Eval due",
+                  subject: supplierMail.subject,
+                  by: "Alice",
+                  outcome: "Sent to supplier and organisation",
+                },
+                ...supplier.comms,
+              ],
+              trail: appendTrail(
+                supplier.trail,
+                "Evaluation due notification sent by scheduler",
+                "Alice"
+              ),
+            };
+            await deps.suppliers.replace(
+              organizationId,
+              supplier.id,
+              supplier,
+              "system"
+            );
+            evalDueNotices += 1;
+          } catch {
+            // Continue other suppliers
+          }
+        }
+
         const outstanding =
           soonDocs(supplier, settings.lead, today).length +
             expiredDocs(supplier, settings.lead, today).length +
@@ -1088,6 +1336,7 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
               actorName: "Alice",
               uploadUrl: uploadPublicUrl(uploadToken),
               today,
+              branding,
             });
             const type = lastChase ? "Follow-up" : "Auto chase";
             try {
@@ -1159,6 +1408,7 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
             });
             await deps.notifications.notifyEscalation({
               organizationId,
+              supplierId: supplier.id,
               title: `Supplier escalation: ${supplier.name}`,
               body: "Document chase escalated after no reply.",
             });
@@ -1192,7 +1442,7 @@ export function createAslSupplierService(deps: AslSupplierServiceDeps) {
         }
       }
 
-      return { followUps, escalations };
+      return { followUps, escalations, evalDueNotices };
     },
 
     listOrganizationIds: () => deps.suppliers.listOrganizationIds(),

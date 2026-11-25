@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ExternalLink, FileText, Loader2, Mail } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
+import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { Button } from "@/shared/components/ui/button";
 import { docState, formatReqLabel, requiredDocsFor } from "../lib/asl-display";
 import {
@@ -8,6 +9,11 @@ import {
   useAslSuppliersQuery,
 } from "../hooks/use-asl-supplier";
 import { AslCritBadge, AslDocStateBadge } from "./asl-badges";
+import {
+  ASL_TABLE_PAGE_SIZE,
+  AslTablePagination,
+  paginateRows,
+} from "./asl-table-pagination";
 
 type AslDocsPanelProps = {
   onOpenSupplier: (id: string, tab?: string) => void;
@@ -19,6 +25,8 @@ type AslDocsPanelProps = {
  * every document on file. Open a row to view / download in the supplier sheet.
  */
 export function AslDocsPanel({ onOpenSupplier, onNotify }: AslDocsPanelProps) {
+  const [issuesPage, setIssuesPage] = useState(1);
+  const [registerPage, setRegisterPage] = useState(1);
   const listQuery = useAslSuppliersQuery({ page: 1, pageSize: 100 });
   const settingsQuery = useAslSettingsQuery();
   const lead = settingsQuery.data?.lead ?? 30;
@@ -106,9 +114,18 @@ export function AslDocsPanel({ onOpenSupplier, onNotify }: AslDocsPanelProps) {
 
     const order = { expired: 0, missing: 1, soon: 2 };
     issueRows.sort((a, b) => order[a.state] - order[b.state]);
-    registerRows.sort((a, b) => a.name.localeCompare(b.name) || a.type.localeCompare(b.type));
+    registerRows.sort(
+      (a, b) => a.name.localeCompare(b.name) || a.type.localeCompare(b.type)
+    );
     return { issues: issueRows, register: registerRows };
   }, [listQuery.data, lead]);
+
+  const issuesPaged = paginateRows(issues, issuesPage, ASL_TABLE_PAGE_SIZE);
+  const registerPaged = paginateRows(
+    register,
+    registerPage,
+    ASL_TABLE_PAGE_SIZE
+  );
 
   if (listQuery.isLoading || settingsQuery.isLoading) {
     return (
@@ -138,7 +155,7 @@ export function AslDocsPanel({ onOpenSupplier, onNotify }: AslDocsPanelProps) {
               onClick={() => onNotify(notifyIds)}
             >
               <Mail className="size-3.5" />
-              Notify all
+              Send upload links
             </Button>
           ) : null}
         </div>
@@ -149,63 +166,75 @@ export function AslDocsPanel({ onOpenSupplier, onNotify }: AslDocsPanelProps) {
             description="All tracked documents are valid within the lead window."
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle">
-            <table className="ims-table w-full text-sm">
-              <thead>
-                <tr>
-                  <th>Supplier</th>
-                  <th>Document</th>
-                  <th>State</th>
-                  <th className="w-[1%]" />
-                </tr>
-              </thead>
-              <tbody>
-                {issues.map((row, i) => (
-                  <tr key={`${row.supplierId}-${row.label}-${i}`}>
-                    <td>
-                      <div className="font-medium">{row.name}</div>
-                      <AslCritBadge crit={row.crit} />
-                    </td>
-                    <td>
-                      <div>{row.label}</div>
-                      {row.fileName ? (
-                        <div className="ims-text-meta flex items-center gap-1">
-                          <FileText className="size-3" />
-                          {row.fileName}
-                        </div>
-                      ) : null}
-                    </td>
-                    <td>
-                      <AslDocStateBadge state={row.state} />
-                    </td>
-                    <td>
-                      <div className="flex gap-1">
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() =>
-                            onOpenSupplier(row.supplierId, "documents")
-                          }
-                        >
-                          <ExternalLink className="size-3.5" />
-                          Open
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => onNotify([row.supplierId])}
-                        >
-                          <Mail className="size-3.5" />
-                        </Button>
-                      </div>
-                    </td>
+          <>
+            <div className="overflow-x-auto rounded-lg border border-border-subtle">
+              <table className="ims-table w-full text-sm">
+                <thead>
+                  <tr>
+                    <th>Supplier</th>
+                    <th>Document</th>
+                    <th>State</th>
+                    <th className="w-[1%]" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {issuesPaged.items.map((row, i) => (
+                    <EntityTableRow
+                      key={`${row.supplierId}-${row.label}-${i}`}
+                      onOpen={() => onOpenSupplier(row.supplierId, "documents")}
+                    >
+                      <td>
+                        <div className="font-medium">{row.name}</div>
+                        <AslCritBadge crit={row.crit} />
+                      </td>
+                      <td>
+                        <div>{row.label}</div>
+                        {row.fileName ? (
+                          <div className="ims-text-meta flex items-center gap-1">
+                            <FileText className="size-3" />
+                            {row.fileName}
+                          </div>
+                        ) : null}
+                      </td>
+                      <td>
+                        <AslDocStateBadge state={row.state} />
+                      </td>
+                      <td>
+                        <div className="flex gap-1">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() =>
+                              onOpenSupplier(row.supplierId, "documents")
+                            }
+                          >
+                            <ExternalLink className="size-3.5" />
+                            Open
+                          </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onNotify([row.supplierId])}
+                          >
+                            <Mail className="size-3.5" />
+                          </Button>
+                        </div>
+                      </td>
+                    </EntityTableRow>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <AslTablePagination
+              page={issuesPaged.page}
+              totalPages={issuesPaged.totalPages}
+              total={issuesPaged.total}
+              pageSize={ASL_TABLE_PAGE_SIZE}
+              onPageChange={setIssuesPage}
+            />
+          </>
         )}
       </section>
 
@@ -224,58 +253,70 @@ export function AslDocsPanel({ onOpenSupplier, onNotify }: AslDocsPanelProps) {
             description="Add documents from a supplier’s Documents tab in the side sheet."
           />
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-border-subtle">
-            <table className="ims-table w-full text-sm">
-              <thead>
-                <tr>
-                  <th>Supplier</th>
-                  <th>Type</th>
-                  <th>File</th>
-                  <th>Expiry</th>
-                  <th>State</th>
-                  <th className="w-[1%]" />
-                </tr>
-              </thead>
-              <tbody>
-                {register.map((row) => (
-                  <tr key={row.docId}>
-                    <td>
-                      <div className="font-medium">{row.name}</div>
-                      <AslCritBadge crit={row.crit} />
-                    </td>
-                    <td>{row.type}</td>
-                    <td>
-                      {row.fileName ? (
-                        <span className="inline-flex items-center gap-1">
-                          <FileText className="size-3.5 text-muted-foreground" />
-                          {row.fileName}
-                        </span>
-                      ) : (
-                        <span className="text-muted-foreground">No file</span>
-                      )}
-                    </td>
-                    <td>{row.exp || "—"}</td>
-                    <td>
-                      <AslDocStateBadge state={row.state} />
-                    </td>
-                    <td>
-                      <Button
-                        type="button"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          onOpenSupplier(row.supplierId, "documents")
-                        }
-                      >
-                        <ExternalLink className="size-3.5" />
-                        View
-                      </Button>
-                    </td>
+          <>
+            <div className="overflow-x-auto rounded-lg border border-border-subtle">
+              <table className="ims-table w-full text-sm">
+                <thead>
+                  <tr>
+                    <th>Supplier</th>
+                    <th>Type</th>
+                    <th>File</th>
+                    <th>Expiry</th>
+                    <th>State</th>
+                    <th className="w-[1%]" />
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody>
+                  {registerPaged.items.map((row) => (
+                    <EntityTableRow
+                      key={row.docId}
+                      onOpen={() => onOpenSupplier(row.supplierId, "documents")}
+                    >
+                      <td>
+                        <div className="font-medium">{row.name}</div>
+                        <AslCritBadge crit={row.crit} />
+                      </td>
+                      <td>{row.type}</td>
+                      <td>
+                        {row.fileName ? (
+                          <span className="inline-flex items-center gap-1">
+                            <FileText className="size-3.5 text-muted-foreground" />
+                            {row.fileName}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">No file</span>
+                        )}
+                      </td>
+                      <td>{row.exp || "—"}</td>
+                      <td>
+                        <AslDocStateBadge state={row.state} />
+                      </td>
+                      <td>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          onClick={() =>
+                            onOpenSupplier(row.supplierId, "documents")
+                          }
+                        >
+                          <ExternalLink className="size-3.5" />
+                          View
+                        </Button>
+                      </td>
+                    </EntityTableRow>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <AslTablePagination
+              page={registerPaged.page}
+              totalPages={registerPaged.totalPages}
+              total={registerPaged.total}
+              pageSize={ASL_TABLE_PAGE_SIZE}
+              onPageChange={setRegisterPage}
+            />
+          </>
         )}
       </section>
     </div>

@@ -41,6 +41,7 @@ export {
   NoOpDocumentComplianceLinkAdapter,
   NoOpDocumentUsersAdapter,
   NoOpDocumentReviewReminderOrgAdapter,
+  NoOpDocumentModuleLibraryAdapter,
   type DocumentFilesPort,
   type DocumentActivityPort,
   type DocumentNotificationPort,
@@ -49,6 +50,7 @@ export {
   type DocumentUsersPort,
   type DocumentComplianceLinkPort,
   type DocumentReviewReminderOrgPort,
+  type DocumentModuleLibraryPort,
 } from "./ports";
 
 export {
@@ -58,12 +60,23 @@ export {
   DOCUMENT_STATUSES,
   DOCUMENT_APPLICABLE_MODULES,
   DOCUMENT_COMPLIANCE_TOOLS,
+  DOCUMENT_SOURCE_MODULES,
+  DOCUMENT_SOURCE_MODULE_LABELS,
   type DocumentRepository,
   type DocumentTreeNode,
   type DocumentOverviewCounts,
   type DocumentPurpose,
   type DocumentPrivacy,
+  type DocumentSourceModule,
+  type RegisterModuleDocumentInput,
+  type RegisterModuleDocumentResult,
 } from "./types";
+
+export {
+  ensureStorageFileName,
+  storageInfoFromFileId,
+  storageInfoFromMeta,
+} from "./lib/module-file-id";
 
 /** Test helpers — prefer application port from createDocumentManagementModule. */
 export { getDocumentRepositoryModel } from "./repositories/document-repository.model";

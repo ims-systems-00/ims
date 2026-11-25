@@ -4,7 +4,8 @@
  *
  * - on_day is always sent
  * - org-selected advance offsets are also sent
- * - in-app notification + transactional email per recipient
+ * - in-app notification per due entity
+ * - one digest transactional email per recipient per run (avoids inbox storms)
  */
 
 import type { EmailBranding } from "../../../infrastructure/email/templates";
@@ -45,6 +46,15 @@ type ReminderCandidate = {
   repositoryId?: string;
 };
 
+type ClaimedReminder = {
+  candidate: ReminderCandidate;
+  offset: string;
+  reviewDateKey: string;
+  reviewLabel: string;
+  title: string;
+  message: string;
+};
+
 function uniqueIds(ids: Array<string | null | undefined>): string[] {
   return [...new Set(ids.filter((id): id is string => Boolean(id?.trim())))];
 }
@@ -82,12 +92,17 @@ function viewPath(candidate: ReminderCandidate, baseUrl?: string): string | unde
   if (!baseUrl?.trim()) return undefined;
   const root = baseUrl.replace(/\/$/, "");
   if (candidate.entityType === "repository") {
-    return `${root}/document-management/repositories/${candidate.entityId}`;
+    return `${root}/documents/repositories/${candidate.entityId}`;
   }
   if (candidate.repositoryId) {
-    return `${root}/document-management/repositories/${candidate.repositoryId}?nodeId=${candidate.entityId}`;
+    return `${root}/documents/repositories/${candidate.repositoryId}/nodes/${candidate.entityId}`;
   }
-  return `${root}/document-management`;
+  return `${root}/documents`;
+}
+
+function documentsHomePath(baseUrl?: string): string | undefined {
+  if (!baseUrl?.trim()) return undefined;
+  return `${baseUrl.replace(/\/$/, "")}/documents`;
 }
 
 export type DocumentReviewReminderService = {
@@ -209,6 +224,32 @@ export function createDocumentReviewReminderService(deps: {
     return candidates;
   }
 
+  /**
+   * Prefer the new unique key; also honour pre-entityType ledger rows so a
+   * schema migration cannot re-fire the same reminder.
+   */
+  async function alreadySent(input: {
+    organizationId: string;
+    entityType: DocumentReviewReminderEntityType;
+    entityId: string;
+    offset: string;
+    reviewDateKey: string;
+  }): Promise<boolean> {
+    const existing = await Ledger.findOne({
+      organizationId: input.organizationId,
+      offset: input.offset,
+      reviewDateKey: input.reviewDateKey,
+      $or: [
+        { entityType: input.entityType, entityId: input.entityId },
+        { documentNodeId: input.entityId },
+        { entityId: input.entityId },
+      ],
+    })
+      .select({ _id: 1 })
+      .lean();
+    return Boolean(existing);
+  }
+
   async function claimLedger(input: {
     organizationId: string;
     entityType: DocumentReviewReminderEntityType;
@@ -216,6 +257,7 @@ export function createDocumentReviewReminderService(deps: {
     offset: string;
     reviewDateKey: string;
   }): Promise<boolean> {
+    if (await alreadySent(input)) return false;
     try {
       await Ledger.create({
         organizationId: input.organizationId,
@@ -241,23 +283,10 @@ export function createDocumentReviewReminderService(deps: {
     }
   }
 
-  async function deliver(input: {
-    candidate: ReminderCandidate;
-    offset: string;
-    reviewDateKey: string;
-  }): Promise<number> {
-    const { candidate, offset } = input;
+  async function notifyInApp(claimed: ClaimedReminder): Promise<number> {
+    const { candidate, title, message } = claimed;
     const recipients = candidate.recipientUserIds;
     if (recipients.length === 0) return 0;
-
-    const reviewLabel = formatReviewDateLabel(candidate.reviewDate);
-    const title = reminderTitle(candidate.entityType);
-    const message = buildReminderMessage({
-      entityType: candidate.entityType,
-      name: candidate.name,
-      reviewDateLabel: reviewLabel,
-      offset,
-    }).slice(0, 150);
 
     try {
       await notifications.notify({
@@ -276,60 +305,98 @@ export function createDocumentReviewReminderService(deps: {
         "Document review reminder notify failed"
       );
     }
-
-    if (email && users) {
-      try {
-        const profiles = await users.findIdentitySummariesByIds(recipients);
-        const emails = [
-          ...new Set(
-            profiles
-              .map((profile) => profile.email?.trim().toLowerCase())
-              .filter((value): value is string => Boolean(value))
-          ),
-        ];
-        if (emails.length > 0) {
-          const viewUrl = viewPath(candidate, accessLinkBaseUrl);
-          const rendered = renderEmail(
-            "document-review-reminder",
-            {
-              title,
-              entityLabel: entityLabel(candidate.entityType),
-              entityName: candidate.name,
-              reviewDateLabel: reviewLabel,
-              body: message,
-              ...(viewUrl ? { viewUrl } : {}),
-            },
-            { branding: await brandingFor(candidate.organizationId) }
-          );
-          await email.sendDocumentEmail({
-            to: emails,
-            subject: rendered.subject,
-            html: rendered.html,
-            text: rendered.text,
-            organizationId: candidate.organizationId,
-          });
-        }
-      } catch (error) {
-        logger?.error(
-          { err: error, entityId: candidate.entityId },
-          "Document review reminder email failed"
-        );
-      }
-    }
-
     return recipients.length;
+  }
+
+  async function sendDigestEmails(
+    organizationId: string,
+    claimed: ClaimedReminder[]
+  ): Promise<number> {
+    if (!email || !users || claimed.length === 0) return 0;
+
+    const recipientIds = uniqueIds(
+      claimed.flatMap((item) => item.candidate.recipientUserIds)
+    );
+    if (recipientIds.length === 0) return 0;
+
+    try {
+      const profiles = await users.findIdentitySummariesByIds(recipientIds);
+      const emailByUserId = new Map<string, string>();
+      for (const profile of profiles) {
+        const address = profile.email?.trim().toLowerCase();
+        if (!address) continue;
+        emailByUserId.set(profile.id, address);
+      }
+
+      const itemsByEmail = new Map<string, ClaimedReminder[]>();
+      for (const item of claimed) {
+        const addresses = uniqueIds(
+          item.candidate.recipientUserIds.map((id) => emailByUserId.get(id))
+        );
+        for (const address of addresses) {
+          const list = itemsByEmail.get(address) ?? [];
+          list.push(item);
+          itemsByEmail.set(address, list);
+        }
+      }
+
+      if (itemsByEmail.size === 0) return 0;
+
+      const branding = await brandingFor(organizationId);
+      const homeUrl = documentsHomePath(accessLinkBaseUrl);
+      let digestsSent = 0;
+
+      for (const [address, items] of itemsByEmail) {
+        const digestItems = items.map((item) => ({
+          entityLabel: entityLabel(item.candidate.entityType),
+          entityName: item.candidate.name,
+          reviewDateLabel: item.reviewLabel,
+          body: item.message,
+        }));
+        const single = items.length === 1 ? items[0] : undefined;
+        const viewUrl = single
+          ? viewPath(single.candidate, accessLinkBaseUrl)
+          : homeUrl;
+        const rendered = renderEmail(
+          "document-review-reminder-digest",
+          {
+            items: digestItems,
+            ...(viewUrl ? { viewUrl } : {}),
+          },
+          { branding }
+        );
+        await email.sendDocumentEmail({
+          to: [address],
+          subject: rendered.subject,
+          html: rendered.html,
+          text: rendered.text,
+          organizationId,
+        });
+        digestsSent += 1;
+      }
+
+      return digestsSent;
+    } catch (error) {
+      logger?.error(
+        { err: error, organizationId },
+        "Document review reminder digest email failed"
+      );
+      return 0;
+    }
   }
 
   return {
     async processRun(runDate = new Date()) {
       const orgs = await organisations.listForReminders();
-      let sent = 0;
+      let notificationsSent = 0;
+      let digestsSent = 0;
       let dueCount = 0;
 
       for (const org of orgs) {
         const offsets = getEffectiveReminderOffsets(
           org.documentReviewReminderOffsets
         );
+        const claimedForOrg: ClaimedReminder[] = [];
 
         for (const offset of offsets) {
           const target = getReviewDateTargetForOffset(runDate, offset);
@@ -363,25 +430,42 @@ export function createDocumentReviewReminderService(deps: {
             });
             if (!claimed) continue;
 
-            sent += await deliver({
+            const reviewLabel = formatReviewDateLabel(candidate.reviewDate);
+            const title = reminderTitle(candidate.entityType);
+            const message = buildReminderMessage({
+              entityType: candidate.entityType,
+              name: candidate.name,
+              reviewDateLabel: reviewLabel,
+              offset,
+            }).slice(0, 150);
+
+            const entry: ClaimedReminder = {
               candidate,
               offset,
               reviewDateKey: key,
-            });
+              reviewLabel,
+              title,
+              message,
+            };
+            claimedForOrg.push(entry);
+            notificationsSent += await notifyInApp(entry);
           }
         }
+
+        digestsSent += await sendDigestEmails(org.id, claimedForOrg);
       }
 
       logger?.info(
         {
           organisationCount: orgs.length,
           dueCount,
-          notificationsSent: sent,
+          notificationsSent,
+          digestsSent,
           day: utcDayRange(runDate).key,
         },
         "Document review reminders processed"
       );
-      return sent;
+      return digestsSent || notificationsSent;
     },
   };
 }

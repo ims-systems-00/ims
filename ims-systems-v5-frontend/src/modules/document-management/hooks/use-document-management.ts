@@ -20,6 +20,7 @@ import {
   listDocumentRepositories,
   listPublishedDocuments,
   listRepoNodes,
+  syncModuleDocuments,
   getPublicSignature,
   inviteSignatures,
   listPreservedReviewers,
@@ -49,6 +50,7 @@ import type {
   DocumentApplicableModule,
   DocumentFileMeta,
   DocumentPurpose,
+  DocumentSourceModule,
   InviteSignaturesInput,
   ListRepoNodesParams,
   ListRepositoriesParams,
@@ -114,7 +116,14 @@ async function invalidateDocumentQueries(
 export function useDocumentOverviewQuery() {
   return useQuery({
     queryKey: documentManagementKeys.overview(),
-    queryFn: getDocumentOverview,
+    queryFn: async () => {
+      // Best-effort backfill so module uploads appear even if registered before DM wiring.
+      try {
+        return await syncModuleDocuments();
+      } catch {
+        return getDocumentOverview();
+      }
+    },
   });
 }
 
@@ -192,6 +201,7 @@ export function usePublishedDocumentsQuery(params: {
   pageSize?: number;
   purpose?: DocumentPurpose;
   applicableModule?: DocumentApplicableModule;
+  sourceModule?: DocumentSourceModule;
   search?: string;
   complianceToolkitId?: string;
   clauseId?: string;

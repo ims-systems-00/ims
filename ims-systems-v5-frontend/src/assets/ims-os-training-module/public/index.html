@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>iMS OS · Training & competency</title>
+<meta name="robots" content="noindex">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/module.css">
+<link rel="stylesheet" href="css/training.css">
+<script>
+window.IMS_CONFIG = window.IMS_CONFIG || { adapter: 'local', apiBase: '/api', selfBase: null, token: null, user: null };
+</script>
+</head>
+<body>
+<div class="app">
+<aside class="side">
+  <div class="logo"><i></i>iMS OS</div><div class="mod">Training &amp; competency</div>
+  <div class="sec">Module</div>
+  <a href="#dash" data-v="dash" class="on"><i></i>Overview</a>
+  <a href="#matrix" data-v="matrix"><i></i>Training matrix <span class="cnt bad" id="c-gaps"></span></a>
+  <a href="#people" data-v="people"><i></i>People <span class="cnt" id="c-people"></span></a>
+  <a href="#plan" data-v="plan"><i></i>Training plan <span class="cnt" id="c-plan"></span></a>
+  <a href="#sessions" data-v="sessions"><i></i>Sessions &amp; bookings</a>
+  <a href="#policies" data-v="policies"><i></i>Policy acknowledgements</a>
+  <a href="#roles" data-v="roles"><i></i>Roles &amp; competencies</a>
+  <a href="#auditor" data-v="auditor"><i></i>Auditor pack</a>
+  <a href="#settings" data-v="settings"><i></i>Settings</a>
+  <div class="sec">Data</div>
+  <a href="#" id="exportcsv"><i></i>Export matrix CSV</a>
+  <a href="#" id="exportjson"><i></i>Export JSON</a>
+  <a href="#" id="resetdata"><i></i>Reset to sample data</a>
+</aside>
+<main class="main">
+<div class="top"><span class="crumb" id="crumb">Training &amp; competency / Overview</span><span class="sync" id="sync">Loading…</span><span class="org">⌂ <span id="orgname"></span> · <span id="who"></span></span></div>
+<div id="selfview"></div>
+
+<section id="v-dash">
+  <h1>Training &amp; competency</h1>
+  <p class="sub" id="dashsub"></p>
+  <div class="kpis" id="kpis"></div>
+  <div class="grid">
+    <div class="card"><div class="row" style="justify-content:space-between"><div><h3>Needs attention</h3><p class="s">Missing and expired mandatory competencies first, then expiring within the lead time.</p></div><button class="btn p" data-v="plan">Open the plan</button></div><div class="check" id="attn"></div></div>
+    <div style="display:grid;gap:14px;align-content:start">
+      <div class="card"><h3>Audit readiness</h3><p class="s">ISO 9001 7.2 / 7.3, ISO 45001 7.2, ISO 27001 A.6.3, PUWER / LOLER competence.</p><div class="check" id="ready"></div></div>
+      <div class="card"><h3>Alice</h3><p class="s" id="alicesum"></p></div>
+    </div>
+  </div>
+</section>
+
+<section id="v-matrix" class="hidden">
+  <div class="row" style="justify-content:space-between"><div><h1>Training matrix</h1><p class="sub">People × competencies. Green in date, amber due within the lead time, red expired or missing, grey not required.</p></div><div class="row"><select id="msite" style="width:auto" aria-label="Site"><option value="">All sites</option></select><select id="mrole" style="width:auto" aria-label="Role"><option value="">All roles</option></select><label class="sw" style="margin:0"><input type="checkbox" id="monly"> gaps only</label></div></div>
+  <div class="legend"><span><i class="cellb ok"></i> In date</span><span><i class="cellb soon"></i> Due soon</span><span><i class="cellb over"></i> Expired</span><span><i class="cellb none"></i> Missing</span><span><i class="cellb grace"></i> Induction window</span><span><i class="cellb na"></i> Not applicable</span><span><i class="cellb req" style="box-shadow:0 0 0 2px #fff,0 0 0 3.5px #C9C2FF"></i> Desirable</span><span class="hint" style="margin-left:auto">Ring = validity remaining · click a cell for details and actions</span></div>
+  <div class="tablebox matrixbox"><table class="matrix" id="mx"><thead></thead><tbody></tbody></table></div>
+</section>
+
+<section id="v-people" class="hidden">
+  <div class="row" style="justify-content:space-between"><div><h1>People</h1><p class="sub">Everyone on the matrix with their roles, site, manager and compliance.</p></div><button class="btn p" id="addperson">+ Add person</button></div>
+  <div class="row" style="margin-bottom:10px"><input id="pq" placeholder="Search name, role, site…" style="width:260px" aria-label="Search"><select id="pstatus" style="width:auto" aria-label="Status"><option value="">Active</option><option value="all">Include leavers</option></select></div>
+  <div class="tablebox"><table id="ptab"><thead><tr><th>Person</th><th>Roles</th><th>Site</th><th>Manager</th><th>Started</th><th>Mandatory</th><th>Status</th><th>My training link</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="v-plan" class="hidden">
+  <h1>Training plan · next 90 days</h1>
+  <p class="sub">Everything mandatory that is missing, expired or expiring, grouped by course so you can book one session for everyone who needs it.</p>
+  <div class="row" style="margin-bottom:10px"><select id="plmonths" style="width:auto" aria-label="Horizon"><option value="3">Next 3 months</option><option value="6">Next 6 months</option><option value="12">Next 12 months</option></select><span class="note" style="margin:0 0 0 auto" id="plsum"></span></div>
+  <div id="plan"></div>
+</section>
+
+<section id="v-sessions" class="hidden">
+  <div class="row" style="justify-content:space-between"><div><h1>Sessions &amp; bookings</h1><p class="sub">Planned sessions with attendees. Completing a session writes a record for every attendee.</p></div><button class="btn p" id="addsession">+ Plan a session</button></div>
+  <div class="tablebox"><table id="stab"><thead><tr><th>Date</th><th>Course</th><th>Provider</th><th>Attendees</th><th>Invited</th><th>Materials</th><th>Outputs</th><th>Status</th></tr></thead><tbody></tbody></table></div>
+</section>
+
+<section id="v-policies" class="hidden">
+  <h1>Policy acknowledgements</h1>
+  <p class="sub">Read-and-understood with a short check, renewed yearly. Staff do this from their phone via their "my training" link.</p>
+  <div id="pols"></div>
+</section>
+
+<section id="v-roles" class="hidden">
+  <div class="row" style="justify-content:space-between"><div><h1>Roles &amp; competencies</h1><p class="sub">Your organisation's own catalogue. Add the competencies you need, decide what each role must hold, and the matrix, plan and readiness follow.</p></div><div class="row"><button class="btn" id="addrole">+ Add role</button><button class="btn p" id="addcomp">+ Add competency</button></div></div>
+  <div class="tabs"><button data-t="t-rolematrix" class="on">Requirements by role</button><button data-t="t-catalogue">Competency catalogue</button><button data-t="t-changes">Change log</button></div>
+  <div class="tp on" id="t-rolematrix"><p class="hint">Click a cell to cycle: <b>M</b> mandatory → <b>D</b> desirable → not required. "All staff" applies to everyone.</p><div class="tablebox matrixbox"><table class="matrix rolemx" id="rolemx"><thead></thead><tbody></tbody></table></div></div>
+  <div class="tp" id="t-catalogue"><div class="row" style="margin-bottom:8px"><label class="sw" style="margin:0"><input type="checkbox" id="showarch"> show archived</label></div><div class="tablebox"><table id="ctab"><thead><tr><th>Competency</th><th>Renews</th><th>Evidence</th><th>Basis</th><th>Covers</th><th>Check</th><th>Holders</th><th></th></tr></thead><tbody></tbody></table></div></div>
+  <div class="tp" id="t-changes"><div class="log" id="changelog"></div></div>
+</section>
+
+<section id="v-settings" class="hidden">
+  <h1>Settings</h1>
+  <p class="sub">Tailor the module to your organisation. Changes are logged.</p>
+  <div class="grid">
+    <div style="display:grid;gap:14px;align-content:start">
+      <div class="card"><h3>Organisation</h3><label for="st-org">Organisation name</label><input id="st-org"><label for="st-sitelabel">What you call a site / business unit</label><input id="st-sitelabel" placeholder="Site, Branch, Home, Depot…"><label for="st-sites">Sites (one per line)</label><textarea id="st-sites" rows="4"></textarea><label for="st-providers">Usual training providers (one per line)</label><textarea id="st-providers" rows="3"></textarea></div>
+      <div class="card"><h3>Timing</h3><div class="two"><div><label for="st-lead">Warn before expiry (days)</label><input id="st-lead" type="number" min="0" max="365"></div><div><label for="st-induction">Induction window for new starters (days)</label><input id="st-induction" type="number" min="0" max="90"></div></div><label for="st-reminders">Reminder emails before a session (days, comma-separated)</label><input id="st-reminders" placeholder="14, 1"></div>
+    </div>
+    <div style="display:grid;gap:14px;align-content:start">
+      <div class="card"><h3>Self-service</h3><label class="sw"><input type="checkbox" id="st-selfupload"> Staff can upload certificates from their "my training" page</label><label class="sw" style="margin-top:8px"><input type="checkbox" id="st-verify"> Self-uploaded certificates need manager verification</label><label for="st-tokendays">"My training" link valid for (days)</label><input id="st-tokendays" type="number" min="1" max="365"></div>
+      <div class="card"><h3>Invitation email</h3><p class="s">Placeholders: {{name}} {{course}} {{date}} {{time}} {{location}} {{provider}} {{trainer}} {{materials}} {{org}} {{accept}} {{decline}}</p><label for="st-organiser">Organiser email (calendar replies go here)</label><input id="st-organiser" type="email"><label for="st-subj">Subject</label><input id="st-subj"><label for="st-body">Body</label><textarea id="st-body" rows="9"></textarea></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:14px"><button class="btn p" id="st-save">Save settings</button><span class="hint" id="st-msg"></span></div>
+</section>
+
+<section id="v-auditor" class="hidden">
+  <div class="row" style="justify-content:space-between"><div><h1>Auditor pack</h1><p class="sub">Role requirements, the matrix, expiring items, inductions and policy acknowledgements, generated live.</p></div><button class="btn" id="printpack">Print / PDF</button></div>
+  <div id="pack"></div>
+</section>
+
+<!-- person drawer -->
+<div class="drawer" id="d-person" role="dialog" aria-labelledby="pd-name">
+  <div class="hd"><h3 id="pd-name"></h3><button class="btn sm" id="pd-link">My training link</button><button class="btn sm" data-close aria-label="Close">✕</button></div>
+  <div class="row" id="pd-tags" style="margin-top:4px"></div>
+  <div class="tabs"><button data-t="t-comp" class="on">Competencies</button><button data-t="t-det">Details</button><button data-t="t-hist">History</button></div>
+  <div class="tp on" id="t-comp"><div id="pd-comp"></div>
+    <div class="card" style="margin-top:12px;padding:12px"><b style="font-size:13px">Record a result</b><div class="two"><div><label for="nr-cid">Competency</label><select id="nr-cid"></select></div><div><label for="nr-date">Date</label><input id="nr-date" type="date"></div></div><div class="two"><div><label for="nr-res">Result</label><select id="nr-res"></select></div><div><label for="nr-prov">Provider / assessor</label><input id="nr-prov" placeholder="e.g. RTITB, Internal · M. Grant"></div></div><label for="nr-ref">Certificate / reference</label><input id="nr-ref" placeholder="Cert no. or document id"><div class="row" style="margin-top:10px"><button class="btn p sm" id="nr-add">Save result</button><span class="hint">Expiry is set from the competency's renewal period.</span></div></div></div>
+  <div class="tp" id="t-det">
+    <label for="pf-name">Name</label><input id="pf-name">
+    <div class="two"><div><label for="pf-site">Site / business unit</label><input id="pf-site" list="sites"><datalist id="sites"></datalist></div><div><label for="pf-manager">Line manager</label><input id="pf-manager"></div></div>
+    <div class="two"><div><label for="pf-start">Start date</label><input id="pf-start" type="date"></div><div><label for="pf-email">Email (for reminders)</label><input id="pf-email" type="email"></div></div>
+    <label>Roles</label><div class="chips" id="pf-roles"></div>
+    <label>Additional competencies required for this person</label><div class="chips" id="pf-extra"></div>
+    <label for="pf-status">Status</label><select id="pf-status"></select>
+    <p class="hint" id="pf-problems" style="color:var(--bad)"></p>
+    <div class="row" style="margin-top:14px"><button class="btn p" id="pf-save">Save</button><button class="btn danger" id="pf-leaver">Mark as leaver</button></div>
+  </div>
+  <div class="tp" id="t-hist"><div class="log" id="pd-hist"></div></div>
+</div>
+
+<div class="modal" id="m-session"><div class="box" style="width:640px"><div class="row" style="justify-content:space-between"><h3 id="ms-title">Plan a session</h3><button class="btn sm" data-mclose aria-label="Close">✕</button></div>
+  <div class="two"><div><label for="ss-cid">Course / competency</label><select id="ss-cid"></select></div><div><label for="ss-prov">Provider</label><input id="ss-prov" list="provlist" placeholder="Internal · name, or training company"><datalist id="provlist"></datalist></div></div>
+  <div class="two"><div><label for="ss-date">Date</label><input id="ss-date" type="date"></div><div><div class="two"><div><label for="ss-time">Start</label><input id="ss-time" type="time" value="09:00"></div><div><label for="ss-dur">Minutes</label><input id="ss-dur" type="number" min="15" step="15" value="120"></div></div></div></div>
+  <div class="two"><div><label for="ss-loc">Location / link</label><input id="ss-loc" placeholder="Training room 2, or a video call link"></div><div><label for="ss-trainer">Trainer</label><input id="ss-trainer"></div></div>
+  <div class="two"><div><label for="ss-cost">Cost (£)</label><input id="ss-cost" type="number" min="0" value="0"></div><div><label for="ss-note">Note to attendees</label><input id="ss-note" placeholder="What to bring, PPE, prerequisites"></div></div>
+  <label>Staff attendees</label><div class="chips" id="ss-att"></div><p class="hint" id="ss-hint"></p>
+  <label>External attendees (contractors, visitors, agency)</label><div id="ss-ext"></div><button class="btn sm" id="ss-addext">+ Add external person</button>
+  <div class="row" style="margin-top:14px"><button class="btn p" id="ss-go">Save session</button><button class="btn" data-mclose>Cancel</button></div></div></div>
+
+<!-- session drawer -->
+<div class="drawer" id="d-session" role="dialog" aria-labelledby="sd-name">
+  <div class="hd"><h3 id="sd-name"></h3><button class="btn sm" id="sd-edit">Edit</button><button class="btn sm" data-close aria-label="Close">✕</button></div>
+  <div class="row" id="sd-tags" style="margin-top:4px"></div>
+  <div class="tabs"><button data-t="s-att" class="on">Attendees &amp; invitations</button><button data-t="s-mat">Materials</button><button data-t="s-out">Outputs &amp; results</button></div>
+  <div class="tp on" id="s-att"><div id="sd-att"></div><div class="row" style="margin-top:12px"><button class="btn p" id="sd-invite">✉ Send invitations</button><label class="sw" style="margin:0"><input type="checkbox" id="sd-attachfiles" checked> attach shared materials</label><button class="btn" id="sd-preview">Preview email</button></div><pre class="mail hidden" id="sd-mailprev"></pre><div id="sd-invlog" class="log" style="margin-top:12px"></div></div>
+  <div class="tp" id="s-mat"><p class="hint">Slides, pre-reading, joining instructions, risk assessment. Shared materials are linked in the invitation and visible on attendees' "my training" page.</p><div class="ev" id="sd-mat"></div><div class="row" style="margin-top:10px"><input type="file" id="sd-matfile" multiple style="width:auto"><label class="sw" style="margin:0"><input type="checkbox" id="sd-matshare" checked> share with attendees</label></div></div>
+  <div class="tp" id="s-out"><p class="hint">Attendance sheet, certificates, assessment results, photos. Outputs are kept with the session and linked from each attendee's record when you complete it.</p><div class="ev" id="sd-out"></div><div class="row" style="margin-top:10px"><input type="file" id="sd-outfile" multiple style="width:auto"></div><div class="row" style="margin-top:14px"><button class="btn p" id="sd-complete">Record results &amp; complete</button><button class="btn danger" id="sd-cancel">Cancel session</button></div></div>
+</div>
+
+<div class="modal" id="m-comp"><div class="box" style="width:620px"><div class="row" style="justify-content:space-between"><h3 id="mcp-title">Add competency</h3><button class="btn sm" data-mclose aria-label="Close">✕</button></div>
+  <label for="cp-name">Name</label><input id="cp-name" placeholder="e.g. Abrasive wheels, Safeguarding L3, Food hygiene L2">
+  <div class="two"><div><label for="cp-months">Renews every (months, 0 = never)</label><input id="cp-months" type="number" min="0" max="240" value="36"></div><div><label for="cp-evidence">Evidence required</label><select id="cp-evidence"></select></div></div>
+  <label for="cp-basis">Basis (clause / regulation / internal policy)</label><input id="cp-basis" placeholder="e.g. PUWER reg 9 · ISO 9001 7.2">
+  <label for="cp-covers">Authorises (asset categories or policy ids, comma-separated)</label><input id="cp-covers" placeholder="e.g. Production machinery, Lifting equipment"><p class="hint">Used by the Inventory module's competence check. Leave blank for awareness training.</p>
+  <label for="cp-desc">Description / what good looks like</label><textarea id="cp-desc" rows="2"></textarea>
+  <label for="cp-provider">Usual provider</label><input id="cp-provider">
+  <div id="cp-quizwrap"><label>Check questions (for acknowledgements and short assessments)</label><div id="cp-quiz"></div><button class="btn sm" id="cp-addq">+ Add question</button></div>
+  <p class="hint" id="cp-problems" style="color:var(--bad)"></p>
+  <div class="row" style="margin-top:12px"><button class="btn p" id="cp-save">Save</button><button class="btn" data-mclose>Cancel</button></div></div></div>
+<div class="modal" id="m-role"><div class="box" style="width:520px"><div class="row" style="justify-content:space-between"><h3 id="mr-title">Add role</h3><button class="btn sm" data-mclose aria-label="Close">✕</button></div><label for="rl-name">Role name</label><input id="rl-name" placeholder="e.g. Night supervisor, Care assistant, Site electrician"><label for="rl-desc">Description</label><input id="rl-desc"><label>Mandatory competencies</label><div class="chips" id="rl-mand"></div><label>Desirable</label><div class="chips" id="rl-des"></div><div class="row" style="margin-top:12px"><button class="btn p" id="rl-save">Save</button><button class="btn danger hidden" id="rl-remove">Remove role</button><button class="btn" data-mclose>Cancel</button></div></div></div>
+<div class="modal" id="m-complete"><div class="box" style="width:600px"><div class="row" style="justify-content:space-between"><h3 id="mc-title">Complete session</h3><button class="btn sm" data-mclose aria-label="Close">✕</button></div><div id="mc-list"></div><div class="row" style="margin-top:12px"><button class="btn p" id="mc-go">Record results</button><button class="btn" data-mclose>Cancel</button></div></div></div>
+<div class="modal" id="m-prompt"><div class="box" style="width:420px"><h3 id="mp-title"></h3><p class="hint" id="mp-hint"></p><input id="mp-input" style="margin-top:8px"><div class="row" style="margin-top:12px"><button class="btn p" id="mp-ok">OK</button><button class="btn" id="mp-cancel">Cancel</button></div></div></div>
+<div class="pop hidden" id="pop" role="dialog"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+</main></div>
+<script src="js/qrcode.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

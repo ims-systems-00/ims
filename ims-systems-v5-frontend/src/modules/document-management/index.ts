@@ -6,6 +6,7 @@ export { DocumentsPage } from "./pages/documents-page";
 export { RepositoryDetailPage } from "./pages/repository-detail-page";
 export { DocumentDetailPage } from "./pages/document-detail-page";
 export { DocumentPurposePage } from "./pages/document-purpose-page";
+export { DocumentModuleSourcePage } from "./pages/document-module-source-page";
 export { SignatureRequestsPage } from "./pages/signature-requests-page";
 export { PublicSignPage } from "./pages/public-sign-page";
 export {
@@ -37,4 +38,7 @@ export {
   DOCUMENT_PURPOSES,
   DOCUMENT_PURPOSE_LABELS,
   DOCUMENT_PRIVACY_VALUES,
+  DOCUMENT_SOURCE_MODULES,
+  DOCUMENT_SOURCE_MODULE_LABELS,
 } from "./types";
+export type { DocumentSourceModule } from "./types";

@@ -1,0 +1,56 @@
+openapi: 3.1.0
+info: {title: Relyable Platform API, version: 1.1.0, description: "Ratings, verification, claim (Relyable Identity), evidence, subscriptions, portfolios. Keys: rly_rd_ (reader), rly_cx_ (connector, scoped to one organisation), rly_ad_ (ops). Business users use a session token issued by the claim flow. Readers never receive documents, records or personal data."}
+servers: [{url: https://api.relyable.co.uk}, {url: http://localhost:8790}]
+components:
+  securitySchemes: {apiKey: {type: http, scheme: bearer, description: "API key"}, session: {type: http, scheme: bearer, description: "Business session token from POST /v1/claims/{id}/security"}}
+  schemas:
+    Rating: {type: object, properties: {orgId: {type: string}, organisation: {type: object}, rating: {type: integer}, band: {type: string, enum: [A,B,C,D,E]}, bandName: {type: string}, tier: {type: integer}, verifiedRatio: {type: integer}, domains: {type: object, description: "null = not applicable"}, caps: {type: array, items: {type: string}}, flags: {type: array, items: {$ref: '#/components/schemas/Flag'}}, scope: {$ref: '#/components/schemas/Scope'}, listedCertifications: {type: array}, modelVersion: {type: string}, computedAt: {type: string}}}
+    Flag: {type: object, properties: {source: {type: string}, fact: {type: string}, state: {type: string, enum: [ok, warn, bad, na, unknown]}, text: {type: string}, checkedAt: {type: string}}}
+    Scope: {type: object, properties: {family: {type: string}, sizeBand: {type: string}, attrs: {type: object}, confirmed: {type: boolean}, declarations: {type: array}}}
+    Evidence: {type: object, required: [type, status, observedAt], properties: {type: {type: string}, subject: {type: object}, status: {type: string, enum: [valid, partial, fail, expired, adverse, clear]}, observedAt: {type: string}, validUntil: {type: string}, payload: {type: object}, level: {type: integer, minimum: 0, maximum: 3}, source: {type: string}}}
+    Error: {type: object, properties: {error: {type: string}, code: {type: string, enum: [bad_request, unauthenticated, forbidden, not_found, conflict, locked, rate_limited, error]}}}
+paths:
+  /v1/organisations: {get: {summary: Search the registry (public), parameters: [{name: q, in: query, schema: {type: string}}], responses: {'200': {description: matches with rating summary}}}}
+  /v1/organisations/{id}: {get: {summary: Public organisation record, responses: {'200': {description: ok}}}}
+  /v1/ratings/{id}: {get: {summary: Current rating and public report body (explanation with a key), security: [{}, {apiKey: []}], responses: {'200': {description: ok, content: {application/json: {schema: {$ref: '#/components/schemas/Rating'}}}}}}}
+  /v1/ratings/{id}/history: {get: {summary: Snapshots}}
+  /v1/ratings/{id}/what-if: {get: {summary: Delta from adding an evidence type at a level, parameters: [{name: add, in: query}, {name: level, in: query}]}}
+  /v1/ratings/{id}/next-risks: {get: {summary: Expiries and decays due, and what would raise it}}
+  /v1/verify/{reportId}: {get: {summary: Verify a signed report (public), responses: {'200': {description: "{valid, signatureValid, expired, withdrawn, report}"}}}}
+  /v1/standard: {get: {summary: Published model: domains, bands, evidence types, attributes}}
+  /v1/standard/applicability: {get: {summary: Applicability of every type for a set of attribute flags}}
+  /v1/subscriptions: {post: {summary: Subscribe to rating.changed, band.changed, cap.added, cap.removed, flag.adverse (reader key); webhooks carry Relyable-Signature t=,v1=HMAC-SHA256}, get: {summary: List}}
+  /v1/portfolios: {post: {summary: Resolve a list of entities and score them (reader key); matches below 0.9 are "possible" and not scored}}
+  /v1/portfolios/{id}: {get: {summary: Portfolio rows with ratings}}
+  /v1/organisations/{id}/request-verification: {post: {summary: Ask an unclaimed organisation to claim and verify (reader key)}}
+  /v1/claims: {post: {summary: "Step 1: start a claim (name, title, email, phone). Sends email + SMS codes; letter to the registered office; notifies owners/directors; velocity limits", responses: {'200': {description: "{claimId, next, heldForReview, freeEmailDomain}"}}}}
+  /v1/claims/{id}: {get: {summary: Claim status and available authority routes}}
+  /v1/claims/{id}/verify-contact: {post: {summary: "Both codes; 3 failures lock the claim"}}
+  /v1/claims/{id}/authority: {post: {summary: "Step 2: route imsos | officer {officerId, dobMonth, document} | director {directorId} | post | letter {letterRef}"}}
+  /v1/claims/{id}/letter-code: {post: {summary: Enter the code posted to the registered office}}
+  /v1/claims/{id}/security: {post: {summary: "Step 3: {method: passkey|totp, credentialId}; password refused; issues session token; competing claim → dispute"}}
+  /v1/claims/{id}/block: {post: {summary: Owner or director blocks a claim within 72 h}}
+  /v1/approvals/{token}: {post: {summary: Director approves or declines (route B)}}
+  /v1/claims/{id}/review: {post: {summary: Ops approves a signed letter (admin key)}}
+  /v1/session/step-up: {post: {summary: Re-authenticate with the passkey; required within 5 min for scope, visibility, members, connect, withdraw, dispute}}
+  /v1/me: {get: {summary: Session user, member role, organisation, rating, members, re-attestation due, security: [{session: []}]}}
+  /v1/organisations/{id}/scope: {put: {summary: Confirm scope profile; contradicted declarations are overridden and flagged; N/A rate above norm → under review}}
+  /v1/organisations/{id}/evidence: {get: {summary: Evidence register for the business (never for readers), with chain validity}}
+  /v1/submissions: {post: {summary: "Manual evidence {type, issuer, issuerRef, issued, expires, fileRef, genuine, listPublic}; Tier 1 until issuer verifies; a reference belonging to another organisation is rejected"}}
+  /v1/submissions/{id}/verify: {post: {summary: Issuer verification result (admin/verifier)}}
+  /v1/organisations/{id}/visibility: {put: {summary: "Owner only, step-up: which certifications are listed publicly"}}
+  /v1/organisations/{id}/members: {post: {summary: Invite with role; admins may only add contributor/viewer/verifier}}
+  /v1/organisations/{id}/members/{mid}: {delete: {summary: Remove; the last Owner cannot be removed}}
+  /v1/organisations/{id}/audit: {get: {summary: Hash-chained audit log, reader reads, report reads}}
+  /v1/reports: {post: {summary: Issue a signed report (session or connector key)}}
+  /v1/reports/{id}: {delete: {summary: Withdraw a report (step-up)}}
+  /v1/disputes: {post: {summary: Dispute an evidence item; excluded while open; 5 working days}}
+  /v1/evidence: {post: {summary: Connector push (rly_cx_ key, scoped to one organisation); idempotent on (org, type, subject, observedAt, source), requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Evidence'}}}}}}
+  /v1/evidence/batch: {post: {summary: Batch push}}
+  /v1/registry/resolve: {post: {summary: "Name/number/postcode → matches with confidence; < 0.9 is possible, never auto-merged"}}
+  /v1/registry/links: {post: {summary: Link a module record (supplier/customer) to a registry organisation}}
+  /v1/admin/keys: {post: {summary: Create reader/connector/admin keys}}
+  /v1/admin/ingest: {post: {summary: Run public-record jobs for one company number or all}}
+  /v1/admin/ch-events: {post: {summary: Companies House stream events (officer.resigned, accounts.overdue)}}
+  /v1/admin/outbox: {get: {summary: Notifications and queued webhook deliveries (POC)}}
+  /v1/health: {get: {summary: Health}}

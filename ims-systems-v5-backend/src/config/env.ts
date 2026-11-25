@@ -322,7 +322,7 @@ const envSchema = z
     ALLOWED_FILE_PATHS: z
       .string()
       .default(
-        "agenda,audit_attachments,audits,contract,inventory_software_attachments,minutes,sla,general,onboarding,isoEvidence,profile,cqcReport,cqcEvidence,risks,cips,tasks,incidents,crms,staffwallet,forms,supplier"
+        "agenda,audit_attachments,audits,contract,inventory_software_attachments,minutes,sla,general,onboarding,isoEvidence,profile,cqcReport,cqcEvidence,risks,cips,tasks,incidents,crms,staffwallet,forms,supplier,inventory,training,tender"
       )
       .transform((value) =>
         value
@@ -397,6 +397,8 @@ const envSchema = z
     ONLYOFFICE_URL: z.string().default(""),
     /** Shared HS256 secret with Document Server JWT_SECRET. */
     ONLYOFFICE_JWT_SECRET: z.string().default("dev-onlyoffice-jwt-secret"),
+    /** HS256 secret for Training self-service / RSVP JWTs. */
+    TRAINING_TOKEN_SECRET: z.string().default(""),
     /**
      * API base URL reachable by the Document Server for editor callbacks
      * (no trailing slash), e.g. http://host.docker.internal:3001/api/v1
@@ -422,6 +424,22 @@ const envSchema = z
         message:
           "AI_PROVIDER=groq is not allowed when NODE_ENV=production (use openai)",
       });
+    }
+
+    if (value.NODE_ENV === "production") {
+      const clientUrl = value.CLIENT_URL.trim();
+      const loopback =
+        /localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|\.local(?:host)?(?:[:/]|$)/i.test(
+          clientUrl
+        );
+      if (!clientUrl || loopback || !/^https:\/\//i.test(clientUrl)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["CLIENT_URL"],
+          message:
+            "CLIENT_URL must be the public https frontend origin when NODE_ENV=production (email links, invites, billing redirects). localhost/http defaults are not allowed.",
+        });
+      }
     }
 
     if (value.ONLYOFFICE_ENABLED) {

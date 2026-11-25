@@ -58,8 +58,40 @@ describe("loadConfig", () => {
         OPENFGA_API_URL: "http://127.0.0.1:8080",
         OPENFGA_STORE_ID: "store",
         OPENFGA_MODEL_ID: "model",
+        CLIENT_URL: "https://app.example.com",
       })
     ).toThrow(/AI_PROVIDER=groq is not allowed when NODE_ENV=production/);
+  });
+
+  it("rejects localhost CLIENT_URL in production", () => {
+    expect(() =>
+      loadConfig({
+        ...valid,
+        NODE_ENV: "production",
+        SECURITY_PROVIDER: "auth0-openfga",
+        AUTH0_DOMAIN: "example.auth0.com",
+        AUTH0_AUDIENCE: "https://api.example",
+        OPENFGA_API_URL: "http://127.0.0.1:8080",
+        OPENFGA_STORE_ID: "store",
+        OPENFGA_MODEL_ID: "model",
+        CLIENT_URL: "http://localhost:3000",
+      })
+    ).toThrow(/CLIENT_URL must be the public https frontend origin/);
+  });
+
+  it("accepts https CLIENT_URL in production", () => {
+    const config = loadConfig({
+      ...valid,
+      NODE_ENV: "production",
+      SECURITY_PROVIDER: "auth0-openfga",
+      AUTH0_DOMAIN: "example.auth0.com",
+      AUTH0_AUDIENCE: "https://api.example",
+      OPENFGA_API_URL: "http://127.0.0.1:8080",
+      OPENFGA_STORE_ID: "store",
+      OPENFGA_MODEL_ID: "model",
+      CLIENT_URL: "https://app.example.com/",
+    });
+    expect(config.CLIENT_URL).toBe("https://app.example.com/");
   });
 
   it("defaults AI provider to openai", () => {
@@ -142,6 +174,7 @@ describe("loadConfig", () => {
       OPENFGA_API_URL: "http://127.0.0.1:8080",
       OPENFGA_STORE_ID: "01ARZ3NDEKTSV4RRFFQ69G5FAV",
       OPENFGA_MODEL_ID: "01ARZ3NDEKTSV4RRFFQ69G5FB0",
+      CLIENT_URL: "https://app.example.com",
     });
     expect(config.NODE_ENV).toBe("production");
     expect(config.SECURITY_PROVIDER).toBe("auth0-openfga");

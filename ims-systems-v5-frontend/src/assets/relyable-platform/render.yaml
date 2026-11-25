@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: relyable
+    runtime: docker
+    plan: starter
+    healthCheckPath: /v1/health
+    disk: {name: data, mountPath: /data, sizeGB: 1}
+    envVars:
+      - {key: RLY_SIGNING_SECRET, generateValue: true}
+      - {key: CH_API_KEY, sync: false}
+      - {key: RLY_DATA, value: /data/store.json}

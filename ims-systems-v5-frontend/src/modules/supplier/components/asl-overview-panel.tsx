@@ -10,6 +10,7 @@ import {
   Users,
 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
+import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { useAslOverviewQuery } from "../hooks/use-asl-supplier";
@@ -47,6 +48,7 @@ export function AslOverviewPanel({
   }
 
   const { totals, attention, readiness } = data;
+  const attentionPreview = attention.slice(0, 3);
   const expiringIds = [
     ...new Set(
       attention
@@ -166,7 +168,9 @@ export function AslOverviewPanel({
             <p className="ims-text-meta">
               As of {data.asOf}
               {attention.length
-                ? ` · ${attention.length} item${attention.length === 1 ? "" : "s"}`
+                ? attention.length > 3
+                  ? ` · top 3 of ${attention.length} items`
+                  : ` · ${attention.length} item${attention.length === 1 ? "" : "s"}`
                 : ""}
             </p>
           </div>
@@ -203,8 +207,11 @@ export function AslOverviewPanel({
                 </tr>
               </thead>
               <tbody>
-                {attention.map((row, i) => (
-                  <tr key={`${row.supplierId}-${row.issue.k}-${i}`}>
+                {attentionPreview.map((row, i) => (
+                  <EntityTableRow
+                    key={`${row.supplierId}-${row.issue.k}-${i}`}
+                    onOpen={() => onOpenSupplier(row.supplierId)}
+                  >
                     <td>
                       <div className="font-medium">{row.name}</div>
                       <div className="ims-text-meta flex flex-wrap gap-1">
@@ -237,7 +244,7 @@ export function AslOverviewPanel({
                         </Button>
                       </div>
                     </td>
-                  </tr>
+                  </EntityTableRow>
                 ))}
               </tbody>
             </table>

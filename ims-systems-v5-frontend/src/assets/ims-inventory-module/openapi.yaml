@@ -1,0 +1,147 @@
+openapi: 3.0.3
+info:
+  title: iMS OS · Inventory & Asset module API
+  version: 1.0.0
+  description: |
+    Contract between the module front end (public/js/store.js, RestAdapter) and the iMS OS backend.
+    The reference implementation is server/server.js. All validation lives in public/js/rules.js and
+    must be applied server-side; the client applies the same rules only to show errors early.
+
+    Roles (RANK): viewer < staff < competent < manager.
+    Authentication: `Authorization: Bearer <token>` (platform session). Public scan actions may instead
+    carry `X-Scan-Name: <name>` which grants `staff` for the fault / move / each-use / sighting / stock-move
+    endpoints and attributes the history line to that name. Tenants can disable this.
+servers:
+  - url: /api
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+    scanName: { type: apiKey, in: header, name: X-Scan-Name }
+  schemas:
+    Error: { type: object, properties: { code: { type: string }, message: { type: string } } }
+    HistoryLine: { type: object, properties: { t: { type: string, example: "2026-11-19T10:12" }, by: { type: string }, what: { type: string } } }
+    CheckRecord: { type: object, properties: { last: { type: string, format: date }, by: { type: string }, ref: { type: string }, result: { type: string }, fileId: { type: string, nullable: true } } }
+    Disposal: { type: object, properties: { reason: { type: string }, route: { type: string }, ev: { type: string }, by: { type: string }, date: { type: string, format: date } } }
+    Asset:
+      type: object
+      required: [id, tag, name, cat, loc, stage, crit]
+      properties:
+        id: { type: string }
+        tag: { type: string, pattern: "^[A-Za-z0-9][A-Za-z0-9._-]{1,30}$", description: Unique; printed on the label; part of the QR URL }
+        name: { type: string }
+        cat: { type: string, description: One of the category keys from GET /categories }
+        loc: { type: string, example: "Northfield Works · Bay 1", description: "Site · area; the site is the business unit" }
+        cust: { type: string, description: Custodian / owner. Required for active assets }
+        stage: { type: string, enum: [Requested, Procured, Commissioned, In service, Under maintenance, Quarantined, Retired, Disposed] }
+        crit: { type: string, enum: [Critical, High, Standard] }
+        model: { type: string }
+        serial: { type: string }
+        pdate: { type: string, format: date }
+        cost: { type: number }
+        sup: { type: string, description: Supplier name (links to the Suppliers module) }
+        warr: { type: string, format: date }
+        info: { type: string, enum: ["No", "Yes · holds data"], description: Information asset flag (ISO 27001) }
+        notes: { type: string, description: Safety / usage notes shown on scan }
+        labelled: { type: boolean }
+        checks: { type: object, additionalProperties: { $ref: "#/components/schemas/CheckRecord" } }
+        hist: { type: array, items: { $ref: "#/components/schemas/HistoryLine" }, description: Append-only, newest first }
+        disp: { oneOf: [{ $ref: "#/components/schemas/Disposal" }, { type: "null" }] }
+    StockItem:
+      type: object
+      properties:
+        id: { type: string }
+        code: { type: string }
+        item: { type: string }
+        loc: { type: string }
+        qty: { type: integer }
+        min: { type: integer }
+        max: { type: integer }
+        batch: { type: string }
+        exp: { type: string, format: date, nullable: true }
+        moves: { type: array, items: { $ref: "#/components/schemas/HistoryLine" } }
+    Settings:
+      type: object
+      properties:
+        leadDays: { type: integer, default: 30, description: Days before due to flag "soon" }
+        categoryOverrides: { type: object, additionalProperties: { type: object, additionalProperties: { type: integer } }, example: { "Lifting equipment": { "Thorough examination": 12 } } }
+    Model:
+      type: object
+      properties:
+        org: { type: string }
+        settings: { $ref: "#/components/schemas/Settings" }
+        assets: { type: array, items: { $ref: "#/components/schemas/Asset" } }
+        stock: { type: array, items: { $ref: "#/components/schemas/StockItem" } }
+        user: { type: object, properties: { name: { type: string }, role: { type: string } } }
+        version: { type: integer, description: Increments on every write; the client polls it }
+        scanBase: { type: string, example: "https://app.ims-os.com/a/" }
+    ResultInput:
+      type: object
+      required: [check, result]
+      properties:
+        check: { type: string, description: A check name for the asset's category }
+        result: { type: string, enum: ["Pass", "Pass with observations", "Fail · quarantined"] }
+        date: { type: string, format: date, description: Defaults to today; cannot be in the future }
+        by: { type: string, description: Competent person / lab (defaults to the caller) }
+        ref: { type: string, description: Certificate or report reference / document id }
+        fileId: { type: string, description: Uploaded certificate in the iMS OS document store }
+    StageInput:
+      type: object
+      required: [stage]
+      properties:
+        stage: { type: string }
+        reason: { type: string, description: Required for Retired / Disposed }
+        approvedBy: { type: string, description: Required for Retired / Disposed }
+        route: { type: string, enum: ["WEEE recycling (licensed carrier)", "Resale", "Scrap metal (licensed)", "Return to lessor", "Hazardous waste contractor"], description: Required for Disposed }
+        evidence: { type: string, description: Required for Disposed; must reference a wipe/destruction certificate for information assets }
+    StockMove:
+      type: object
+      required: [type, qty]
+      properties:
+        type: { type: string, enum: [issue, receive, count, quarantine, dispose] }
+        qty: { type: integer }
+        ref: { type: string }
+        batch: { type: string, description: receive only }
+        exp: { type: string, format: date, description: receive only }
+    Readiness: { type: array, items: { type: object, properties: { id: { type: string }, ok: { type: boolean }, text: { type: string }, basis: { type: string }, tag: { type: string } } } }
+  responses:
+    Err: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+paths:
+  /model:
+    get: { summary: Whole model for the signed-in tenant (register, stock, settings, user, version), responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Model" } } } } } }
+  /assets:
+    get: { summary: List assets, responses: { "200": { description: OK } } }
+    post: { summary: Create an asset (manager), requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Asset" } } } }, responses: { "200": { description: Created asset }, "422": { $ref: "#/components/responses/Err" }, "403": { $ref: "#/components/responses/Err" } } }
+  /assets/register.csv:
+    get: { summary: Register export, responses: { "200": { description: text/csv } } }
+  /assets/schedule.csv:
+    get: { summary: Inspection and calibration schedule export, responses: { "200": { description: text/csv } } }
+  /assets/{id}:
+    parameters: [{ name: id, in: path, required: true, schema: { type: string }, description: Asset id or tag }]
+    get: { summary: One asset, responses: { "200": { description: OK }, "404": { $ref: "#/components/responses/Err" } } }
+    put: { summary: Update fields (manager). Writes an "Updated" history line., requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Asset" } } } }, responses: { "200": { description: Updated asset }, "422": { $ref: "#/components/responses/Err" } } }
+  /assets/{id}/results:
+    post: { summary: Record an inspection / calibration / maintenance result (competent). A Fail quarantines., requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/ResultInput" } } } }, responses: { "200": { description: "{ asset, nextDue }" }, "422": { $ref: "#/components/responses/Err" } } }
+  /assets/{id}/stage:
+    post: { summary: Move lifecycle stage (manager), requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/StageInput" } } } }, responses: { "200": { description: Asset }, "422": { $ref: "#/components/responses/Err" } } }
+  /assets/{id}/fault:
+    post: { summary: Report a fault (staff or scan). Moves to Under maintenance and creates a task for the custodian., requestBody: { content: { application/json: { schema: { type: object, required: [description], properties: { description: { type: string } } } } } }, responses: { "200": { description: Asset } } }
+  /assets/{id}/move:
+    post: { summary: Move location (staff or scan), requestBody: { content: { application/json: { schema: { type: object, required: [loc], properties: { loc: { type: string } } } } } }, responses: { "200": { description: Asset } } }
+  /assets/{id}/each-use:
+    post: { summary: Record the each-use check (pre-use / daily walk-round) (staff or scan), responses: { "200": { description: Asset } } }
+  /assets/{id}/sighting:
+    post: { summary: Confirm the asset was seen at its recorded location (staff or scan), responses: { "200": { description: Asset } } }
+  /readiness:
+    get: { summary: Audit readiness checks, responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Readiness" } } } } } }
+  /stock:
+    get: { summary: Stock items, responses: { "200": { description: OK } } }
+    post: { summary: Create stock item (manager), responses: { "200": { description: Item } } }
+  /stock/{id}:
+    put: { summary: Update stock item fields (staff), responses: { "200": { description: Item } } }
+  /stock/{id}/move:
+    post: { summary: Stock movement (staff or scan), requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/StockMove" } } } }, responses: { "200": { description: "{ item, before, after, state }" } } }
+  /settings:
+    get: { summary: Tenant settings, responses: { "200": { description: OK } } }
+    put: { summary: Update settings (manager; logged), responses: { "200": { description: OK } } }
+  /categories:
+    get: { summary: Categories with their checks after tenant overrides, responses: { "200": { description: OK } } }

@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useRef, useState, type DragEvent } from "react";
 import { CheckCircle2, Loader2, Upload } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { FormField } from "@/shared/components/form-field";
 import { notify } from "@/shared/lib/toast";
+import { cn } from "@/shared/lib/utils";
 import { uploadViaPublicAslToken } from "../api/asl-supplier";
 import {
   useAslUploadContextQuery,
@@ -26,8 +27,14 @@ export function PublicAslUploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [done, setDone] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [dragging, setDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const context = contextQuery.data;
+
+  function pickFile(next: File | null) {
+    setFile(next);
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -65,17 +72,20 @@ export function PublicAslUploadPage() {
       <div className="w-full max-w-lg space-y-4 rounded-xl border border-border-subtle bg-card p-6 shadow-sm">
         <div>
           <h1 className="text-lg font-semibold tracking-tight">
-            Supplier document upload
+            Upload supplier documents
           </h1>
-          <p className="text-sm text-muted-foreground">
-            Secure link — no account required.
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your customer asked you to provide insurance certificates or other
+            compliance documents for their approved supplier list. No account is
+            required — upload below and the file is saved against your supplier
+            record.
           </p>
         </div>
 
         {!token || contextQuery.isError ? (
           <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-3 text-sm text-destructive">
             This upload link is invalid or has expired. Ask your contact to
-            resend the notification.
+            resend the upload link.
           </p>
         ) : contextQuery.isLoading || !context ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -83,20 +93,23 @@ export function PublicAslUploadPage() {
           </div>
         ) : (
           <>
-            <div className="rounded-md border border-border-subtle px-3 py-3 text-sm">
+            <div className="space-y-2 rounded-md border border-border-subtle px-3 py-3 text-sm">
               <p>
                 Supplier: <strong>{context.supplier.name}</strong>
               </p>
+              <p className="text-muted-foreground">
+                Organisation: {context.orgName}
+              </p>
               {context.supplier.missing.length ? (
-                <p className="mt-2 text-muted-foreground">
-                  Missing:{" "}
+                <p className="text-muted-foreground">
+                  Still needed:{" "}
                   {context.supplier.missing
                     .map((m) => formatReqLabel(m))
                     .join("; ")}
                 </p>
               ) : null}
               {context.supplier.expired.length || context.supplier.soon.length ? (
-                <p className="mt-1 text-muted-foreground">
+                <p className="text-muted-foreground">
                   Expiring / expired:{" "}
                   {[
                     ...context.supplier.expired,
@@ -112,8 +125,8 @@ export function PublicAslUploadPage() {
               <div className="flex items-start gap-2 rounded-md border border-border-subtle px-3 py-3 text-sm">
                 <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" />
                 <span>
-                  Thank you — your document was received. You can upload another
-                  file below if needed.
+                  Thank you — your document was saved to the supplier record. You
+                  can upload another file below if needed.
                 </span>
               </div>
             ) : null}
@@ -151,11 +164,59 @@ export function PublicAslUploadPage() {
                 />
               </FormField>
               <FormField label="File" required>
-                <input
-                  type="file"
-                  disabled={submitting}
-                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                />
+                <div
+                  role="button"
+                  tabIndex={0}
+                  aria-disabled={submitting}
+                  className={cn(
+                    "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed border-primary/50 bg-primary/[0.04] px-4 py-8 text-center transition-colors hover:border-primary hover:bg-primary/[0.07]",
+                    dragging && "border-primary bg-primary/10",
+                    submitting && "cursor-not-allowed opacity-60"
+                  )}
+                  onClick={() => {
+                    if (!submitting) fileInputRef.current?.click();
+                  }}
+                  onKeyDown={(event) => {
+                    if (
+                      (event.key === "Enter" || event.key === " ") &&
+                      !submitting
+                    ) {
+                      event.preventDefault();
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  onDragOver={(event: DragEvent) => {
+                    event.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(event: DragEvent) => {
+                    event.preventDefault();
+                    setDragging(false);
+                    if (submitting) return;
+                    pickFile(event.dataTransfer.files?.[0] ?? null);
+                  }}
+                >
+                  <Upload className="size-7 text-primary" />
+                  <p className="text-sm font-medium">
+                    {file
+                      ? file.name
+                      : "Drag & drop, or click to select a file"}
+                  </p>
+                  <span className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                    Choose file
+                  </span>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    disabled={submitting}
+                    onChange={(e) => {
+                      pickFile(e.target.files?.[0] ?? null);
+                      e.target.value = "";
+                    }}
+                  />
+                </div>
               </FormField>
               <Button type="submit" className="w-full" disabled={submitting}>
                 {submitting ? (

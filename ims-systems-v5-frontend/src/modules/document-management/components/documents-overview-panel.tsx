@@ -1,8 +1,12 @@
 import {
   BookOpen,
+  Boxes,
+  ClipboardCheck,
   FileStack,
   FileText,
   Gavel,
+  GraduationCap,
+  Handshake,
   Loader2,
   Pin,
   PinOff,
@@ -22,7 +26,11 @@ import { usePinnedFoldersStore } from "../store/use-pinned-folders-store";
 import {
   DOCUMENT_PURPOSE_LABELS,
   DOCUMENT_PURPOSES,
+  DOCUMENT_SOURCE_MODULES,
+  DOCUMENT_SOURCE_MODULE_DESCRIPTIONS,
+  DOCUMENT_SOURCE_MODULE_LABELS,
   type DocumentPurpose,
+  type DocumentSourceModule,
 } from "../types";
 import { useDocumentsUiStore } from "../store/use-documents-ui-store";
 import { FileTypeIcon } from "./file-type-icon";
@@ -63,6 +71,32 @@ const PURPOSE_META: Record<
   },
 };
 
+const SOURCE_MODULE_META: Record<
+  DocumentSourceModule,
+  { icon: LucideIcon; accent: string; soft: string }
+> = {
+  training: {
+    icon: GraduationCap,
+    accent: "text-indigo-700 dark:text-indigo-300",
+    soft: "bg-indigo-500/10",
+  },
+  inventory: {
+    icon: Boxes,
+    accent: "text-teal-700 dark:text-teal-300",
+    soft: "bg-teal-500/10",
+  },
+  supplier: {
+    icon: Handshake,
+    accent: "text-orange-700 dark:text-orange-300",
+    soft: "bg-orange-500/10",
+  },
+  tender: {
+    icon: ClipboardCheck,
+    accent: "text-cyan-700 dark:text-cyan-300",
+    soft: "bg-cyan-500/10",
+  },
+};
+
 const EMPTY_PINNED: never[] = [];
 
 export function DocumentsOverviewPanel() {
@@ -94,9 +128,23 @@ export function DocumentsOverviewPanel() {
   }
 
   const data = overviewQuery.data!;
+  const bySourceModule = data.bySourceModule ?? {
+    training: 0,
+    inventory: 0,
+    supplier: 0,
+    tender: 0,
+  };
   const maxPurpose = Math.max(
     1,
     ...DOCUMENT_PURPOSES.map((purpose) => data.byPurpose[purpose] ?? 0)
+  );
+  const maxSource = Math.max(
+    1,
+    ...DOCUMENT_SOURCE_MODULES.map((module) => bySourceModule[module] ?? 0)
+  );
+  const moduleTotal = DOCUMENT_SOURCE_MODULES.reduce(
+    (sum, module) => sum + (bySourceModule[module] ?? 0),
+    0
   );
 
   return (
@@ -120,8 +168,9 @@ export function DocumentsOverviewPanel() {
               </p>
             </div>
             <p className="max-w-xl text-[0.8125rem] leading-relaxed text-muted-foreground">
-              Organisation-wide published files by purpose. Open repositories to
-              manage folders, versions, and authorisation.
+              Organisation-wide published files by purpose, plus evidence and
+              certificates uploaded from Training, Inventory, Supplier and
+              Tender — each opens as a controlled document.
             </p>
           </div>
           <Button
@@ -131,6 +180,73 @@ export function DocumentsOverviewPanel() {
           >
             Browse repositories
           </Button>
+        </div>
+      </section>
+
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold tracking-tight text-foreground">
+              From modules
+            </h2>
+            <p className="text-[0.75rem] text-muted-foreground">
+              Evidence, certificates and library files uploaded in operational
+              modules
+              {moduleTotal > 0 ? ` · ${moduleTotal} total` : ""}.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {DOCUMENT_SOURCE_MODULES.map((module) => {
+            const count = bySourceModule[module] ?? 0;
+            const meta = SOURCE_MODULE_META[module];
+            const Icon = meta.icon;
+            const ratio = Math.round((count / maxSource) * 100);
+
+            return (
+              <button
+                key={module}
+                type="button"
+                onClick={() => navigate(`/documents/modules/${module}`)}
+                className={cn(
+                  "group relative overflow-hidden rounded-xl border border-border-subtle bg-card p-4 text-left",
+                  "transition-[border-color,box-shadow,transform] duration-150",
+                  "hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-sm"
+                )}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    className={cn(
+                      "flex size-9 items-center justify-center rounded-lg",
+                      meta.soft,
+                      meta.accent
+                    )}
+                  >
+                    <Icon className="size-4" />
+                  </div>
+                  <span className="text-2xl font-semibold tracking-tight tabular-nums text-foreground">
+                    {count}
+                  </span>
+                </div>
+
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm font-medium text-foreground">
+                    {DOCUMENT_SOURCE_MODULE_LABELS[module]}
+                  </p>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary/70 transition-[width] duration-300 group-hover:bg-primary"
+                      style={{ width: `${ratio}%` }}
+                    />
+                  </div>
+                  <p className="text-[0.6875rem] text-muted-foreground">
+                    {DOCUMENT_SOURCE_MODULE_DESCRIPTIONS[module]}
+                  </p>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 

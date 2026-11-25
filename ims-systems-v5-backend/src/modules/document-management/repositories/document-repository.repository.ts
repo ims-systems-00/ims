@@ -6,6 +6,7 @@ import type {
   DocumentPrivacy,
   DocumentRepository,
   DocumentReviewInterval,
+  DocumentSourceModule,
   ListDocumentRepositoriesQuery,
   PaginatedDocumentRepositories,
 } from "../types";
@@ -26,6 +27,7 @@ function toDomain(doc: DocumentRepositoryDocument): DocumentRepository {
     owners: [...(doc.owners ?? [])],
     sharedWith: [...(doc.sharedWith ?? [])],
     reviewInterval: doc.reviewInterval as DocumentReviewInterval,
+    systemKey: (doc.systemKey as DocumentSourceModule | null | undefined) ?? null,
     createdBy: doc.createdBy,
     createdOn: doc.createdOn,
     updatedBy: doc.updatedBy ?? null,
@@ -45,6 +47,7 @@ export type PersistRepositoryCreate = {
   owners: string[];
   sharedWith: string[];
   reviewInterval: DocumentReviewInterval;
+  systemKey?: DocumentSourceModule | null;
   createdBy: string;
   createdOn: Date;
 };
@@ -76,6 +79,7 @@ export function createDocumentRepositoryStore() {
       const doc = await Model.create({
         organizationId,
         ...input,
+        systemKey: input.systemKey ?? null,
         deletedAt: null,
         updatedBy: null,
         updatedOn: null,
@@ -91,6 +95,18 @@ export function createDocumentRepositoryStore() {
       const filter: Record<string, unknown> = { _id: id, organizationId };
       if (!options?.includeDeleted) filter.deletedAt = null;
       const doc = await Model.findOne(filter).lean();
+      return doc ? toDomain(doc as DocumentRepositoryDocument) : null;
+    },
+
+    async findBySystemKey(
+      organizationId: string,
+      systemKey: DocumentSourceModule
+    ): Promise<DocumentRepository | null> {
+      const doc = await Model.findOne({
+        organizationId,
+        systemKey,
+        deletedAt: null,
+      }).lean();
       return doc ? toDomain(doc as DocumentRepositoryDocument) : null;
     },
 

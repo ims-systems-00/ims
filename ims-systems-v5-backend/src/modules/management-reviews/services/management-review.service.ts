@@ -238,7 +238,8 @@ export function createManagementReviewService(
         payloads
       );
 
-      // One digest notification for the whole series (not one per occurrence).
+      // One digest notification for the whole series (not one per occurrence /
+      // attendee×occurrence burst). Calendar still gets each occurrence date.
       const primary = items[0];
       if (primary) {
         await notifications.notifyScheduled({
@@ -257,6 +258,8 @@ export function createManagementReviewService(
         });
       }
 
+      // Upsert calendar entries sequentially; failures must not multiply
+      // notifications (notify already completed above as a single digest).
       for (const review of items) {
         await syncCalendar(review);
       }

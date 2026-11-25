@@ -1,5 +1,9 @@
 import { Router } from "express";
-import type { AppConfig } from "../../../config";
+import {
+  resolveClientAppUrl,
+  resolveClientAppUrlOrDevFallback,
+  type AppConfig,
+} from "../../../config";
 import {
   createLogger,
   type Logger,
@@ -21,7 +25,9 @@ import {
   createDocumentReviewReminderOrgAdapter,
   startDocumentReviewReminderSchedule,
   NoOpDocumentComplianceLinkAdapter,
+  NoOpDocumentModuleLibraryAdapter,
   type DocumentComplianceLinkPort,
+  type DocumentModuleLibraryPort,
 } from "../../../modules/document-management";
 import { createReportBugModule } from "../../../modules/report-bug";
 import { createContactImsModule } from "../../../modules/contact-ims";
@@ -45,6 +51,37 @@ import {
   createAssetCategoryLookupAdapter,
   createAssetUserLookupAdapter,
 } from "../../../modules/assets";
+import {
+  createInventoryIncidentAdapter,
+  createInventoryModule,
+  createInventorySupplierAdapter,
+  createInventoryTaskAdapter,
+} from "../../../modules/inventory";
+import {
+  createTrainingChaseService,
+  createTrainingEmailAdapter,
+  createTrainingFilesAdapter,
+  createTrainingModule,
+  createTrainingNotificationAdapter,
+  createTrainingOrgAdapter,
+  createTrainingUsersAdapter,
+  startTrainingChaseSchedule,
+} from "../../../modules/training";
+import {
+  createTenderAliceAdapter,
+  createTenderEmailAdapter,
+  createTenderFilesAdapter,
+  createTenderModule,
+  createTenderNotificationAdapter,
+  createTenderOrgAdapter,
+  createTenderUsersAdapter,
+} from "../../../modules/tender";
+import {
+  createLiveRelyableCollectors,
+  createRelyableModule,
+  createRelyableOrgAdapter,
+} from "../../../modules/relyable";
+import { createAslSupplierRepository } from "../../../modules/supplier/repositories/asl-supplier.repository";
 import {
   createAuditModule,
   createAuditNotificationAdapter,
@@ -114,6 +151,7 @@ import {
   createAslOrgAdapter,
   createAslSupplierModule,
   createAslTaskAdapter,
+  createAslUsersAdapter,
   startAslChaseSchedule,
 } from "../../../modules/supplier";
 import {
@@ -410,9 +448,11 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   });
   router.use("/licence-requests", licenceRequests.router);
 
+  const clientAppUrl = resolveClientAppUrlOrDevFallback(config?.CLIENT_URL);
+
   const partnerships = createPartnershipModule({
     email,
-    clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
+    clientUrl: clientAppUrl,
     logger,
     resolveEmailBranding,
   });
@@ -440,6 +480,110 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
           categories: createAssetCategoryLookupAdapter(),
         })
       : createAssetsModule({ authorizer: security.authorizer });
+  const inventoryTaskRepository = createTaskRepository();
+  const inventoryIncidentRepository = createIncidentRepository();
+  const inventoryAslSuppliers = createAslSupplierRepository();
+  /** Filled after Document Management boots (inventory/training/tender create earlier). */
+  const documentLibraryHolder: { current: DocumentModuleLibraryPort } = {
+    current: new NoOpDocumentModuleLibraryAdapter(),
+  };
+  const documentLibraryPort: DocumentModuleLibraryPort = {
+    registerDocument: (input) =>
+      documentLibraryHolder.current.registerDocument(input),
+  };
+  const inventory = createInventoryModule({
+    authorizer: security.authorizer,
+    clientUrl: clientAppUrl,
+    documents: documentLibraryPort,
+    orgNameResolver: async (organizationId) => {
+      const org =
+        await createOrganisationRepository().findById(organizationId);
+      return org?.name ?? null;
+    },
+    tasks: createInventoryTaskAdapter({
+      createTask: async (input) => {
+        const created = await inventoryTaskRepository.create(
+          input.organizationId,
+          {
+            reference: `TSK-INV-${Date.now().toString(36).toUpperCase()}`,
+            name: input.title,
+            description: input.description,
+            dueDate: new Date(),
+            priority: "High",
+            teamPriority: false,
+            assignees: [],
+            status: "Pending",
+            attachments: [],
+            source: {
+              moduleType: input.moduleType,
+              moduleId: input.moduleId,
+            },
+            activity: [
+              newTaskActivityEntry(
+                "created",
+                "Inventory purchase task",
+                input.createdBy
+              ),
+            ],
+            createdBy: input.createdBy,
+            createdOn: new Date(),
+          }
+        );
+        return { id: created.id };
+      },
+    }),
+    incidents: createInventoryIncidentAdapter({
+      createIncident: async (input) => {
+        const created = await inventoryIncidentRepository.create(
+          input.organizationId,
+          {
+            reference: `INC-INV-${Date.now().toString(36).toUpperCase()}`,
+            title: input.title,
+            description: input.description,
+            priority: "P3",
+            privacy: "Business unit",
+            attachments: [],
+            activity: [
+              newIncidentActivityEntry(
+                "raised",
+                "Raised from inventory Fail / fault",
+                input.createdBy
+              ),
+            ],
+            source: {
+              moduleType: input.moduleType,
+              moduleId: input.moduleId,
+            },
+            raisedBy: input.createdBy,
+            raisedOn: new Date(),
+          }
+        );
+        return { id: created.id };
+      },
+    }),
+    suppliers: createInventorySupplierAdapter({
+      listCalibrationLabs: async (organizationId) => {
+        const page = await inventoryAslSuppliers.list(organizationId, {
+          page: 1,
+          pageSize: 100,
+        });
+        const today = new Date().toISOString().slice(0, 10);
+        return page.items
+          .filter((s) => {
+            if (s.cat !== "Calibration / test") return false;
+            if (s.status !== "Approved" && s.status !== "Conditional") {
+              return false;
+            }
+            return s.docs.some((d) => {
+              if (d.type !== "UKAS schedule") return false;
+              if (!d.exp) return true;
+              return d.exp >= today;
+            });
+          })
+          .map((s) => ({ id: s.id, name: s.name }));
+      },
+    }),
+  });
   const businessPremises = createBusinessPremiseModule({
     authorizer: security.authorizer,
   });
@@ -479,7 +623,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     authorizer: security.authorizer,
     email,
     membershipProjection: security.membershipProjection,
-    clientUrl: config?.CLIENT_URL ?? "http://localhost:3000",
+    clientUrl: clientAppUrl,
     resolveEmailBranding,
   });
   router.use("/invitations", invitations.router);
@@ -531,6 +675,90 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
 
   router.use("/functional-units", functionalUnits.router);
   router.use("/assets", assets.router);
+  router.use("/inventory", inventory.router);
+
+  const training = createTrainingModule({
+    authorizer: security.authorizer,
+    clientUrl: clientAppUrl,
+    documents: documentLibraryPort,
+    tokenSecret:
+      config?.TRAINING_TOKEN_SECRET?.trim() ||
+      config?.ONLYOFFICE_JWT_SECRET?.trim() ||
+      "dev-training-token-secret",
+    email: email ? createTrainingEmailAdapter(email) : undefined,
+    files: objectStorage
+      ? createTrainingFilesAdapter(objectStorage, {
+          resolveBucket: (organizationId) => {
+            if (config?.NODE_ENV === "production" && config.AWS_BUCKET_SUFFIX) {
+              return `${organizationId}${config.AWS_BUCKET_SUFFIX}`;
+            }
+            if (config?.AWS_PRIVATE_BUCKET?.trim()) {
+              return config.AWS_PRIVATE_BUCKET.trim();
+            }
+            if (config?.AWS_BUCKET_SUFFIX) {
+              return `${organizationId}${config.AWS_BUCKET_SUFFIX}`;
+            }
+            return `ims-v5-${organizationId}`;
+          },
+        })
+      : undefined,
+    org: createTrainingOrgAdapter({
+      getName: async (organizationId) => {
+        const org =
+          await createOrganisationRepository().findById(organizationId);
+        return org?.name ?? null;
+      },
+    }),
+    users: createTrainingUsersAdapter({
+      listMembers: async (organizationId) => {
+        const memberships =
+          await users.memberships.listByOrganization(organizationId);
+        const activeIds = memberships
+          .filter((m) => m.accessStatus !== "Blocked")
+          .map((m) => m.userId);
+        if (!activeIds.length) return [];
+        const membershipByUser = new Map(
+          memberships.map((m) => [m.userId, m])
+        );
+        const { items } = await createUserRepository().listActiveByIds(
+          activeIds,
+          { page: 1, pageSize: Math.max(activeIds.length, 1) }
+        );
+        return items.map((user) => ({
+          userId: user.id,
+          name: user.name?.trim() || user.email,
+          email: user.email,
+          jobTitle: membershipByUser.get(user.id)?.jobTitle ?? null,
+        }));
+      },
+    }),
+    notifications: createTrainingNotificationAdapter({
+      notify: async (input) => {
+        if (!input.userId) return;
+        await notifications.application.createForRecipients({
+          organizationId: input.organizationId,
+          createdBy: "system",
+          recipients: [
+            {
+              recipientUserId: input.userId,
+              title: input.title,
+              message: input.body,
+              referenceType: "notifications",
+              referenceModuleId: input.organizationId,
+              screenIdentifier: "training",
+              params: { id: input.organizationId },
+            },
+          ],
+        });
+      },
+    }),
+  });
+  const trainingChase = createTrainingChaseService({
+    service: training.service,
+    logger:
+      logger ?? createLogger({ level: "silent", name: "training-chase" }),
+  });
+  router.use("/training", training.router);
   router.use("/business-premises", businessPremises.router);
   router.use("/users", users.router);
   router.use("/notifications", notifications.router);
@@ -787,6 +1015,96 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         })
       : aiGpt;
 
+  const tender = createTenderModule({
+    authorizer: security.authorizer,
+    documents: documentLibraryPort,
+    email: email ? createTenderEmailAdapter(email) : undefined,
+    files: objectStorage
+      ? createTenderFilesAdapter(objectStorage, {
+          resolveBucket: (organizationId) => {
+            if (config?.NODE_ENV === "production" && config.AWS_BUCKET_SUFFIX) {
+              return `${organizationId}${config.AWS_BUCKET_SUFFIX}`;
+            }
+            if (config?.AWS_PRIVATE_BUCKET?.trim()) {
+              return config.AWS_PRIVATE_BUCKET.trim();
+            }
+            if (config?.AWS_BUCKET_SUFFIX) {
+              return `${organizationId}${config.AWS_BUCKET_SUFFIX}`;
+            }
+            return `ims-v5-${organizationId}`;
+          },
+        })
+      : undefined,
+    org: createTenderOrgAdapter({
+      getName: async (organizationId) => {
+        const org =
+          await createOrganisationRepository().findById(organizationId);
+        return org?.name ?? null;
+      },
+    }),
+    users: createTenderUsersAdapter({
+      listMembers: async (organizationId) => {
+        const memberships =
+          await users.memberships.listByOrganization(organizationId);
+        const activeIds = memberships
+          .filter((m) => m.accessStatus !== "Blocked")
+          .map((m) => m.userId);
+        if (!activeIds.length) return [];
+        const membershipByUser = new Map(
+          memberships.map((m) => [m.userId, m])
+        );
+        const { items } = await createUserRepository().listActiveByIds(
+          activeIds,
+          { page: 1, pageSize: Math.max(activeIds.length, 1) }
+        );
+        return items.map((user) => ({
+          userId: user.id,
+          name: user.name?.trim() || user.email,
+          email: user.email,
+          jobTitle: membershipByUser.get(user.id)?.jobTitle ?? null,
+        }));
+      },
+    }),
+    notifications: createTenderNotificationAdapter({
+      notify: async (input) => {
+        if (!input.userId) return;
+        await notifications.application.createForRecipients({
+          organizationId: input.organizationId,
+          createdBy: "system",
+          recipients: [
+            {
+              recipientUserId: input.userId,
+              title: input.title,
+              message: input.body,
+              referenceType: "notifications",
+              referenceModuleId: input.organizationId,
+              screenIdentifier: "tender",
+              params: { id: input.organizationId },
+            },
+          ],
+        });
+      },
+    }),
+    alice: createTenderAliceAdapter({
+      generateText: async ({ prompt, systemInstructions }) =>
+        aiGpt.generateText({
+          prompt,
+          systemInstructions: systemInstructions
+            ? [{ role: "system", content: systemInstructions }]
+            : [],
+          conversation: [],
+        }),
+    }),
+  });
+  router.use("/tender", tender.router);
+
+  const relyable = createRelyableModule({
+    authorizer: security.authorizer,
+    collectors: createLiveRelyableCollectors(),
+    org: createRelyableOrgAdapter(),
+  });
+  router.use("/relyable", relyable.router);
+
   const activities = createActivitiesModule({
     authorizer: security.authorizer,
     ...(listScopes ? { listScope: listScopes.groups() } : {}),
@@ -801,7 +1119,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     gpt: aiGpt,
     chatGpt: aiChatGpt,
     chatModelId,
-    clientAppOrigin: config?.CLIENT_URL,
+    clientAppOrigin: clientAppUrl,
     activities: createAiActivityAdapter(activities.application),
     actors: createAiActorDirectoryAdapter(),
     context: createAiContextAdapter({
@@ -835,7 +1153,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
       clearLinks: (input) =>
         documentComplianceLinkHolder.current.clearLinks(input),
     },
-    accessLinkBaseUrl: config?.CLIENT_URL,
+    accessLinkBaseUrl: clientAppUrl,
     resolveEmailBranding,
     onlyOffice: config
       ? {
@@ -846,6 +1164,10 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         }
       : undefined,
   });
+  documentLibraryHolder.current = {
+    registerDocument: (input) =>
+      documentManagement.application.registerModuleDocument(input),
+  };
   router.use("/document-management", documentManagement.managementRouter);
   router.use("/document-repositories", documentManagement.repositoriesRouter);
   router.use("/document-trees", documentManagement.treesRouter);
@@ -957,6 +1279,7 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const aslIncidentRepository = createIncidentRepository();
   const aslSupplierModule = createAslSupplierModule({
     authorizer: security.authorizer,
+    documents: documentLibraryPort,
     email: email ? createAslEmailAdapter(email) : undefined,
     files: objectStorage
       ? createAslFilesAdapter(objectStorage, {
@@ -979,6 +1302,23 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         const org =
           await createOrganisationRepository().findById(organizationId);
         return org?.name ?? null;
+      },
+    }),
+    users: createAslUsersAdapter({
+      listActiveUsers: async (organizationId) => {
+        const identity = {
+          subjectId: "system",
+          organizationId,
+        } as import("../../../security").SecurityIdentity;
+        const ids = await notificationsUsers.listActiveUserIds(identity);
+        const out: Array<{ id: string; email: string }> = [];
+        for (const id of ids) {
+          const user = await organisationUsersLookup.findById(id).catch(() => null);
+          if (user?.email?.trim()) {
+            out.push({ id: user.id, email: user.email.trim() });
+          }
+        }
+        return out;
       },
     }),
     tasks: createAslTaskAdapter({
@@ -1054,22 +1394,83 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
           ],
         });
       },
+      notifyOrgUsers: async (input) => {
+        const identity = {
+          subjectId: "system",
+          organizationId: input.organizationId,
+        } as import("../../../security").SecurityIdentity;
+        const ids = await notificationsUsers.listActiveUserIds(identity);
+        if (!ids.length) return;
+        await notifications.application.createForRecipients({
+          organizationId: input.organizationId,
+          createdBy: "system",
+          recipients: ids.map((recipientUserId) => ({
+            recipientUserId,
+            title: input.title,
+            message: input.body,
+            referenceType: "suppliers" as const,
+            referenceModuleId: input.supplierId,
+            screenIdentifier: "suppliers",
+            params: { id: input.supplierId },
+          })),
+        });
+      },
     }),
     tokenSecret:
       config?.ONLYOFFICE_JWT_SECRET?.trim() || "dev-asl-token-secret",
-    publicApiBaseUrl: (
+    publicApiBaseUrl: resolveClientAppUrl(
       config?.CLIENT_URL || `http://127.0.0.1:${config?.PORT ?? 3001}`
-    ).replace(/\/$/, ""),
-    clientUrl: (config?.CLIENT_URL || "http://localhost:3000").replace(
-      /\/$/,
-      ""
     ),
+    clientUrl: clientAppUrl,
     defaultFromEmail: config?.MAIL_FROM?.trim() || "noreply@imssystems.tech",
   });
   const aslChase = createAslChaseService({
     service: aslSupplierModule.service,
     logger: logger ?? createLogger({ level: "silent", name: "asl-chase" }),
   });
+
+  /** Backfill module uploads into DM libraries, then return overview counts. */
+  documentManagement.managementRouter.post(
+    "/module-documents/sync",
+    async (req, res, next) => {
+      try {
+        const emptySync = {
+          scanned: 0,
+          created: 0,
+          existing: 0,
+          failed: 0,
+        };
+        const settled = await Promise.allSettled([
+          training.service.syncDocumentsToLibrary(req.identity),
+          inventory.service.syncDocumentsToLibrary(req.identity),
+          aslSupplierModule.service.syncDocumentsToLibrary(req.identity),
+          tender.service.syncDocumentsToLibrary(req.identity),
+        ]);
+        const pick = <T,>(result: PromiseSettledResult<T>, fallback: T): T =>
+          result.status === "fulfilled" ? result.value : fallback;
+        const overview = await documentManagement.service.overview(
+          req.identity
+        );
+        res.status(200).json({
+          success: true,
+          data: {
+            overview,
+            modules: {
+              training: pick(settled[0]!, emptySync),
+              inventory: pick(settled[1]!, emptySync),
+              supplier: pick(settled[2]!, emptySync),
+              tender: pick(settled[3]!, emptySync),
+            },
+          },
+          ...(req.correlationId
+            ? { correlationId: req.correlationId }
+            : {}),
+        });
+      } catch (error) {
+        next(error);
+      }
+    }
+  );
 
   const emailCampaigns = createEmailCampaignModule({
     authorizer: security.authorizer,
@@ -1289,9 +1690,15 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         service: aslChase,
         logger: logger ?? createLogger({ level: "info", name: "asl-chase" }),
       });
+      startTrainingChaseSchedule({
+        service: trainingChase,
+        logger:
+          logger ?? createLogger({ level: "info", name: "training-chase" }),
+      });
       return () => {
         stopReview?.();
         aslChase.stop();
+        trainingChase.stop();
       };
     },
   };

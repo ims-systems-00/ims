@@ -179,7 +179,7 @@ export function AslSupplierSheet({
                 onClick={() => setNotifyOpen(true)}
               >
                 <Mail className="size-3.5" />
-                Notify
+                Send upload link
               </Button>
               {canCreate ? (
                 <Button
@@ -368,6 +368,11 @@ function OverviewTab({ supplier }: { supplier: AslSupplier }) {
             icon={<CalendarCheck className="size-3.5" />}
             label="Approved by / on"
             value={`${supplier.appby || "—"} · ${supplier.appon || "—"}`}
+          />
+          <OverviewFact
+            icon={<CalendarCheck className="size-3.5" />}
+            label="Next evaluation due"
+            value={supplier.evalDue || "—"}
           />
           <OverviewFact
             icon={<ShieldCheck className="size-3.5" />}
@@ -683,6 +688,7 @@ function DocumentsTab({
             key={dropKey}
             path="supplier"
             multiple={false}
+            emphasized
             disabled={pending}
             onUploaded={(meta) => setStaged(meta)}
             onRemoved={() => setStaged(null)}

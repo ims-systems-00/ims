@@ -18,6 +18,27 @@ export const fileKeys = {
  * Disabled when metadata is incomplete or storage is the memory fake
  * (handled by callers checking the `memory://` prefix).
  */
+function safeViewFileName(
+  meta: Pick<FileMetaInfo, "Key" | "key" | "Name"> | null | undefined
+): string | undefined {
+  const key = meta?.Key || meta?.key || "";
+  const keyBase = key.split(/[\\/]/).pop() || key;
+  const name = meta?.Name?.trim() || "";
+  const nameExt =
+    name && name.includes(".")
+      ? name.slice(name.lastIndexOf(".") + 1)
+      : "";
+  const keyExt =
+    keyBase && keyBase.includes(".")
+      ? keyBase.slice(keyBase.lastIndexOf(".") + 1)
+      : "";
+  // Avoid sending display labels (no extension / em-dash titles) as the
+  // Content-Disposition filename — that breaks PDF iframe preview.
+  if (nameExt && !/ — /.test(name)) return name;
+  if (keyExt) return keyBase;
+  return name || undefined;
+}
+
 export function useFileViewUrlQuery(
   meta: Pick<FileMetaInfo, "Bucket" | "Key" | "key" | "Name"> | null | undefined,
   enabled = true
@@ -27,7 +48,11 @@ export function useFileViewUrlQuery(
   return useQuery({
     queryKey: fileKeys.view(bucket, key),
     queryFn: () =>
-      createViewUrl({ bucket, key, fileName: meta?.Name }),
+      createViewUrl({
+        bucket,
+        key,
+        fileName: safeViewFileName(meta),
+      }),
     enabled: enabled && Boolean(bucket && key),
     staleTime: 5 * 60 * 1000,
   });

@@ -1,0 +1,50 @@
+From: training@ims-os.example
+To: "D. Brooks" <d.brooks@northfield.example>
+Subject: Hi D. Brooks
+MIME-Version: 1.0
+Content-Type: multipart/mixed; boundary="ims-mwot8id9"
+
+--ims-mwot8id9
+Content-Type: text/plain; charset=utf-8
+
+Hello D. Brooks,
+
+You are invited to Fire safety & evacuation on Tuesday, 10 November 2026 at 10:00 (Room 1).
+
+Materials to read before the session:
+• slides.pdf — http://localhost:3100/files/x48kjmsick.pdf
+
+Please let us know whether you can attend:
+  Accept:  http://localhost:3100/r/16v3103ich/p03?a=accept
+  Decline: http://localhost:3100/r/16v3103ich/p03?a=decline
+
+Northfield Engineering Ltd · Training & competency
+
+Your training record: http://localhost:3100/t/p03
+--ims-mwot8id9
+Content-Type: text/calendar; charset=utf-8; method=REQUEST
+Content-Disposition: attachment; filename="invite.ics"
+
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//iMS OS//Training//EN
+METHOD:REQUEST
+BEGIN:VEVENT
+UID:16v3103ich@ims-os
+DTSTAMP:20261120T100219Z
+DTSTART:20261110T100000
+DTEND:20261110T110000
+SUMMARY:Fire safety & evacuation · Northfield Engineering Ltd
+LOCATION:Room 1
+ORGANIZER;CN=Northfield Engineering Ltd:mailto:training@ims-os.example
+ATTENDEE;CN=D. Brooks;ROLE=REQ-PARTICIPANT;RSVP=TRUE;PARTSTAT=NEEDS-ACTION:mailto:d.brooks@northfield.example
+DESCRIPTION:
+END:VEVENT
+END:VCALENDAR
+--ims-mwot8id9
+Content-Type: application/pdf
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="slides.pdf"
+
+aGVsbG8=
+--ims-mwot8id9--

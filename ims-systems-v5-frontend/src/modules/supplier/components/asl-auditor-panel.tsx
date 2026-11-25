@@ -52,7 +52,6 @@ export function AslAuditorPanel() {
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant="outline"
           size="sm"
           onClick={() => {
             void downloadAslAuditorPackFile("pdf").then(

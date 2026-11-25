@@ -1,4 +1,8 @@
 import {
+  renderEmail,
+  type EmailBranding,
+} from "../../../infrastructure/email/templates";
+import {
   addDays,
   daysUntil,
   expiredDocs,
@@ -16,12 +20,31 @@ export type AslMailContent = {
   items: string[];
 };
 
-function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+function collectDocItems(
+  supplier: AslSupplier,
+  lead: number,
+  today: Date
+): string[] {
+  const items: string[] = [];
+  for (const d of expiredDocs(supplier, lead, today)) {
+    items.push(
+      `• ${d.type} (${d.ref || "on file"}) – expired ${d.exp}. Please send the renewed document.`
+    );
+  }
+  for (const d of soonDocs(supplier, lead, today)) {
+    items.push(
+      `• ${d.type} (${d.ref || "on file"}) – expires ${d.exp}. Please send the renewal before that date.`
+    );
+  }
+  for (const r of missingDocs(supplier, lead, today)) {
+    items.push(`• ${r.replace(/\|/g, " or ")} – not yet received.`);
+  }
+  if (!items.length) {
+    items.push(
+      "• No documents outstanding. This is a courtesy note confirming your approved status and our requirements."
+    );
+  }
+  return items;
 }
 
 export function buildSupplierMail(input: {
@@ -31,62 +54,38 @@ export function buildSupplierMail(input: {
   actorName: string;
   uploadUrl: string;
   today?: Date;
+  branding?: EmailBranding;
 }): AslMailContent {
   const today = input.today ?? startOfToday();
   const s = input.supplier;
-  const items: string[] = [];
-
-  for (const d of expiredDocs(s, input.settings.lead, today)) {
-    items.push(
-      `• ${d.type} (${d.ref || "on file"}) – expired ${d.exp}. Please send the renewed document.`
-    );
-  }
-  for (const d of soonDocs(s, input.settings.lead, today)) {
-    items.push(
-      `• ${d.type} (${d.ref || "on file"}) – expires ${d.exp}. Please send the renewal before that date.`
-    );
-  }
-  for (const r of missingDocs(s, input.settings.lead, today)) {
-    items.push(`• ${r.replace(/\|/g, " or ")} – not yet received.`);
-  }
-  if (!items.length) {
-    items.push(
-      "• No documents outstanding. This is a courtesy note confirming your approved status and our requirements."
-    );
-  }
-
+  const items = collectDocItems(s, input.settings.lead, today);
   const due = toIsoDate(addDays(today, input.settings.follow + 7));
-  const subject = `${input.orgName}: supplier documents required by ${due}`;
   const holdNote =
     s.crit === "Critical" || s.cat === "Contractor on site"
-      ? "As a critical supplier/contractor, orders or site access may be held until the documents are received.\n\n"
-      : "";
+      ? "As a critical supplier/contractor, orders or site access may be held until the documents are received."
+      : undefined;
   const reqsNote = s.reqs
-    ? `As a reminder, our requirements for your supply are: ${s.reqs}.\n\n`
-    : "";
+    ? `As a reminder, our requirements for your supply are: ${s.reqs}.`
+    : undefined;
 
-  const text = `Dear ${s.contact || s.name},
+  const rendered = renderEmail(
+    "asl-docs-chase",
+    {
+      orgName: input.orgName,
+      supplierName: s.name,
+      contactName: s.contact || s.name,
+      actorName: input.actorName,
+      fromAddress: input.settings.from,
+      dueDate: due,
+      uploadUrl: input.uploadUrl,
+      items,
+      ...(holdNote ? { holdNote } : {}),
+      ...(reqsNote ? { reqsNote } : {}),
+    },
+    input.branding ? { branding: input.branding } : undefined
+  );
 
-${input.orgName} keeps an approved supplier list as part of our ISO management system, and we need the following from ${s.name}:
-
-${items.join("\n")}
-
-Please reply with the documents, or upload them here (no account needed): ${input.uploadUrl}
-
-We need them by ${due}. ${holdNote}${reqsNote}Thank you,
-${input.actorName}
-${input.orgName} · ${input.settings.from}`;
-
-  const html = `<p>Dear ${escapeHtml(s.contact || s.name)},</p>
-<p>${escapeHtml(input.orgName)} keeps an approved supplier list as part of our ISO management system, and we need the following from <strong>${escapeHtml(s.name)}</strong>:</p>
-<ul>${items.map((i) => `<li>${escapeHtml(i.replace(/^•\s*/, ""))}</li>`).join("")}</ul>
-<p>Please reply with the documents, or <a href="${escapeHtml(input.uploadUrl)}">upload them here</a> (no account needed).</p>
-<p>We need them by <strong>${escapeHtml(due)}</strong>.</p>
-${holdNote ? `<p>${escapeHtml(holdNote.trim())}</p>` : ""}
-${reqsNote ? `<p>${escapeHtml(reqsNote.trim())}</p>` : ""}
-<p>Thank you,<br/>${escapeHtml(input.actorName)}<br/>${escapeHtml(input.orgName)} · ${escapeHtml(input.settings.from)}</p>`;
-
-  return { subject, text, html, items };
+  return { ...rendered, items };
 }
 
 export function recentChaseType(
@@ -100,4 +99,63 @@ export function recentChaseType(
       daysUntil(c.date, today) > -escDays
   );
   return recent ? "Follow-up" : "Notification";
+}
+
+/** Re-evaluation due reminder for the supplier contact. */
+export function buildEvalDueMail(input: {
+  supplier: AslSupplier;
+  settings: Pick<AslSettings, "from">;
+  orgName: string;
+  actorName: string;
+  evalDue: string;
+  uploadUrl: string;
+  branding?: EmailBranding;
+}): AslMailContent {
+  const s = input.supplier;
+  const rendered = renderEmail(
+    "asl-eval-due",
+    {
+      orgName: input.orgName,
+      supplierName: s.name,
+      contactName: s.contact || s.name,
+      actorName: input.actorName,
+      fromAddress: input.settings.from,
+      evalDue: input.evalDue,
+      uploadUrl: input.uploadUrl,
+    },
+    input.branding ? { branding: input.branding } : undefined
+  );
+  return {
+    ...rendered,
+    items: [`Re-evaluation due ${input.evalDue}`],
+  };
+}
+
+/** Internal org reminder when a supplier evaluation is due. */
+export function buildEvalDueInternalMail(input: {
+  supplier: AslSupplier;
+  settings: Pick<AslSettings, "from">;
+  orgName: string;
+  evalDue: string;
+  branding?: EmailBranding;
+}): AslMailContent {
+  const s = input.supplier;
+  const rendered = renderEmail(
+    "asl-eval-due-internal",
+    {
+      orgName: input.orgName,
+      supplierName: s.name,
+      supplierReference: s.reference,
+      criticality: s.crit,
+      contactName: s.contact || "",
+      contactEmail: s.email || "",
+      fromAddress: input.settings.from,
+      evalDue: input.evalDue,
+    },
+    input.branding ? { branding: input.branding } : undefined
+  );
+  return {
+    ...rendered,
+    items: [`Re-evaluation due ${input.evalDue}`],
+  };
 }

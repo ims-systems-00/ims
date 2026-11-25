@@ -1,0 +1,148 @@
+openapi: 3.0.3
+info:
+  title: iMS OS · Training & Competency module API
+  version: 1.0.0
+  description: |
+    Contract between public/js/store.js (RestAdapter) and the iMS OS backend; reference implementation server/server.js.
+    All rules live in public/js/rules.js and are applied server-side.
+    Roles: viewer < self < manager. `Authorization: Bearer <session>`; self-service links carry `X-Self-Token`
+    (the reference uses the person id; production issues a signed, expiring token in the link). A `self` caller sees and
+    writes only their own record; self-uploaded certificates are marked "to verify" until a manager confirms them.
+servers: [{ url: /api }]
+components:
+  schemas:
+    Error: { type: object, properties: { code: { type: string }, message: { type: string } } }
+    Competency:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        months: { type: integer, description: Renewal period; 0 = never expires }
+        evidence: { type: string, enum: [Certificate, Attendance record, Assessment, Acknowledgement, Licence / card, Observation] }
+        basis: { type: string, description: Clause or regulation }
+        covers: { type: array, items: { type: string }, description: Asset categories or policy ids this competence authorises, e.g. "Lifting equipment", "policy:hs" }
+        quiz: { type: array, items: { type: object, properties: { q: { type: string }, opts: { type: array, items: { type: string } }, a: { type: integer } } }, description: Acknowledgement check questions }
+    Role: { type: object, properties: { id: { type: string }, name: { type: string }, mandatory: { type: array, items: { type: string } }, desirable: { type: array, items: { type: string } } } }
+    Person:
+      type: object
+      required: [id, name, site, status]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        roles: { type: array, items: { type: string }, description: Role ids; "all" is implicit }
+        site: { type: string }
+        manager: { type: string }
+        start: { type: string, format: date }
+        email: { type: string }
+        status: { type: string, enum: [Active, Leaver, Pre-start] }
+        end: { type: string, format: date }
+        extra: { type: array, items: { type: string }, description: Competencies required for this person beyond their roles }
+        external: { type: boolean, description: Contractor }
+        hist: { type: array, items: { type: object, properties: { t: { type: string }, by: { type: string }, what: { type: string } } } }
+    Record:
+      type: object
+      required: [personId, cid]
+      properties:
+        id: { type: string }
+        personId: { type: string }
+        cid: { type: string }
+        date: { type: string, format: date, description: Defaults to today; never in the future }
+        result: { type: string, enum: [Pass, Pass with observations, Fail] }
+        provider: { type: string }
+        ref: { type: string, description: Certificate reference; required when the competency's evidence is Certificate (or a fileId) }
+        fileId: { type: string, nullable: true, description: Document store id }
+        verifiedBy: { type: string }
+        note: { type: string }
+    Session: { type: object, properties: { id: { type: string }, cid: { type: string }, date: { type: string, format: date }, time: { type: string, example: "09:00" }, duration: { type: integer, description: minutes }, location: { type: string }, trainer: { type: string }, provider: { type: string }, cost: { type: number }, note: { type: string }, attendees: { type: array, items: { type: string }, description: person ids (external people included) }, materials: { type: array, items: { $ref: "#/components/schemas/Attachment" } }, outputs: { type: array, items: { $ref: "#/components/schemas/Attachment" } }, invites: { type: array, items: { type: object, properties: { personId: { type: string }, to: { type: string }, status: { type: string }, t: { type: string } } } }, status: { type: string, enum: [Planned, Completed, Cancelled] } } }
+    Settings:
+      type: object
+      description: Per-tenant tailoring. Defaults in rules.js DEFAULT_SETTINGS.
+      properties:
+        leadDays: { type: integer, default: 60 }
+        inductionDays: { type: integer, default: 14 }
+        siteLabel: { type: string, default: Site }
+        sites: { type: array, items: { type: string } }
+        providers: { type: array, items: { type: string } }
+        allowSelfUpload: { type: boolean, default: true }
+        requireVerification: { type: boolean, default: true }
+        selfTokenDays: { type: integer, default: 90 }
+        reminderDays: { type: array, items: { type: integer }, default: [14, 1] }
+        inviteSubject: { type: string, description: "Template with {{name}} {{course}} {{date}} {{time}} {{location}} {{provider}} {{trainer}} {{materials}} {{org}}" }
+        inviteBody: { type: string }
+    Attachment: { type: object, required: [name], properties: { id: { type: string }, name: { type: string }, size: { type: integer }, type: { type: string }, fileId: { type: string }, url: { type: string }, shared: { type: boolean, description: materials only }, note: { type: string }, by: { type: string }, t: { type: string } } }
+    Competent: { type: object, properties: { ok: { type: boolean }, reason: { type: string }, competencies: { type: array, items: { type: string } }, required: { type: array, items: { type: string } } } }
+  responses: { Err: { description: Error, content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } } }
+paths:
+  /model: { get: { summary: Whole model (filtered to own record for self), responses: { "200": { description: "{ org, settings, competencies, roles, people, records, sessions, user, version, selfBase }" } } } }
+  /competent:
+    get:
+      summary: Does this person hold a valid competence for this category? (called by the Inventory & Asset module and permit-to-work)
+      parameters: [{ name: personId, in: query, required: true, schema: { type: string } }, { name: covers, in: query, required: true, schema: { type: string }, example: Lifting equipment }]
+      responses: { "200": { description: OK, content: { application/json: { schema: { $ref: "#/components/schemas/Competent" } } } }, "400": { $ref: "#/components/responses/Err" } }
+  /readiness: { get: { summary: Ten audit-readiness checks, responses: { "200": { description: OK } } } }
+  /gaps: { get: { summary: Missing / expired / expiring mandatory items in severity order, responses: { "200": { description: OK } } } }
+  /plan: { get: { summary: Training needed in the horizon grouped by course, parameters: [{ name: months, in: query, schema: { type: integer, default: 3 } }], responses: { "200": { description: OK } } } }
+  /people:
+    get: { summary: People, responses: { "200": { description: OK } } }
+    post: { summary: Add person (manager), requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Person" } } } }, responses: { "200": { description: Person }, "422": { $ref: "#/components/responses/Err" } } }
+  /people/{id}:
+    put: { summary: Update person (manager); writes an Updated history line, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Person } } }
+  /people/{id}/leaver: { post: { summary: Mark as leaver (manager), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { content: { application/json: { schema: { type: object, properties: { date: { type: string, format: date } } } } } }, responses: { "200": { description: Person } } } }
+  /people/{id}/acknowledge:
+    post: { summary: Read-and-understood with quiz (self or manager), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { content: { application/json: { schema: { type: object, required: [cid], properties: { cid: { type: string }, answers: { type: array, items: { type: integer } } } } } } }, responses: { "200": { description: Record }, "422": { description: quiz_required | quiz_failed } } }
+  /records:
+    get: { summary: Records (own only for self), responses: { "200": { description: OK } } }
+    post: { summary: Record a training result (manager, or self → marked to verify), requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Record" } } } }, responses: { "200": { description: Record }, "422": { description: invalid_competency | invalid_date | evidence_required } } }
+  /sessions:
+    get: { summary: Sessions, responses: { "200": { description: OK } } }
+    post: { summary: Plan a session (manager); books attendees and logs it on each person, requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Session" } } } }, responses: { "200": { description: Session } } }
+  /sessions/{id}/complete:
+    post: { summary: Complete a session; writes a record per attendee (manager), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { content: { application/json: { schema: { type: object, properties: { outcomes: { type: object, additionalProperties: { type: object, properties: { result: { type: string }, ref: { type: string }, note: { type: string } } } } } } } } }, responses: { "200": { description: Records written } } }
+  /roles:
+    get: { summary: Roles and their requirements, responses: { "200": { description: OK } } }
+  /roles/{id}: { put: { summary: Create or update a role (manager), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Role } } } }
+  /competencies: { get: { summary: Competency catalogue, responses: { "200": { description: OK } } } }
+  /settings:
+    get: { summary: Settings, responses: { "200": { description: OK } } }
+    put: { summary: Update settings (manager), responses: { "200": { description: OK } } }
+  /matrix.csv: { get: { summary: Matrix export, responses: { "200": { description: text/csv } } } }
+  # ---- tenant configuration ----
+  /competencies:
+    post: { summary: Add a competency (manager). Fields name, months, evidence, basis, covers[], description, provider, quiz[], responses: { "200": { description: Competency }, "422": { description: validation } } }
+  /competencies/{id}:
+    put: { summary: Edit a competency (manager), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Competency } } }
+    delete: { summary: Archive a competency (manager). Leaves the matrix and all roles; records are kept., parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Competency } } }
+  /roles:
+    post: { summary: Add a role (manager), responses: { "200": { description: Role } } }
+  /roles/{id}:
+    delete: { summary: Remove a role (manager); people keep their records, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: ok } } }
+  /people/external:
+    post: { summary: Add an external attendee (contractor, visitor); deduplicated by email, requestBody: { content: { application/json: { schema: { type: object, required: [name, email], properties: { name: { type: string }, email: { type: string }, company: { type: string } } } } } }, responses: { "200": { description: Person with external=true } } }
+  /log: { get: { summary: Configuration change log (manager), responses: { "200": { description: OK } } } }
+  # ---- sessions: invitations, materials, outputs ----
+  /sessions/{id}:
+    put: { summary: Update a planned session (date, time, duration, location, trainer, provider, cost, note, attendees), parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Session } } }
+  /sessions/{id}/cancel:
+    post: { summary: Cancel a session; attendees' records note it, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], responses: { "200": { description: Session } } }
+  /sessions/{id}/materials:
+    post: { summary: Attach pre-session material (slides, pre-reading, joining instructions). shared=true links it in invitations and on attendees' pages., parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Attachment" } } } }, responses: { "200": { description: Attachment } } }
+  /sessions/{id}/outputs:
+    post: { summary: Attach a session output (attendance sheet, certificates, assessments); linked to each attendee's record on completion, parameters: [{ name: id, in: path, required: true, schema: { type: string } }], requestBody: { content: { application/json: { schema: { $ref: "#/components/schemas/Attachment" } } } }, responses: { "200": { description: Attachment } } }
+  /sessions/{id}/{kind}/{aid}:
+    delete: { summary: Remove an attachment, parameters: [{ name: id, in: path, required: true, schema: { type: string } }, { name: kind, in: path, required: true, schema: { type: string, enum: [materials, outputs] } }, { name: aid, in: path, required: true, schema: { type: string } }], responses: { "200": { description: ok } } }
+  /sessions/{id}/invite:
+    post:
+      summary: Email invitations (staff and external) with an .ics calendar invite, the tenant's template, links to shared materials and each person's "my training" link; optionally attach the shared files.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object, properties: { personIds: { type: array, items: { type: string }, description: Defaults to all attendees }, attachFiles: { type: boolean } } } } } }
+      responses: { "200": { description: "{ results: [{ personId, to, status: sent|no-email|error, subject, body }], mode }" } }
+  /sessions/{id}/rsvp:
+    post:
+      summary: Accept, decline or mark tentative. The invitee uses the link in the email (/r/{sid}/{pid} → the response page, X-Self-Token = own person id); a manager may record a response on someone's behalf. Only for Planned sessions; declined attendees are no longer counted as booked by the plan.
+      parameters: [{ name: id, in: path, required: true, schema: { type: string } }]
+      requestBody: { content: { application/json: { schema: { type: object, required: [personId, status], properties: { personId: { type: string }, status: { type: string, enum: [accepted, declined, tentative] }, note: { type: string, maxLength: 300 } } } } } }
+      responses: { "200": { description: "{ status, note, t }" }, "403": { description: not the invitee / not a manager }, "422": { description: not an attendee, bad status or session not Planned } }
+  /reminders:
+    get: { summary: "What the daily job would send today (manager): session reminders at 7 and 1 days for invitees who have not declined, expiring items at leadDays/14 days, expired items. server/remind.js calls this and hands each one to the mailer.", responses: { "200": { description: "[{ kind: session|expiring|expired, days, personId, sessionId?, cid?, rsvp?, manager? }]" } } }
+  /files:
+    post: { summary: Upload a file as a base64 data URL (25 MB). Returns { fileId, url }. Production swaps this for the iMS OS document store., requestBody: { content: { application/json: { schema: { type: object, required: [name, data], properties: { name: { type: string }, type: { type: string }, size: { type: integer }, data: { type: string, description: "data:<mime>;base64,…" } } } } } }, responses: { "200": { description: "{ fileId, url, name, size, type }" }, "413": { description: too large } } }

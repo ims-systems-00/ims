@@ -27,11 +27,13 @@ export {
   buildRiskAssistantContext,
   buildIncidentAssistantContext,
   buildAuditAssistantContext,
+  buildInventoryAssistantContext,
 } from "./lib/build-context";
 export {
   riskAnalyserTemplate,
   incidentAnalyserTemplate,
   auditAnalyserTemplate,
+  inventoryAnalyserTemplate,
 } from "./templates";
 export type {
   AiResponse,

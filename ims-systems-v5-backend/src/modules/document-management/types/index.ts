@@ -66,6 +66,38 @@ export const DOCUMENT_APPLICABLE_MODULES = [
 export type DocumentApplicableModule =
   (typeof DOCUMENT_APPLICABLE_MODULES)[number];
 
+/**
+ * Operational modules that upload evidence/certs into Document Management
+ * so they appear on the Documents overview and open as controlled documents.
+ */
+export const DOCUMENT_SOURCE_MODULES = [
+  "training",
+  "inventory",
+  "supplier",
+  "tender",
+] as const;
+export type DocumentSourceModule = (typeof DOCUMENT_SOURCE_MODULES)[number];
+
+export const DOCUMENT_SOURCE_MODULE_LABELS: Record<
+  DocumentSourceModule,
+  string
+> = {
+  training: "Training",
+  inventory: "Inventory",
+  supplier: "Supplier",
+  tender: "Tender",
+};
+
+export const DOCUMENT_SOURCE_MODULE_REPO_NAMES: Record<
+  DocumentSourceModule,
+  string
+> = {
+  training: "Training evidence",
+  inventory: "Inventory certificates",
+  supplier: "Supplier documents",
+  tender: "Tender library",
+};
+
 export const DOCUMENT_COMPLIANCE_TOOLS = [
   "DSPTNHS",
   "ISO27001",
@@ -144,6 +176,8 @@ export type DocumentRepository = {
   owners: string[];
   sharedWith: string[];
   reviewInterval: DocumentReviewInterval;
+  /** When set, this is an auto-managed library for a source module. */
+  systemKey: DocumentSourceModule | null;
   createdBy: string;
   createdOn: Date;
   updatedBy: string | null;
@@ -193,6 +227,12 @@ export type DocumentNodeData = {
   conformance: number;
   threadId: string;
   reviewDate: Date | null;
+  /** Set when the file was registered from an operational module upload. */
+  sourceModule: DocumentSourceModule | null;
+  /** Stable idempotency key, e.g. `supplier:doc:{supplierId}:{docId}`. */
+  sourceKey: string | null;
+  /** Optional human context (supplier name, asset tag, etc.). */
+  sourceLabel: string | null;
 };
 
 export type FolderNodeData = {
@@ -359,6 +399,28 @@ export type DecideAuthorisationInput = {
 export type DocumentOverviewCounts = {
   total: number;
   byPurpose: Record<DocumentPurpose, number>;
+  bySourceModule: Record<DocumentSourceModule, number>;
+};
+
+export type RegisterModuleDocumentInput = {
+  organizationId: string;
+  createdBy: string;
+  sourceModule: DocumentSourceModule;
+  sourceKey: string;
+  name: string;
+  storageInfo: DocumentFileMeta;
+  purpose?: DocumentPurpose;
+  reviewDate?: Date | string | null;
+  owners?: string[];
+  /** Optional subfolder under the module library (created if missing). */
+  folderName?: string | null;
+  sourceLabel?: string | null;
+};
+
+export type RegisterModuleDocumentResult = {
+  id: string;
+  repositoryId: string;
+  created: boolean;
 };
 
 export type ListPublishedDocumentsQuery = {
@@ -372,6 +434,8 @@ export type ListPublishedDocumentsQuery = {
   complianceToolkitId?: string;
   /** Optional clause filter within the linked toolkit. */
   clauseId?: string;
+  /** Filter to documents registered from an operational module. */
+  sourceModule?: DocumentSourceModule;
   sort?: "createdOn" | "name" | "updatedAt";
   sortDir?: "asc" | "desc";
 };

@@ -175,7 +175,7 @@ export function createAslSupplierController(
       res.setHeader("Content-Type", pack.contentType);
       res.setHeader(
         "Content-Disposition",
-        `inline; filename="${pack.filename}"`
+        `${query.format === "pdf" ? "attachment" : "inline"}; filename="${pack.filename}"`
       );
       res.status(200).send(pack.body);
     } catch (error) {

@@ -1,0 +1,8 @@
+
+Hello C. Dyer,
+
+You are invited to Fire safety & evacuation on Friday, 11 December 2026 at 09:00 (Canteen, Northfield Works).
+
+Please let us know whether you can attend:
+  Accept:  http://localhost:4781/r/ses1/p12?a=accept
+  Decline: http://localhost:4781/r/ses1/p12?a=decline

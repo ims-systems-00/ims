@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>iMS OS · Tender Autopilot</title>
+<meta name="robots" content="noindex">
+<link rel="stylesheet" href="css/module.css">
+<link rel="stylesheet" href="css/tender.css">
+<script>window.IMS_CONFIG = window.IMS_CONFIG || { adapter: 'local', apiBase: '/api', token: null, user: null };</script>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><svg viewBox="0 0 256 256" aria-hidden="true"><g transform="translate(128,128) scale(1.0385)"><circle r="94" fill="none" stroke="#343a7a" stroke-width="4"/><circle r="50" fill="#121535" stroke="#4f39f6" stroke-width="8"/><circle cy="-94" r="10" fill="#8c7dff"/><circle cx="-81.41" cy="47" r="10" fill="#8c7dff"/><circle cx="81.41" cy="47" r="10" fill="#8c7dff"/></g></svg><div><b>iMS OS</b><small>Tender Autopilot</small></div></div>
+    <div class="grp">Work</div>
+    <a class="nav" href="#inbox" data-v="inbox">Questionnaires <span class="n" id="n-open"></span></a>
+    <a class="nav" href="#library/answers" data-v="library" data-t="answers">Answer library <span class="n grey" id="n-lib"></span></a>
+    <a class="nav" href="#library/services" data-v="library" data-t="services">Services &amp; case studies</a>
+    <a class="nav" href="#library/rates" data-v="library" data-t="rates">Rate card</a>
+    <a class="nav" href="#evidence" data-v="evidence">Certificates &amp; policies <span class="n" id="n-ev"></span></a>
+    <a class="nav" href="#facts" data-v="facts">Company facts</a>
+    <div class="grp">Manage</div>
+    <a class="nav" href="#audit" data-v="audit">Audit trail</a>
+    <a class="nav" href="#settings" data-v="settings">Settings</a>
+    <div class="me"><b id="me-name"></b><span id="me-role"></span><br><button class="btn sm ghost" id="reset" style="margin-top:8px;color:#A3A6D6">Reset to sample data</button></div>
+  </aside>
+  <div class="main">
+    <div class="top"><span class="crumb" id="crumb">Tender Autopilot</span><span class="sp"></span><span class="sync" id="sync">Loading</span><span id="org"></span></div>
+    <main id="view"></main>
+  </div>
+</div>
+
+<!-- import modal -->
+<div class="modal" id="m-import"><div class="box">
+  <h2>New questionnaire</h2><p class="hint" id="im-sub"></p>
+  <div id="im-bidfields" class="two hidden"><div><label for="im-ref">Buyer reference</label><input id="im-ref" placeholder="e.g. STW-2026-1187"></div><div><label for="im-email">Submission email (if the buyer accepts email)</label><input id="im-email" type="email" placeholder="tenders@buyer.gov.uk"></div></div>
+  <div class="two"><div><label for="im-buyer">Buyer / client</label><input id="im-buyer" placeholder="e.g. West Midlands Combined Authority"></div><div><label for="im-title">Questionnaire</label><input id="im-title" placeholder="e.g. PQQ — Lifting equipment framework"></div></div>
+  <div class="two"><div><label for="im-due">Submission deadline</label><input id="im-due" type="date"></div><div><label for="im-owner">Bid owner</label><input id="im-owner"></div></div>
+  <label>Source</label>
+  <div class="drop" id="drop">Drop an .xlsx / .docx / .csv here, or click to choose<input type="file" id="im-file" accept=".xlsx,.xlsm,.docx,.csv,.txt" class="hidden"></div>
+  <label for="im-text">…or paste from the portal</label><textarea id="im-text" placeholder="A1. Do you hold a current SSIP accreditation? Yes/No&#10;A2. Please describe your approach to … (max 250 words)"></textarea>
+  <div id="im-preview" class="hint" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:14px"><label class="row" style="margin:0;gap:6px"><input type="checkbox" id="im-draft" checked> Draft answers now</label><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="im-go">Import</button></div>
+</div></div>
+
+<!-- add pack document -->
+<div class="modal" id="m-pack"><div class="box" style="width:min(560px,100%)">
+  <h2>Add pack document</h2><p class="hint">ITT / instructions, specification, questionnaire, pricing schedule, terms — Word, Excel, CSV or text. Each is classified and its requirements, weightings, deadlines, questions or pricing lines extracted.</p>
+  <label for="pk-file">File</label><input id="pk-file" type="file" accept=".xlsx,.xlsm,.docx,.csv,.txt"><div id="pk-preview" class="hint" style="margin-top:8px"></div>
+  <div class="row" style="margin-top:14px"><label class="row" style="margin:0;gap:6px"><input type="checkbox" id="pk-draft" checked> Draft any new questions now</label><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="pk-go">Add to pack</button></div>
+</div></div>
+<!-- service / case / rate editors -->
+<div class="modal" id="m-svc"><div class="box"><h2>Service provision</h2><label for="sv-name">Service name</label><input id="sv-name"><label for="sv-desc">What we provide (used in answers)</label><textarea id="sv-desc" style="min-height:110px"></textarea><label for="sv-method">Method statement (how we deliver it)</label><textarea id="sv-method" style="min-height:140px"></textarea><div class="two"><div><label for="sv-people">Key people (one per line)</label><textarea id="sv-people" style="min-height:70px"></textarea></div><div><label for="sv-tags">Tags (comma separated)</label><input id="sv-tags"></div></div><div class="row" style="margin-top:14px"><button class="btn danger sm hidden" id="sv-del">Remove</button><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="sv-save">Save</button></div></div></div>
+<div class="modal" id="m-case"><div class="box"><h2>Case study</h2><div class="two"><div><label for="cs-client">Client</label><input id="cs-client"></div><div><label for="cs-title">Title</label><input id="cs-title"></div></div><div class="three"><div><label for="cs-sector">Sector</label><input id="cs-sector"></div><div><label for="cs-year">Year(s)</label><input id="cs-year"></div><div><label for="cs-value">Value</label><input id="cs-value"></div></div><label for="cs-summary">What we did</label><textarea id="cs-summary"></textarea><label for="cs-outcome">Outcome / results</label><textarea id="cs-outcome" style="min-height:70px"></textarea><label class="row" style="gap:6px"><input type="checkbox" id="cs-ref"> Client reference available</label><div class="row" style="margin-top:14px"><button class="btn danger sm hidden" id="cs-del">Remove</button><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="cs-save">Save</button></div></div></div>
+<div class="modal" id="m-rate"><div class="box" style="width:min(520px,100%)"><h2>Rate</h2><label for="rt-item">Item</label><input id="rt-item"><div class="three"><div><label for="rt-unit">Unit</label><input id="rt-unit" placeholder="hour / day / each"></div><div><label for="rt-rate">Rate</label><input id="rt-rate" type="number" step="0.01"></div><div><label for="rt-cat">Category</label><select id="rt-cat"><option></option><option>Labour</option><option>Plant</option><option>Materials</option><option>Inspections</option><option>Subcontract</option><option>Expenses</option><option>Other</option></select></div></div><div class="row" style="margin-top:14px"><button class="btn danger sm hidden" id="rt-del">Remove</button><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="rt-save">Save</button></div></div></div>
+<!-- library answer editor -->
+<div class="modal" id="m-answer"><div class="box">
+  <h2 id="an-title">Library answer</h2>
+  <label for="an-q">Question (as buyers ask it)</label><input id="an-q">
+  <label for="an-a">Approved answer <span class="hint">· use {{company}}, {{employees}} etc. to pull company facts</span></label><textarea id="an-a" style="min-height:160px"></textarea>
+  <div class="two"><div><label for="an-tags">Tags (comma separated)</label><input id="an-tags"></div><div><label for="an-std">Standards</label><input id="an-std" placeholder="ISO 9001, SSIP"></div></div>
+  <div class="two"><div><label for="an-owner">Owner</label><input id="an-owner"></div><div><label>&nbsp;</label><label class="row" style="margin:0;gap:6px"><input type="checkbox" id="an-approve" checked> Mark as approved (starts the review clock)</label></div></div>
+  <div class="row" style="margin-top:14px"><button class="btn danger sm hidden" id="an-del">Remove</button><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="an-save">Save</button></div>
+</div></div>
+
+<!-- certificate / policy editor -->
+<div class="modal" id="m-ev"><div class="box">
+  <h2 id="ev-title">Certificate</h2>
+  <div id="ev-cert">
+    <label for="ev-name">Name</label><input id="ev-name"><div class="two"><div><label for="ev-body">Issuing body</label><input id="ev-body"></div><div><label for="ev-number">Certificate number</label><input id="ev-number"></div></div>
+    <div class="two"><div><label for="ev-std">Standard / scheme</label><input id="ev-std"></div><div><label for="ev-scope">Scope</label><input id="ev-scope"></div></div>
+    <div class="two"><div><label for="ev-issued">Issued</label><input id="ev-issued" type="date"></div><div><label for="ev-expires">Expires</label><input id="ev-expires" type="date"></div></div>
+  </div>
+  <div id="ev-pol" class="hidden">
+    <label for="po-name">Policy name</label><input id="po-name"><div class="two"><div><label for="po-ref">Reference</label><input id="po-ref"></div><div><label for="po-ver">Version</label><input id="po-ver"></div></div>
+    <div class="two"><div><label for="po-rev">Last reviewed</label><input id="po-rev" type="date"></div><div><label for="po-next">Next review</label><input id="po-next" type="date"></div></div>
+    <label for="po-owner">Owner</label><input id="po-owner"><label for="po-sum">One-line summary (used in drafts)</label><textarea id="po-sum" style="min-height:70px"></textarea>
+  </div>
+  <label for="ev-file">Attach file (PDF)</label><input id="ev-file" type="file" accept="application/pdf,image/*"><div id="ev-filename" class="hint"></div>
+  <div class="row" style="margin-top:14px"><button class="btn danger sm hidden" id="ev-del">Remove</button><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="ev-save">Save</button></div>
+</div></div>
+
+<!-- ask a colleague -->
+<div class="modal" id="m-ask"><div class="box" style="width:min(520px,100%)">
+  <h2>Ask a colleague</h2><p class="hint" id="ask-q"></p>
+  <label for="ask-who">Who</label><select id="ask-who"></select>
+  <label for="ask-note">What you need</label><textarea id="ask-note" placeholder="e.g. Please confirm the RIDDOR figures for 2024–2026"></textarea>
+  <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn" data-close>Cancel</button><button class="btn p" id="ask-go">Send request</button></div>
+</div></div>
+
+<div class="drawer" id="d-src"></div>
+<div class="toast" id="toast"></div>
+<script src="js/zip.js"></script>
+<script src="js/rules.js"></script>
+<script src="js/store.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

@@ -1,4 +1,7 @@
+import type { DocumentModuleLibraryPort } from "../document-management";
 import type { AslFileMeta } from "./types";
+
+export type { DocumentModuleLibraryPort };
 
 export type AslEmailPort = {
   send(input: {
@@ -93,10 +96,29 @@ export class NoOpAslOrgAdapter implements AslOrgPort {
   }
 }
 
+export type AslUsersPort = {
+  listActiveUsers(organizationId: string): Promise<
+    Array<{ id: string; email: string }>
+  >;
+};
+
+export class NoOpAslUsersAdapter implements AslUsersPort {
+  async listActiveUsers(): Promise<Array<{ id: string; email: string }>> {
+    return [];
+  }
+}
+
 export type AslNotificationPort = {
   notifyEscalation(input: {
     organizationId: string;
+    supplierId?: string;
     userId?: string;
+    title: string;
+    body: string;
+  }): Promise<void>;
+  notifyOrgUsers(input: {
+    organizationId: string;
+    supplierId: string;
     title: string;
     body: string;
   }): Promise<void>;
@@ -104,6 +126,9 @@ export type AslNotificationPort = {
 
 export class NoOpAslNotificationAdapter implements AslNotificationPort {
   async notifyEscalation(): Promise<void> {
+    return;
+  }
+  async notifyOrgUsers(): Promise<void> {
     return;
   }
 }

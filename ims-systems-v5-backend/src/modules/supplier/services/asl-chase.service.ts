@@ -14,12 +14,13 @@ export function createAslChaseService(deps: {
     for (const organizationId of orgIds) {
       try {
         const result = await deps.service.runDailyChase(organizationId);
-        if (result.followUps || result.escalations) {
+        if (result.followUps || result.escalations || result.evalDueNotices) {
           deps.logger.info(
             {
               organizationId,
               followUps: result.followUps,
               escalations: result.escalations,
+              evalDueNotices: result.evalDueNotices,
             },
             "ASL supplier chase cycle complete"
           );

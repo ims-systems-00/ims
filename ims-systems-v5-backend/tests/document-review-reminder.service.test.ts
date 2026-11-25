@@ -2,12 +2,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDocumentReviewReminderService } from "../src/modules/document-management/services/document-review-reminder.service";
 
 const ledgerCreate = vi.fn();
+const ledgerFindOne = vi.fn();
 
 vi.mock(
   "../src/modules/document-management/repositories/document-review-reminder.model",
   () => ({
     getDocumentReviewReminderModel: () => ({
       create: (...args: unknown[]) => ledgerCreate(...args),
+      findOne: (...args: unknown[]) => ledgerFindOne(...args),
     }),
   })
 );
@@ -16,9 +18,15 @@ describe("document review reminder service", () => {
   beforeEach(() => {
     ledgerCreate.mockReset();
     ledgerCreate.mockResolvedValue({});
+    ledgerFindOne.mockReset();
+    ledgerFindOne.mockReturnValue({
+      select: () => ({
+        lean: vi.fn().mockResolvedValue(null),
+      }),
+    });
   });
 
-  it("sends on_day and advance reminders for docs, folders, and repos with email", async () => {
+  it("sends one digest email per recipient covering docs, folders, and repos", async () => {
     const runDate = new Date(Date.UTC(2026, 0, 10));
     const notify = vi.fn().mockResolvedValue(undefined);
     const sendDocumentEmail = vi.fn().mockResolvedValue(undefined);
@@ -129,8 +137,9 @@ describe("document review reminder service", () => {
     // doc on_day + folder on_day + repo on_day + doc 1_week = 4 ledger claims
     expect(ledgerCreate).toHaveBeenCalled();
     expect(notify).toHaveBeenCalled();
-    expect(sendDocumentEmail).toHaveBeenCalled();
-    expect(sent).toBeGreaterThanOrEqual(4);
+    // One digest email for the single recipient, not one per entity.
+    expect(sendDocumentEmail).toHaveBeenCalledTimes(1);
+    expect(sent).toBe(1);
 
     const titles = notify.mock.calls.flatMap(
       (call) => call[0].recipients?.map((r: { title: string }) => r.title) ?? []
@@ -143,16 +152,24 @@ describe("document review reminder service", () => {
       ])
     );
 
-    expect(sendDocumentEmail.mock.calls[0][0].to).toContain(
-      "owner@example.com"
-    );
+    expect(sendDocumentEmail.mock.calls[0][0].to).toEqual([
+      "owner@example.com",
+    ]);
     expect(sendDocumentEmail.mock.calls[0][0].subject).toMatch(/review/i);
+    expect(sendDocumentEmail.mock.calls[0][0].html).toContain(
+      "https://app.example.com/documents"
+    );
   });
 
   it("skips duplicate ledger writes (already reminded)", async () => {
-    ledgerCreate.mockRejectedValueOnce({ code: 11000 });
+    ledgerFindOne.mockReturnValue({
+      select: () => ({
+        lean: vi.fn().mockResolvedValue({ _id: "existing" }),
+      }),
+    });
 
     const notify = vi.fn();
+    const sendDocumentEmail = vi.fn();
     const service = createDocumentReviewReminderService({
       trees: {
         listDocumentsDueForReviewOnDay: vi.fn(async () => [
@@ -185,10 +202,18 @@ describe("document review reminder service", () => {
         ]),
       },
       notifications: { notify },
+      email: { sendDocumentEmail },
+      users: {
+        findIdentitySummariesByIds: vi.fn().mockResolvedValue([
+          { id: "u1", name: "Owner", email: "owner@example.com" },
+        ]),
+      },
     });
 
     const sent = await service.processRun(new Date(Date.UTC(2026, 0, 10)));
     expect(sent).toBe(0);
     expect(notify).not.toHaveBeenCalled();
+    expect(sendDocumentEmail).not.toHaveBeenCalled();
+    expect(ledgerCreate).not.toHaveBeenCalled();
   });
 });

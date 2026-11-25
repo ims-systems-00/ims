@@ -29,7 +29,12 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
   const downloadMutation = useDownloadFileMutation();
   const [officeLoaded, setOfficeLoaded] = useState(false);
 
-  const kind = getFilePreviewKind(file.Name);
+  const keyBase = (file.Key || file.key || "").split(/[\\/]/).pop() || "";
+  const kindName =
+    getFilePreviewKind(file.Name) !== "unsupported"
+      ? file.Name
+      : keyBase || file.Name;
+  const kind = getFilePreviewKind(kindName);
   const url = viewQuery.data?.url;
   const isMemory = url?.startsWith("memory://");
   const frameClass = fill

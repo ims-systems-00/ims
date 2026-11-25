@@ -72,6 +72,8 @@ const aslSupplierSchema = new Schema(
     reqs: { type: String, default: "" },
     appby: { type: String, default: "" },
     appon: { type: String, default: null },
+    evalDue: { type: String, default: null },
+    evalDueNotifiedOn: { type: String, default: null },
     docs: { type: [docSchema], default: [] },
     evals: { type: [evalSchema], default: [] },
     comms: { type: [commSchema], default: [] },

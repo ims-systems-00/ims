@@ -8,6 +8,7 @@ import type {
   AslNotificationPort,
   AslOrgPort,
   AslTaskPort,
+  AslUsersPort,
 } from "../ports";
 import { ASL_SOURCE_MODULE } from "../types";
 
@@ -141,6 +142,18 @@ export function createAslIncidentAdapter(deps: {
   };
 }
 
+export function createAslUsersAdapter(deps: {
+  listActiveUsers: (
+    organizationId: string
+  ) => Promise<Array<{ id: string; email: string }>>;
+}): AslUsersPort {
+  return {
+    async listActiveUsers(organizationId) {
+      return deps.listActiveUsers(organizationId);
+    },
+  };
+}
+
 export function createAslNotificationAdapter(deps: {
   notify: (input: {
     organizationId: string;
@@ -148,10 +161,28 @@ export function createAslNotificationAdapter(deps: {
     title: string;
     body: string;
   }) => Promise<void>;
+  notifyOrgUsers: (input: {
+    organizationId: string;
+    supplierId: string;
+    title: string;
+    body: string;
+  }) => Promise<void>;
 }): AslNotificationPort {
   return {
     async notifyEscalation(input) {
-      await deps.notify(input);
+      if (input.userId) {
+        await deps.notify(input);
+        return;
+      }
+      await deps.notifyOrgUsers({
+        organizationId: input.organizationId,
+        supplierId: input.supplierId ?? input.organizationId,
+        title: input.title,
+        body: input.body,
+      });
+    },
+    async notifyOrgUsers(input) {
+      await deps.notifyOrgUsers(input);
     },
   };
 }

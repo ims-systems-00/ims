@@ -222,9 +222,15 @@ export async function downloadAslAuditorPack(
 export async function downloadAslAuditorPackFile(
   format: "html" | "pdf"
 ): Promise<void> {
-  const blob = await downloadAslAuditorPack(format);
-  triggerDownload(
-    blob,
-    format === "pdf" ? "asl-auditor-pack.pdf" : "asl-auditor-pack.html"
-  );
+  if (format === "pdf") {
+    const { downloadHtmlDocumentAsPdf } = await import(
+      "@/shared/lib/download-html-pdf"
+    );
+    const blob = await downloadAslAuditorPack("html");
+    const html = await blob.text();
+    await downloadHtmlDocumentAsPdf(html, "asl-auditor-pack.pdf");
+    return;
+  }
+  const blob = await downloadAslAuditorPack("html");
+  triggerDownload(blob, "asl-auditor-pack.html");
 }

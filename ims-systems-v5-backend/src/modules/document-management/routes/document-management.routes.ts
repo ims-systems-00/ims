@@ -246,6 +246,7 @@ export function createDocumentManagementModule(
         service.listPublishedForOrganization(organizationId, query),
       getDocumentUtilisation: (organizationId) =>
         service.getDocumentUtilisation(organizationId),
+      registerModuleDocument: (input) => service.registerModuleDocument(input),
     },
     reviewReminders,
     managementRouter,

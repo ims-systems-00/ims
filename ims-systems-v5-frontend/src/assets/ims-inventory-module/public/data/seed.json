@@ -1,0 +1,749 @@
+{
+ "org": "Northfield Engineering Ltd",
+ "settings": {
+  "leadDays": 30,
+  "categoryOverrides": {}
+ },
+ "assets": [
+  {
+   "id": "ne0101",
+   "tag": "NE-0101",
+   "name": "Overhead crane 5t · Bay 1",
+   "cat": "Lifting equipment",
+   "loc": "Northfield Works · Bay 1",
+   "cust": "D. Brooks",
+   "stage": "In service",
+   "crit": "Critical",
+   "model": "Konecranes CXT",
+   "serial": "KC-77812",
+   "pdate": "@-1800d",
+   "cost": 48000,
+   "sup": "Kestrel Site Services",
+   "warr": "",
+   "info": "No",
+   "notes": "Max SWL 5,000 kg. Pre-use check before first lift of the shift.",
+   "labelled": true,
+   "checks": {
+    "Thorough examination": {
+     "last": "@-200d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Pre-use check": {
+     "last": "@-1d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-1800dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0102",
+   "tag": "NE-0102",
+   "name": "Chain sling 2-leg 3.2t",
+   "cat": "Lifting equipment",
+   "loc": "Northfield Works · Bay 1",
+   "cust": "D. Brooks",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Pewag",
+   "serial": "PW-2211",
+   "pdate": "@-500d",
+   "cost": 640,
+   "sup": "Kestrel Site Services",
+   "warr": "",
+   "info": "No",
+   "notes": "",
+   "labelled": true,
+   "checks": {
+    "Thorough examination": {
+     "last": "@-170d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Pre-use check": {
+     "last": "@-1d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-500dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0103",
+   "tag": "NE-0103",
+   "name": "Air receiver 500 L",
+   "cat": "Pressure systems",
+   "loc": "Northfield Works · Compressor house",
+   "cust": "M. Grant",
+   "stage": "In service",
+   "crit": "Critical",
+   "model": "Atlas Copco",
+   "serial": "AC-500-9",
+   "pdate": "@-2800d",
+   "cost": 3200,
+   "sup": "Pennine Compressors",
+   "warr": "",
+   "info": "No",
+   "notes": "Written scheme NE-WS-02.",
+   "labelled": true,
+   "checks": {
+    "Written scheme examination": {
+     "last": "@-380d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-2800dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0201",
+   "tag": "NE-0201",
+   "name": "CNC machining centre",
+   "cat": "Production machinery",
+   "loc": "Northfield Works · Bay 2",
+   "cust": "M. Grant",
+   "stage": "In service",
+   "crit": "Critical",
+   "model": "Haas VF-4",
+   "serial": "HV4-18821",
+   "pdate": "@-1100d",
+   "cost": 96000,
+   "sup": "Haas UK",
+   "warr": "",
+   "info": "Yes · holds data",
+   "notes": "",
+   "labelled": true,
+   "checks": {
+    "Planned maintenance": {
+     "last": "@-100d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Guarding & safety inspection": {
+     "last": "@-300d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-1100dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0202",
+   "tag": "NE-0202",
+   "name": "Press brake 120t",
+   "cat": "Production machinery",
+   "loc": "Northfield Works · Bay 2",
+   "cust": "M. Grant",
+   "stage": "Under maintenance",
+   "crit": "High",
+   "model": "Amada HFE",
+   "serial": "AM-4410",
+   "pdate": "@-2200d",
+   "cost": 72000,
+   "sup": "Amada UK",
+   "warr": "",
+   "info": "No",
+   "notes": "Light guard fault reported. Do not use.",
+   "labelled": true,
+   "checks": {
+    "Planned maintenance": {
+     "last": "@-80d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Guarding & safety inspection": {
+     "last": "@-20d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-3dT10:20",
+     "by": "T. Begum",
+     "what": "Fault reported by QR scan: light guard not resetting. Moved to Under maintenance."
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0301",
+   "tag": "NE-0301",
+   "name": "Digital vernier 300 mm",
+   "cat": "Measuring & test equipment",
+   "loc": "Northfield Works · Inspection",
+   "cust": "J. Lee",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Mitutoyo",
+   "serial": "MT-300-5521",
+   "pdate": "@-700d",
+   "cost": 210,
+   "sup": "Calderdale Calibration",
+   "warr": "",
+   "info": "No",
+   "notes": "Handle with care; return to case.",
+   "labelled": true,
+   "checks": {
+    "Calibration": {
+     "last": "@-350d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-700dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0302",
+   "tag": "NE-0302",
+   "name": "CMM Zeiss Contura",
+   "cat": "Measuring & test equipment",
+   "loc": "Northfield Works · Inspection",
+   "cust": "J. Lee",
+   "stage": "In service",
+   "crit": "Critical",
+   "model": "Zeiss Contura G2",
+   "serial": "ZC-9921",
+   "pdate": "@-1500d",
+   "cost": 140000,
+   "sup": "Calderdale Calibration",
+   "warr": "",
+   "info": "Yes · holds data",
+   "notes": "Temperature-controlled room 20 ±1 °C.",
+   "labelled": true,
+   "checks": {
+    "Calibration": {
+     "last": "@-370d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-1500dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0303",
+   "tag": "NE-0303",
+   "name": "Torque wrench 40–200 Nm",
+   "cat": "Measuring & test equipment",
+   "loc": "Leeds depot · Van 2",
+   "cust": "R. Osei",
+   "stage": "Quarantined",
+   "crit": "Standard",
+   "model": "Norbar",
+   "serial": "NB-2003",
+   "pdate": "@-600d",
+   "cost": 180,
+   "sup": "Calderdale Calibration",
+   "warr": "",
+   "info": "No",
+   "notes": "Dropped. Quarantined pending recalibration.",
+   "labelled": true,
+   "checks": {
+    "Calibration": {
+     "last": "@-200d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-7dT08:10",
+     "by": "R. Osei",
+     "what": "Quarantined via scan: dropped from height, reading suspect."
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0401",
+   "tag": "NE-0401",
+   "name": "Fire extinguisher CO2 2kg · Bay 1 east",
+   "cat": "Fire & safety",
+   "loc": "Northfield Works · Bay 1",
+   "cust": "S. Ahmed",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Chubb",
+   "serial": "CH-CO2-1181",
+   "pdate": "@-900d",
+   "cost": 60,
+   "sup": "Chubb",
+   "warr": "",
+   "info": "No",
+   "notes": "For electrical fires. Do not use on people.",
+   "labelled": true,
+   "checks": {
+    "Service by competent person": {
+     "last": "@-340d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Visual check": {
+     "last": "@-5d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-900dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0402",
+   "tag": "NE-0402",
+   "name": "Fire extinguisher foam 6L · Reception",
+   "cat": "Fire & safety",
+   "loc": "Northfield Works · Reception",
+   "cust": "S. Ahmed",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Chubb",
+   "serial": "CH-F6-0922",
+   "pdate": "@-900d",
+   "cost": 55,
+   "sup": "Chubb",
+   "warr": "",
+   "info": "No",
+   "notes": "",
+   "labelled": true,
+   "checks": {
+    "Service by competent person": {
+     "last": "@-400d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Visual check": {
+     "last": "@-40d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-900dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0501",
+   "tag": "NE-0501",
+   "name": "110V transformer",
+   "cat": "Electrical appliances",
+   "loc": "Leeds depot · Stores",
+   "cust": "R. Osei",
+   "stage": "In service",
+   "crit": "Standard",
+   "model": "Carroll & Meynell",
+   "serial": "CM-3K-77",
+   "pdate": "@-800d",
+   "cost": 120,
+   "sup": "Screwfix",
+   "warr": "",
+   "info": "No",
+   "notes": "",
+   "labelled": true,
+   "checks": {
+    "Portable appliance test": {
+     "last": "@-380d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-800dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0601",
+   "tag": "NE-0601",
+   "name": "Laptop · Quality Manager",
+   "cat": "IT & information assets",
+   "loc": "Northfield Works · Office",
+   "cust": "S. Ahmed",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Dell Latitude 5450",
+   "serial": "DL-5450-00912",
+   "pdate": "@-300d",
+   "cost": 1150,
+   "sup": "Midland IT Support",
+   "warr": "",
+   "info": "Yes · holds data",
+   "notes": "Encrypted (BitLocker). Report loss within 1 hour.",
+   "labelled": true,
+   "checks": {
+    "Patch & configuration review": {
+     "last": "@-20d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Asset ownership review": {
+     "last": "@-300d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-300dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0602",
+   "tag": "NE-0602",
+   "name": "Laptop · former employee",
+   "cat": "IT & information assets",
+   "loc": "Northfield Works · Office",
+   "cust": "S. Ahmed",
+   "stage": "Retired",
+   "crit": "Standard",
+   "model": "Dell Latitude 5440",
+   "serial": "DL-5440-00417",
+   "pdate": "@-1000d",
+   "cost": 980,
+   "sup": "Midland IT Support",
+   "warr": "",
+   "info": "Yes · holds data",
+   "notes": "",
+   "labelled": true,
+   "checks": {
+    "Patch & configuration review": {
+     "last": "@-120d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Asset ownership review": {
+     "last": "@-400d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-10dT14:00",
+     "by": "S. Ahmed",
+     "what": "Retired: user left. Awaiting data wipe certificate before disposal."
+    }
+   ],
+   "disp": {
+    "reason": "User left",
+    "route": "",
+    "ev": "",
+    "by": "S. Ahmed",
+    "date": "@-10d"
+   }
+  },
+  {
+   "id": "ne0701",
+   "tag": "NE-0701",
+   "name": "Transit van · YK22 ABC",
+   "cat": "Vehicles",
+   "loc": "Leeds depot",
+   "cust": "R. Osei",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Ford Transit",
+   "serial": "WF0-22-9981",
+   "pdate": "@-900d",
+   "cost": 28000,
+   "sup": "Ford Leeds",
+   "warr": "",
+   "info": "No",
+   "notes": "",
+   "labelled": true,
+   "checks": {
+    "MOT": {
+     "last": "@-350d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Service": {
+     "last": "@-100d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Daily walk-round": {
+     "last": "@-1d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-900dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0801",
+   "tag": "NE-0801",
+   "name": "Oil interceptor · yard",
+   "cat": "Environmental plant",
+   "loc": "Northfield Works · Yard",
+   "cust": "M. Grant",
+   "stage": "In service",
+   "crit": "High",
+   "model": "Klargester NSB",
+   "serial": "KL-NSB-112",
+   "pdate": "@-2500d",
+   "cost": 9000,
+   "sup": "Klargester",
+   "warr": "",
+   "info": "No",
+   "notes": "Permit EPR/AB1234CD.",
+   "labelled": true,
+   "checks": {
+    "Emissions / discharge check": {
+     "last": "@-150d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    },
+    "Bund & spill kit inspection": {
+     "last": "@-100d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-2500dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne0901",
+   "tag": "NE-0901",
+   "name": "RPE half-mask · welder 3",
+   "cat": "PPE & RPE",
+   "loc": "Northfield Works · Bay 2",
+   "cust": "T. Begum",
+   "stage": "In service",
+   "crit": "High",
+   "model": "3M 7502",
+   "serial": "3M-7502-A19",
+   "pdate": "@-120d",
+   "cost": 45,
+   "sup": "Arco",
+   "warr": "",
+   "info": "No",
+   "notes": "Face-fit tested for T. Begum only.",
+   "labelled": true,
+   "checks": {
+    "Face-fit / thorough examination": {
+     "last": "@-35d",
+     "by": "",
+     "ref": "",
+     "result": "Pass"
+    }
+   },
+   "hist": [
+    {
+     "t": "@-120dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  },
+  {
+   "id": "ne1001",
+   "tag": "NE-1001",
+   "name": "Laser cutter (on order)",
+   "cat": "Production machinery",
+   "loc": "Northfield Works · Bay 3",
+   "cust": "M. Grant",
+   "stage": "Procured",
+   "crit": "Critical",
+   "model": "Bystronic ByStar",
+   "serial": "",
+   "pdate": "@-20d",
+   "cost": 310000,
+   "sup": "Bystronic UK",
+   "warr": "",
+   "info": "Yes · holds data",
+   "notes": "Commissioning next month. Pre-commissioning checklist NE-COM-01.",
+   "labelled": true,
+   "checks": {},
+   "hist": [
+    {
+     "t": "@-20dT09:00",
+     "by": "S. Ahmed",
+     "what": "Commissioned and added to register"
+    }
+   ],
+   "disp": null
+  }
+ ],
+ "stock": [
+  {
+   "id": "c001",
+   "code": "C-001",
+   "item": "Welding wire 1.0 mm ER70S-6 (15 kg)",
+   "loc": "Northfield Works · Stores",
+   "qty": 6,
+   "min": 8,
+   "max": 30,
+   "batch": "B2411",
+   "exp": null,
+   "moves": [
+    {
+     "t": "@-2d",
+     "by": "M. Grant",
+     "what": "issue 4 (10 → 6) · job 8841"
+    }
+   ]
+  },
+  {
+   "id": "c002",
+   "code": "C-002",
+   "item": "Calibration gas CO 100 ppm",
+   "loc": "Northfield Works · Inspection",
+   "qty": 2,
+   "min": 1,
+   "max": 4,
+   "batch": "G7710",
+   "exp": "@14d",
+   "moves": []
+  },
+  {
+   "id": "c003",
+   "code": "C-003",
+   "item": "Nitrile gloves M (box 100)",
+   "loc": "Northfield Works · Stores",
+   "qty": 22,
+   "min": 10,
+   "max": 60,
+   "batch": "",
+   "exp": null,
+   "moves": []
+  },
+  {
+   "id": "c004",
+   "code": "C-004",
+   "item": "Spill absorbent pads (pack 100)",
+   "loc": "Northfield Works · Yard",
+   "qty": 1,
+   "min": 2,
+   "max": 6,
+   "batch": "",
+   "exp": null,
+   "moves": []
+  },
+  {
+   "id": "c005",
+   "code": "C-005",
+   "item": "Dye penetrant developer",
+   "loc": "Northfield Works · Inspection",
+   "qty": 5,
+   "min": 2,
+   "max": 10,
+   "batch": "DP-0922",
+   "exp": "@-12d",
+   "moves": []
+  },
+  {
+   "id": "c006",
+   "code": "C-006",
+   "item": "Coolant concentrate (25 L)",
+   "loc": "Northfield Works · Bay 2",
+   "qty": 4,
+   "min": 2,
+   "max": 8,
+   "batch": "",
+   "exp": null,
+   "moves": []
+  }
+ ]
+}

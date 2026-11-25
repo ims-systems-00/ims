@@ -122,3 +122,63 @@ export function renderDocumentReviewReminder(data: {
       : {}),
   });
 }
+
+export type DocumentReviewReminderDigestItem = {
+  entityLabel: string;
+  entityName: string;
+  reviewDateLabel: string;
+  body: string;
+};
+
+/** One email listing every document/folder/repository due for a recipient. */
+export function renderDocumentReviewReminderDigest(data: {
+  items: DocumentReviewReminderDigestItem[];
+  viewUrl?: string;
+}): RenderedEmail {
+  const count = data.items.length;
+  const title =
+    count === 1
+      ? "Review reminder"
+      : `${count} review reminders`;
+  const paragraphs =
+    count === 1
+      ? [data.items[0]!.body]
+      : [
+          `${count} items need review attention today. Details are listed below.`,
+          ...data.items.map(
+            (item, index) =>
+              `${index + 1}. ${item.entityLabel} “${item.entityName}” — review ${item.reviewDateLabel}. ${item.body}`
+          ),
+        ];
+  const meta =
+    count === 1
+      ? [
+          {
+            label: data.items[0]!.entityLabel,
+            value: data.items[0]!.entityName,
+          },
+          {
+            label: "Review date",
+            value: data.items[0]!.reviewDateLabel,
+          },
+        ]
+      : [
+          { label: "Items", value: String(count) },
+          {
+            label: "First due",
+            value: data.items[0]!.reviewDateLabel,
+          },
+        ];
+
+  return renderEmailLayout(title, {
+    mode: "action",
+    eyebrow: "Document Management",
+    statusChip: { label: "Review reminder", tone: "warning" },
+    title,
+    paragraphs,
+    meta,
+    ...(data.viewUrl
+      ? { cta: { label: "Open in iMS", href: data.viewUrl } }
+      : {}),
+  });
+}

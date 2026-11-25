@@ -75,7 +75,14 @@ export function DocumentPreviewPanel({
   const [editorSession, setEditorSession] =
     useState<DocumentEditorSession | null>(null);
 
-  const fileName = storageInfo?.Name || title;
+  const storageKey = storageInfo?.Key || storageInfo?.key || "";
+  const keyBase = storageKey.split(/[\\/]/).pop() || storageKey;
+  // Prefer a name that still carries the object extension so kind detection
+  // works for module-mirrored docs whose Name was a display label.
+  const fileName =
+    getFilePreviewKind(storageInfo?.Name || "") !== "unsupported"
+      ? storageInfo?.Name || title
+      : keyBase || storageInfo?.Name || title;
   const hasFile = Boolean(storageInfo?.Bucket && storageInfo.Key);
   const kind = getFilePreviewKind(fileName);
   const onlyOfficeReady = isOnlyOfficeConfigured();

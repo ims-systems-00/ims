@@ -2,7 +2,11 @@
  * Cross-module ports for Document Management.
  */
 
-import type { DocumentFileMeta } from "./types";
+import type {
+  DocumentFileMeta,
+  RegisterModuleDocumentInput,
+  RegisterModuleDocumentResult,
+} from "./types";
 
 /** Delete stored binaries when revising or hard-deleting documents. */
 export type DocumentFilesPort = {
@@ -186,5 +190,23 @@ export class NoOpDocumentComplianceLinkAdapter
   }
   async clearLinks(): Promise<void> {
     return;
+  }
+}
+
+/**
+ * Lets operational modules (training, inventory, supplier, tender) register
+ * uploaded files as controlled Document Management nodes.
+ */
+export type DocumentModuleLibraryPort = {
+  registerDocument(
+    input: RegisterModuleDocumentInput
+  ): Promise<RegisterModuleDocumentResult | null>;
+};
+
+export class NoOpDocumentModuleLibraryAdapter
+  implements DocumentModuleLibraryPort
+{
+  async registerDocument(): Promise<RegisterModuleDocumentResult | null> {
+    return null;
   }
 }

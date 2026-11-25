@@ -9,6 +9,7 @@ import {
   DOCUMENT_COMPLIANCE_TOOLS,
   DOCUMENT_NODE_TYPES,
   DOCUMENT_PURPOSES,
+  DOCUMENT_SOURCE_MODULES,
   DOCUMENT_STATUSES,
   AUTHORISATION_STATUSES,
 } from "../types";
@@ -70,6 +71,13 @@ const documentDataSchema = new Schema(
     conformance: { type: Number, default: -1 },
     threadId: { type: String, default: "" },
     reviewDate: { type: Date, default: null },
+    sourceModule: {
+      type: String,
+      enum: [...DOCUMENT_SOURCE_MODULES],
+      default: null,
+    },
+    sourceKey: { type: String, default: null },
+    sourceLabel: { type: String, default: null },
   },
   { _id: false }
 );
@@ -133,6 +141,23 @@ documentTreeSchema.index({
   status: 1,
   "documentData.applicableModules": 1,
 });
+documentTreeSchema.index({
+  organizationId: 1,
+  deletedAt: 1,
+  type: 1,
+  status: 1,
+  "documentData.sourceModule": 1,
+});
+documentTreeSchema.index(
+  { organizationId: 1, "documentData.sourceKey": 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      "documentData.sourceKey": { $type: "string" },
+      deletedAt: null,
+    },
+  }
+);
 documentTreeSchema.index({
   organizationId: 1,
   repositoryId: 1,

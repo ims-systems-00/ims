@@ -7,6 +7,7 @@ export const AI_SOURCE_MODULE_TYPES = [
   "incidents",
   "audits",
   "cips",
+  "inventory",
 ] as const;
 
 export type AiSourceModuleType = (typeof AI_SOURCE_MODULE_TYPES)[number];

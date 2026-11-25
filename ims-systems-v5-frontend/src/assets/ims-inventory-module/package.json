@@ -1,0 +1,13 @@
+{
+  "name": "ims-os-inventory-module",
+  "version": "1.0.0",
+  "description": "iMS OS Inventory & Asset module: front end, shared compliance rules, reference API and scan route",
+  "private": true,
+  "scripts": {
+    "start": "node server/server.js",
+    "test": "node --test server/test/*.test.js",
+    "seed": "node server/make-seed.js"
+  },
+  "engines": { "node": ">=18" },
+  "license": "UNLICENSED"
+}

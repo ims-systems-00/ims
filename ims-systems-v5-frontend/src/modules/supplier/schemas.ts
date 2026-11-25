@@ -18,9 +18,19 @@ export const createAslSupplierFormSchema = z.object({
     .email("Valid email is required")
     .optional()
     .or(z.literal("")),
-  stds: z.array(z.enum(ASL_STANDARDS).or(z.string())).default([]),
+  stds: z
+    .array(z.enum(ASL_STANDARDS).or(z.string().trim().min(1).max(80)))
+    .max(20)
+    .default([]),
   scope: z.string().trim().max(4000).optional().or(z.literal("")),
   reqs: z.string().trim().max(4000).optional().or(z.literal("")),
+  evalDue: z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .nullable()
+    .optional()
+    .or(z.literal("")),
 });
 
 export type CreateAslSupplierFormValues = z.infer<

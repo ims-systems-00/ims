@@ -41,6 +41,7 @@ import {
 } from "../components/dashboard-panel";
 import { DigitalMaturityPanelContent } from "../components/digital-maturity-panel";
 import { DashboardTodoList } from "../components/dashboard-todo-list";
+import { RelyableRatingPanel } from "@/modules/relyable";
 function OrgPulseHero({
   state,
   confidence,
@@ -246,6 +247,8 @@ export function OrganisationDashboardPage() {
       {dashboardQuery.isSuccess ? (
         <>
           <div className="grid grid-cols-12 gap-3">
+            <RelyableRatingPanel />
+
             <OrgPulseHero
               state={organisationalState}
               confidence={confidence}

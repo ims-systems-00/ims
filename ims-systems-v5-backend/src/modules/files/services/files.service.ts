@@ -379,9 +379,21 @@ export function createFilesService(deps: FilesServiceDeps): FilesService {
       assertRetrievableBucket(organizationId, bucket);
       assertValidStorageKey(key);
 
-      const fileName = input.fileName
+      // Prefer a filename that still has the object extension. Display
+      // labels (no extension / unicode dashes) break PDF iframe preview
+      // via unsafe Content-Disposition on signed URLs.
+      const requestedName = input.fileName
         ? basename(decodeHeader(input.fileName))
         : undefined;
+      const keyBase = basename(key);
+      const requestedExt = requestedName ? extensionOf(requestedName) : "";
+      const keyExt = extensionOf(keyBase);
+      const fileName =
+        requestedName && requestedExt
+          ? requestedName
+          : keyExt
+            ? keyBase
+            : requestedName;
       const expiresInSeconds = config.viewUrlTtlSeconds;
 
       const url = await storage.createViewUrl({

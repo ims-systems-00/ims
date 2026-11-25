@@ -37,6 +37,8 @@ function toDomain(doc: AslSupplierDocument): AslSupplier {
     reqs: doc.reqs ?? "",
     appby: doc.appby ?? "",
     appon: doc.appon ?? null,
+    evalDue: doc.evalDue ?? null,
+    evalDueNotifiedOn: doc.evalDueNotifiedOn ?? null,
     docs: (doc.docs ?? []).map((d) => ({
       id: d.id,
       type: d.type,
@@ -118,6 +120,8 @@ export function createAslSupplierRepository() {
         reqs: input.reqs ?? "",
         appby: "",
         appon: null,
+        evalDue: input.evalDue?.trim() || null,
+        evalDueNotifiedOn: null,
         docs: [],
         evals: [],
         comms: [],
@@ -157,7 +161,7 @@ export function createAslSupplierRepository() {
         deletedAt: null,
         status: { $ne: "Removed" },
       })
-        .sort({ name: 1 })
+        .sort({ createdAt: -1, name: 1 })
         .lean();
       return docs.map((d) => toDomain(d as AslSupplierDocument));
     },
@@ -167,7 +171,7 @@ export function createAslSupplierRepository() {
         organizationId,
         deletedAt: null,
       })
-        .sort({ name: 1 })
+        .sort({ createdAt: -1, name: 1 })
         .lean();
       return docs.map((d) => toDomain(d as AslSupplierDocument));
     },
@@ -200,7 +204,7 @@ export function createAslSupplierRepository() {
       const [total, docs] = await Promise.all([
         Model.countDocuments(filter),
         Model.find(filter)
-          .sort({ name: 1 })
+          .sort({ createdAt: -1, name: 1 })
           .skip((page - 1) * pageSize)
           .limit(pageSize)
           .lean(),
@@ -237,6 +241,8 @@ export function createAslSupplierRepository() {
             reqs: supplier.reqs,
             appby: supplier.appby,
             appon: supplier.appon,
+            evalDue: supplier.evalDue,
+            evalDueNotifiedOn: supplier.evalDueNotifiedOn,
             docs: supplier.docs,
             evals: supplier.evals,
             comms: supplier.comms,

@@ -161,6 +161,12 @@ describe("Document Management HTTP", () => {
     expect(overview.status).toBe(200);
     expect(overview.body.data.total).toBe(1);
     expect(overview.body.data.byPurpose.Policy).toBe(1);
+    expect(overview.body.data.bySourceModule).toEqual({
+      training: 0,
+      inventory: 0,
+      supplier: 0,
+      tender: 0,
+    });
 
     const picker = await request(ctx!.app).get(
       "/api/v1/document-trees?applicableModule=risks"

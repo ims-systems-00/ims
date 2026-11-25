@@ -1,0 +1,16 @@
+app = "relyable"
+primary_region = "lhr"
+[build]
+[env]
+  PORT = "8790"
+  RLY_DATA = "/data/store.json"
+[mounts]
+  source = "data"
+  destination = "/data"
+[http_service]
+  internal_port = 8790
+  force_https = true
+  [[http_service.checks]]
+    path = "/v1/health"
+    interval = "30s"
+    timeout = "5s"

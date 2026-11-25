@@ -7,6 +7,7 @@
  */
 
 import { randomUUID } from "node:crypto";
+import { isPublicEmailHref } from "../../../config";
 import {
   DEFAULT_IMS_EMAIL_BRANDING,
   renderEmail,
@@ -44,6 +45,7 @@ import {
 import { stampSignaturePdf } from "./document-signature-stamp";
 import type { DocumentRepositoryStore } from "../repositories/document-repository.repository";
 import type { DocumentTreeStore } from "../repositories/document-tree.repository";
+import { ensureStorageFileName } from "../lib/module-file-id";
 import { normalizeFileMeta } from "../schemas";
 import {
   ONLYOFFICE_SAVE_STATUSES,
@@ -79,8 +81,11 @@ import {
   type EnsureFolderNodeResult,
   type DecideAuthorisationInput,
   type DocumentEditorSession,
+  DOCUMENT_SOURCE_MODULE_LABELS,
+  DOCUMENT_SOURCE_MODULE_REPO_NAMES,
   type DocumentOverviewCounts,
   type DocumentSignature,
+  type DocumentSourceModule,
   type InviteSignaturesInput,
   type SignDocumentInput,
   type DocumentRepository,
@@ -92,6 +97,8 @@ import {
   type NodePathItem,
   type PaginatedDocumentNodes,
   type PaginatedDocumentRepositories,
+  type RegisterModuleDocumentInput,
+  type RegisterModuleDocumentResult,
   type UpdateDocumentNodeInput,
   type UpdateDocumentRepositoryInput,
   type UpdateFolderNodeInput,
@@ -119,14 +126,27 @@ function nextReference(prefix: "REP" | "DOC"): string {
   return `${prefix}-${stamp}-${rand}`;
 }
 
-function parseOptionalDate(value: string | null | undefined): Date | null {
+function parseOptionalDate(
+  value: string | Date | null | undefined
+): Date | null {
   if (value === undefined) return null;
   if (value === null || value === "") return null;
+  if (value instanceof Date) {
+    if (Number.isNaN(value.getTime())) {
+      throw new ValidationAppError("Invalid review date");
+    }
+    return value;
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     throw new ValidationAppError("Invalid review date");
   }
   return date;
+}
+
+function sanitizeDocumentName(name: string): string {
+  const trimmed = name.replace(/[/\\]/g, "-").trim();
+  return trimmed.slice(0, 200) || "Untitled document";
 }
 
 function uniqueIds(ids: string[], max: number): string[] {
@@ -170,6 +190,9 @@ export type DocumentManagementApplicationPort = {
   getDocumentUtilisation(
     organizationId: string
   ): Promise<DocumentUtilisation>;
+  registerModuleDocument(
+    input: RegisterModuleDocumentInput
+  ): Promise<RegisterModuleDocumentResult>;
 };
 
 export function createDocumentManagementService(
@@ -191,6 +214,193 @@ export function createDocumentManagementService(
     jwtSecret: "",
     callbackBaseUrl: "",
   };
+
+  async function ensureModuleLibrary(
+    organizationId: string,
+    sourceModule: DocumentSourceModule,
+    createdBy: string
+  ): Promise<DocumentRepository> {
+    const existing = await repositories.findBySystemKey(
+      organizationId,
+      sourceModule
+    );
+    if (existing) return existing;
+
+    const label = DOCUMENT_SOURCE_MODULE_LABELS[sourceModule];
+    try {
+      return await repositories.create(organizationId, {
+        reference: nextReference("REP"),
+        name: DOCUMENT_SOURCE_MODULE_REPO_NAMES[sourceModule],
+        description: `Auto-managed library for ${label} module uploads (evidence, certificates, and related files).`,
+        privacy: "Organisational",
+        businessUnitId: null,
+        owners: uniqueIds([createdBy], MAX_REPO_OWNERS),
+        sharedWith: [],
+        reviewInterval: "Yearly",
+        systemKey: sourceModule,
+        createdBy,
+        createdOn: new Date(),
+      });
+    } catch (error) {
+      // Race: another request created the system repo first.
+      const raced = await repositories.findBySystemKey(
+        organizationId,
+        sourceModule
+      );
+      if (raced) return raced;
+      throw error;
+    }
+  }
+
+  async function ensureLibraryFolder(
+    organizationId: string,
+    repositoryId: string,
+    folderName: string,
+    createdBy: string
+  ): Promise<string> {
+    const name = sanitizeDocumentName(folderName);
+    const existing = await trees.findActiveByName(
+      organizationId,
+      repositoryId,
+      null,
+      name,
+      { type: "folder" }
+    );
+    if (existing) return existing.id;
+
+    const created = await trees.createFolder(organizationId, {
+      reference: nextReference("DOC"),
+      repositoryId,
+      name,
+      parentNodeId: null,
+      reviewDate: null,
+      createdBy,
+      createdOn: new Date(),
+    });
+    return created.id;
+  }
+
+  async function registerModuleDocument(
+    input: RegisterModuleDocumentInput
+  ): Promise<RegisterModuleDocumentResult> {
+    const organizationId = input.organizationId.trim();
+    const createdBy = input.createdBy.trim() || "system";
+    const sourceKey = input.sourceKey.trim();
+    if (!organizationId) {
+      throw new ValidationAppError("organizationId is required");
+    }
+    if (!sourceKey) {
+      throw new ValidationAppError("sourceKey is required");
+    }
+
+    const storageInfo = normalizeFileMeta(
+      ensureStorageFileName(input.storageInfo) ?? input.storageInfo
+    );
+
+    const existing = await trees.findBySourceKey(organizationId, sourceKey);
+    if (existing) {
+      // Repair docs registered earlier with a display label as storageInfo.Name
+      // (e.g. "Acme — ISO certificate") which breaks PDF preview.
+      const current = existing.documentData?.storageInfo;
+      if (
+        current &&
+        (current.Name !== storageInfo.Name ||
+          current.Key !== storageInfo.Key ||
+          current.Bucket !== storageInfo.Bucket)
+      ) {
+        const repaired = ensureStorageFileName({
+          ...current,
+          // Prefer the freshly decoded object name when the stored Name
+          // looks like a display label.
+          Name: storageInfo.Name || current.Name,
+          Key: current.Key || storageInfo.Key,
+          key: current.key || storageInfo.key,
+          Bucket: current.Bucket || storageInfo.Bucket,
+        });
+        if (repaired && repaired.Name !== current.Name) {
+          await trees.updateOne(organizationId, existing.id, {
+            "documentData.storageInfo": repaired,
+            updatedBy: createdBy,
+            updatedOn: new Date(),
+          });
+        }
+      }
+      return {
+        id: existing.id,
+        repositoryId: existing.repositoryId,
+        created: false,
+      };
+    }
+
+    const repo = await ensureModuleLibrary(
+      organizationId,
+      input.sourceModule,
+      createdBy
+    );
+
+    const folderName = input.folderName?.trim() || null;
+    const parentNodeId = folderName
+      ? await ensureLibraryFolder(
+          organizationId,
+          repo.id,
+          folderName,
+          createdBy
+        )
+      : null;
+    const name = sanitizeDocumentName(input.name || storageInfo.Name);
+    const collision = await trees.findActiveByName(
+      organizationId,
+      repo.id,
+      parentNodeId,
+      name,
+      { status: ["Published", "Pending", "Rejected"] }
+    );
+    const finalName = collision
+      ? sanitizeDocumentName(`${name} (${sourceKey.slice(-8)})`)
+      : name;
+
+    const threadId = randomUUID();
+    const node = await trees.createDocument(organizationId, {
+      reference: nextReference("DOC"),
+      repositoryId: repo.id,
+      name: finalName,
+      parentNodeId,
+      status: "Published",
+      documentData: {
+        storageInfo,
+        purpose: input.purpose ?? "Document",
+        owners: uniqueIds([createdBy, ...(input.owners ?? [])], MAX_DOCUMENT_OWNERS),
+        applicableModules: [],
+        complianceTools: [],
+        complianceLinks: [],
+        authorisation: [],
+        classification: "",
+        dvID: 1,
+        conformance: -1,
+        threadId,
+        reviewDate: parseOptionalDate(input.reviewDate),
+        sourceModule: input.sourceModule,
+        sourceKey,
+        sourceLabel: input.sourceLabel?.trim() || null,
+      },
+      createdBy,
+      createdOn: new Date(),
+    });
+
+    await recordActivity(
+      organizationId,
+      node.id,
+      `Registered from ${DOCUMENT_SOURCE_MODULE_LABELS[input.sourceModule]}: ${node.name}`,
+      createdBy,
+      threadId
+    );
+
+    return {
+      id: node.id,
+      repositoryId: repo.id,
+      created: true,
+    };
+  }
 
   async function brandingFor(
     organizationId: string
@@ -2387,6 +2597,9 @@ export function createDocumentManagementService(
       return trees.listPublished(organizationId, query);
     },
 
+    /** Register a file uploaded in training/inventory/supplier/tender into DM. */
+    registerModuleDocument,
+
     /**
      * Share a document by email (spec §2): creates a 2-day limited-access
      * token per recipient; the emailed link resolves (via
@@ -2920,7 +3133,14 @@ export function createDocumentManagementService(
     // Signed-copy email to the signee when we have an address.
     if (deps.email && record.email) {
       try {
-        const viewUrl = await files.createViewUrl(signedCopy);
+        const storageUrl = await files.createViewUrl(signedCopy);
+        // Never put localhost/loopback storage URLs in outbound mail.
+        const appDocumentUrl = accessLinkBaseUrl
+          ? `${accessLinkBaseUrl}/documents/repositories/${node.repositoryId}/nodes/${node.id}`
+          : undefined;
+        const viewUrl = isPublicEmailHref(storageUrl)
+          ? storageUrl
+          : appDocumentUrl ?? storageUrl;
         const rendered = renderEmail(
           "document-signed-copy",
           {

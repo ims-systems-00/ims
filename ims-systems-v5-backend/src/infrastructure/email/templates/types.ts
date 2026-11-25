@@ -91,6 +91,7 @@ export type EmailTemplateId =
   | "document-signature-requested"
   | "document-signed-copy"
   | "document-review-reminder"
+  | "document-review-reminder-digest"
   | "audit-report"
   | "notification"
   | "campaign-wrap"
@@ -99,4 +100,12 @@ export type EmailTemplateId =
   | "account-past-due"
   | "account-blocked"
   | "account-reactivated"
-  | "txn-email-invitation";
+  | "txn-email-invitation"
+  | "asl-docs-chase"
+  | "asl-eval-due"
+  | "asl-eval-due-internal"
+  | "training-session-invite"
+  | "training-session-reminder"
+  | "training-expiring"
+  | "training-expired"
+  | "tender-submission";

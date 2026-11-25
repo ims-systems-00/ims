@@ -1,0 +1,31 @@
+{
+  "manifest_version": 3,
+  "name": "iMS Tender Autopilot",
+  "description": "Draft tender/PQQ answers from your private iMS library on buyer portals.",
+  "version": "1.0.0",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "action": {
+    "default_title": "Tender Autopilot",
+    "default_popup": "popup.html"
+  },
+  "options_page": "options.html",
+  "background": {
+    "service_worker": "background.js"
+  },
+  "commands": {
+    "draft-focused": {
+      "suggested_key": {
+        "default": "Alt+Shift+D"
+      },
+      "description": "Draft answer for the focused portal field"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["http://*/*", "https://*/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}

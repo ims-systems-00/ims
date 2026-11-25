@@ -142,9 +142,12 @@ export function lastEval(
 }
 
 export function nextEvalDate(
-  supplier: Pick<AslSupplier, "evals" | "appon" | "crit">,
+  supplier: Pick<AslSupplier, "evals" | "appon" | "crit" | "evalDue">,
   interval: Record<AslCriticality, number>
 ): string | null {
+  if (supplier.evalDue?.trim()) {
+    return supplier.evalDue.trim();
+  }
   const last = lastEval(supplier);
   const base = last
     ? new Date(last.date)

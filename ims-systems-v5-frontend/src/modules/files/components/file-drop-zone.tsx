@@ -23,6 +23,8 @@ type FileDropZoneProps = {
   accept?: string;
   multiple?: boolean;
   disabled?: boolean;
+  /** Stronger border / CTA for forms where the drop zone is easy to miss. */
+  emphasized?: boolean;
   /** Called after each file is stored; parent saves meta on its record. */
   onUploaded?: (meta: FileMetaInfo, file: File) => void;
   /** Called after a staged upload was deleted from storage. */
@@ -42,6 +44,7 @@ export function FileDropZone({
   accept,
   multiple = true,
   disabled = false,
+  emphasized = false,
   onUploaded,
   onRemoved,
 }: FileDropZoneProps) {
@@ -130,8 +133,11 @@ export function FileDropZone({
         tabIndex={0}
         aria-disabled={disabled}
         className={cn(
-          "flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-md border border-dashed border-border px-4 py-6 text-center transition-colors",
-          dragging && "bg-muted/40",
+          "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-md border border-dashed px-4 text-center transition-colors",
+          emphasized
+            ? "border-primary/50 bg-primary/[0.04] py-8 hover:border-primary hover:bg-primary/[0.07]"
+            : "border-border py-6",
+          dragging && (emphasized ? "border-primary bg-primary/10" : "bg-muted/40"),
           disabled && "cursor-not-allowed opacity-60"
         )}
         onClick={() => {
@@ -150,10 +156,25 @@ export function FileDropZone({
         onDragLeave={() => setDragging(false)}
         onDrop={onDrop}
       >
-        <Upload className="size-5 text-muted-foreground" />
-        <p className="text-sm text-muted-foreground">
+        <Upload
+          className={cn(
+            "size-5",
+            emphasized ? "size-7 text-primary" : "text-muted-foreground"
+          )}
+        />
+        <p
+          className={cn(
+            "text-sm",
+            emphasized ? "font-medium text-foreground" : "text-muted-foreground"
+          )}
+        >
           Drag &apos;n&apos; drop, or click to select files
         </p>
+        {emphasized ? (
+          <span className="inline-flex items-center rounded-md bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+            Choose file
+          </span>
+        ) : null}
         <input
           ref={inputRef}
           type="file"

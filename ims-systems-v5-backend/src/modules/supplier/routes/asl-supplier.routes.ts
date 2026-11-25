@@ -1,5 +1,9 @@
 import { Router } from "express";
 import type { Authorizer } from "../../../security";
+import {
+  NoOpDocumentModuleLibraryAdapter,
+  type DocumentModuleLibraryPort,
+} from "../../document-management";
 import { createAslSupplierController } from "../controllers/asl-supplier.controller";
 import {
   NoOpAslEmailAdapter,
@@ -8,12 +12,14 @@ import {
   NoOpAslNotificationAdapter,
   NoOpAslOrgAdapter,
   NoOpAslTaskAdapter,
+  NoOpAslUsersAdapter,
   type AslEmailPort,
   type AslFilesPort,
   type AslIncidentPort,
   type AslNotificationPort,
   type AslOrgPort,
   type AslTaskPort,
+  type AslUsersPort,
 } from "../ports";
 import { createAslSettingsRepository } from "../repositories/asl-settings.repository";
 import { createAslSupplierRepository } from "../repositories/asl-supplier.repository";
@@ -26,7 +32,9 @@ export type AslSupplierRouterDeps = {
   tasks?: AslTaskPort;
   incidents?: AslIncidentPort;
   org?: AslOrgPort;
+  users?: AslUsersPort;
   notifications?: AslNotificationPort;
+  documents?: DocumentModuleLibraryPort;
   tokenSecret: string;
   publicApiBaseUrl: string;
   clientUrl: string;
@@ -48,7 +56,9 @@ export function createAslSupplierModule(deps: AslSupplierRouterDeps): {
     tasks: deps.tasks ?? new NoOpAslTaskAdapter(),
     incidents: deps.incidents ?? new NoOpAslIncidentAdapter(),
     org: deps.org ?? new NoOpAslOrgAdapter(),
+    users: deps.users ?? new NoOpAslUsersAdapter(),
     notifications: deps.notifications ?? new NoOpAslNotificationAdapter(),
+    documents: deps.documents ?? new NoOpDocumentModuleLibraryAdapter(),
     tokenSecret: deps.tokenSecret,
     publicApiBaseUrl: deps.publicApiBaseUrl,
     clientUrl: deps.clientUrl,

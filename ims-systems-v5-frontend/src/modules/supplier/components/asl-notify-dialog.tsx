@@ -14,7 +14,7 @@ type AslNotifyDialogProps = {
 };
 
 /**
- * Confirm + send ASL chase/notify emails for selected suppliers.
+ * Confirm + email a no-login document upload link to selected suppliers.
  */
 export function AslNotifyDialog({
   open,
@@ -35,8 +35,8 @@ export function AslNotifyDialog({
       if (failed === 0) {
         notify.success(
           sent === 1
-            ? "Notification sent"
-            : `Notifications sent to ${sent} suppliers`
+            ? "Upload link sent"
+            : `Upload links sent to ${sent} suppliers`
         );
       } else {
         notify.info(
@@ -46,7 +46,7 @@ export function AslNotifyDialog({
       onDone?.(results);
       onOpenChange(false);
     } catch (error) {
-      notify.fromError(error, "Unable to send notifications");
+      notify.fromError(error, "Unable to send upload links");
     }
   }
 
@@ -54,14 +54,14 @@ export function AslNotifyDialog({
     <ConfirmDialog
       open={open}
       onOpenChange={onOpenChange}
-      title="Notify suppliers"
+      title="Send upload link"
       description={
         label ??
         (count === 1
-          ? "Send a document chase / notification email to this supplier?"
-          : `Send notification emails to ${count} selected suppliers?`)
+          ? "Email this supplier a secure link to upload insurance or other documents. They do not need to log in — the uploaded file is saved on their ASL record."
+          : `Email ${count} suppliers a secure no-login upload link for insurance or other documents. Uploads are saved on each supplier’s ASL record.`)
       }
-      confirmLabel={mutation.isPending ? "Sending…" : "Send"}
+      confirmLabel={mutation.isPending ? "Sending…" : "Send link"}
       pending={mutation.isPending}
       destructive={false}
       onConfirm={() => {
@@ -81,7 +81,7 @@ export function AslNotifyResults({ results, onClear }: AslNotifyResultsProps) {
   return (
     <div className="space-y-2 rounded-md border border-border-subtle bg-muted/30 p-3 text-sm">
       <div className="flex items-center justify-between gap-2">
-        <p className="font-medium">Notify results</p>
+        <p className="font-medium">Upload link results</p>
         {onClear ? (
           <Button type="button" variant="ghost" size="sm" onClick={onClear}>
             Dismiss

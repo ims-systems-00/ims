@@ -40,15 +40,24 @@ export const listAslSuppliersQuerySchema = z.object({
     ),
 });
 
+const isoDateSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+  .nullable()
+  .optional()
+  .or(z.literal(""));
+
 export const createAslSupplierBodySchema = z.object({
   name: z.string().trim().min(1).max(200),
   cat: z.string().trim().min(1).max(100).optional(),
   crit: z.enum(ASL_CRITICALITIES).optional(),
   contact: z.string().trim().max(200).optional(),
   email: z.string().trim().email().optional().or(z.literal("")),
-  stds: z.array(z.string().trim().min(1)).max(20).optional(),
+  stds: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   scope: z.string().trim().max(4000).optional(),
   reqs: z.string().trim().max(4000).optional(),
+  evalDue: isoDateSchema,
 });
 
 export const updateAslSupplierBodySchema = z.object({
@@ -58,11 +67,12 @@ export const updateAslSupplierBodySchema = z.object({
   status: z.enum(ASL_STATUSES).optional(),
   contact: z.string().trim().max(200).optional(),
   email: z.string().trim().email().optional().or(z.literal("")),
-  stds: z.array(z.string().trim().min(1)).max(20).optional(),
+  stds: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   scope: z.string().trim().max(4000).optional(),
   reqs: z.string().trim().max(4000).optional(),
   appby: z.string().trim().max(200).optional(),
   appon: z.string().trim().nullable().optional(),
+  evalDue: isoDateSchema,
 });
 
 const fileMetaSchema = z.object({

@@ -9,6 +9,16 @@ import {
 } from "@/modules/auth";
 import { AssetsCategoryPage } from "@/modules/assets";
 import {
+  InventoryHubPage,
+  PublicInventoryScanPage,
+} from "@/modules/inventory";
+import {
+  PublicMyTrainingPage,
+  PublicRsvpPage,
+  TrainingHubPage,
+} from "@/modules/training";
+import { TenderHubPage } from "@/modules/tender";
+import {
   ExternalAuditsListPage,
   InternalAuditsListPage,
 } from "@/modules/audits";
@@ -23,6 +33,7 @@ import { KpiObjectivesPage } from "@/modules/kpi-objectives";
 import { TagsAndCategoriesPage } from "@/modules/tags-and-categories";
 import {
   DocumentDetailPage,
+  DocumentModuleSourcePage,
   DocumentPurposePage,
   DocumentsPage,
   PublicSignPage,
@@ -94,6 +105,14 @@ export function App() {
       {/* ASL public share / supplier upload portals (no login). */}
       <Route path="supplier/public/:token" element={<PublicAslSharePage />} />
       <Route path="supplier/upload/:token" element={<PublicAslUploadPage />} />
+      {/* Inventory public QR scan card (no login required for read). */}
+      <Route
+        path="inventory/scan/:organizationId/:tag"
+        element={<PublicInventoryScanPage />}
+      />
+      {/* Training public self-service / RSVP (token-gated, no login). */}
+      <Route path="training/t/:token" element={<PublicMyTrainingPage />} />
+      <Route path="training/r/:token" element={<PublicRsvpPage />} />
       {/* Public marketing surfaces (no login, not in sidebar nav). */}
       <Route path="contact" element={<ContactImsPage />} />
       <Route
@@ -171,6 +190,10 @@ export function App() {
             />
             <Route path="documents" element={<DocumentsPage />} />
             <Route
+              path="documents/modules/:sourceModule"
+              element={<DocumentModuleSourcePage />}
+            />
+            <Route
               path="documents/overview/:purpose"
               element={<DocumentPurposePage />}
             />
@@ -232,6 +255,10 @@ export function App() {
             <Route path="calendar" element={<CalendarPage />} />
             <Route path="data-import" element={<DataImportPage />} />
             <Route path="report-bug" element={<ReportBugPage />} />
+            <Route path="inventory" element={<InventoryHubPage />} />
+            <Route path="training" element={<TrainingHubPage />} />
+            <Route path="tender" element={<TenderHubPage />} />
+            {/* Legacy five-category inventory — kept reachable, hidden from nav. */}
             <Route
               path="assets"
               element={<Navigate to="/assets/hardware" replace />}

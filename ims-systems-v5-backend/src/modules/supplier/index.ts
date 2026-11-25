@@ -19,6 +19,7 @@ export {
   createAslNotificationAdapter,
   createAslOrgAdapter,
   createAslTaskAdapter,
+  createAslUsersAdapter,
 } from "./adapters";
 export {
   ASL_SUPPLIERS_RESOURCE,

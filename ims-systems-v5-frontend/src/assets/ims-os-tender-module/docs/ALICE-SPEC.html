@@ -1,0 +1,149 @@
+<!doctype html><meta charset=utf-8><style>body{font:10.5pt/1.5 Inter,'Segoe UI',Arial,sans-serif;color:#141A3A;max-width:900px;margin:0 auto;padding:28px}h1{font-family:Poppins,sans-serif;font-size:22pt;color:#070A18;border-bottom:3px solid #4F39F6;padding-bottom:8px}h2,h3{font-family:Poppins,sans-serif;color:#4F39F6;margin-top:26px}h2{font-size:14pt}h3{font-size:11.5pt}table{border-collapse:collapse;width:100%;font-size:9pt;margin:10px 0}th,td{border:1px solid #E3E5F2;padding:5px 7px;text-align:left;vertical-align:top}th{background:#F6F7FB}code{font:9pt Consolas,monospace;background:#F6F7FB;padding:1px 4px;border-radius:3px}pre{background:#F6F7FB;border:1px solid #E3E5F2;padding:10px;border-radius:6px;font-size:8.5pt;white-space:pre-wrap}li{margin:3px 0}img{max-width:100%;border:1px solid #E3E5F2;border-radius:8px;margin:8px 0;box-shadow:0 4px 14px rgba(7,10,24,.08)}@page{size:A4;margin:16mm}</style><h1>iMS OS · Tender Autopilot — ALICE Integration Specification</h1>
+<p>Version 1.0 · 23 November 2026 · iMS Tech Global. Developer handover for connecting Tender Autopilot drafting, extraction, assessment and review to ALICE. Companion to the module specification (SPECIFICATION.pdf §7); the reference code is <code>server/ai.js</code> in the module package.</p>
+<p>How ALICE is used in this module, the exact prompts, the input/output contract, what "training" means here, and how quality is measured. The deterministic engine in <code>rules.js</code> is the fallback and the retrieval layer; ALICE sits on top of it (<code>server/ai.js</code>, <code>AI=alice</code>).</p>
+<h2>1. Principle: retrieval first, ALICE second, people last</h2>
+<p>ALICE never answers from general knowledge. For every task the module first retrieves the tenant's own approved content (answers, certificates, policies, services, case studies, facts) and hands ALICE <strong>only that</strong>. ALICE's job is to write well within those facts, the buyer's question and the limit. A person accepts and an approver signs off before anything leaves iMS OS. This is what lets us say to a customer: <em>the AI cannot invent a certificate, a number or a claim.</em></p>
+<p>Three consequences:
+* No fine-tuning on customer data is required (and we should not do it — tenant isolation). "Training" = better retrieval, better prompts, a golden set per tenant, and the feedback loop in §6.
+* Every output carries the context it used (<code>usedContext</code>) so the UI can show sources and the auditor can see provenance.
+* If retrieval finds nothing, ALICE is not called; the question goes to <em>needs input</em>.</p>
+<h2>2. System prompt (all tender tasks)</h2>
+<pre><code>You are ALICE, the compliance intelligence inside iMS OS, drafting on behalf of {{tenant}} (&quot;we&quot;).
+
+Rules you never break:
+1. Use ONLY the CONTEXT and FACTS provided. If they do not contain what is needed to answer, return an empty answer with confidence 0 and say what is missing in &quot;gaps&quot;. Never invent certificates, numbers, dates, names, clients, policies or claims.
+2. Copy certificate numbers, dates, standards, figures and names exactly as given in CONTEXT/FACTS.
+3. Write as the tenant in the first person plural, {{tone}}. British English. No marketing superlatives unless they are in CONTEXT.
+4. Respect LIMIT exactly: words means whole words; characters means characters {{spaces_rule}}; pages means 500 words per page. If the limit is generous, use it to add evidence from CONTEXT; if tight, keep the strongest evidence.
+5. Yes/No questions start with &quot;Yes.&quot; or &quot;No.&quot;. Questions about enforcement, prosecutions, notices, breaches, claims, disputes or insolvency: never answer &quot;Yes&quot; unless CONTEXT states it; answer &quot;No.&quot; only if FACTS/CONTEXT confirm it, otherwise leave empty and flag in &quot;gaps&quot;.
+6. Address what the buyer actually asked, in the order asked, mirroring their terms (e.g. &quot;the Authority&quot;, &quot;the Contract&quot;). Cover every part of a multi-part question.
+7. Prefer evidence over assertion: cite the certificate, policy reference and version, KPI or case study from CONTEXT. Where the evaluation criteria are given, make the points that score against them.
+8. Mark anything a person must confirm before submission in square brackets, e.g. &quot;[Confirm 2024 RIDDOR figure]&quot;. Keep such markers rare.
+9. Output valid JSON matching the schema requested and nothing else.
+</code></pre>
+<p><code>{{tone}}</code> comes from tenant settings (<code>settings.tone</code>, default: <em>Formal, first person plural ("we"), concrete and evidenced</em>). <code>{{spaces_rule}}</code> = "including spaces" / "excluding spaces" / "including spaces unless stated".</p>
+<h2>3. Task prompts</h2>
+<h3>3.1 Draft an answer (<code>POST ALICE_URL</code>, task <code>draft</code>)</h3>
+<p>Input (built by <code>server/ai.js</code>):</p>
+<pre><code class="language-json">{ &quot;task&quot;: &quot;draft&quot;, &quot;tenant&quot;: &quot;Northfield Engineering Ltd&quot;, &quot;tone&quot;: &quot;…&quot;,
+  &quot;question&quot;: { &quot;ref&quot;: &quot;3.2&quot;, &quot;text&quot;: &quot;Describe your approach to …&quot;, &quot;type&quot;: &quot;text&quot;, &quot;section&quot;: &quot;Quality&quot;,
+                &quot;limit&quot;: { &quot;kind&quot;: &quot;chars&quot;, &quot;n&quot;: 2000, &quot;spaces&quot;: &quot;incl&quot; } },
+  &quot;criteria&quot;: [{ &quot;name&quot;: &quot;Quality&quot;, &quot;weight&quot;: 60 }, { &quot;name&quot;: &quot;Price&quot;, &quot;weight&quot;: 40 }],
+  &quot;buyer&quot;: { &quot;name&quot;: &quot;Severn Trent Water&quot;, &quot;sector&quot;: &quot;Water&quot; },
+  &quot;facts&quot;: { &quot;company&quot;: &quot;…&quot;, &quot;employees&quot;: &quot;186&quot;, &quot;accidentRate&quot;: &quot;0.42 per 100,000 hours&quot; },
+  &quot;context&quot;: [
+    { &quot;i&quot;: 0, &quot;kind&quot;: &quot;answer&quot;, &quot;label&quot;: &quot;Describe your health and safety…&quot;, &quot;text&quot;: &quot;…&quot;, &quot;approvedAt&quot;: &quot;2026-07-01&quot;, &quot;reviewBy&quot;: &quot;2027-07-01&quot;, &quot;stale&quot;: false },
+    { &quot;i&quot;: 1, &quot;kind&quot;: &quot;certificate&quot;, &quot;label&quot;: &quot;ISO 45001:2018 certificate&quot;, &quot;text&quot;: &quot;BSI GB-HS-10322, scope …, valid 2024-03-15 to 2027-03-14&quot; },
+    { &quot;i&quot;: 2, &quot;kind&quot;: &quot;service&quot;, &quot;label&quot;: &quot;Mechanical services maintenance…&quot;, &quot;text&quot;: &quot;description + method + people&quot; },
+    { &quot;i&quot;: 3, &quot;kind&quot;: &quot;case&quot;, &quot;label&quot;: &quot;Severn Trent Water · Minworth STW…&quot;, &quot;text&quot;: &quot;summary + outcome&quot; },
+    { &quot;i&quot;: 4, &quot;kind&quot;: &quot;policy&quot;, &quot;label&quot;: &quot;Health &amp; Safety Policy&quot;, &quot;text&quot;: &quot;POL-01 v9, reviewed 2026-02-01, owner D. Brooks. summary&quot; } ],
+  &quot;previous&quot;: { &quot;answer&quot;: &quot;…&quot;, &quot;editedBy&quot;: &quot;L. Grant&quot;, &quot;note&quot;: &quot;buyer wanted more on reporting&quot; } }
+</code></pre>
+<p>User prompt:</p>
+<pre><code>QUESTION {{ref}} ({{section}}): {{text}}
+TYPE: {{type}}   LIMIT: {{limit or &quot;none&quot;}}   EVALUATION: {{criteria or &quot;not stated&quot;}}
+BUYER: {{buyer}}
+
+FACTS: {{facts as key: value lines}}
+
+CONTEXT (numbered; cite by number in usedContext):
+[0] answer (approved 2026-07-01, review 2027-07-01): …
+[1] certificate: …
+…
+
+{{if previous}}PREVIOUS DRAFT (a person edited it; keep their changes unless they conflict with CONTEXT): …{{/if}}
+
+Write the answer. Return JSON:
+{ &quot;answer&quot;: string, &quot;confidence&quot;: 0..1, &quot;usedContext&quot;: [int], &quot;gaps&quot;: [string], &quot;notes&quot;: string }
+confidence: 0.9+ only when CONTEXT answers every part with current evidence; 0.6–0.8 when parts rely on inference from CONTEXT; below 0.5 when the answer is thin; 0 when empty.
+</code></pre>
+<p>Output handling (<code>ai.js</code>): <code>answer</code> is re-checked against the limit with <code>fitToLimit</code> (belt and braces), <code>confidence</code> is clamped to ≤ 0.97 and the stale-source penalty still applies, <code>usedContext</code> becomes the question's <code>sources</code>, <code>gaps</code> are appended as a note and push the status to <em>needs input</em> when non-empty.</p>
+<h3>3.2 Extract from a pack document (task <code>extract</code>)</h3>
+<p>Used when regex extraction (<code>analyseDocument</code>) returns little from a long document, or always when <code>AI=alice</code>. Input: document name, type, and text in chunks of ≤ 12k characters with page/paragraph indexes. Output per chunk, merged by the server:</p>
+<pre><code>Return JSON: { &quot;requirements&quot;: [{ &quot;ref&quot;, &quot;text&quot;, &quot;level&quot;: &quot;mandatory|desirable&quot;, &quot;section&quot;, &quot;para&quot; }],
+  &quot;questions&quot;: [{ &quot;ref&quot;, &quot;text&quot;, &quot;section&quot;, &quot;limit&quot;: { &quot;kind&quot;, &quot;n&quot;, &quot;spaces&quot; } | null, &quot;type&quot; }],
+  &quot;criteria&quot;: [{ &quot;name&quot;, &quot;weight&quot;, &quot;sub&quot;: [{ &quot;name&quot;, &quot;weight&quot; }] }],
+  &quot;dates&quot;: { &quot;deadline&quot;, &quot;clarifications&quot;, &quot;contractStart&quot;, &quot;siteVisit&quot;, &quot;presentation&quot; },
+  &quot;submission&quot;: { &quot;method&quot;: &quot;portal|email|post&quot;, &quot;email&quot;, &quot;portal&quot;, &quot;format&quot; },
+  &quot;pricing&quot;: { &quot;found&quot;: bool, &quot;where&quot;: &quot;sheet/section name&quot;, &quot;model&quot;: &quot;schedule of rates|lump sum|target cost|…&quot; } }
+Rules: a requirement is a sentence placing an obligation on the supplier/contractor/tenderer; instructions about how to submit are not requirements; keep the buyer's numbering; a limit stated for a section applies to its questions (set inherited: true); copy text verbatim, do not paraphrase.
+</code></pre>
+<h3>3.3 Assess a requirement (task <code>assess</code>)</h3>
+<p>Input: requirement text + up to 6 retrieved context items. Output:</p>
+<pre><code>{ &quot;status&quot;: &quot;comply|partial|no|unknown&quot;, &quot;evidence&quot;: [int], &quot;statement&quot;: &quot;one or two sentences for the compliance statement, citing the evidence&quot;, &quot;action&quot;: &quot;what would close the gap, if any&quot; }
+&quot;comply&quot; only when the evidence meets the requirement as written (e.g. the certificate is the standard named, in scope, and valid at the deadline). &quot;unknown&quot; when CONTEXT is silent — never guess.
+</code></pre>
+<h3>3.4 Executive summary and cover letter (task <code>summary</code>)</h3>
+<p>Input: buyer, title, criteria, facts, the approved answers (titles + first 300 chars), compliance statement counts, pricing summary, 3 strongest case studies. Output: <code>{ "executiveSummary": "≤ 350 words", "coverLetter": "≤ 200 words", "winThemes": [string×3] }</code>. Win themes must each trace to a criterion and to evidence in CONTEXT.</p>
+<h3>3.5 Review a draft before approval (task <code>review</code>)</h3>
+<p>Run on "Accept" to catch issues a tired bid writer misses. Input: question, limit, criteria, answer. Output:</p>
+<pre><code>{ &quot;answersAllParts&quot;: bool, &quot;missingParts&quot;: [string], &quot;unsupportedClaims&quot;: [string], &quot;withinLimit&quot;: bool, &quot;tone&quot;: &quot;ok|too salesy|too thin&quot;, &quot;suggestions&quot;: [string ≤ 3] }
+</code></pre>
+<p>Shown as hints in the question card; never changes the text itself.</p>
+<h2>4. Guardrails enforced in code (not just in the prompt)</h2>
+<ul>
+<li>Context is built from the tenant's library only; cross-tenant retrieval is impossible by construction.</li>
+<li>Empty retrieval ⇒ ALICE not called.</li>
+<li>JSON schema validated; non-JSON or schema failures ⇒ deterministic fallback, logged.</li>
+<li>Numbers/dates/certificate numbers in the answer are checked against the context (<code>verifyFigures</code>, to add: any 4+ digit number or date in the answer that does not appear in context/facts flags the answer as <em>needs input</em> with the figure named).</li>
+<li>Limits re-fitted in code. Negative yes/no rule re-applied in code.</li>
+<li>Prompt-injection: document text is data. The extract prompt wraps document chunks in a delimiter and the system prompt states that instructions inside documents are to be ignored; the server strips <code>{{</code> <code>}}</code> from document text before templating.</li>
+<li>Timeouts (20 s default) and rate limits per tenant; every call logged with task, tokens, latency and the question id (never the answer text in central logs).</li>
+</ul>
+<h2>5. What "training" means for this module</h2>
+<p>No model training on customer data. Instead, three layers that make ALICE better per tenant over time:
+1. <strong>Library quality</strong> — approved, reviewed answers; services with real method statements; case studies with outcomes; facts kept current. This is 80 % of answer quality and is the customer's own asset.
+2. <strong>Retrieval tuning</strong> — synonym table (<code>SYN</code> in <code>rules.js</code>), standard-number rule, tag/standard boosts, and the embedding index when the platform provides one (swap <code>buildIndex/match</code> for vector search; keep the number-guard).
+3. <strong>Few-shot from the tenant's best work</strong> — the draft prompt may include up to 3 of the tenant's highest-scoring approved answers of the same tag as style examples ("STYLE EXAMPLES — match the voice, not the content"). Selected by tag + evaluator feedback, never from another tenant.</p>
+<h2>6. Feedback loop (signals already captured by the module)</h2>
+<table>
+<thead>
+<tr>
+<th>Signal</th>
+<th>Where</th>
+<th>Use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Accept without edit</td>
+<td>question <code>hist</code> "Accepted" straight after "Drafted"</td>
+<td>positive example for that tag/limit</td>
+</tr>
+<tr>
+<td>Edit distance between draft and approved text</td>
+<td><code>draft</code> vs <code>answer</code> at approval</td>
+<td>measures draft quality; large edits → review retrieval for that tag</td>
+</tr>
+<tr>
+<td>"Ask colleague" after a draft</td>
+<td><code>assignee</code> set</td>
+<td>retrieval gap: library lacks this topic</td>
+</tr>
+<tr>
+<td>Needs input on import</td>
+<td>status</td>
+<td>topic coverage report for the customer ("your library has no answer for social value")</td>
+</tr>
+<tr>
+<td>Over-limit on accept</td>
+<td>confirm dialog</td>
+<td>limit handling regression</td>
+</tr>
+<tr>
+<td>Evaluator feedback (score per question, win/loss)</td>
+<td>add <code>Q.outcome {won, scores[{ref,score,max,comment}]}</code></td>
+<td>the only ground truth that matters; feeds few-shot selection and win-theme prompts</td>
+</tr>
+</tbody>
+</table>
+<p>A monthly "library health &amp; answer quality" report per tenant (coverage by tag, stale %, accept-without-edit %, average evaluator score) is the product's own evidence that ALICE is getting better.</p>
+<h2>7. Evaluation set and acceptance thresholds</h2>
+<p>Golden set shipped with the module: <code>server/test/golden/*.json</code> (to create) — 40 real-style questions across H&amp;S, quality, environment, infosec, social value, modern slavery, insurance, case studies, method statements and negative yes/no, each with the expected properties (must cite X, must start with No., must be ≤ limit, must not contain Y). Run nightly against both engines. Release gate:
+* 0 fabricated figures (any number/date not in context) — hard fail.
+* 100 % limit compliance.
+* ≥ 90 % "cites the expected evidence".
+* ≥ 80 % rated "acceptable without edit" by two bid writers on a 20-question sample.
+* Negative yes/no: 100 % never "Yes".</p>
+<h2>8. Outputs the customer sees</h2>
+<p>Draft text with confidence and sources; gaps as bracketed markers and notes; compliance statements; executive summary and cover letter; review hints; the audit line "Drafted by ALICE (67%) · fitted to max 2,000 characters". Never a free-text chat answer without sources in this module.</p>

@@ -26,6 +26,7 @@ import {
 import {
   renderDocumentAuthorisationRequested,
   renderDocumentReviewReminder,
+  renderDocumentReviewReminderDigest,
   renderDocumentShared,
   renderDocumentSignatureRequested,
   renderDocumentSignedCopy,
@@ -37,6 +38,28 @@ import {
   renderLicenceRequestSupport,
   type LicenceRequestEmailData,
 } from "./catalog/licence";
+import {
+  renderAslDocsChase,
+  renderAslEvalDue,
+  renderAslEvalDueInternal,
+  type AslDocsChaseEmailData,
+  type AslEvalDueInternalEmailData,
+  type AslEvalDueEmailData,
+} from "./catalog/asl";
+import {
+  renderTrainingExpired,
+  renderTrainingExpiring,
+  renderTrainingSessionInvite,
+  renderTrainingSessionReminder,
+  type TrainingExpiredEmailData,
+  type TrainingExpiringEmailData,
+  type TrainingSessionInviteEmailData,
+  type TrainingSessionReminderEmailData,
+} from "./catalog/training";
+import {
+  renderTenderSubmission,
+  type TenderSubmissionEmailData,
+} from "./catalog/tender";
 import {
   renderAccountBlocked,
   renderAccountPastDue,
@@ -145,6 +168,15 @@ export type EmailTemplateDataMap = {
     body: string;
     viewUrl?: string;
   };
+  "document-review-reminder-digest": {
+    items: Array<{
+      entityLabel: string;
+      entityName: string;
+      reviewDateLabel: string;
+      body: string;
+    }>;
+    viewUrl?: string;
+  };
   "audit-report": {
     recipientName: string;
     reference: string;
@@ -187,6 +219,14 @@ export type EmailTemplateDataMap = {
     acceptUrl: string;
     expiresAt?: Date;
   };
+  "asl-docs-chase": AslDocsChaseEmailData;
+  "asl-eval-due": AslEvalDueEmailData;
+  "asl-eval-due-internal": AslEvalDueInternalEmailData;
+  "training-session-invite": TrainingSessionInviteEmailData;
+  "training-session-reminder": TrainingSessionReminderEmailData;
+  "training-expiring": TrainingExpiringEmailData;
+  "training-expired": TrainingExpiredEmailData;
+  "tender-submission": TenderSubmissionEmailData;
 };
 
 type TemplateRenderer<K extends EmailTemplateId> = (
@@ -216,6 +256,7 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "document-signature-requested": renderDocumentSignatureRequested,
   "document-signed-copy": renderDocumentSignedCopy,
   "document-review-reminder": renderDocumentReviewReminder,
+  "document-review-reminder-digest": renderDocumentReviewReminderDigest,
   "audit-report": renderAuditReport,
   notification: renderNotification,
   "campaign-wrap": renderCampaignWrap,
@@ -225,6 +266,14 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "account-blocked": renderAccountBlocked,
   "account-reactivated": renderAccountReactivated,
   "txn-email-invitation": renderTxnEmailInvitation,
+  "asl-docs-chase": renderAslDocsChase,
+  "asl-eval-due": renderAslEvalDue,
+  "asl-eval-due-internal": renderAslEvalDueInternal,
+  "training-session-invite": renderTrainingSessionInvite,
+  "training-session-reminder": renderTrainingSessionReminder,
+  "training-expiring": renderTrainingExpiring,
+  "training-expired": renderTrainingExpired,
+  "tender-submission": renderTenderSubmission,
 };
 
 export function renderEmail<K extends EmailTemplateId>(

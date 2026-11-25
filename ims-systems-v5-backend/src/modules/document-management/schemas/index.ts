@@ -6,6 +6,7 @@ import {
   DOCUMENT_PRIVACY_VALUES,
   DOCUMENT_PURPOSES,
   DOCUMENT_REVIEW_INTERVALS,
+  DOCUMENT_SOURCE_MODULES,
   DOCUMENT_STATUSES,
   MAX_DOCUMENT_OWNERS,
   MAX_NODE_NAME_LENGTH,
@@ -305,6 +306,7 @@ export const listPublishedDocumentsQuerySchema = z.object({
   complianceTool: z.enum(DOCUMENT_COMPLIANCE_TOOLS).optional(),
   complianceToolkitId: z.string().trim().min(1).max(120).optional(),
   clauseId: z.string().trim().min(1).max(80).optional(),
+  sourceModule: z.enum(DOCUMENT_SOURCE_MODULES).optional(),
   sort: z.enum(["createdOn", "name", "updatedAt"]).default("createdOn"),
   sortDir: z.enum(["asc", "desc"]).default("desc"),
 });

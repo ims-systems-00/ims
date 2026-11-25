@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Tender Autopilot · Options</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body class="options">
+    <header>
+      <h1>Tender Autopilot options</h1>
+      <p>
+        Configure the API endpoint and credentials used to call
+        <code>POST /tender/draft</code>. Tokens stay in Chrome sync storage on
+        this profile only.
+      </p>
+    </header>
+
+    <form id="form" class="form">
+      <label>
+        API base URL
+        <input
+          id="apiBase"
+          type="url"
+          placeholder="https://api.example.com/api/v1"
+          required
+        />
+      </label>
+      <label>
+        Access token (Bearer)
+        <textarea
+          id="accessToken"
+          rows="4"
+          placeholder="Paste your IMS access token"
+          required
+        ></textarea>
+      </label>
+      <label>
+        Organisation ID (<code>x-org-id</code>)
+        <input id="orgId" type="text" placeholder="Mongo ObjectId" required />
+      </label>
+      <div class="actions">
+        <button type="submit" class="primary">Save</button>
+      </div>
+      <p id="saved" class="status" hidden>Saved.</p>
+    </form>
+
+    <section class="help">
+      <h2>How to get these values</h2>
+      <ol>
+        <li>Open Tender Autopilot in iMS → <strong>Add-in</strong> view.</li>
+        <li>Copy the API base URL shown there.</li>
+        <li>
+          Sign in to iMS, then paste a current access token (from your auth
+          session / network request Authorization header).
+        </li>
+        <li>Use the active organisation id sent as <code>x-org-id</code>.</li>
+      </ol>
+    </section>
+    <script src="options.js"></script>
+  </body>
+</html>

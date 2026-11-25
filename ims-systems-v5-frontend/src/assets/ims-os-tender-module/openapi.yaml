@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: iMS OS · Tender Autopilot API
+  version: 1.0.0
+  description: |
+    Questionnaires (tenders, PQQs, supplier questionnaires) answered from a tenant's private approved library, reviewed, approved and exported.
+    Auth: platform bearer token (reference server: demo-admin | demo-approver | demo-contributor | demo-viewer). Roles viewer < contributor < approver < admin.
+    Everything is tenant-scoped; the library never leaves the tenant. Drafting runs server-side (deterministic retrieval, or ALICE with AI=alice).
+servers: [{ url: /api }]
+paths:
+  /model: { get: { summary: Whole tenant model + user + version (poll for changes), responses: { "200": { description: model } } } }
+  /parse:
+    post:
+      summary: Parse an uploaded questionnaire file into questions (no side effects)
+      requestBody: { content: { application/json: { schema: { type: object, required: [name, data], properties: { name: { type: string, description: ".xlsx .xlsm .docx .csv .txt" }, data: { type: string, format: base64 } } } } } }
+      responses: { "200": { description: "{ source, parsed:{questions[], header, answerCol}, sheet? }" }, "415": { description: unsupported type } }
+  /questionnaires:
+    post:
+      summary: Import a questionnaire (contributor). Send parsed questions (from /parse) or raw text pasted from a portal. draft=true drafts every question immediately.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { meta: { type: object, properties: { buyer: { type: string }, title: { type: string }, due: { type: string, format: date }, owner: { type: string }, source: { type: string, enum: [xlsx, docx, csv, portal] }, fileName: { type: string }, fileId: { type: string } } }, parsed: { type: object }, text: { type: string }, draft: { type: boolean, default: true } } } } } }
+      responses: { "201": { description: questionnaire }, "422": { description: no questions recognised } }
+  /questionnaires/{id}:
+    get: { summary: One questionnaire / bid, responses: { "200": { description: questionnaire } } }
+    put: { summary: "Update bid details (contributor): buyer, title, due, owner, reference, submissionEmail, buyerContact, portalUrl, notes", responses: { "200": { description: questionnaire }, "422": { description: invalid email } } }
+    delete: { summary: Remove (admin), responses: { "204": { description: removed } } }
+  /questionnaires/{id}/documents:
+    post:
+      summary: Add a tender-pack document (contributor). Send the file (name + base64) or a pre-analysed doc. Classified as instructions | specification | questionnaire | pricing | document; requirements (shall/must), desirables (should), evaluation weightings, key dates, questions and pricing lines are extracted and merged into the bid. New questions are drafted and requirements auto-assessed.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { name: { type: string }, data: { type: string, format: base64 }, doc: { type: object }, draft: { type: boolean, default: true } } } } } }
+      responses: { "201": { description: "document { id, kind, requirements[], questions[], pricing?, criteria[], dates{} }" } }
+  /questionnaires/{id}/requirements/{rid}:
+    put: { summary: "Assess a requirement (contributor). body { status: comply|partial|no|unassessed, note?, evidence? }", responses: { "200": { description: requirement } } }
+  /questionnaires/{id}/requirements/assess:
+    post: { summary: ALICE links evidence to unassessed requirements and proposes comply / partial, responses: { "200": { description: "{ assessed }" } } }
+  /questionnaires/{id}/pricing:
+    put: { summary: "Pricing schedule (contributor). body { lines[{description,unit,qty,rate,category}], overheadPct, marginPct, vatPct, currency, basis, suggest:bool (fill empty rates from the rate card) }", responses: { "200": { description: pricing } } }
+  /questionnaires/{id}/gate:
+    get: { summary: "Bid / no-bid gate: score, verdict (bid|review|no-bid-risk), issues[], checks[], submit:{ok, errs[]}", responses: { "200": { description: gate } } }
+  /questionnaires/{id}/bid:
+    get:
+      summary: Export bid files
+      parameters: [{ name: what, in: query, schema: { type: string, enum: [bid, pricing, questionnaire], default: bid } }]
+      responses: { "200": { description: "bid: Word tender response (executive summary, evaluation criteria, compliance statement, responses, pricing summary, appendices); pricing: Excel priced schedule with overheads, margin, VAT; questionnaire: Excel responses" } }
+  /questionnaires/{id}/submit:
+    post:
+      summary: Send the submission to the buyer's submission email (approver). Refused (422) unless every response is approved, mandatory requirements are assessed with none marked "no", pricing is complete and a submission email is set; force=true overrides for an approver. Attaches the bid document, priced schedule, questionnaire and every certificate with a stored file; records who sent what, when, to whom.
+      requestBody: { content: { application/json: { schema: { type: object, properties: { force: { type: boolean }, cc: { type: string } } } } } }
+      responses: { "200": { description: "{ to, subject, body, attachments[], mode: outbox|smtp-json, id }" }, "403": { description: not an approver }, "422": { description: not ready } }
+  /questionnaires/{id}/draft:
+    post: { summary: "Draft blank / needs-input questions (contributor). body { only?: [questionId] }", responses: { "200": { description: "{ drafted }" } } }
+  /questionnaires/{id}/questions/{qid}:
+    put: { summary: "Edit an answer, assign to a colleague (needs-input), add a note (contributor). body { answer?, assignee?, note? }", responses: { "200": { description: question } } }
+  /questionnaires/{id}/questions/{qid}/accept:
+    post: { summary: Accept the current answer (contributor), responses: { "200": { description: question } } }
+  /questionnaires/{id}/approve:
+    post: { summary: "Approve answers (approver). body { questionIds: [..] | null for all }. Approved answers are learned into the library (settings.learn).", responses: { "200": { description: "{ approved, status }" }, "403": { description: not an approver } } }
+  /questionnaires/{id}/submitted:
+    post: { summary: Mark as submitted to the buyer, responses: { "200": { description: questionnaire } } }
+  /questionnaires/{id}/export:
+    get:
+      summary: Export the response file
+      parameters: [{ name: format, in: query, schema: { type: string, enum: [xlsx, docx, csv], default: xlsx } }]
+      responses: { "200": { description: "File download (Content-Disposition). xlsx: Ref/Section/Question/Response/Status/Evidence; docx: formatted response document" } }
+  /draft:
+    post:
+      summary: Draft one answer for a question outside a questionnaire — used by the browser add-in on buyer portals (contributor)
+      requestBody: { content: { application/json: { schema: { type: object, required: [question], properties: { question: { type: string }, wordLimit: { type: integer } } } } } }
+      responses: { "200": { description: "{ answer, confidence, sources[], type, status, autofill } — autofill is true only when the best source is an approved, in-date library answer above the tenant threshold" } }
+  /library/answers: { post: { summary: Add a library answer (contributor), responses: { "201": { description: answer } } } }
+  /library/answers/{id}: { put: { summary: Update, responses: { "200": { description: answer } } }, delete: { summary: Remove (admin), responses: { "204": { description: removed } } } }
+  /library/certificates: { post: { summary: Add a certificate, responses: { "201": { description: certificate } } } }
+  /library/certificates/{id}: { put: { summary: Update, responses: { "200": { description: certificate } } }, delete: { summary: Remove (admin), responses: { "204": { description: removed } } } }
+  /library/policies: { post: { summary: Add a policy, responses: { "201": { description: policy } } } }
+  /library/policies/{id}: { put: { summary: Update, responses: { "200": { description: policy } } }, delete: { summary: Remove (admin), responses: { "204": { description: removed } } } }
+  /library/services: { post: { summary: Add a service provision (name, description, method, people[], tags[]), responses: { "201": { description: service } } } }
+  /library/services/{id}: { put: { summary: Update, responses: { "200": { description: service } } }, delete: { summary: Remove (admin), responses: { "204": { description: removed } } } }
+  /library/cases: { post: { summary: Add a case study (client, title, sector, year, value, summary, outcome, reference), responses: { "201": { description: case } } } }
+  /library/cases/{id}: { put: { summary: Update, responses: { "200": { description: case } } }, delete: { summary: Remove (admin), responses: { "204": { description: removed } } } }
+  /library/rates: { post: { summary: Add a rate-card line (item, unit, rate, category), responses: { "201": { description: rate } } } }
+  /library/rates/{id}: { put: { summary: Update, responses: { "200": { description: rate } } }, delete: { summary: Remove (admin), responses: { "204": { description: removed } } } }
+  /library/health: { get: { summary: Stale answers, expiring/expired certificates, overdue policies, responses: { "200": { description: health } } } }
+  /settings: { put: { summary: Tenant settings (admin), responses: { "200": { description: settings } } } }
+  /facts: { put: { summary: Company facts used by {{placeholders}} (contributor), responses: { "200": { description: facts } } } }
+  /files:
+    post: { summary: "Upload a file (certificate PDF, policy, original questionnaire). body { name, type, size, data: base64 }", responses: { "201": { description: "{ fileId, url, name, size, type }" } } }
+  /files/{id}: { get: { summary: Download a stored file, responses: { "200": { description: file } } } }
+  /health: { get: { summary: Liveness + AI mode, responses: { "200": { description: ok } } } }

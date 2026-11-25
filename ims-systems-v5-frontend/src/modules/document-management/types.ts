@@ -64,6 +64,35 @@ export const DOCUMENT_APPLICABLE_MODULE_LABELS: Record<
   expensereports: "Expense reports",
 };
 
+/** Modules that upload evidence/certs mirrored into Document Management. */
+export const DOCUMENT_SOURCE_MODULES = [
+  "training",
+  "inventory",
+  "supplier",
+  "tender",
+] as const;
+export type DocumentSourceModule = (typeof DOCUMENT_SOURCE_MODULES)[number];
+
+export const DOCUMENT_SOURCE_MODULE_LABELS: Record<
+  DocumentSourceModule,
+  string
+> = {
+  training: "Training",
+  inventory: "Inventory",
+  supplier: "Supplier",
+  tender: "Tender",
+};
+
+export const DOCUMENT_SOURCE_MODULE_DESCRIPTIONS: Record<
+  DocumentSourceModule,
+  string
+> = {
+  training: "Competency evidence, certificates and session materials",
+  inventory: "Calibration and inspection certificates",
+  supplier: "ASL insurance, ISO and compliance documents",
+  tender: "Bid library certificates and policies",
+};
+
 /** Stored on documents when Applicable modules includes Compliance. */
 export const DOCUMENT_COMPLIANCE_TOOLS = [
   "DSPTNHS",
@@ -188,6 +217,9 @@ export type DocumentTreeNode = {
     conformance: number;
     threadId: string;
     reviewDate: string | null;
+    sourceModule?: DocumentSourceModule | null;
+    sourceKey?: string | null;
+    sourceLabel?: string | null;
   } | null;
   folderData: {
     reviewDate: string | null;
@@ -206,6 +238,7 @@ export type DocumentTreeNode = {
 export type DocumentOverviewCounts = {
   total: number;
   byPurpose: Record<DocumentPurpose, number>;
+  bySourceModule?: Record<DocumentSourceModule, number>;
 };
 
 export type PaginatedDocumentRepositories = {

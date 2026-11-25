@@ -11,6 +11,7 @@ import type {
   DocumentNodeData,
   DocumentNodeType,
   DocumentPurpose,
+  DocumentSourceModule,
   DocumentStatus,
   DocumentTreeNode,
   FolderNodeData,
@@ -19,7 +20,11 @@ import type {
   PaginatedDocumentNodes,
   DocumentOverviewCounts,
 } from "../types";
-import { DOCUMENT_PURPOSES, documentToolForToolkit } from "../types";
+import {
+  DOCUMENT_PURPOSES,
+  DOCUMENT_SOURCE_MODULES,
+  documentToolForToolkit,
+} from "../types";
 import {
   getDocumentTreeModel,
   type DocumentTreeDocument,
@@ -60,6 +65,9 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     conformance?: number;
     threadId?: string;
     reviewDate?: Date | null;
+    sourceModule?: DocumentSourceModule | null;
+    sourceKey?: string | null;
+    sourceLabel?: string | null;
   };
   // Migrated folders sometimes carried a documentData stub without storageInfo.
   // Treat missing/invalid storage as "not a document payload" so listChildren
@@ -80,6 +88,11 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     typeof rawSize === "number" && Number.isFinite(rawSize) && rawSize >= 0
       ? rawSize
       : undefined;
+  const sourceModule =
+    data.sourceModule &&
+    (DOCUMENT_SOURCE_MODULES as readonly string[]).includes(data.sourceModule)
+      ? data.sourceModule
+      : null;
   return {
     storageInfo: {
       Name: String(storage.Name),
@@ -106,6 +119,11 @@ function toDocumentData(raw: unknown): DocumentNodeData | null {
     conformance: data.conformance ?? -1,
     threadId: data.threadId ?? "",
     reviewDate: data.reviewDate ?? null,
+    sourceModule,
+    sourceKey: data.sourceKey?.trim() ? String(data.sourceKey).trim() : null,
+    sourceLabel: data.sourceLabel?.trim()
+      ? String(data.sourceLabel).trim()
+      : null,
   };
 }
 
@@ -180,6 +198,9 @@ export type PersistDocumentCreate = {
     conformance: number;
     threadId: string;
     reviewDate: Date | null;
+    sourceModule?: DocumentSourceModule | null;
+    sourceKey?: string | null;
+    sourceLabel?: string | null;
   };
   createdBy: string;
   createdOn: Date;
@@ -369,7 +390,10 @@ export function createDocumentTreeStore() {
       repositoryId: string,
       parentNodeId: string | null,
       name: string,
-      options?: { status?: DocumentStatus | DocumentStatus[] }
+      options?: {
+        status?: DocumentStatus | DocumentStatus[];
+        type?: DocumentNodeType;
+      }
     ): Promise<DocumentTreeNode | null> {
       const filter: Record<string, unknown> = {
         organizationId,
@@ -378,6 +402,7 @@ export function createDocumentTreeStore() {
         name,
         deletedAt: null,
       };
+      if (options?.type) filter.type = options.type;
       if (options?.status) {
         filter.status = Array.isArray(options.status)
           ? { $in: options.status }
@@ -626,16 +651,35 @@ export function createDocumentTreeStore() {
     async overviewCounts(
       organizationId: string
     ): Promise<DocumentOverviewCounts> {
-      const rows = await Model.aggregate<{ _id: string; count: number }>([
-        {
-          $match: {
-            organizationId,
-            type: "document",
-            status: "Published",
-            deletedAt: null,
+      const [purposeRows, sourceRows] = await Promise.all([
+        Model.aggregate<{ _id: string; count: number }>([
+          {
+            $match: {
+              organizationId,
+              type: "document",
+              status: "Published",
+              deletedAt: null,
+            },
           },
-        },
-        { $group: { _id: "$documentData.purpose", count: { $sum: 1 } } },
+          { $group: { _id: "$documentData.purpose", count: { $sum: 1 } } },
+        ]),
+        Model.aggregate<{ _id: string; count: number }>([
+          {
+            $match: {
+              organizationId,
+              type: "document",
+              status: "Published",
+              deletedAt: null,
+              "documentData.sourceModule": { $in: [...DOCUMENT_SOURCE_MODULES] },
+            },
+          },
+          {
+            $group: {
+              _id: "$documentData.sourceModule",
+              count: { $sum: 1 },
+            },
+          },
+        ]),
       ]);
 
       const byPurpose = Object.fromEntries(
@@ -643,13 +687,40 @@ export function createDocumentTreeStore() {
       ) as Record<(typeof DOCUMENT_PURPOSES)[number], number>;
 
       let total = 0;
-      for (const row of rows) {
+      for (const row of purposeRows) {
         if (row._id && row._id in byPurpose) {
           byPurpose[row._id as (typeof DOCUMENT_PURPOSES)[number]] = row.count;
         }
         total += row.count;
       }
-      return { total, byPurpose };
+
+      const bySourceModule = Object.fromEntries(
+        DOCUMENT_SOURCE_MODULES.map((module) => [module, 0])
+      ) as Record<DocumentSourceModule, number>;
+      for (const row of sourceRows) {
+        if (
+          row._id &&
+          (DOCUMENT_SOURCE_MODULES as readonly string[]).includes(row._id)
+        ) {
+          bySourceModule[row._id as DocumentSourceModule] = row.count;
+        }
+      }
+
+      return { total, byPurpose, bySourceModule };
+    },
+
+    async findBySourceKey(
+      organizationId: string,
+      sourceKey: string
+    ): Promise<DocumentTreeNode | null> {
+      const key = sourceKey.trim();
+      if (!key) return null;
+      const doc = await Model.findOne({
+        organizationId,
+        deletedAt: null,
+        "documentData.sourceKey": key,
+      }).lean();
+      return doc ? toDomain(doc as DocumentTreeDocument) : null;
     },
 
     async listPublished(
@@ -663,6 +734,9 @@ export function createDocumentTreeStore() {
         deletedAt: null,
       };
       if (query.purpose) filter["documentData.purpose"] = query.purpose;
+      if (query.sourceModule) {
+        filter["documentData.sourceModule"] = query.sourceModule;
+      }
       if (query.applicableModule) {
         filter["documentData.applicableModules"] = query.applicableModule;
       }

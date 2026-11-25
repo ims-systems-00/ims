@@ -1,0 +1,750 @@
+{
+ "companies": [
+  {
+   "company_number": "04871234",
+   "company_name": "NORTHFIELD ENGINEERING LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "25620",
+    "33120"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 118,
+   "_domains": [
+    "northfield.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o1",
+     "name": "WHITFIELD, Sarah",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1978,
+      "month": 4
+     },
+     "appointed_on": "2012-01-01",
+     "_email": "sarah.whitfield@northfield.co.uk"
+    },
+    {
+     "_id": "o2",
+     "name": "OKAFOR, James",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1971,
+      "month": 11
+     },
+     "appointed_on": "2012-01-01"
+    },
+    {
+     "_id": "o3",
+     "name": "BENNETT, Priya",
+     "officer_role": "secretary",
+     "date_of_birth": {
+      "year": 1985,
+      "month": 2
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "07120443",
+   "company_name": "CALDER VALLEY SCAFFOLDING LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "43991"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 34,
+   "_domains": [
+    "calder.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o4",
+     "name": "HUGHES, Helen",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1985,
+      "month": 11
+     },
+     "appointed_on": "2012-01-01"
+    },
+    {
+     "_id": "o5",
+     "name": "BENNETT, Sarah",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1989,
+      "month": 12
+     },
+     "appointed_on": "2012-01-01"
+    },
+    {
+     "_id": "o6",
+     "name": "NOLAN, James",
+     "officer_role": "secretary",
+     "date_of_birth": {
+      "year": 1977,
+      "month": 7
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "09983321",
+   "company_name": "BRIGHTWATER FACILITIES SERVICES LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "81100",
+    "81210"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 160,
+   "_domains": [
+    "brightwater.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o7",
+     "name": "CARR, Mark",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1969,
+      "month": 5
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "05567710",
+   "company_name": "RIDGEWAY HAULAGE LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "49410"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 92,
+   "_domains": [
+    "ridgeway.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o8",
+     "name": "NOLAN, Helen",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1974,
+      "month": 9
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "08341190",
+   "company_name": "HARLAND CARE HOMES LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "87100"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 140,
+   "_domains": [
+    "harland.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o9",
+     "name": "HUGHES, Tom",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1966,
+      "month": 1
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "03211987",
+   "company_name": "PENNINE FOOD GROUP LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "10850"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 310,
+   "_domains": [
+    "pennine.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o10",
+     "name": "CARR, Priya",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1980,
+      "month": 8
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "10452211",
+   "company_name": "OAKFIELD ELECTRICAL CONTRACTORS LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "43210"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2026-11-04",
+    "overdue": true,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 22,
+   "_domains": [
+    "oakfield.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o11",
+     "name": "OKAFOR, Mark",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1983,
+      "month": 3
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "06677201",
+   "company_name": "SEVERNSIDE FABRICATIONS LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "25110"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 58,
+   "_domains": [
+    "severnside.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o12",
+     "name": "WHITFIELD, Tom",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1975,
+      "month": 6
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "11209934",
+   "company_name": "WESTMOOR GROUNDWORKS LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "43120"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 40,
+   "_domains": [
+    "westmoor.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o13",
+     "name": "BENNETT, James",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1979,
+      "month": 10
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "09120087",
+   "company_name": "LUNE VALLEY CLEANING LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "81210"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 75,
+   "_domains": [
+    "lunevalley.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o14",
+     "name": "NOLAN, Priya",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1988,
+      "month": 4
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "02998765",
+   "company_name": "ALBION PRECISION LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "25620"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 64,
+   "_domains": [
+    "albion.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o15",
+     "name": "HUGHES, Sarah",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1972,
+      "month": 12
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "12003311",
+   "company_name": "KESTREL SECURITY SERVICES LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "80100"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 130,
+   "_domains": [
+    "kestrel.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o16",
+     "name": "CARR, James",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1981,
+      "month": 7
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  },
+  {
+   "company_number": "07765512",
+   "company_name": "THORNBURY CHARTERED ACCOUNTANTS LTD",
+   "company_status": "active",
+   "jurisdiction": "england-wales",
+   "date_of_creation": "2009-03-12",
+   "sic_codes": [
+    "69201"
+   ],
+   "registered_office_address": {
+    "address_line_1": "Unit 4, Northfield Business Park",
+    "locality": "Leeds",
+    "postal_code": "LS12 6AB"
+   },
+   "accounts": {
+    "next_due": "2027-06-12",
+    "overdue": false,
+    "last_accounts": {
+     "made_up_to": "2026-07-27"
+    }
+   },
+   "confirmation_statement": {
+    "next_due": "2027-04-23",
+    "overdue": false
+   },
+   "has_insolvency_history": false,
+   "has_charges": false,
+   "_employees": 18,
+   "_domains": [
+    "thornbury.co.uk"
+   ],
+   "_officers": [
+    {
+     "_id": "o17",
+     "name": "OKAFOR, Helen",
+     "officer_role": "director",
+     "date_of_birth": {
+      "year": 1976,
+      "month": 2
+     },
+     "appointed_on": "2012-01-01"
+    }
+   ],
+   "_disqualified": []
+  }
+ ],
+ "registers": {
+  "hse": {
+   "10452211": {
+    "notices": [
+     {
+      "type": "Improvement",
+      "served": "2026-09-05",
+      "description": "Work at height: inadequate edge protection",
+      "ref": "IN/2026/0417"
+     }
+    ],
+    "confirmed": true
+   }
+  },
+  "gazette": {},
+  "directors": {},
+  "ssip": {
+   "04871234": {
+    "scheme": "SafeContractor",
+    "ref": "SC-48712",
+    "issued": "2026-05-08",
+    "expires": "2027-05-08"
+   },
+   "07120443": {
+    "scheme": "CHAS",
+    "ref": "CHAS-71204",
+    "issued": "2026-01-28",
+    "expires": "2026-11-19"
+   },
+   "09983321": {
+    "scheme": "SafeContractor",
+    "ref": "SC-99833",
+    "issued": "2026-08-16",
+    "expires": "2027-08-16"
+   }
+  },
+  "iaf": {
+   "04871234": {
+    "certificates": [
+     {
+      "standard": "ISO 45001",
+      "cb": "BSI",
+      "ref": "OHS 712345",
+      "issued": "2025-10-20",
+      "expires": "2027-10-10",
+      "status": "valid"
+     },
+     {
+      "standard": "ISO 9001",
+      "cb": "BSI",
+      "ref": "FS 612345",
+      "issued": "2024-12-24",
+      "expires": "2026-12-14",
+      "status": "valid"
+     },
+     {
+      "standard": "ISO 14001",
+      "cb": "BSI",
+      "ref": "EMS 512345",
+      "issued": "2025-10-20",
+      "expires": "2027-10-10",
+      "status": "valid"
+     }
+    ]
+   },
+   "03211987": {
+    "certificates": [
+     {
+      "standard": "ISO 9001",
+      "cb": "NQA",
+      "ref": "NQA-32119",
+      "issued": "2026-05-08",
+      "expires": "2028-04-07",
+      "status": "valid"
+     }
+    ]
+   },
+   "02998765": {
+    "certificates": [
+     {
+      "standard": "ISO 9001",
+      "cb": "LRQA",
+      "ref": "LRQ-29987",
+      "issued": "2026-08-16",
+      "expires": "2028-07-16",
+      "status": "valid"
+     }
+    ]
+   }
+  },
+  "regulator": {
+   "12003311": {
+    "regulator": "SIA",
+    "ref": "ACS-12003",
+    "status": "registered"
+   },
+   "05567710": {
+    "regulator": "Traffic Commissioner",
+    "ref": "OB1234567",
+    "status": "registered"
+   },
+   "08341190": {
+    "regulator": "CQC",
+    "ref": "1-123456789",
+    "status": "registered"
+   },
+   "03211987": {
+    "regulator": "FSA",
+    "ref": "FHRS 5",
+    "status": "registered"
+   },
+   "07765512": {
+    "regulator": "ICAEW",
+    "ref": "C001234567",
+    "status": "registered"
+   }
+  }
+ }
+}

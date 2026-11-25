@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="x-apple-disable-message-reformatting" />
+  <title>Reset your password - iMS OS</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F2F5FA;">
+  <div style="display:none;max-height:0;overflow:hidden;mso-hide:all;opacity:0;color:transparent;">
+    Reset your iMS OS password
+  </div>
+
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;background-color:#F2F5FA;">
+    <tr>
+      <td align="center" style="padding:32px 20px;">
+        <!--[if mso]>
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="560"><tr><td>
+        <![endif]-->
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;max-width:560px;width:100%;background-color:#ffffff;">
+          <tr>
+            <td style="padding:24px 32px;background-color:#002D72;">
+              <img src="https://assets.imssystems.tech/images/logo/ims-os/iMS-OS_horizontal_white.png" alt="iMS OS" width="160" height="40" style="display:block;border:0;outline:none;text-decoration:none;max-width:160px;height:auto;" />
+              <p style="margin:14px 0 0;font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.5;color:#ffffff;">
+                Use this link to choose a new password for your account.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="height:4px;line-height:4px;font-size:0;background-color:#0040A3;">&nbsp;</td>
+          </tr>
+
+          <tr>
+            <td style="padding:28px 32px 20px;font-family:Arial,Helvetica,sans-serif;color:#111827;background-color:#ffffff;">
+              <p style="margin:0 0 10px;font-size:12px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:#0040A3;">
+                Password reset
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 16px;">
+                <tr>
+                  <td style="padding:6px 12px;background-color:#DBEAFE;font-family:Arial,Helvetica,sans-serif;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#1D4ED8;">
+                    Change password
+                  </td>
+                </tr>
+              </table>
+
+              <h1 style="margin:0 0 16px;font-size:22px;font-weight:700;line-height:1.3;color:#111827;">
+                Reset your password
+              </h1>
+
+              {% if user.given_name %}
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#334155;">Hi {{ user.given_name }},</p>
+              {% elsif user.name %}
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#334155;">Hi {{ user.name }},</p>
+              {% else %}
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#334155;">Hi,</p>
+              {% endif %}
+
+              <p style="margin:0 0 14px;font-size:15px;line-height:1.65;color:#334155;">
+                We received a request to reset the password for your iMS OS account. Click the button below to choose a new password.
+              </p>
+              <p style="margin:0 0 18px;font-size:15px;line-height:1.65;color:#334155;">
+                If you did not request this, you can ignore this email — your password will stay the same.
+              </p>
+
+              {% if user.email %}
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="border-collapse:collapse;margin:0 0 22px;background-color:#F2F5FA;">
+                <tr>
+                  <td width="110" style="padding:12px 14px;font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:#64748b;vertical-align:top;">
+                    Account
+                  </td>
+                  <td style="padding:12px 14px;font-size:14px;line-height:1.5;color:#111827;word-break:break-all;vertical-align:top;">
+                    {{ user.email }}
+                  </td>
+                </tr>
+              </table>
+              {% endif %}
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="border-collapse:collapse;margin:0 0 22px;">
+                <tr>
+                  <td align="left" bgcolor="#0040A3" style="border-radius:8px;background-color:#0040A3;">
+                    <a href="{{ url }}" target="_blank" style="display:inline-block;padding:14px 26px;font-family:Arial,Helvetica,sans-serif;font-size:14px;font-weight:700;color:#ffffff;text-decoration:none;">
+                      Reset password
+                    </a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 8px;font-size:13px;line-height:1.55;color:#64748b;">
+                Button not working? Paste this link into your browser:
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.5;word-break:break-all;">
+                <a href="{{ url }}" target="_blank" style="color:#0040A3;text-decoration:underline;">{{ url }}</a>
+              </p>
+            </td>
+          </tr>
+
+          <tr>
+            <td style="padding:22px 32px 24px;font-family:Arial,Helvetica,sans-serif;background-color:#E8EEF6;">
+              <p style="margin:0 0 8px;font-size:13px;font-weight:700;color:#1e293b;">
+                iMS OS
+              </p>
+              <p style="margin:0 0 10px;font-size:12px;line-height:1.55;color:#64748b;">
+                This link expires after a limited time. This message was sent automatically. Please do not reply unless instructed.
+              </p>
+              <p style="margin:0;font-size:12px;line-height:1.5;">
+                {% if support_email %}
+                <a href="mailto:{{ support_email }}" style="color:#0040A3;text-decoration:none;font-weight:600;">{{ support_email }}</a>
+                {% else %}
+                <a href="mailto:support@imssystems.tech" style="color:#0040A3;text-decoration:none;font-weight:600;">support@imssystems.tech</a>
+                {% endif %}
+              </p>
+            </td>
+          </tr>
+        </table>
+        <!--[if mso]>
+        </td></tr></table>
+        <![endif]-->
+
+        <p style="margin:18px 0 0;max-width:560px;font-family:Arial,Helvetica,sans-serif;font-size:11px;line-height:1.4;color:#94a3b8;">
+          {% if friendly_name %}
+          You’re receiving this email because a password reset was requested for your {{ friendly_name }} account.
+          {% else %}
+          You’re receiving this email because a password reset was requested for your iMS OS account.
+          {% endif %}
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
