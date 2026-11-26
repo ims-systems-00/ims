@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
   Eye,
-  Loader2,
   ListTodo,
   Plus,
   Trash2,
@@ -37,6 +36,7 @@ import {
   type TaskPriority,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PendingDelete = { id: string; label: string };
 type PendingComplete = { id: string; label: string };
@@ -285,10 +285,7 @@ export function TasksListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading tasks…
-        </div>
+        <PageLoader label="Loading tasks…" />
       ) : null}
 
       {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}

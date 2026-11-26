@@ -12,6 +12,7 @@ import type { FileMetaInfo } from "../types";
 import { CsvViewer } from "./viewers/csv-viewer";
 import { ExcelViewer } from "./viewers/excel-viewer";
 import { MediaViewer } from "./viewers/media-viewer";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type FilePreviewProps = {
   file: FileMetaInfo;
@@ -102,10 +103,10 @@ export function FilePreview({ file, fill = false }: FilePreviewProps) {
     return (
       <div className="relative flex h-full min-h-0 flex-1 flex-col">
         {!officeLoaded ? (
-          <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-muted/20 p-8 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Preparing your document…
-          </div>
+          <PageLoader
+            label="Preparing your document…"
+            className="absolute inset-0 z-10 bg-muted/20 py-0"
+          />
         ) : null}
         <iframe
           title={`Preview of ${file.Name}`}
@@ -156,10 +157,7 @@ function TextFilePreview({ url, fileName }: { url: string; fileName: string }) {
 
   if (textQuery.isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading preview…
-      </div>
+      <PageLoader label="Loading preview…" className="flex-1" />
     );
   }
 

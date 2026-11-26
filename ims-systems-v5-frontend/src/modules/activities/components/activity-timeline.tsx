@@ -19,6 +19,7 @@ import { formatDate, formatDateTime } from "@/shared/lib/format-date";
 import { isActivityValueEmpty } from "../lib/activity-html";
 import { ActivityComposer } from "./activity-composer";
 import { ActivityContentView } from "./activity-content-view";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type ActivityTimelineProps = {
   moduleType: ActivityModuleType;
@@ -332,10 +333,7 @@ function ActivityTimelineInner({
       )}
 
       {listQuery.isLoading && items.length === 0 ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading activities…
-        </div>
+        <PageLoader label="Loading activities…" />
       ) : null}
 
       {listQuery.isError ? (

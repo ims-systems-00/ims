@@ -4,7 +4,6 @@ import {
   Download,
   Eye,
   FileText,
-  Loader2,
   Mail,
   Pencil,
   ShieldCheck,
@@ -49,6 +48,7 @@ import { ASL_DOC_TYPES } from "../types";
 import { AslCritBadge, AslDocStateBadge, AslStatusBadge } from "./asl-badges";
 import { AslNotifyDialog } from "./asl-notify-dialog";
 import { AslSupplierForm } from "./asl-supplier-form";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export type AslSupplierSheetMode = "create" | "view" | "edit";
 
@@ -233,9 +233,7 @@ export function AslSupplierSheet({
             onCancel={() => onModeChange("view")}
           />
         ) : supplierQuery.isLoading || !supplier ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading…
-          </div>
+          <PageLoader label="Loading…" compact />
         ) : (
           <>
             <SheetPanelTabs

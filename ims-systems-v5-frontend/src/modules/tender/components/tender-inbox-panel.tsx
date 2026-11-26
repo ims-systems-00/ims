@@ -3,7 +3,6 @@ import {
   CheckCircle2,
   ClipboardList,
   FileText,
-  Loader2,
   Upload,
 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -17,6 +16,7 @@ import {
 } from "../hooks/use-tender";
 import { formatDate, formatWhen } from "../lib/tender-display";
 import { TenderQuestionnaireStatusBadge } from "./tender-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TenderInboxPanelProps = {
   onOpenQuestionnaire: (id: string) => void;
@@ -39,9 +39,7 @@ export function TenderInboxPanel({
 
   if (overviewQuery.isLoading && listQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading inbox…
-      </div>
+      <PageLoader label="Loading inbox…" />
     );
   }
 
@@ -145,9 +143,7 @@ export function TenderInboxPanel({
       ) : null}
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading questionnaires…
-        </div>
+        <PageLoader label="Loading questionnaires…" compact className="py-6" />
       ) : items.length === 0 ? (
         <EmptyState
           title="No questionnaires yet"

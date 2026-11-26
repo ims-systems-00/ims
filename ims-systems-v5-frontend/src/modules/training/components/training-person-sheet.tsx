@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { CheckCircle2, Copy, FileText, Link2, Loader2, Pencil } from "lucide-react";
+import { CheckCircle2, Copy, FileText, Link2, Pencil } from "lucide-react";
 import { FileDropZone } from "@/modules/files";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { FormField, FormSection } from "@/shared/components/form-field";
@@ -32,6 +32,7 @@ import {
   type UpdatePersonInput,
 } from "../types";
 import { TrainingPersonStatusBadge } from "./training-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export type TrainingPersonSheetMode = "create" | "view" | "edit";
 
@@ -284,9 +285,7 @@ export function TrainingPersonSheet({
       className="sm:max-w-xl"
     >
       {mode !== "create" && personQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader label="Loading…" compact className="py-8" />
       ) : (
         <div className="space-y-4">
           {mode !== "create" && person ? (

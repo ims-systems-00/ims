@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ExternalLink, FileText, Loader2, Mail } from "lucide-react";
+import { ExternalLink, FileText, Mail } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { Button } from "@/shared/components/ui/button";
@@ -14,6 +14,7 @@ import {
   AslTablePagination,
   paginateRows,
 } from "./asl-table-pagination";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type AslDocsPanelProps = {
   onOpenSupplier: (id: string, tab?: string) => void;
@@ -129,9 +130,7 @@ export function AslDocsPanel({ onOpenSupplier, onNotify }: AslDocsPanelProps) {
 
   if (listQuery.isLoading || settingsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading documents…
-      </div>
+      <PageLoader label="Loading documents…" />
     );
   }
 

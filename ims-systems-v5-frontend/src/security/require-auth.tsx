@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { useAuthClient } from "./security-context";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Protects application routes. Unauthenticated Auth0 users go to `/login`
@@ -40,9 +41,7 @@ export function RequireAuth({ children }: { children?: ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Checking session…
-      </div>
+      <PageLoader label="Checking session…" fullScreen />
     );
   }
 

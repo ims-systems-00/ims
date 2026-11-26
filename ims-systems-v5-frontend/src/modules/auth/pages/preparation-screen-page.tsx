@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Loader2 } from "lucide-react";
+import { ImsLoader } from "@/shared/components/ims-loader";
 
 /**
  * Post–Stripe Checkout / post-auth landing (V4 `/auth/preparation-screen`).
@@ -18,7 +18,7 @@ export function PreparationScreenPage() {
 
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-3 bg-background px-4 text-foreground">
-      <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <ImsLoader size="lg" />
       <h1 className="text-sm font-semibold tracking-tight">
         Finishing setup…
       </h1>

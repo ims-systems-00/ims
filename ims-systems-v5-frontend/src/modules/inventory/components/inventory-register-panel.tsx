@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { SearchInput } from "@/shared/components/search-input";
@@ -13,6 +13,7 @@ import {
   type InventoryStage,
 } from "../types";
 import { InventoryDueBadge, InventoryStageBadge } from "./inventory-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventoryRegisterPanelProps = {
   onOpenAsset: (id: string) => void;
@@ -139,9 +140,7 @@ export function InventoryRegisterPanel({
       </p>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading register…
-        </div>
+        <PageLoader label="Loading register…" />
       ) : items.length === 0 ? (
         <EmptyState
           title="No assets yet"

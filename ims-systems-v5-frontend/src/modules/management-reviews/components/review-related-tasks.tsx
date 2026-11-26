@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { Eye, Loader2, Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { TaskSheet, type TaskSheetMode } from "@/modules/tasks";
 import { useTasksQuery } from "@/modules/tasks/hooks/use-tasks";
 import { MANAGEMENT_REVIEWS_SOURCE_MODULE } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type ReviewRelatedTasksProps = {
   reviewId: string;
@@ -66,10 +67,7 @@ export function ReviewRelatedTasks({
       </div>
 
       {tasksQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading tasks…
-        </div>
+        <PageLoader label="Loading tasks…" compact />
       ) : null}
 
       {tasksQuery.isError ? (

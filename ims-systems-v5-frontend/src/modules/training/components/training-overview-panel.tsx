@@ -3,7 +3,6 @@ import {
   BookOpen,
   CheckCircle2,
   ClipboardList,
-  Loader2,
   Users,
 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -14,6 +13,7 @@ import {
   useTrainingReadinessQuery,
 } from "../hooks/use-training";
 import type { TrainingHubView } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TrainingOverviewPanelProps = {
   onJumpView: (view: TrainingHubView) => void;
@@ -29,9 +29,7 @@ export function TrainingOverviewPanel({
 
   if (overviewQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading overview…
-      </div>
+      <PageLoader label="Loading overview…" />
     );
   }
 
@@ -137,9 +135,7 @@ export function TrainingOverviewPanel({
           </Button>
         </div>
         {readinessQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading checks…
-          </div>
+          <PageLoader label="Loading checks…" compact />
         ) : (
           <div className="space-y-2">
             {readiness.map((item) => (

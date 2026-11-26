@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { FormField } from "@/shared/components/form-field";
@@ -11,6 +11,7 @@ import {
 } from "../hooks/use-training";
 import { formatDate } from "../lib/training-display";
 import type { TrainingRsvpStatus } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Public session RSVP page — `/training/r/:token` (no app chrome).
@@ -59,9 +60,7 @@ export function PublicRsvpPage() {
 
   if (viewQuery.isLoading || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading invitation…
-      </div>
+      <PageLoader label="Loading invitation…" fullScreen />
     );
   }
 

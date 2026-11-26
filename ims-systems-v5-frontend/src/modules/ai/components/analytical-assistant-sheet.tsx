@@ -23,6 +23,7 @@ import type {
   AnalyticalAssistantContext,
 } from "../types";
 import { AliceMarkdown } from "./alice-markdown";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PanelView = "home" | "conduct" | "saved";
 
@@ -405,10 +406,7 @@ function HomePanel({
 }) {
   if (loading) {
     return (
-      <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading saved analyses…
-      </div>
+      <PageLoader label="Loading saved analyses…" compact className="py-10" />
     );
   }
 

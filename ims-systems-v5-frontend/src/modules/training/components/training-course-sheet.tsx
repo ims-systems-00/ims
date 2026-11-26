@@ -13,6 +13,7 @@ import {
 import { formatInterval } from "../lib/training-display";
 import { competencyFormSchema } from "../schemas";
 import { TRAINING_EVIDENCE_TYPES } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export type TrainingCourseSheetMode = "create" | "view" | "edit";
 
@@ -178,9 +179,7 @@ export function TrainingCourseSheet({
       }
     >
       {mode !== "create" && compsQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader label="Loading…" compact className="py-8" />
       ) : null}
 
       {mode !== "create" && course && mode === "view" ? (

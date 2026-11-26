@@ -1,10 +1,10 @@
 import { useMemo } from "react";
-import { Loader2 } from "lucide-react";
 import { BusinessUnitLabel } from "@/modules/functional-units";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { UserLabel } from "@/modules/users";
 import type { BusinessPremise } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function Item({
   label,
@@ -106,9 +106,6 @@ export function BusinessPremiseDetails({ premise }: BusinessPremiseDetailsProps)
 
 export function BusinessPremiseDetailsLoading() {
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Loader2 className="size-4 animate-spin" />
-      Loading Business Premise…
-    </div>
+    <PageLoader label="Loading Business Premise…" />
   );
 }

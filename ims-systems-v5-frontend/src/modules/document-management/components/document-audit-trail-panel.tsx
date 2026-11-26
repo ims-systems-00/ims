@@ -1,6 +1,6 @@
-import { Loader2 } from "lucide-react";
 import { useActivitiesQuery } from "@/modules/activities";
 import { formatDocumentDate } from "../lib/format";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Audit trail tab: automated + manual activity records for this
@@ -25,9 +25,10 @@ export function DocumentAuditTrailPanel({
 
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-border-subtle bg-card px-4 py-10 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading audit trail…
-      </div>
+      <PageLoader
+        label="Loading audit trail…"
+        className="rounded-xl border border-border-subtle bg-card"
+      />
     );
   }
   if (query.isError || !query.data) {

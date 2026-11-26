@@ -8,6 +8,7 @@ import {
   useTenderSettingsQuery,
   useUpdateTenderSettingsMutation,
 } from "../hooks/use-tender";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TenderSettingsPanelProps = {
   canEdit?: boolean;
@@ -43,9 +44,7 @@ export function TenderSettingsPanel({
 
   if (settingsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading settings…
-      </div>
+      <PageLoader label="Loading settings…" />
     );
   }
 

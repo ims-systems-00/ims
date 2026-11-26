@@ -23,6 +23,7 @@ import {
   type DocumentReviewReminderOffset,
   type OrganisationProfile,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function normalizeReminderOffsets(
   value: unknown
@@ -102,10 +103,7 @@ export function MyOrganisationPage() {
           title="My organisation"
           description="Tenant identity and contact details for the organisation in this session."
         />
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading organisation…
-        </div>
+        <PageLoader label="Loading organisation…" />
       </div>
     );
   }

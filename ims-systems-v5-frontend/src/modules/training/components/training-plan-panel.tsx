@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BookOpen, Loader2 } from "lucide-react";
+import { BookOpen } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
 import { formatDate } from "../lib/training-display";
@@ -7,6 +7,7 @@ import {
   usePeopleQuery,
   useTrainingPlanQuery,
 } from "../hooks/use-training";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TrainingPlanPanelProps = {
   onBookSession: (cid: string, attendeeIds: string[]) => void;
@@ -27,9 +28,7 @@ export function TrainingPlanPanel({
 
   if (planQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading plan…
-      </div>
+      <PageLoader label="Loading plan…" />
     );
   }
 

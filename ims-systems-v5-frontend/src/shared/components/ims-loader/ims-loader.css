@@ -1,0 +1,75 @@
+/* iMS OS loading mark — orbit + ring spin around the "OS" core. */
+.ims-loader .ims-loader-orbit,
+.ims-loader .ims-loader-ring,
+.ims-loader .ims-loader-core {
+  transform-box: view-box;
+  transform-origin: 0 0;
+}
+
+.ims-loader .ims-loader-orbit {
+  animation: ims-loader-spin 3.6s linear infinite;
+}
+
+.ims-loader .ims-loader-ring {
+  animation: ims-loader-spin 1.2s linear infinite;
+}
+
+.ims-loader .ims-loader-core {
+  animation: ims-loader-breathe 1.8s ease-in-out infinite;
+}
+
+.ims-loader .ims-loader-node-halo {
+  animation: ims-loader-halo 1.8s ease-in-out infinite;
+}
+
+@keyframes ims-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ims-loader-breathe {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.94);
+  }
+}
+
+@keyframes ims-loader-halo {
+  0%,
+  100% {
+    opacity: 0.22;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* Keep a slow, calm rotation for reduced-motion users instead of nothing. */
+@media (prefers-reduced-motion: reduce) {
+  .ims-loader .ims-loader-orbit,
+  .ims-loader .ims-loader-core,
+  .ims-loader .ims-loader-node-halo {
+    animation: none;
+  }
+  .ims-loader .ims-loader-ring {
+    animation-duration: 4s;
+  }
+}
+
+.ims-page-loader {
+  animation: ims-page-loader-in 0.2s ease-out 0.12s both;
+}
+
+/* Short delay so fast loads do not flash the loader. */
+@keyframes ims-page-loader-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

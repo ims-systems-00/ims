@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
@@ -14,6 +14,7 @@ import {
   DOCUMENT_PURPOSE_LABELS,
   type DocumentPurpose,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /** Purpose-filtered published documents (spec §10 insight list). */
 export function DocumentPurposePage() {
@@ -69,9 +70,7 @@ export function DocumentPurposePage() {
       />
 
       {query.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading documents…
-        </div>
+        <PageLoader label="Loading documents…" />
       ) : query.isError || !query.data ? (
         <EmptyState
           title="Unable to load documents"

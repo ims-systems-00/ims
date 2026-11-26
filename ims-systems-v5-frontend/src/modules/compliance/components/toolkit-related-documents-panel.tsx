@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { LayoutGrid, LayoutList, Loader2 } from "lucide-react";
+import { LayoutGrid, LayoutList } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { SearchInput } from "@/shared/components/search-input";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +15,7 @@ import {
   type DocumentTreeNode,
 } from "@/modules/document-management/types";
 import type { ComplianceToolkitName } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type ViewMode = "list" | "grid";
 
@@ -134,10 +135,11 @@ export function ToolkitRelatedDocumentsPanel({
       </div>
 
       {query.isLoading ? (
-        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading related documents…
-        </div>
+        <PageLoader
+          label="Loading related documents…"
+          compact
+          className="py-10"
+        />
       ) : query.isError ? (
         <EmptyState
           title="Unable to load related documents"

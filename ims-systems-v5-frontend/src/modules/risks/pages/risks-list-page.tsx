@@ -3,7 +3,6 @@ import { useSearchParams } from "react-router-dom";
 import {
   Download,
   Eye,
-  Loader2,
   Plus,
   ShieldAlert,
   Trash2,
@@ -41,6 +40,7 @@ import {
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
 import { useSetupSignal } from "@/modules/setup-guide";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PendingDelete = { id: string; label: string };
 
@@ -311,10 +311,7 @@ export function RisksListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading risks…
-        </div>
+        <PageLoader label="Loading risks…" />
       ) : null}
 
       {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}

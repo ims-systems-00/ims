@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { BadgeCheck, FileCheck, Loader2 } from "lucide-react";
+import { BadgeCheck, FileCheck } from "lucide-react";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { cn } from "@/shared/lib/utils";
 import type { DocumentTreeNode } from "../types";
 import { useSignaturesQuery } from "../hooks/use-document-management";
 import { formatDocumentDate } from "../lib/format";
 import { DocumentPreviewPanel } from "./document-preview-panel";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type SignedDocumentPanelProps = {
   repositoryId: string;
@@ -76,9 +77,11 @@ export function SignedDocumentPanel({
       </div>
 
       {signaturesQuery.isLoading ? (
-        <div className="flex items-center gap-2 rounded-md border border-border-subtle bg-card px-3 py-6 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader
+          label="Loading…"
+          compact
+          className="rounded-md border border-border-subtle bg-card px-3 py-6"
+        />
       ) : signedCopies.length === 0 ? (
         <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-border-subtle bg-card px-4 py-10 text-center">
           <span className="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">

@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
@@ -8,6 +7,7 @@ import {
   fetchPreviewBytes,
   PREVIEW_TABLE_ROW_CAP,
 } from "../../lib/fetch-preview-bytes";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type ExcelViewerProps = {
   url: string;
@@ -81,10 +81,7 @@ export function ExcelViewer({ url, fileName, fill = false }: ExcelViewerProps) {
 
   if (bytesQuery.isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading spreadsheet…
-      </div>
+      <PageLoader label="Loading spreadsheet…" className="flex-1" />
     );
   }
 

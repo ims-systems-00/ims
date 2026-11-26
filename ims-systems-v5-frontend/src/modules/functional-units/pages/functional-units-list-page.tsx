@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Building2, Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { Building2, Eye, Plus, Trash2 } from "lucide-react";
 import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -18,6 +18,7 @@ import {
 import { useFunctionalUnitsQuery } from "../hooks/use-functional-units";
 import { signalSetupEvent, useSetupSignal } from "@/modules/setup-guide";
 import type { AccessType } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Sheet interaction uses light URL state for deep links / refresh:
@@ -155,10 +156,7 @@ export function FunctionalUnitsListPage() {
 
       <div className="space-y-5" data-tour="org.fu.register">
         {listQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading functional units…
-          </div>
+          <PageLoader label="Loading functional units…" />
         ) : null}
 
         {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}

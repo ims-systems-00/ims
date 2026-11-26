@@ -15,6 +15,7 @@ import { cellLabel, formatDate, todayIso } from "../lib/training-display";
 import { selfUploadFormSchema } from "../schemas";
 import { TrainingCellBadge } from "../components/training-badges";
 import type { MatrixCell, TrainingCompetency } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Public self-service training page — `/training/t/:token` (no app chrome).
@@ -143,9 +144,7 @@ export function PublicMyTrainingPage() {
 
   if (selfQuery.isLoading || !data) {
     return (
-      <div className="flex min-h-screen items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading your training…
-      </div>
+      <PageLoader label="Loading your training…" fullScreen />
     );
   }
 

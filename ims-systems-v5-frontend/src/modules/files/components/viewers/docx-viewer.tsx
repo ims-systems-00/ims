@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { renderAsync } from "docx-preview";
-import { Loader2 } from "lucide-react";
 import { usePreviewBytesQuery } from "../../lib/fetch-preview-bytes";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type DocxViewerProps = {
   url: string;
@@ -58,10 +58,7 @@ export function DocxViewer({ url, fileName, fill = false }: DocxViewerProps) {
 
   if (bytesQuery.isLoading || rendering) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Preparing your document…
-      </div>
+      <PageLoader label="Preparing your document…" className="flex-1" />
     );
   }
 

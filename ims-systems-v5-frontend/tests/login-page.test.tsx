@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { ThemeProvider } from "@/shared/theme";
 import { LoginPage } from "@/modules/auth";
@@ -42,23 +43,35 @@ vi.mock("@/shared/lib/env", async (importOriginal) => {
 
 afterEach(() => {
   cleanup();
+  document.getElementById("imsi")?.remove();
+  document.documentElement.classList.remove("ims-intro");
+  document.body.style.transform = "";
+  document.body.style.transformOrigin = "";
+  document.body.style.filter = "";
   vi.clearAllMocks();
 });
 
 describe("LoginPage", () => {
   it("submits email/password via BFF loginWithPassword", async () => {
     const user = userEvent.setup();
+    const queryClient = new QueryClient();
     render(
-      <ThemeProvider>
-        <MemoryRouter initialEntries={["/login"]}>
-          <Routes>
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/" element={<p>Home</p>} />
-            <Route path="/register" element={<p>Register</p>} />
-            <Route path="/forgot-password" element={<p>Forgot</p>} />
-          </Routes>
-        </MemoryRouter>
-      </ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider>
+          <MemoryRouter initialEntries={["/login"]}>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/" element={<p>Home</p>} />
+              <Route
+                path="/select-organisation"
+                element={<p>Select organisation</p>}
+              />
+              <Route path="/register" element={<p>Register</p>} />
+              <Route path="/forgot-password" element={<p>Forgot</p>} />
+            </Routes>
+          </MemoryRouter>
+        </ThemeProvider>
+      </QueryClientProvider>
     );
 
     expect(
@@ -73,6 +86,10 @@ describe("LoginPage", () => {
       email: "ada@example.com",
       password: "Str0ng-Pass!",
     });
-    expect(await screen.findByText("Home")).toBeInTheDocument();
+    // Login hands off to the org picker; the intro plays after a choice.
+    expect(
+      await screen.findByText("Select organisation")
+    ).toBeInTheDocument();
+    expect(document.getElementById("imsi")).toBeNull();
   });
 });

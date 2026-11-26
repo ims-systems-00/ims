@@ -5,7 +5,6 @@ import {
   Download,
   Eye,
   FileText,
-  Loader2,
   Plus,
   Send,
   Trash2,
@@ -33,6 +32,7 @@ import {
   type InvoiceStatus,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 const gbp = (n: number | null | undefined) =>
   `£${Number(n ?? 0).toFixed(2)}`;
@@ -157,10 +157,7 @@ export function InvoicesListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          Loading invoices…
-        </div>
+        <PageLoader label="Loading invoices…" />
       ) : null}
 
       {listQuery.isError ? (

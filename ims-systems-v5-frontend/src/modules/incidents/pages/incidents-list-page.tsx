@@ -4,7 +4,6 @@ import {
   AlertTriangle,
   Download,
   Eye,
-  Loader2,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -45,6 +44,7 @@ import {
   type IncidentPriority,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PendingDelete = { id: string; label: string };
 
@@ -322,10 +322,7 @@ export function IncidentsListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading incidents…
-        </div>
+        <PageLoader label="Loading incidents…" />
       ) : null}
 
       {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}

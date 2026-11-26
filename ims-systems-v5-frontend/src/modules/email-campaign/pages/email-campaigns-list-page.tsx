@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Eye, Loader2, Mail, Plus, Trash2 } from "lucide-react";
+import { Eye, Mail, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -23,6 +23,7 @@ import {
 } from "../hooks/use-email-campaigns";
 import type { CampaignStatus } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PendingDelete = { id: string; label: string };
 
@@ -195,10 +196,7 @@ export function EmailCampaignsListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading campaigns…
-        </div>
+        <PageLoader label="Loading campaigns…" />
       ) : null}
 
       {listQuery.isSuccess && listQuery.data.total === 0 ? (

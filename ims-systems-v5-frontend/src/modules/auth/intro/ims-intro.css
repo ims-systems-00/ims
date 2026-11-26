@@ -1,0 +1,11 @@
+/* iMS OS intro animation - styles. Load in <head>. */
+html.ims-intro{overflow:hidden}
+html.ims-intro main *,html.ims-intro header *,html.ims-intro main *:before,html.ims-intro main *:after{animation-play-state:paused!important}
+#imsi{position:fixed;inset:0;z-index:2147483000;cursor:pointer}
+#imsi .bg{position:absolute;inset:0;background:radial-gradient(70% 60% at 50% 50%,#141842 0%,#0c0f2b 45%,#07091a 100%)}
+#imsi .bg:before{content:"";position:absolute;inset:0;opacity:var(--st,0);background-image:radial-gradient(1px 1px at 12% 18%,#c1b8fd 50%,transparent 51%),radial-gradient(1px 1px at 78% 12%,#8c7dff 50%,transparent 51%),radial-gradient(1.5px 1.5px at 64% 82%,#c1b8fd 50%,transparent 51%),radial-gradient(1px 1px at 22% 72%,#8c7dff 50%,transparent 51%),radial-gradient(1px 1px at 88% 58%,#c1b8fd 50%,transparent 51%),radial-gradient(1.5px 1.5px at 40% 30%,#6a56ff 50%,transparent 51%),radial-gradient(1px 1px at 55% 8%,#c1b8fd 50%,transparent 51%),radial-gradient(1px 1px at 8% 48%,#c1b8fd 50%,transparent 51%),radial-gradient(1px 1px at 93% 88%,#8c7dff 50%,transparent 51%),radial-gradient(1px 1px at 33% 92%,#c1b8fd 50%,transparent 51%)}
+#imsi svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+#imsi .lbl{font-family:Figtree,system-ui,sans-serif;font-weight:600;fill:#c1b8fd;letter-spacing:.06em}
+#imsi .tag{position:absolute;left:0;right:0;text-align:center;font:500 12px/1.4 Figtree,system-ui,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#a3a6d6;opacity:0}
+#imsi .iskip{all:unset;position:absolute;right:22px;bottom:20px;font:500 12px Figtree,system-ui,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:#a3a6d6;padding:10px 14px;border:1px solid rgba(163,166,214,.35);border-radius:999px;cursor:pointer;opacity:0;transition:opacity .4s,color .2s,border-color .2s}
+#imsi .iskip:hover,#imsi .iskip:focus-visible{color:#c1b8fd;border-color:#8c7dff}

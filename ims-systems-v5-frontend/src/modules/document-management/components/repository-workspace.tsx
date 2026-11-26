@@ -69,6 +69,7 @@ import { NodeDetailsDialog } from "./node-details-dialog";
 import { RepositoryDetailsPanel } from "./repository-details-panel";
 import { ImportFolderSheet } from "./import-folder-sheet";
 import { UploadDocumentSheet } from "./upload-document-sheet";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type RepositoryWorkspaceProps = {
   repositoryId: string;
@@ -372,10 +373,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
 
   if (repoQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading repository…
-      </div>
+      <PageLoader label="Loading repository…" />
     );
   }
 
@@ -592,10 +590,7 @@ export function RepositoryWorkspace({ repositoryId }: RepositoryWorkspaceProps) 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="min-w-0 space-y-3">
           {nodesQuery.isLoading ? (
-            <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-              <Loader2 className="size-4 animate-spin" />
-              Loading contents…
-            </div>
+            <PageLoader label="Loading contents…" />
           ) : items.length === 0 ? (
             <EmptyState
               title="This folder is empty"

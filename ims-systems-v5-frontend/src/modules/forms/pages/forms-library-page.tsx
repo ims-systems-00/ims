@@ -24,6 +24,7 @@ import {
   useSoftDeleteFormMutation,
 } from "../hooks/use-forms";
 import type { FormStatus } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type ViewMode = "grid" | "table";
 
@@ -175,9 +176,7 @@ export function FormsLibraryPage() {
       </div>
 
       {query.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading forms…
-        </div>
+        <PageLoader label="Loading forms…" />
       ) : query.isError ? (
         <EmptyState
           icon={<ClipboardList />}

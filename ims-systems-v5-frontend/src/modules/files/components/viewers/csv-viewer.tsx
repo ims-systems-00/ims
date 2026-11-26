@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Papa from "papaparse";
-import { Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import {
   fetchPreviewBytes,
   PREVIEW_TABLE_ROW_CAP,
 } from "../../lib/fetch-preview-bytes";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type CsvViewerProps = {
   url: string;
@@ -69,10 +69,7 @@ export function CsvViewer({ url, fileName, fill = false }: CsvViewerProps) {
 
   if (bytesQuery.isLoading) {
     return (
-      <div className="flex flex-1 items-center justify-center gap-2 p-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading CSV…
-      </div>
+      <PageLoader label="Loading CSV…" className="flex-1" />
     );
   }
 

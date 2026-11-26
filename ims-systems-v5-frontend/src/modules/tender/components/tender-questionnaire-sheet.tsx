@@ -62,6 +62,7 @@ import {
   TenderQuestionnaireStatusBadge,
   TenderRequirementStatusBadge,
 } from "./tender-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TenderQuestionnaireSheetProps = {
   open: boolean;
@@ -231,9 +232,7 @@ export function TenderQuestionnaireSheet({
       {!qid ? (
         <EmptyState title="No questionnaire selected" />
       ) : query.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading bid…
-        </div>
+        <PageLoader label="Loading bid…" compact className="py-8" />
       ) : !Q ? (
         <EmptyState
           title="Questionnaire not found"
@@ -649,9 +648,7 @@ function PackTab({
         </div>
       )}
       {uploading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Uploading…
-        </div>
+        <PageLoader label="Uploading…" compact />
       ) : null}
     </div>
   );

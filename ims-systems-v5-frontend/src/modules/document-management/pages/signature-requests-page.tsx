@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, PenLine } from "lucide-react";
+import { PenLine } from "lucide-react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +15,7 @@ import {
 } from "../hooks/use-document-management";
 import { formatDocumentDate } from "../lib/format";
 import { SignDocumentDialog } from "../components/sign-document-dialog";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type FilterId = "all" | "mine" | SignatureStatus;
 
@@ -74,9 +75,7 @@ export function SignatureRequestsPage() {
       </div>
 
       {query.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading requests…
-        </div>
+        <PageLoader label="Loading requests…" />
       ) : query.isError ? (
         <EmptyState
           title="Unable to load requests"

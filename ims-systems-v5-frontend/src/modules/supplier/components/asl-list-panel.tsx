@@ -15,6 +15,7 @@ import {
   type AslStatus,
 } from "../types";
 import { AslCritBadge, AslStatusBadge } from "./asl-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type AslListPanelProps = {
   onOpenSupplier: (id: string) => void;
@@ -180,9 +181,7 @@ export function AslListPanel({
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading suppliers…
-        </div>
+        <PageLoader label="Loading suppliers…" />
       ) : items.length === 0 ? (
         <EmptyState
           title="No suppliers yet"

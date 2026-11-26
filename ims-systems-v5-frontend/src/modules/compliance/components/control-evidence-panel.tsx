@@ -29,6 +29,7 @@ import type {
   ControlEvidenceType,
   CreateControlEvidenceInput,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 const EVIDENCE_TYPE_OPTIONS: Array<{
   value: ControlEvidenceType;
@@ -275,10 +276,7 @@ export function ControlEvidencePanel({
 
   if (isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading evidence…
-      </div>
+      <PageLoader label="Loading evidence…" />
     );
   }
 

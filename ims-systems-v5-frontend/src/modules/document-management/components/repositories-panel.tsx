@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Loader2, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -19,6 +19,7 @@ import { useTourAction } from "@/modules/setup-guide";
 import { useDocumentsUiStore } from "../store/use-documents-ui-store";
 import type { DocumentRepository } from "../types";
 import { RepositoryFormSheet } from "./repository-form-sheet";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type RepositoriesPanelProps = {
   deleted?: boolean;
@@ -131,10 +132,7 @@ export function RepositoriesPanel({ deleted = false }: RepositoriesPanelProps) {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading repositories…
-        </div>
+        <PageLoader label="Loading repositories…" />
       ) : items.length === 0 ? (
         <EmptyState
           title={deleted ? "Recycle bin is empty" : "No repositories yet"}

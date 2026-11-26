@@ -13,6 +13,7 @@ import {
 } from "../hooks/use-training";
 import { roleFormSchema } from "../schemas";
 import { TrainingLevelBadge } from "./training-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export type TrainingRoleSheetMode = "create" | "view" | "edit";
 
@@ -171,9 +172,7 @@ export function TrainingRoleSheet({
       }
     >
       {mode !== "create" && rolesQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader label="Loading…" compact className="py-8" />
       ) : null}
 
       {mode !== "create" && role && mode === "view" ? (

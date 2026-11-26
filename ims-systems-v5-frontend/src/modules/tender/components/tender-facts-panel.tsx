@@ -9,6 +9,7 @@ import {
   useTenderSettingsQuery,
   useUpdateTenderFactsMutation,
 } from "../hooks/use-tender";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TenderFactsPanelProps = {
   canEdit?: boolean;
@@ -33,9 +34,7 @@ export function TenderFactsPanel({ canEdit = true }: TenderFactsPanelProps) {
 
   if (settingsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading facts…
-      </div>
+      <PageLoader label="Loading facts…" />
     );
   }
 

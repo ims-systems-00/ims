@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { Eye, Filter, Loader2, ShieldCheck } from "lucide-react";
+import { Eye, Filter, ShieldCheck } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
@@ -35,6 +35,7 @@ import { ControlSheet } from "../components/control-sheet";
 import { ToolkitOverviewPanel } from "../components/toolkit-overview-panel";
 import { ToolkitRelatedDocumentsPanel } from "../components/toolkit-related-documents-panel";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TabId = "overview" | "toolkit" | "documents";
 
@@ -260,10 +261,10 @@ export function ComplianceToolkitPage() {
 
       {needsProvision ? (
         <div className="space-y-4">
-          <div className="flex items-center gap-2 rounded-xl border border-border-subtle bg-card px-4 py-6 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Preparing toolkit controls…
-          </div>
+          <PageLoader
+            label="Preparing toolkit controls…"
+            className="rounded-xl border border-border-subtle bg-card"
+          />
           {autoProvisionAttempted && provisionMutation.isError ? (
             <EmptyState
               title="Toolkit not activated"
@@ -330,10 +331,7 @@ export function ComplianceToolkitPage() {
 
           {tab === "overview" ? (
             overviewQuery.isLoading ? (
-              <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading overview…
-              </div>
+              <PageLoader label="Loading overview…" />
             ) : overviewQuery.isError || !overviewQuery.data ? (
               <EmptyState
                 title="Unable to load overview"
@@ -379,10 +377,7 @@ export function ComplianceToolkitPage() {
               </div>
 
               {controlsQuery.isLoading ? (
-                <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-                  <Loader2 className="size-4 animate-spin" />
-                  Loading controls…
-                </div>
+                <PageLoader label="Loading controls…" />
               ) : controlsQuery.isError ? (
                 <EmptyState title="Unable to load controls" />
               ) : (controlsQuery.data?.items.length ?? 0) === 0 ? (

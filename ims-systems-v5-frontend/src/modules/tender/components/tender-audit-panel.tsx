@@ -1,7 +1,7 @@
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { useTenderLogQuery } from "../hooks/use-tender";
 import { formatWhen } from "../lib/tender-display";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export function TenderAuditPanel() {
   const logQuery = useTenderLogQuery();
@@ -9,9 +9,7 @@ export function TenderAuditPanel() {
 
   if (logQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading audit log…
-      </div>
+      <PageLoader label="Loading audit log…" />
     );
   }
 

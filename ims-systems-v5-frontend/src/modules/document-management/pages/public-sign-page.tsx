@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { CheckCircle2, Loader2, PenLine } from "lucide-react";
+import { CheckCircle2, PenLine } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
@@ -8,6 +8,7 @@ import {
   useSignDocumentPublicMutation,
 } from "../hooks/use-document-management";
 import { SignDocumentDialog } from "../components/sign-document-dialog";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Public external signing page (spec §10). The emailed token is the only
@@ -40,9 +41,7 @@ export function PublicSignPage() {
             to resend the invitation.
           </p>
         ) : contextQuery.isLoading || !context ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading invitation…
-          </div>
+          <PageLoader label="Loading invitation…" />
         ) : signed || context.signature.status === "Signed" ? (
           <div className="flex items-start gap-2 rounded-md border border-border-subtle px-3 py-3 text-sm">
             <CheckCircle2 className="mt-0.5 size-4 text-emerald-600" />

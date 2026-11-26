@@ -13,6 +13,7 @@ import {
 import { publicUploadFormSchema } from "../schemas";
 import { ASL_DOC_TYPES } from "../types";
 import { formatReqLabel } from "../lib/asl-display";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Public supplier document upload portal (token-gated, no login).
@@ -88,9 +89,7 @@ export function PublicAslUploadPage() {
             resend the upload link.
           </p>
         ) : contextQuery.isLoading || !context ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading…
-          </div>
+          <PageLoader label="Loading…" />
         ) : (
           <>
             <div className="space-y-2 rounded-md border border-border-subtle px-3 py-3 text-sm">

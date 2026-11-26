@@ -10,6 +10,7 @@ import {
 import { useNotificationsUiStore } from "../store/use-notifications-ui-store";
 import type { Notification } from "../types";
 import { NotificationItem } from "./notification-item";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export function NotificationDrawer() {
   const navigate = useNavigate();
@@ -50,10 +51,7 @@ export function NotificationDrawer() {
       className="sm:max-w-md"
     >
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-10 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading notifications…
-        </div>
+        <PageLoader label="Loading notifications…" />
       ) : listQuery.isError ? (
         <EmptyState
           title="Unable to load notifications"

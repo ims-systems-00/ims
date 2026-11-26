@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { Loader2 } from "lucide-react";
 import type { DocumentEditorSession } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type DocumentOfficeEditorProps = {
   session: DocumentEditorSession;
@@ -284,10 +284,10 @@ export function DocumentOfficeEditor({
   return (
     <div className="relative flex min-h-[40rem] flex-1 flex-col bg-white">
       {loading && !error ? (
-        <div className="absolute inset-0 z-10 flex items-center justify-center gap-2 bg-muted/30 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Opening editor…
-        </div>
+        <PageLoader
+          label="Opening editor…"
+          className="absolute inset-0 z-10 bg-muted/30 py-0"
+        />
       ) : null}
       {error ? (
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-white p-8 text-center">

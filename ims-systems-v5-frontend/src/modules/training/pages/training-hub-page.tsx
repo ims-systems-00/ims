@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Download, Loader2 } from "lucide-react";
+import { Download } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import { PageHeader } from "@/shared/layout";
 import { loadPublicEnv } from "@/shared/lib/env";
@@ -32,6 +32,7 @@ import { TrainingSettingsPanel } from "../components/training-settings-panel";
 import { useTrainingLogQuery } from "../hooks/use-training";
 import { formatWhen, TRAINING_VIEW_LABELS } from "../lib/training-display";
 import { TRAINING_HUB_VIEWS, type TrainingHubView } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function parseView(value: string | null): TrainingHubView {
   if (value && (TRAINING_HUB_VIEWS as readonly string[]).includes(value)) {
@@ -46,9 +47,7 @@ function TrainingLogPanel() {
 
   if (logQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading log…
-      </div>
+      <PageLoader label="Loading log…" />
     );
   }
 

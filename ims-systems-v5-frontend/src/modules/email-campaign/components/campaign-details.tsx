@@ -1,4 +1,3 @@
-import { Loader2 } from "lucide-react";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { useUserQuery } from "@/modules/users/hooks/use-users";
 import {
@@ -8,13 +7,11 @@ import {
 import type { EmailCampaign } from "../types";
 import { CampaignStatusBadge } from "./campaign-badges";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export function CampaignDetailsLoading() {
   return (
-    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-      <Loader2 className="size-4 animate-spin" />
-      Loading campaign…
-    </div>
+    <PageLoader label="Loading campaign…" />
   );
 }
 

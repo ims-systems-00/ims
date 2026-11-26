@@ -1,4 +1,4 @@
-import { Download, Eye, Loader2 } from "lucide-react";
+import { Download, Eye } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
@@ -11,6 +11,7 @@ import {
 import { useNodeVersionsQuery } from "../hooks/use-document-management";
 import { formatDocumentDate } from "../lib/format";
 import type { DocumentTreeNode } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function statusTone(status: string) {
   if (status === "Published") return "success" as const;
@@ -40,9 +41,10 @@ export function DocumentVersionsPanel({
 
   if (versionsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 rounded-xl border border-border-subtle bg-card px-4 py-10 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading versions…
-      </div>
+      <PageLoader
+        label="Loading versions…"
+        className="rounded-xl border border-border-subtle bg-card"
+      />
     );
   }
   if (versionsQuery.isError || !versionsQuery.data) {

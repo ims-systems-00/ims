@@ -29,6 +29,7 @@ import {
   ADDITIONAL_MODULE_OPTIONS,
   type OrganisationPaymentType,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Step 3 — Go Live: activate customer status, licences, and reporting period.
@@ -155,10 +156,7 @@ export function GoLivePage() {
 
   if (currentQuery.isLoading) {
     return (
-      <div className="flex items-center justify-center gap-2 py-16 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" aria-hidden />
-        Loading organisation…
-      </div>
+      <PageLoader label="Loading organisation…" />
     );
   }
 

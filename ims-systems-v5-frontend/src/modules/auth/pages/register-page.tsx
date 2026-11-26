@@ -15,6 +15,7 @@ import {
 } from "@/modules/invitations/lib/pending-invite";
 import { AuthEntryLayout } from "../components/auth-entry-layout";
 import { registerSchema, type RegisterFormValues } from "../schemas";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * V5 register — self-signup via Auth0 BFF.
@@ -93,7 +94,7 @@ export function RegisterPage() {
   if (checking) {
     return (
       <AuthEntryLayout title="Create your account" description="Checking session…">
-        <p className="text-sm text-muted-foreground">Please wait…</p>
+        <PageLoader label="Please wait…" compact />
       </AuthEntryLayout>
     );
   }

@@ -32,6 +32,7 @@ import {
   useFormBuilder,
 } from "../build-form/form-builder-context";
 import { FormBrandPanel } from "../components/form-brand-panel";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function formShareUrl(formId: string): string {
   return `${window.location.origin}/documents/forms/${formId}/submission`;
@@ -221,9 +222,7 @@ export function FormBuilderLayout() {
 
   if (formQuery.isLoading || elementsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading form…
-      </div>
+      <PageLoader label="Loading form…" />
     );
   }
 

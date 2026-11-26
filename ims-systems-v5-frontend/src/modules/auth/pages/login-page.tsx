@@ -13,7 +13,10 @@ import {
   getPendingInvite,
 } from "@/modules/invitations/lib/pending-invite";
 import { AuthEntryLayout } from "../components/auth-entry-layout";
+import { playPostLoginIntro } from "../intro/play-post-login-intro";
+import { SELECT_ORGANISATION_PATH } from "./select-organisation-page";
 import { loginSchema, type LoginFormValues } from "../schemas";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * V5 login — email/password via Auth0 BFF (embedded form).
@@ -83,7 +86,7 @@ export function LoginPage() {
   if (checking) {
     return (
       <AuthEntryLayout title="Welcome back" description="Checking session…">
-        <p className="text-sm text-muted-foreground">Please wait…</p>
+        <PageLoader label="Please wait…" compact />
       </AuthEntryLayout>
     );
   }
@@ -112,7 +115,17 @@ export function LoginPage() {
     try {
       await authClient.loginWithPassword(parsed.data);
       clearSessionCaches(queryClient);
-      navigate(returnTo || "/", { replace: true });
+      if (returnTo.startsWith("/auth/onboard/accept-invitation/")) {
+        // Invite acceptance binds its own organisation; skip the picker.
+        playPostLoginIntro();
+        navigate(returnTo, { replace: true });
+      } else {
+        // Login → choose organisation → intro → that org's dashboard.
+        navigate(SELECT_ORGANISATION_PATH, {
+          replace: true,
+          state: { returnTo: returnTo || "/" },
+        });
+      }
     } catch (error) {
       setFormError(
         isApiClientError(error)

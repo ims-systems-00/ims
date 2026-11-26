@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Check, Loader2, Trash2 } from "lucide-react";
+import { Check, Trash2 } from "lucide-react";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { FormField } from "@/shared/components/form-field";
 import { SearchInput } from "@/shared/components/search-input";
@@ -21,6 +21,7 @@ import {
   useClearDocumentComplianceMutation,
 } from "../hooks/use-document-management";
 import type { DocumentTreeNode } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type DocumentComplianceSettingsPanelProps = {
   repositoryId: string;
@@ -259,10 +260,11 @@ export function DocumentComplianceSettingsPanel({
             aria-label="Catalogue clauses"
           >
             {catalogueQuery.isLoading ? (
-              <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading catalogue…
-              </div>
+              <PageLoader
+                label="Loading catalogue…"
+                compact
+                className="px-3 py-4"
+              />
             ) : null}
 
             {catalogueQuery.isError ? (

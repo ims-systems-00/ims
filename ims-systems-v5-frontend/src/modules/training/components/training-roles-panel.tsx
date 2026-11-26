@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { Button } from "@/shared/components/ui/button";
@@ -12,6 +12,7 @@ import {
   TrainingRoleSheet,
   type TrainingRoleSheetMode,
 } from "./training-role-sheet";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TrainingRolesPanelProps = {
   canEdit?: boolean;
@@ -44,9 +45,7 @@ export function TrainingRolesPanel({ canEdit = true }: TrainingRolesPanelProps) 
 
   if (rolesQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading roles…
-      </div>
+      <PageLoader label="Loading roles…" />
     );
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Eye, Loader2, MapPin, Pencil, Sparkles, Wrench } from "lucide-react";
+import { Eye, MapPin, Pencil, Sparkles, Wrench } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
@@ -32,6 +32,7 @@ import {
 } from "./inventory-badges";
 import { InventoryChecksPanel } from "./inventory-checks-panel";
 import { InventoryLifecyclePanel } from "./inventory-lifecycle-panel";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export type InventoryAssetSheetMode = "create" | "view" | "edit";
 
@@ -195,9 +196,7 @@ export function InventoryAssetSheet({
       className="sm:max-w-xl"
     >
       {mode !== "create" && assetQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading asset…
-        </div>
+        <PageLoader label="Loading asset…" compact className="py-8" />
       ) : null}
 
       {mode === "create" ? (

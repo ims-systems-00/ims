@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Loader2, Pencil } from "lucide-react";
+import { Pencil } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { StatusBadge } from "@/shared/components/status-badge";
 import { isApiClientError } from "@/shared/lib/http/errors";
@@ -17,6 +17,7 @@ import { ManageEmploymentSheet } from "./manage-employment-sheet";
 import { UserAvatar } from "./user-avatar";
 import { UserBusinessUnitsCard } from "./user-business-units-card";
 import { formatDate, formatDateTime } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function accessTone(
   status: string
@@ -89,10 +90,7 @@ export function UserDetailsContent({
 
   if (query.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading user details…
-      </div>
+      <PageLoader label="Loading user details…" />
     );
   }
 

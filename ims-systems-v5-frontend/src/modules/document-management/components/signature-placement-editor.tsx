@@ -3,11 +3,11 @@ import {
   AlertTriangle,
   ChevronLeft,
   ChevronRight,
-  Loader2,
   PenLine,
   Plus,
   X,
 } from "lucide-react";
+import { PageLoader } from "@/shared/components/ims-loader";
 // pdf.js is loaded lazily inside an effect (type-only import here):
 // both pdfjs-dist builds ship top-level await, so a static import makes
 // the whole chunk fail to load if the bundler/optimiser rejects it —
@@ -316,10 +316,10 @@ export function SignaturePlacementEditor({
         <canvas ref={canvasRef} className="block h-auto w-full" />
 
         {loading ? (
-          <div className="absolute inset-0 flex min-h-64 items-center justify-center gap-2 bg-white/80 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading document…
-          </div>
+          <PageLoader
+            label="Loading document…"
+            className="absolute inset-0 min-h-64 bg-white/80 py-0"
+          />
         ) : null}
 
         {loadError ? (

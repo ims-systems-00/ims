@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { FormField } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +14,7 @@ import {
 } from "../hooks/use-inventory";
 import { InventoryDueBadge, InventoryStageBadge } from "../components/inventory-badges";
 import { INVENTORY_CHECK_RESULTS } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Public mobile scan card — `/inventory/scan/:organizationId/:tag`.
@@ -67,9 +67,7 @@ export function PublicInventoryScanPage() {
 
   if (scanQuery.isLoading) {
     return (
-      <div className="flex min-h-dvh items-center justify-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading asset…
-      </div>
+      <PageLoader label="Loading asset…" fullScreen />
     );
   }
 

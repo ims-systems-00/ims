@@ -16,6 +16,7 @@ import { openInventoryLabelPrintSheet } from "../lib/print-labels";
 import { inventoryScanUrl, qrDataUrl } from "../lib/qr";
 import type { InventoryAsset } from "../types";
 import { InventoryDueBadge, InventoryStageBadge } from "./inventory-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventoryLabelsPanelProps = {
   onOpenAsset: (id: string) => void;
@@ -176,9 +177,7 @@ export function InventoryLabelsPanel({
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading labels…
-        </div>
+        <PageLoader label="Loading labels…" />
       ) : items.length === 0 ? (
         <EmptyState
           title="No assets to label"

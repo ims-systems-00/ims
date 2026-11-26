@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { formatInterval } from "../lib/inventory-display";
 import { useInventoryScheduleQuery } from "../hooks/use-inventory";
 import { InventoryDueBadge, InventoryStageBadge } from "./inventory-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventorySchedulePanelProps = {
   onOpenAsset: (id: string, tab?: string) => void;
@@ -81,9 +81,7 @@ export function InventorySchedulePanel({
       </div>
 
       {scheduleQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading schedule…
-        </div>
+        <PageLoader label="Loading schedule…" />
       ) : rows.length === 0 ? (
         <EmptyState
           title="No checks on the schedule"

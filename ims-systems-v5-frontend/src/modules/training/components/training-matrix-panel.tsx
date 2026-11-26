@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { FileText, Loader2 } from "lucide-react";
+import { FileText } from "lucide-react";
 import { FileDropZone } from "@/modules/files";
 import { EmptyState } from "@/shared/components/empty-state";
 import { FormField } from "@/shared/components/form-field";
@@ -31,6 +31,7 @@ import type {
   TrainingCompetency,
 } from "../types";
 import { TrainingCellBadge } from "./training-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TrainingMatrixPanelProps = {
   onOpenPerson: (id: string) => void;
@@ -361,9 +362,7 @@ export function TrainingMatrixPanel({
 
   if (matrixQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading matrix…
-      </div>
+      <PageLoader label="Loading matrix…" />
     );
   }
 

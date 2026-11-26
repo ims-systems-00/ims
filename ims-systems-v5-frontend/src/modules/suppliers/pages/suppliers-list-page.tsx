@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Loader2, Plus, Trash2, Truck } from "lucide-react";
+import { Eye, Plus, Trash2, Truck } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -23,6 +23,7 @@ import {
   useSupplierStatsQuery,
   useSuppliersQuery,
 } from "../hooks/use-suppliers";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PendingDelete = { id: string; label: string };
 
@@ -265,10 +266,7 @@ export function SuppliersListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading suppliers…
-        </div>
+        <PageLoader label="Loading suppliers…" />
       ) : null}
 
       {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}

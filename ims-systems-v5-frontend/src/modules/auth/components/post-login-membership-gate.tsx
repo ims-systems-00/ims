@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { Button } from "@/shared/components/ui/button";
 import { isApiClientError } from "@/shared/lib/http/errors";
 import { useAuthClient } from "@/security";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * After Auth0 login:
@@ -73,9 +74,7 @@ export function PostLoginMembershipGate() {
 
   if (orgsQuery.isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-        Preparing your workspace…
-      </div>
+      <PageLoader label="Preparing your workspace…" fullScreen />
     );
   }
 

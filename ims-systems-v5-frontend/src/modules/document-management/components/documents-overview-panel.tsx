@@ -7,7 +7,6 @@ import {
   Gavel,
   GraduationCap,
   Handshake,
-  Loader2,
   Pin,
   PinOff,
   Scale,
@@ -34,6 +33,7 @@ import {
 } from "../types";
 import { useDocumentsUiStore } from "../store/use-documents-ui-store";
 import { FileTypeIcon } from "./file-type-icon";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 const PURPOSE_META: Record<
   DocumentPurpose,
@@ -111,10 +111,7 @@ export function DocumentsOverviewPanel() {
 
   if (overviewQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-12 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading overview…
-      </div>
+      <PageLoader label="Loading overview…" />
     );
   }
 

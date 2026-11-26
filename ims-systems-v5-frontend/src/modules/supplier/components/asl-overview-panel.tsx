@@ -4,7 +4,6 @@ import {
   ClipboardList,
   ExternalLink,
   FileWarning,
-  Loader2,
   Mail,
   Shield,
   Users,
@@ -15,6 +14,7 @@ import { Button } from "@/shared/components/ui/button";
 import { cn } from "@/shared/lib/utils";
 import { useAslOverviewQuery } from "../hooks/use-asl-supplier";
 import { AslCritBadge, AslStatusBadge } from "./asl-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type AslOverviewPanelProps = {
   onOpenSupplier: (id: string) => void;
@@ -32,9 +32,7 @@ export function AslOverviewPanel({
 
   if (overviewQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading overview…
-      </div>
+      <PageLoader label="Loading overview…" />
     );
   }
 

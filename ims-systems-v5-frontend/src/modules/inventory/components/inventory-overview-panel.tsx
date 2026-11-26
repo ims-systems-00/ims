@@ -2,7 +2,6 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardList,
-  Loader2,
   Package,
   ShieldAlert,
   Wrench,
@@ -14,6 +13,7 @@ import { cn } from "@/shared/lib/utils";
 import { formatWhen } from "../lib/inventory-display";
 import { useInventoryOverviewQuery } from "../hooks/use-inventory";
 import type { InventoryHubView } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventoryOverviewPanelProps = {
   onOpenAsset: (id: string) => void;
@@ -29,9 +29,7 @@ export function InventoryOverviewPanel({
 
   if (overviewQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading overview…
-      </div>
+      <PageLoader label="Loading overview…" />
     );
   }
 

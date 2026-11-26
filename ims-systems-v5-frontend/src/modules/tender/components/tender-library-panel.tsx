@@ -36,6 +36,7 @@ import type {
   TenderService,
 } from "../types";
 import { TENDER_LIBRARY_SUBTABS } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TenderLibraryPanelProps = {
   canEdit?: boolean;
@@ -295,9 +296,7 @@ export function TenderLibraryPanel({ canEdit = true }: TenderLibraryPanelProps) 
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader label="Loading…" />
       ) : subtab === "answers" ? (
         <AnswersTable
           rows={answersQuery.data ?? []}

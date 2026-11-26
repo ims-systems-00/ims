@@ -9,6 +9,7 @@ import {
   downloadAslCsv,
 } from "../api/asl-supplier";
 import { useShareAslMutation } from "../hooks/use-asl-supplier";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export function AslAuditorPanel() {
   const [html, setHtml] = useState<string | null>(null);
@@ -139,9 +140,7 @@ export function AslAuditorPanel() {
 
       <div className="overflow-hidden rounded-lg border border-border-subtle bg-white">
         {loadingHtml ? (
-          <div className="flex items-center gap-2 p-6 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading auditor pack…
-          </div>
+          <PageLoader label="Loading auditor pack…" />
         ) : html ? (
           <iframe
             title="ASL auditor pack"

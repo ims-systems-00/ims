@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
-import { Building2, Loader2 } from "lucide-react";
+import { Building2 } from "lucide-react";
 import { useFunctionalUnitsQuery } from "@/modules/functional-units/hooks/use-functional-units";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type UserBusinessUnitsCardProps = {
   groupIds: string[];
@@ -30,10 +31,7 @@ export function UserBusinessUnitsCard({ groupIds }: UserBusinessUnitsCardProps) 
         ) : null}
 
         {groupIds.length > 0 && unitsQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Loading business units…
-          </div>
+          <PageLoader label="Loading business units…" compact />
         ) : null}
 
         {groupIds.length > 0 && unitsQuery.isError ? (

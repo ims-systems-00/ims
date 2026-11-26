@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { FormField, FormSection } from "@/shared/components/form-field";
 import { Button } from "@/shared/components/ui/button";
@@ -10,6 +9,7 @@ import {
   useUpdateInventorySettingsMutation,
 } from "../hooks/use-inventory";
 import type { InventoryCheckDef } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventorySettingsPanelProps = {
   canEdit?: boolean;
@@ -42,9 +42,7 @@ export function InventorySettingsPanel({
 
   if (settingsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading settings…
-      </div>
+      <PageLoader label="Loading settings…" />
     );
   }
 

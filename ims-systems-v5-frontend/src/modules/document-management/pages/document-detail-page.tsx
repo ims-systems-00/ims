@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Share2 } from "lucide-react";
+import { Share2 } from "lucide-react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
@@ -25,6 +25,7 @@ import {
   useRepoNodeQuery,
   useSignaturesQuery,
 } from "../hooks/use-document-management";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type DocumentTabId =
   | "overview"
@@ -130,10 +131,7 @@ export function DocumentDetailPage() {
 
   if (repoQuery.isLoading || nodeQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-[0.8125rem] text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading document…
-      </div>
+      <PageLoader label="Loading document…" />
     );
   }
 

@@ -10,6 +10,7 @@ import {
 } from "../hooks/use-asl-supplier";
 import { aslSettingsFormSchema } from "../schemas";
 import type { AslCriterion } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type AslSettingsPanelProps = {
   canEdit?: boolean;
@@ -78,9 +79,7 @@ export function AslSettingsPanel({ canEdit = true }: AslSettingsPanelProps) {
 
   if (settingsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading settings…
-      </div>
+      <PageLoader label="Loading settings…" />
     );
   }
 

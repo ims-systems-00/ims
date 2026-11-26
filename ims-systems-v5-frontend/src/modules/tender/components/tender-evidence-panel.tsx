@@ -35,6 +35,7 @@ import type {
   TenderPolicy,
 } from "../types";
 import { TenderExpiryBadge } from "./tender-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TenderEvidencePanelProps = {
   canEdit?: boolean;
@@ -289,9 +290,7 @@ export function TenderEvidencePanel({
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader label="Loading…" />
       ) : tab === "certificates" ? (
         certs.length === 0 ? (
           <EmptyState

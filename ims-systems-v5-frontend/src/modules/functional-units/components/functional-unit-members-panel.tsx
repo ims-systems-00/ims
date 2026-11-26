@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronRight, Loader2, UserMinus, UserPlus, Users } from "lucide-react";
+import { ChevronRight, UserMinus, UserPlus, Users } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -17,6 +17,7 @@ import {
   useRemoveFunctionalUnitMemberMutation,
 } from "../hooks/use-functional-units";
 import type { FunctionalUnit, UnitMember } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type FunctionalUnitMembersPanelProps = {
   unit: FunctionalUnit;
@@ -65,10 +66,7 @@ export function FunctionalUnitMembersPanel({
       </div>
 
       {membersQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading members…
-        </div>
+        <PageLoader label="Loading members…" />
       ) : null}
 
       {membersQuery.isError ? (
@@ -270,10 +268,7 @@ function AddMembersSheet({ unit, open, onOpenChange }: AddMembersSheetProps) {
       />
 
       {eligibleQuery.isLoading ? (
-        <div className="mt-4 flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading eligible users…
-        </div>
+        <PageLoader label="Loading eligible users…" compact className="mt-4" />
       ) : null}
 
       {eligibleQuery.isError ? (

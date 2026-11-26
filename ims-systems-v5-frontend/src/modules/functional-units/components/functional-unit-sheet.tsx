@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Loader2 } from "lucide-react";
 import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { Button } from "@/shared/components/ui/button";
@@ -21,6 +20,7 @@ import {
   type CreateFunctionalUnitInput,
   type FunctionalUnit,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export type FunctionalUnitSheetMode = "create" | "view" | "edit";
 
@@ -166,10 +166,7 @@ export function FunctionalUnitSheet({
       ) : null}
 
       {mode !== "create" && unitQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading functional unit…
-        </div>
+        <PageLoader label="Loading functional unit…" compact />
       ) : null}
 
       {mode !== "create" && unitQuery.isError ? (

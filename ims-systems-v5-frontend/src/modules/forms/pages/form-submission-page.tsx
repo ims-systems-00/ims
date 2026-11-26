@@ -17,6 +17,7 @@ import {
   normalizeFormTheme,
   useThemeImageSrc,
 } from "../lib/form-theme";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Org-member fill page for shared form links.
@@ -76,9 +77,7 @@ export function FormSubmissionPage() {
 
   if (formQuery.isLoading || elementsQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading form…
-      </div>
+      <PageLoader label="Loading form…" />
     );
   }
 

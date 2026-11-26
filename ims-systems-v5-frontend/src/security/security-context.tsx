@@ -10,6 +10,7 @@ import {
 import { loadPublicEnv } from "@/shared/lib/env";
 import { createSecurityPorts, type SecurityPorts } from "./create-security";
 import { setActiveAuthClient } from "./runtime";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 const SecurityContext = createContext<SecurityPorts | null>(null);
 
@@ -73,9 +74,7 @@ export function SecurityProvider({ children }: { children: ReactNode }) {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
-          Loading security…
-        </div>
+        <PageLoader label="Loading security…" fullScreen />
       }
     >
       <Auth0SecurityProviderLazy

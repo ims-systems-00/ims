@@ -21,6 +21,7 @@ import {
   usePreservedReviewersQuery,
 } from "../hooks/use-document-management";
 import { OwnerMultiSelect } from "./owner-multi-select";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 // Lazy: pdf.js is heavy and must never block (or break) the main bundle.
 const SignaturePlacementEditor = lazy(() =>
@@ -266,10 +267,11 @@ export function RequestSignatureDialog({
             >
               <Suspense
                 fallback={
-                  <div className="flex items-center gap-2 rounded-md border border-border-subtle px-3 py-6 text-sm text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin" />
-                    Loading placement editor…
-                  </div>
+                  <PageLoader
+                    label="Loading placement editor…"
+                    compact
+                    className="rounded-md border border-border-subtle px-3 py-6"
+                  />
                 }
               >
                 <SignaturePlacementEditor

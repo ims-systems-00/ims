@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { EmptyState } from "@/shared/components/empty-state";
 import { Button } from "@/shared/components/ui/button";
@@ -15,6 +15,7 @@ import {
   DOCUMENT_SOURCE_MODULE_LABELS,
   type DocumentSourceModule,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /** Module-sourced published documents (training / inventory / supplier / tender). */
 export function DocumentModuleSourcePage() {
@@ -72,9 +73,7 @@ export function DocumentModuleSourcePage() {
       />
 
       {query.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading documents…
-        </div>
+        <PageLoader label="Loading documents…" />
       ) : query.isError || !query.data ? (
         <EmptyState
           title="Unable to load documents"

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarCheck, Eye, Loader2, Plus, Trash2 } from "lucide-react";
+import { CalendarCheck, Eye, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -34,6 +34,7 @@ import {
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
 import { useSetupSignal } from "@/modules/setup-guide";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type PendingDelete = { id: string; label: string };
 
@@ -304,10 +305,7 @@ export function ManagementReviewsListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading management reviews…
-        </div>
+        <PageLoader label="Loading management reviews…" />
       ) : null}
 
       {listQuery.isError ? <ErrorState error={listQuery.error} /> : null}

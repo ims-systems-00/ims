@@ -1,5 +1,5 @@
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft, Loader2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { PageHeader } from "@/shared/layout";
 import { SheetPanelTabs } from "@/modules/activities";
@@ -10,6 +10,7 @@ import {
 } from "../components/campaign-details";
 import { CampaignStatusBadge } from "../components/campaign-badges";
 import { useEmailCampaignQuery } from "../hooks/use-email-campaigns";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Full-page campaign detail (Details | Recipients).
@@ -22,10 +23,7 @@ export function EmailCampaignDetailPage() {
 
   if (campaignQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" />
-        Loading campaign…
-      </div>
+      <PageLoader label="Loading campaign…" />
     );
   }
 

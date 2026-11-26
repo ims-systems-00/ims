@@ -28,6 +28,7 @@ import type {
   EmailBrandingPreviewTemplateId,
   OrganisationProfile,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type EmailCustomisePanelProps = {
   organisation: OrganisationProfile;
@@ -110,9 +111,10 @@ function LiveEmailPreview({
       </div>
 
       {previewQuery.isLoading ? (
-        <div className="flex min-h-[320px] items-center justify-center rounded-xl border border-border bg-surface-muted/40">
-          <Loader2 className="size-5 animate-spin text-muted-foreground" />
-        </div>
+        <PageLoader
+          label="Loading preview…"
+          className="min-h-[320px] rounded-xl border border-border bg-surface-muted/40"
+        />
       ) : previewQuery.isError ? (
         <p className="rounded-xl border border-border bg-surface-muted/40 p-4 text-xs text-muted-foreground">
           Live preview unavailable. Your colour draft still applies after save.

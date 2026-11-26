@@ -1,8 +1,8 @@
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { useInventoryAssetsQuery } from "../hooks/use-inventory";
 import { InventoryStageBadge } from "./inventory-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventoryDisposalsPanelProps = {
   onOpenAsset: (id: string, tab?: string) => void;
@@ -44,9 +44,7 @@ export function InventoryDisposalsPanel({
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading disposals…
-        </div>
+        <PageLoader label="Loading disposals…" />
       ) : items.length === 0 ? (
         <EmptyState
           title="No retirements or disposals"

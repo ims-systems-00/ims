@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
 import { AppSheet } from "@/shared/components/app-sheet";
 import { Button } from "@/shared/components/ui/button";
 import { notify } from "@/shared/lib/toast";
@@ -21,6 +20,7 @@ import {
 import { displayControlState } from "../types";
 import { ControlEvidencePanel } from "./control-evidence-panel";
 import { ControlStatusForm } from "./control-status-form";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type ControlSheetProps = {
   open: boolean;
@@ -93,10 +93,7 @@ export function ControlSheet({
       }
     >
       {controlQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading control…
-        </div>
+        <PageLoader label="Loading control…" compact />
       ) : controlQuery.isError || !control ? (
         <p className="text-sm text-destructive">
           This control has been deleted or removed.

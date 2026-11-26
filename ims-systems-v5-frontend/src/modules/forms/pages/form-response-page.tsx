@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useParams } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import {
   useFormElementsQuery,
@@ -16,6 +15,7 @@ import {
   normalizeFormTheme,
   useThemeImageSrc,
 } from "../lib/form-theme";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 export function FormResponsePage() {
   const { formId = "" } = useParams();
@@ -41,9 +41,7 @@ export function FormResponsePage() {
       <aside className="rounded-lg border border-border bg-card p-3">
         <h2 className="mb-2 text-sm font-semibold">Submissions</h2>
         {listQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading…
-          </div>
+          <PageLoader label="Loading…" />
         ) : items.length === 0 ? (
           <p className="text-sm text-muted-foreground">No submissions yet.</p>
         ) : (
@@ -85,9 +83,7 @@ export function FormResponsePage() {
             description="Choose a submission on the left to review answers."
           />
         ) : detailQuery.isLoading ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading responses…
-          </div>
+          <PageLoader label="Loading responses…" />
         ) : !detailQuery.data ? (
           <EmptyState title="Submission not found" />
         ) : (

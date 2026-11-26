@@ -1,8 +1,8 @@
-import { Loader2 } from "lucide-react";
 import { useParams } from "react-router-dom";
 import { AslCritBadge, AslStatusBadge } from "../components/asl-badges";
 import { lastEval } from "../lib/asl-display";
 import { useAslPublicSnapshotQuery } from "../hooks/use-asl-supplier";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 /**
  * Read-only auditor share page (token-gated, no login).
@@ -28,9 +28,7 @@ export function PublicAslSharePage() {
             This share link is invalid or has expired.
           </p>
         ) : snapshotQuery.isLoading || !snapshotQuery.data ? (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" /> Loading snapshot…
-          </div>
+          <PageLoader label="Loading snapshot…" />
         ) : (
           <>
             <div className="rounded-xl border border-border-subtle bg-card p-4 text-sm">

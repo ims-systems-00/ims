@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Loader2, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { FormField } from "@/shared/components/form-field";
@@ -16,6 +16,7 @@ import {
   type InventoryStockItem,
   type StockMoveType,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type InventoryStockPanelProps = {
   canCreate?: boolean;
@@ -67,9 +68,7 @@ export function InventoryStockPanel({
       ) : null}
 
       {stockQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading stock…
-        </div>
+        <PageLoader label="Loading stock…" />
       ) : items.length === 0 ? (
         <EmptyState
           title="No stock items"

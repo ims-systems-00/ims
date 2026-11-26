@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Eye, Loader2, Plus } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import {
   IncidentSheet,
@@ -7,6 +7,7 @@ import {
 } from "@/modules/incidents";
 import { useIncidentsQuery } from "@/modules/incidents/hooks/use-incidents";
 import { CUSTOMERS_SOURCE_MODULE } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type CustomerRelatedIncidentsProps = {
   customerId: string;
@@ -68,10 +69,7 @@ export function CustomerRelatedIncidents({
       </div>
 
       {incidentsQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading incidents…
-        </div>
+        <PageLoader label="Loading incidents…" compact />
       ) : null}
 
       {incidentsQuery.isError ? (

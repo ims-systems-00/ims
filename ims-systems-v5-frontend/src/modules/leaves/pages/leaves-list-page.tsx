@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { CalendarOff, Eye, Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { CalendarOff, Eye, Plus, Send, Trash2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { ConfirmDialog } from "@/shared/components/confirm-dialog";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -26,6 +26,7 @@ import {
   type LeaveType,
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 const SCOPES: { value: LeaveListScope; label: string }[] = [
   { value: "mine", label: "My leave" },
@@ -180,10 +181,7 @@ export function LeavesListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" aria-hidden />
-          Loading leave requests…
-        </div>
+        <PageLoader label="Loading leave requests…" />
       ) : null}
 
       {listQuery.isError ? (

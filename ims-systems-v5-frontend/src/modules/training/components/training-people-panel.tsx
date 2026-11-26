@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Loader2, Plus, UserPlus } from "lucide-react";
+import { Plus, UserPlus } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { EntityTableRow } from "@/shared/components/entity-table-row";
 import { FormField } from "@/shared/components/form-field";
@@ -15,6 +15,7 @@ import {
 import { externalPersonFormSchema } from "../schemas";
 import { TRAINING_PERSON_STATUSES } from "../types";
 import { TrainingPersonStatusBadge } from "./training-badges";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type TrainingPeoplePanelProps = {
   onOpenPerson: (id: string) => void;
@@ -161,9 +162,7 @@ export function TrainingPeoplePanel({
       </div>
 
       {peopleQuery.isLoading ? (
-        <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading people…
-        </div>
+        <PageLoader label="Loading people…" />
       ) : people.length === 0 ? (
         <EmptyState
           title="No people found"

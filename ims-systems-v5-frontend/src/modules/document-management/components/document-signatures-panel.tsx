@@ -2,7 +2,6 @@ import { useState } from "react";
 import {
   Download,
   Eye,
-  Loader2,
   PenLine,
   RefreshCw,
   Trash2,
@@ -22,6 +21,7 @@ import {
 } from "../hooks/use-document-management";
 import { formatDocumentDate } from "../lib/format";
 import { SignDocumentDialog } from "./sign-document-dialog";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type DocumentSignaturesPanelProps = {
   repositoryId: string;
@@ -80,9 +80,7 @@ export function DocumentSignaturesPanel({
       </div>
 
       {signaturesQuery.isLoading ? (
-        <div className="flex items-center gap-2 pt-4 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" /> Loading…
-        </div>
+        <PageLoader label="Loading…" compact className="pt-4" />
       ) : signatures.length > 0 ? (
         <ul className="space-y-2 pt-4">
           {signatures.map((row) => {

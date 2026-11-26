@@ -18,6 +18,7 @@ import {
   type ComplianceToolkitName,
   type ModuleComplianceLink,
 } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type LinkedControlsPanelProps = {
   links: ModuleComplianceLink[];
@@ -254,10 +255,11 @@ export function LinkedControlsPanel({
             aria-multiselectable="true"
           >
             {catalogueQuery.isLoading ? (
-              <div className="flex items-center gap-2 px-3 py-4 text-sm text-muted-foreground">
-                <Loader2 className="size-4 animate-spin" />
-                Loading catalogue…
-              </div>
+              <PageLoader
+                label="Loading catalogue…"
+                compact
+                className="px-3 py-4"
+              />
             ) : null}
 
             {showCatalogueError ? (

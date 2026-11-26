@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { Eye, Loader2, UserMinus, UserPlus, Users } from "lucide-react";
+import { Eye, UserMinus, UserPlus, Users } from "lucide-react";
 import { InviteUserDialog, InvitationsPanel } from "@/modules/invitations";
 import { useCurrentOrganisationQuery } from "@/modules/organisation/hooks/use-organisations";
 import { Button } from "@/shared/components/ui/button";
@@ -17,6 +17,7 @@ import { UserAvatar } from "../components/user-avatar";
 import { UserDetailsSheet } from "../components/user-details-sheet";
 import { signalTourAction, useTourAction } from "@/modules/setup-guide";
 import { useSessionUserQuery, useUsersQuery } from "../hooks/use-users";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 type UsersTab = "members" | "invitations";
 
@@ -152,10 +153,7 @@ export function UsersListPage() {
       </div>
 
       {listQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading users…
-        </div>
+        <PageLoader label="Loading users…" />
       ) : null}
 
       {listQuery.isError ? (

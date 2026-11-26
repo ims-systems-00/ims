@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Loader2 } from "lucide-react";
 import { Button } from "@/shared/components/ui/button";
 import { PageHeader } from "@/shared/layout";
 import { isApiClientError } from "@/shared/lib/http/errors";
@@ -8,6 +7,7 @@ import { useAccountManagerOverviewQuery } from "../hooks/use-customers";
 import { CustomerStageBadge } from "../components/customer-badges";
 import type { CustomerStage } from "../types";
 import { CUSTOMER_STAGES } from "../types";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat(undefined, {
@@ -62,10 +62,7 @@ export function CustomersOverviewPage() {
       />
 
       {overviewQuery.isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          Loading MY CRM…
-        </div>
+        <PageLoader label="Loading MY CRM…" />
       ) : null}
 
       {overviewQuery.isError ? (

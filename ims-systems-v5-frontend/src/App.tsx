@@ -6,6 +6,7 @@ import {
   PostLoginMembershipGate,
   PreparationScreenPage,
   RegisterPage,
+  SelectOrganisationPage,
 } from "@/modules/auth";
 import { AssetsCategoryPage } from "@/modules/assets";
 import {
@@ -131,6 +132,12 @@ export function App() {
         <Route
           path="auth/preparation-screen"
           element={<PreparationScreenPage />}
+        />
+        {/* Post-login org picker — outside the membership gate so the gate
+            does not auto-bind the first organisation before the user picks. */}
+        <Route
+          path="select-organisation"
+          element={<SelectOrganisationPage />}
         />
         <Route element={<PostLoginMembershipGate />}>
           <Route path="onboard" element={<OnboardingShell />}>

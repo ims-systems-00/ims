@@ -1,8 +1,8 @@
-import { Loader2 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
 import { cn } from "@/shared/lib/utils";
 import { formatInterval } from "../lib/inventory-display";
 import { useComplianceMapQuery } from "../hooks/use-inventory";
+import { PageLoader } from "@/shared/components/ims-loader";
 
 function IntervalBadge({ months }: { months: number }) {
   const eachUse = months === 0;
@@ -26,9 +26,7 @@ export function InventoryCompliancePanel() {
 
   if (mapQuery.isLoading) {
     return (
-      <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-        <Loader2 className="size-4 animate-spin" /> Loading compliance map…
-      </div>
+      <PageLoader label="Loading compliance map…" />
     );
   }
 
