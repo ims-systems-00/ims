@@ -61,6 +61,12 @@ function toDomain(doc: AuditDocument): Audit {
         id: item.id,
         nonConformity: item.nonConformity,
         rootCause: item.rootCause,
+        clause: item.clause || undefined,
+        dueDate: item.dueDate ?? null,
+        status: item.status ?? "open",
+        closedOn: item.closedOn ?? null,
+        closedBy: item.closedBy ?? null,
+        closureNote: item.closureNote || undefined,
       })
     ),
     risks: ((doc.risks ?? []) as AuditEmbeddedRisk[]).map((item) => ({

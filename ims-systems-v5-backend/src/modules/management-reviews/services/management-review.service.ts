@@ -339,6 +339,18 @@ export function createManagementReviewService(
       if (input.attendees !== undefined) {
         patch.attendees = [...new Set(input.attendees)];
       }
+      if (input.inputs !== undefined) {
+        const changes = new Map(input.inputs.map((i) => [i.key, i]));
+        patch.inputs = existing.inputs.map((current) => {
+          const change = changes.get(current.key);
+          const note = change ? change.note ?? undefined : current.note;
+          return {
+            key: current.key,
+            ready: change ? change.ready : current.ready,
+            ...(note ? { note } : {}),
+          };
+        });
+      }
 
       if (input.agenda && input.agenda.length > 0) {
         const added = mapAttachments(input.agenda, actor.identity.subjectId);

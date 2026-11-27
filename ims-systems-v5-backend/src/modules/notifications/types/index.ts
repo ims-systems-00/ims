@@ -37,6 +37,10 @@ export const READ_STATUSES = ["unread", "read"] as const;
 export type ReadStatus = (typeof READ_STATUSES)[number];
 
 export const POPUP_STATUSES = ["unread", "read"] as const;
+
+/** Delivery channels a notification went out on (in-app is always implied). */
+export const NOTIFICATION_CHANNELS = ["in_app", "email"] as const;
+export type NotificationChannel = (typeof NOTIFICATION_CHANNELS)[number];
 export type PopupStatus = (typeof POPUP_STATUSES)[number];
 
 export type NotificationStateFlag<TStatus extends string> = {
@@ -62,6 +66,7 @@ export type Notification = {
   screenIdentifier?: string;
   params: NotificationParams;
   icon?: string;
+  channels: NotificationChannel[];
   sent: NotificationStateFlag<SentStatus>;
   read: NotificationStateFlag<ReadStatus>;
   popUp: NotificationStateFlag<PopupStatus>;
@@ -81,6 +86,8 @@ export type CreateNotificationRecipientInput = {
   screenIdentifier?: string;
   params?: NotificationParams;
   icon?: string;
+  /** Defaults to ["in_app"]. */
+  channels?: NotificationChannel[];
   businessUnitId?: string;
   /** Default schema behaviour: read (no modal). Nudges set unread. */
   popUpStatus?: PopupStatus;

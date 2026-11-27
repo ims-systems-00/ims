@@ -16,6 +16,7 @@ import {
   updateAuditBodySchema,
   updateEmbeddedRiskBodySchema,
   updateIdentificationBodySchema,
+  setFindingStatusBodySchema,
   updateOfiBodySchema,
 } from "../schemas";
 import type { AuditService } from "../services/audit.service";
@@ -30,6 +31,7 @@ export type AuditController = {
   complete: RequestHandler;
   addIdentification: RequestHandler;
   updateIdentification: RequestHandler;
+  setFindingStatus: RequestHandler;
   removeIdentification: RequestHandler;
   addRisk: RequestHandler;
   updateRisk: RequestHandler;
@@ -140,6 +142,25 @@ export function createAuditController(service: AuditService): AuditController {
       );
       const body = parseWithSchema(updateIdentificationBodySchema, req.body);
       const data = await service.updateIdentification(
+        req.identity,
+        id,
+        identificationId,
+        body
+      );
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const setFindingStatus: RequestHandler = async (req, res, next) => {
+    try {
+      const { id, identificationId } = parseWithSchema(
+        identificationIdParamSchema,
+        req.params
+      );
+      const body = parseWithSchema(setFindingStatusBodySchema, req.body);
+      const data = await service.setFindingStatus(
         req.identity,
         id,
         identificationId,
@@ -280,7 +301,7 @@ export function createAuditController(service: AuditService): AuditController {
     remove,
     complete,
     addIdentification,
-    updateIdentification,
+    updateIdentification, setFindingStatus,
     removeIdentification,
     addRisk,
     updateRisk,

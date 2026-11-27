@@ -56,6 +56,10 @@ function toDomain(doc: NotificationDocument): Notification {
     screenIdentifier: doc.screenIdentifier ?? undefined,
     params: toParams(doc.params),
     icon: doc.icon ?? undefined,
+    channels:
+      Array.isArray(doc.channels) && doc.channels.length
+        ? (doc.channels as Notification["channels"])
+        : ["in_app"],
     sent: toStateFlag<SentStatus>(doc.sent, "unsent"),
     read: toStateFlag<ReadStatus>(doc.read, "unread"),
     popUp: toStateFlag<PopupStatus>(doc.popUp, "read"),
@@ -97,6 +101,7 @@ export function createNotificationRepository() {
             businessUnitId: recipient.params?.businessUnitId ?? null,
           },
           icon: recipient.icon,
+          channels: recipient.channels ?? ["in_app"],
           sent: { status: "unsent", on: null },
           read: { status: "unread", on: null },
           popUp: {

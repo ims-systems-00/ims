@@ -13,7 +13,14 @@ import {
   identificationFormSchema,
   ofiFormSchema,
 } from "../schemas";
-import type { Audit } from "../types";
+import type {
+  Audit,
+  AuditIdentification,
+  CreateIdentificationInput,
+  SetFindingStatusInput,
+} from "../types";
+import { formatDate } from "@/shared/lib/format-date";
+import { StatusBadge } from "@/shared/components/status-badge";
 
 type FieldErrors = Record<string, string>;
 
@@ -46,6 +53,16 @@ export function AuditFindingsSection({
         onRemove={async (id) => {
           await identificationMutations.remove.mutateAsync(id);
           notify.success("Non-conformity removed");
+        }}
+        statusPending={identificationMutations.setStatus.isPending}
+        onSetStatus={async (id, body) => {
+          await identificationMutations.setStatus.mutateAsync({
+            identificationId: id,
+            body,
+          });
+          notify.success(
+            body.status === "closed" ? "Finding closed" : "Finding reopened"
+          );
         }}
       />
       <RisksBlock
@@ -80,25 +97,120 @@ export function AuditFindingsSection({
   );
 }
 
+/**
+ * Clause, due date and open/closed status of a finding. Closing needs a
+ * note on the corrective action / evidence and works after completion.
+ */
+function FindingTracking({
+  item,
+  pending,
+  onSetStatus,
+}: {
+  item: AuditIdentification;
+  pending: boolean;
+  onSetStatus: (body: SetFindingStatusInput) => Promise<void>;
+}) {
+  const [closing, setClosing] = useState(false);
+  const [note, setNote] = useState("");
+  const closed = item.status === "closed";
+  const today = new Date().toISOString().slice(0, 10);
+  const overdue = !closed && Boolean(item.dueDate) && item.dueDate!.slice(0, 10) < today;
+
+  return (
+    <div className="space-y-2 pt-1">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs">
+        {item.clause ? <StatusBadge>ISO {item.clause}</StatusBadge> : null}
+        <StatusBadge tone={closed ? "success" : overdue ? "destructive" : "warning"}>
+          {closed ? "Closed" : overdue ? "Overdue" : "Open"}
+        </StatusBadge>
+        {!closed && item.dueDate ? (
+          <span className={overdue ? "font-medium text-destructive" : "text-muted-foreground"}>
+            Due {formatDate(item.dueDate)}
+          </span>
+        ) : null}
+        {closed && item.closedOn ? (
+          <span className="text-muted-foreground">on {formatDate(item.closedOn)}</span>
+        ) : null}
+        {!closing ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="ghost"
+            className="h-6 px-2 text-xs"
+            disabled={pending}
+            onClick={() =>
+              closed
+                ? void onSetStatus({ status: "open" }).catch((error) =>
+                    notify.fromError(error, "Unable to reopen")
+                  )
+                : setClosing(true)
+            }
+          >
+            {closed ? "Reopen" : "Close with evidence"}
+          </Button>
+        ) : null}
+      </div>
+      {closed && item.closureNote ? (
+        <p className="text-xs text-muted-foreground">Evidence: {item.closureNote}</p>
+      ) : null}
+      {closing ? (
+        <div className="space-y-2">
+          <textarea
+            aria-label="Corrective action and evidence"
+            placeholder="What was done, and where is the evidence?"
+            className="ims-field min-h-[3rem] py-2 text-[0.8125rem]"
+            value={note}
+            disabled={pending}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              disabled={pending || !note.trim()}
+              onClick={() =>
+                void onSetStatus({ status: "closed", closureNote: note.trim() })
+                  .then(() => {
+                    setClosing(false);
+                    setNote("");
+                  })
+                  .catch((error) => notify.fromError(error, "Unable to close finding"))
+              }
+            >
+              Close finding
+            </Button>
+            <Button type="button" size="sm" variant="ghost" onClick={() => setClosing(false)}>
+              Cancel
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function IdentificationsBlock({
   audit,
   editable,
   pending,
   onAdd,
   onRemove,
+  statusPending,
+  onSetStatus,
 }: {
   audit: Audit;
   editable: boolean;
   pending: boolean;
-  onAdd: (values: {
-    nonConformity: string;
-    rootCause: string;
-  }) => Promise<void>;
+  onAdd: (values: CreateIdentificationInput) => Promise<void>;
   onRemove: (id: string) => Promise<void>;
+  statusPending: boolean;
+  onSetStatus: (id: string, body: SetFindingStatusInput) => Promise<void>;
 }) {
   const [open, setOpen] = useState(false);
   const [nonConformity, setNonConformity] = useState("");
   const [rootCause, setRootCause] = useState("");
+  const [clause, setClause] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [errors, setErrors] = useState<FieldErrors>({});
 
   async function handleSubmit(event: FormEvent) {
@@ -117,9 +229,15 @@ function IdentificationsBlock({
       return;
     }
     try {
-      await onAdd(parsed.data);
+      await onAdd({
+        ...parsed.data,
+        clause: clause.trim() || undefined,
+        dueDate: dueDate || null,
+      });
       setNonConformity("");
       setRootCause("");
+      setClause("");
+      setDueDate("");
       setErrors({});
       setOpen(false);
     } catch (error) {
@@ -159,6 +277,11 @@ function IdentificationsBlock({
                   <p className="text-xs text-muted-foreground">
                     Root cause: {item.rootCause}
                   </p>
+                  <FindingTracking
+                    item={item}
+                    pending={statusPending}
+                    onSetStatus={(body) => onSetStatus(item.id, body)}
+                  />
                 </div>
                 {editable ? (
                   <Button
@@ -199,6 +322,29 @@ function IdentificationsBlock({
               onChange={(event) => setRootCause(event.target.value)}
             />
           </FormField>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormField label="ISO clause" description="e.g. 7.2">
+              <input
+                className="ims-field"
+                value={clause}
+                maxLength={20}
+                disabled={pending}
+                onChange={(event) => setClause(event.target.value)}
+              />
+            </FormField>
+            <FormField
+              label="Corrective action due"
+              description="Tracked live under ISO 10.2."
+            >
+              <input
+                type="date"
+                className="ims-field"
+                value={dueDate}
+                disabled={pending}
+                onChange={(event) => setDueDate(event.target.value)}
+              />
+            </FormField>
+          </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>
               Cancel

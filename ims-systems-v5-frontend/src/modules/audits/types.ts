@@ -46,6 +46,15 @@ export type AuditIdentification = {
   id: string;
   nonConformity: string;
   rootCause: string;
+  /** ISO clause the finding was raised against. */
+  clause?: string;
+  /** Corrective action due date (ISO 10.2). */
+  dueDate?: string | null;
+  /** Absent on findings recorded before status tracking (treated as open). */
+  status?: "open" | "closed";
+  closedOn?: string | null;
+  closedBy?: string | null;
+  closureNote?: string;
 };
 
 export type AuditEmbeddedRisk = {
@@ -119,11 +128,20 @@ export type UpdateAuditInput = {
 export type CreateIdentificationInput = {
   nonConformity: string;
   rootCause: string;
+  clause?: string;
+  dueDate?: string | null;
 };
 
 export type UpdateIdentificationInput = {
   nonConformity?: string;
   rootCause?: string;
+  clause?: string | null;
+  dueDate?: string | null;
+};
+
+export type SetFindingStatusInput = {
+  status: "open" | "closed";
+  closureNote?: string | null;
 };
 
 export type CreateEmbeddedRiskInput = {

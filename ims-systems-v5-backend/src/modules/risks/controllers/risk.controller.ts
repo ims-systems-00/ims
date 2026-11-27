@@ -21,6 +21,7 @@ export type RiskController = {
   update: RequestHandler;
   remove: RequestHandler;
   mitigate: RequestHandler;
+  markReviewed: RequestHandler;
   accept: RequestHandler;
   escalate: RequestHandler;
   nudge: RequestHandler;
@@ -108,6 +109,16 @@ export function createRiskController(service: RiskService): RiskController {
     }
   };
 
+  const markReviewed: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const data = await service.markReviewed(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const mitigate: RequestHandler = async (req, res, next) => {
     try {
       const { id } = parseWithSchema(idParamSchema, req.params);
@@ -186,7 +197,7 @@ export function createRiskController(service: RiskService): RiskController {
     create,
     update,
     remove,
-    mitigate,
+    mitigate, markReviewed,
     accept,
     escalate,
     nudge,

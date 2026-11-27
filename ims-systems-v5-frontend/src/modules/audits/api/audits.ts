@@ -14,6 +14,7 @@ import type {
   UpdateEmbeddedRiskInput,
   UpdateIdentificationInput,
   UpdateOfiInput,
+  SetFindingStatusInput,
 } from "../types";
 
 function toQuery(params: ListAuditsParams = {}): string {
@@ -80,6 +81,18 @@ export function addIdentification(
     method: "POST",
     body,
   });
+}
+
+/** Close a finding with evidence (or reopen) — allowed after completion. */
+export function setFindingStatus(
+  id: string,
+  identificationId: string,
+  body: SetFindingStatusInput
+): Promise<Audit> {
+  return apiRequest<Audit>(
+    `/audits/${id}/identifications/${identificationId}/status`,
+    { method: "POST", body }
+  );
 }
 
 export function updateIdentification(

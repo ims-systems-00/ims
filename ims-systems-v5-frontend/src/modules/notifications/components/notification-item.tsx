@@ -1,3 +1,4 @@
+import { Mail } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { Notification } from "../types";
 import {
@@ -54,6 +55,12 @@ export function NotificationItem({
         <span className="block text-[0.75rem] leading-relaxed text-muted-foreground">
           {notification.message}
         </span>
+        {notification.channels?.includes("email") ? (
+          <span className="inline-flex items-center gap-1 text-[0.6875rem] text-muted-foreground">
+            <Mail className="size-3" aria-hidden />
+            Also sent by email
+          </span>
+        ) : null}
       </span>
     </button>
   );

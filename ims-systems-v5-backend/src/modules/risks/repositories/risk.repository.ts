@@ -62,6 +62,10 @@ function toDomain(doc: RiskDocument): Risk {
     categoryId: doc.categoryId ?? undefined,
     assetId: doc.assetId ?? undefined,
     ownerId: doc.ownerId ?? undefined,
+    nextReviewDate: doc.nextReviewDate ?? null,
+    reviewIntervalMonths: doc.reviewIntervalMonths ?? 12,
+    lastReviewedOn: doc.lastReviewedOn ?? null,
+    area: doc.area || undefined,
     initialScore: toScore(doc.initialScore),
     currentScore,
     mitigationText: doc.mitigationText ?? undefined,
@@ -179,6 +183,10 @@ export type PersistRiskPatch = {
   categoryId?: string | null;
   assetId?: string | null;
   ownerId?: string | null;
+  nextReviewDate?: Date | null;
+  reviewIntervalMonths?: number;
+  lastReviewedOn?: Date | null;
+  area?: string | null;
   currentScore?: RiskScorePair;
   mitigationText?: string | null;
   acceptanceRationale?: string | null;
@@ -242,6 +250,9 @@ export function createRiskRepository(): RiskRepository {
         categoryId: input.categoryId,
         assetId: input.assetId,
         ownerId: input.ownerId,
+        nextReviewDate: input.nextReviewDate ?? null,
+        reviewIntervalMonths: input.reviewIntervalMonths ?? 12,
+        area: input.area ?? undefined,
         initialScore: input.initialScore,
         currentScore: input.currentScore,
         attachments: input.attachments,
@@ -366,6 +377,14 @@ export function createRiskRepository(): RiskRepository {
       }
       if (patch.ownerId !== undefined) {
         set.ownerId = patch.ownerId === null ? undefined : patch.ownerId;
+      }
+      if (patch.nextReviewDate !== undefined) set.nextReviewDate = patch.nextReviewDate;
+      if (patch.reviewIntervalMonths !== undefined) {
+        set.reviewIntervalMonths = patch.reviewIntervalMonths;
+      }
+      if (patch.lastReviewedOn !== undefined) set.lastReviewedOn = patch.lastReviewedOn;
+      if (patch.area !== undefined) {
+        set.area = patch.area === null ? undefined : patch.area;
       }
       if (patch.currentScore !== undefined) set.currentScore = patch.currentScore;
       if (patch.mitigationText !== undefined) {

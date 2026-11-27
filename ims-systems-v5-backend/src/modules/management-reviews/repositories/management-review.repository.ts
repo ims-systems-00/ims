@@ -15,6 +15,7 @@ import {
   type ReviewDisplayStatus,
   type ReviewInterval,
   type ReviewPrivacy,
+  mergeReviewInputs,
 } from "../types";
 import {
   getManagementReviewModel,
@@ -68,6 +69,9 @@ function toDomain(doc: ManagementReviewDocument): ManagementReview {
     attendees: [...(doc.attendees ?? [])],
     agenda: ((doc.agenda ?? []) as ReviewAttachment[]).map(toAttachment),
     minutes: ((doc.minutes ?? []) as ReviewAttachment[]).map(toAttachment),
+    inputs: mergeReviewInputs(
+      doc.inputs as Array<{ key: string; ready?: boolean; note?: string }>
+    ),
     completed,
     createdBy: doc.createdBy,
     createdOn: doc.createdOn,
@@ -122,6 +126,7 @@ export type PersistManagementReviewPatch = {
   attendees?: string[];
   agenda?: ReviewAttachment[];
   minutes?: ReviewAttachment[];
+  inputs?: Array<{ key: string; ready: boolean; note?: string }>;
   completed?: LifecycleFlag;
   updatedBy: string;
   updatedOn: Date;
@@ -274,6 +279,7 @@ export function createManagementReviewRepository(): ManagementReviewRepository {
       if (patch.attendees !== undefined) set.attendees = patch.attendees;
       if (patch.agenda !== undefined) set.agenda = patch.agenda;
       if (patch.minutes !== undefined) set.minutes = patch.minutes;
+      if (patch.inputs !== undefined) set.inputs = patch.inputs;
       if (patch.completed !== undefined) set.completed = patch.completed;
 
       const doc = await model

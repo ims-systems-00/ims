@@ -1,4 +1,6 @@
 import {
+  Activity,
+  Flag,
   AlertTriangle,
   BriefcaseBusiness,
   Bug,
@@ -23,6 +25,7 @@ import {
   PenLine,
   ClipboardList,
   ShieldAlert,
+  Scale,
   ShieldCheck,
   Tags,
   Target,
@@ -34,6 +37,7 @@ import {
   toolkitDisplayLabel,
   toolkitPath,
 } from "@/modules/compliance/types";
+import { LIVE_STANDARDS } from "@/modules/live-compliance/types";
 import type { NavSection } from "./types";
 
 export type NavigationLicenceFilter = {
@@ -57,13 +61,43 @@ function complianceChildren(
       : COMPLIANCE_TOOLKIT_NAMES.filter((name) =>
           licensedToolkits.includes(name)
         );
-  return names.map((name) => ({
+  const toolkits = names.map((name) => ({
     id: `compliance-${name}`,
     label: toolkitDisplayLabel(name),
     href: toolkitPath(name),
     icon: ShieldCheck,
     requiredPermission: "compliance:read",
   }));
+  // Live ISO compliance monitors ISO 9001 / 14001 / 45001 only.
+  const hasLiveStandard = names.some((name) =>
+    (LIVE_STANDARDS as readonly string[]).includes(name)
+  );
+  return hasLiveStandard
+    ? [
+        {
+          id: "compliance-live",
+          label: "Live compliance",
+          href: "/compliance/live",
+          icon: Activity,
+          requiredPermission: "compliance:read",
+        },
+        {
+          id: "compliance-legal-register",
+          label: "Legal register",
+          href: "/compliance/legal-register",
+          icon: Scale,
+          requiredPermission: "compliance:read",
+        },
+        {
+          id: "compliance-journey",
+          label: "Get ready for ISO",
+          href: "/compliance/journey",
+          icon: Flag,
+          requiredPermission: "compliance:read",
+        },
+        ...toolkits,
+      ]
+    : toolkits;
 }
 
 /**

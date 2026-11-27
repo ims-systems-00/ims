@@ -32,10 +32,26 @@ describe("buildNavigationSections licence filtering", () => {
     const items = sections.flatMap((section) => flatten(section.items));
     const compliance = items.find((item) => item.id === "compliance");
     expect(compliance?.children?.map((child) => child.href)).toEqual([
+      "/compliance/live",
+      "/compliance/legal-register",
+      "/compliance/journey",
       "/compliance/ISO%209001",
     ]);
     expect(items.some((item) => item.id === "crm")).toBe(false);
     expect(items.some((item) => item.id === "customers")).toBe(false);
+  });
+
+  it("shows Live compliance only when an ISO 9001/14001/45001 toolkit is licensed", () => {
+    const sections = buildNavigationSections({
+      licensedToolkits: ["ISO 27001"],
+      crmLicensed: false,
+    });
+    const items = sections.flatMap((section) => flatten(section.items));
+    const compliance = items.find((item) => item.id === "compliance");
+    const ids = compliance?.children?.map((child) => child.id);
+    expect(ids).not.toContain("compliance-live");
+    expect(ids).not.toContain("compliance-legal-register");
+    expect(ids).not.toContain("compliance-journey");
   });
 
   it("hides Compliance entirely when no toolkit is licensed", () => {

@@ -53,6 +53,7 @@ export function createRiskModule(deps: RiskRouterDeps): {
   router.patch("/:id", controller.update);
   router.delete("/:id", controller.remove);
   router.post("/:id/mitigate", controller.mitigate);
+  router.post("/:id/review", controller.markReviewed);
   router.post("/:id/accept", controller.accept);
   router.post("/:id/escalate", controller.escalate);
   router.post("/:id/nudge", controller.nudge);

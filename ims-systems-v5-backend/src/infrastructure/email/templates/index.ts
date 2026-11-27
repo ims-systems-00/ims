@@ -47,6 +47,12 @@ import {
   type AslEvalDueEmailData,
 } from "./catalog/asl";
 import {
+  renderComplianceAlert,
+  renderComplianceDigest,
+  type ComplianceAlertEmailData,
+  type ComplianceDigestEmailData,
+} from "./catalog/compliance";
+import {
   renderTrainingExpired,
   renderTrainingExpiring,
   renderTrainingSessionInvite,
@@ -226,6 +232,8 @@ export type EmailTemplateDataMap = {
   "training-session-reminder": TrainingSessionReminderEmailData;
   "training-expiring": TrainingExpiringEmailData;
   "training-expired": TrainingExpiredEmailData;
+  "compliance-alert": ComplianceAlertEmailData;
+  "compliance-digest": ComplianceDigestEmailData;
   "tender-submission": TenderSubmissionEmailData;
 };
 
@@ -273,6 +281,8 @@ const registry: { [K in EmailTemplateId]: TemplateRenderer<K> } = {
   "training-session-reminder": renderTrainingSessionReminder,
   "training-expiring": renderTrainingExpiring,
   "training-expired": renderTrainingExpired,
+  "compliance-alert": renderComplianceAlert,
+  "compliance-digest": renderComplianceDigest,
   "tender-submission": renderTenderSubmission,
 };
 

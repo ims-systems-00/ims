@@ -103,6 +103,12 @@ const riskSchema = new Schema(
     ownerId: {
       type: String,
     },
+    /** Live compliance (ISO 6.1): periodic review schedule. */
+    nextReviewDate: { type: Date, default: null },
+    reviewIntervalMonths: { type: Number, default: 12, min: 1, max: 60 },
+    lastReviewedOn: { type: Date, default: null },
+    /** Area / location the risk or hazard applies to (pattern detection). */
+    area: { type: String, trim: true },
     initialScore: {
       type: scorePairSchema,
       required: true,

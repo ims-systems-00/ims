@@ -11,6 +11,7 @@ import {
   removeIncidentAttachment,
   resolveIncident,
   setIncidentComplianceLinks,
+  startIncidentInvestigation,
   updateIncident,
 } from "../api/incidents";
 import type {
@@ -35,6 +36,8 @@ async function invalidateIncidentQueries(
 ) {
   await queryClient.invalidateQueries({ queryKey: incidentKeys.lists() });
   await queryClient.invalidateQueries({ queryKey: incidentKeys.stats() });
+  // Incidents drive live ISO clause health (9.1 / 10.2 / 6.1.2).
+  await queryClient.invalidateQueries({ queryKey: ["live-compliance"] });
   if (id) {
     await queryClient.invalidateQueries({ queryKey: incidentKeys.detail(id) });
   }
@@ -159,5 +162,16 @@ export function useSetIncidentComplianceLinksMutation(incidentId: string) {
 export function useDownloadIncidentsReportMutation() {
   return useMutation({
     mutationFn: () => downloadIncidentsReport(),
+  });
+}
+
+export function useStartInvestigationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => startIncidentInvestigation(id),
+    onSuccess: async (incident) => {
+      queryClient.setQueryData(incidentKeys.detail(incident.id), incident);
+      await invalidateIncidentQueries(queryClient, incident.id);
+    },
   });
 }

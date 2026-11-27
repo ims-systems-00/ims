@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { NotFoundError, ValidationAppError } from "../../../shared";
 import {
   resolveClientAppUrl,
   resolveClientAppUrlOrDevFallback,
@@ -245,6 +246,22 @@ import {
   createActivityOfiFollowUpAdapter,
 } from "../../../modules/activities";
 import {
+  createLegalSnapshotCollector,
+  createLiveComplianceModule,
+  createLiveSnapshotCollectors,
+} from "../../../modules/live-compliance";
+import {
+  createLiveComplianceEmailAdapter,
+  createLiveComplianceNotificationsAdapter,
+  createLiveCompliancePeopleAdapter,
+  createLiveComplianceRecipientsAdapter,
+} from "../../../modules/live-compliance/adapters/notify.adapters";
+import {
+  createEventBus,
+  createRecordChangeMiddleware,
+} from "../../../infrastructure/events/event-bus";
+import { createLegalRegisterModule } from "../../../modules/legal-register";
+import {
   createComplianceModule,
   createComplianceActivityAdapter,
   createComplianceEvidenceLinkAdapter,
@@ -307,6 +324,37 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
   const router = Router();
   router.use(createHealthRouter(mongo));
   router.use("/security", createSecurityRouter(security.authorizer));
+
+  // Live compliance (Phase 2): successful writes to these modules emit
+  // `record.changed`, which recalculates the organisation's clause health.
+  const eventBus = createEventBus({
+    onHandlerError: (err, name) =>
+      logger?.warn({ err, event: name }, "Domain event handler failed"),
+  });
+  router.use(
+    createRecordChangeMiddleware({
+      bus: eventBus,
+      modules: [
+        "training",
+        "assets",
+        "inventory",
+        "audits",
+        "risks",
+        "incidents",
+        "management-reviews",
+        "kpi-objectives",
+        "legal-register",
+        "compliance",
+        "users",
+        "document-management",
+        "document-trees",
+        "document-repositories",
+        "supplier",
+        "suppliers",
+        "tender",
+      ],
+    })
+  );
   if (config) {
     router.use(
       "/auth",
@@ -1263,6 +1311,145 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
     compliance.application
   );
 
+  // Live ISO compliance: clause health computed from module data, layered on
+  // the organisation's ISO 9001/14001/45001 toolkit clauses.
+  const legalRegister = createLegalRegisterModule({
+    authorizer: security.authorizer,
+  });
+  router.use("/legal-register", legalRegister.router);
+
+  const liveCompliance = createLiveComplianceModule({
+    authorizer: security.authorizer,
+    compliance: compliance.application,
+    collectors: [
+      ...createLiveSnapshotCollectors(),
+      createLegalSnapshotCollector(legalRegister.service),
+    ],
+    // One-click advice commands, authorised by the owning module's service.
+    commands: {
+      "risk.review": async ({ identity, ref }) => {
+        const risk = await risks.service.markReviewed(identity, ref ?? "");
+        return { source: "Risks", message: `${risk.reference} reviewed` };
+      },
+      "legal.review": async ({ identity }) => {
+        await legalRegister.service.markReviewed(identity);
+        return { source: "Compliance", message: "Legal register marked reviewed" };
+      },
+      "incident.investigate": async ({ identity, ref }) => {
+        const incident = await incidents.service.startInvestigation(identity, ref ?? "");
+        return {
+          source: "Incidents",
+          message: `${incident.reference} investigation started`,
+        };
+      },
+    },
+    ...(process.env.LIVE_COMPLIANCE_STALE_MS
+      ? { staleMs: Number(process.env.LIVE_COMPLIANCE_STALE_MS) }
+      : {}),
+    ...(process.env.LIVE_COMPLIANCE_DEBOUNCE_MS
+      ? { debounceMs: Number(process.env.LIVE_COMPLIANCE_DEBOUNCE_MS) }
+      : {}),
+    ...(logger ? { logger } : {}),
+    bus: eventBus,
+    // Phase 3: ALICE drafts; approved drafts are applied through each
+    // module's own service (and its permission checks).
+    alice: {
+      model: aiGpt,
+      organisationName: async (organizationId) =>
+        (await createOrganisationRepository().findById(organizationId))?.name ?? null,
+      displayName: async (userId) => {
+        const user = await createUserRepository().findById(userId);
+        return user ? user.name?.trim() || user.email : null;
+      },
+      apply: {
+        training_for_role: async ({ identity, ref, output }) => {
+          const role = (await training.service.listRoles(identity)).find((r) => r.id === ref);
+          if (!role) throw new NotFoundError("Role not found");
+          const ids: string[] = output.competencies.map((c: { id: string }) => c.id);
+          await training.service.updateRole(identity, role.id, {
+            mandatory: [...new Set([...role.mandatory, ...ids])],
+          });
+          return {
+            source: "Training",
+            message: `${ids.length} ${ids.length === 1 ? "competency" : "competencies"} added to ${role.name}`,
+          };
+        },
+        legal_register_review: async ({ identity, output }) => {
+          const duties: Array<{ name: string; legislation: string; reference: string }> =
+            output.suggestedDuties;
+          for (const duty of duties) {
+            await legalRegister.service.createDuty(identity, {
+              name: duty.name,
+              legislation: duty.legislation,
+              ...(duty.reference ? { reference: duty.reference } : {}),
+            });
+          }
+          return {
+            source: "Compliance",
+            message: `${duties.length} ${duties.length === 1 ? "duty" : "duties"} added to the legal register`,
+          };
+        },
+        draft_risk_assessment: async ({ identity, ref, output }) => {
+          const controls = (output.controls as string[]).map((c, i) => `${i + 1}. ${c}`).join("\n");
+          const existing = ref && /^[a-f\d]{24}$/i.test(ref)
+            ? await risks.service.getById(identity, ref).catch(() => null)
+            : null;
+          if (existing) {
+            await risks.service.update(identity, existing.id, {
+              description: output.description,
+              likelihood: output.likelihood,
+              consequence: output.consequence,
+              mitigationText: controls,
+            });
+            return { source: "Risks", message: `${existing.reference} updated` };
+          }
+          const created = await risks.service.create(identity, {
+            title: output.title,
+            description: `${output.description}\n\nControls:\n${controls}`,
+            type: output.type,
+            likelihood: output.likelihood,
+            consequence: output.consequence,
+            ...(ref ? { area: ref } : {}),
+          });
+          return { source: "Risks", message: `${created.reference} created` };
+        },
+        incident_root_cause: async ({ identity, ref, output }) => {
+          const actions = (output.actions as string[]).map((a) => `- ${a}`).join("\n");
+          const incident = await incidents.service.update(identity, ref ?? "", {
+            rootCause: `${output.rootCause}\n\nCorrective actions:\n${actions}`,
+            investigationStatus: "in_progress",
+          });
+          return { source: "Incidents", message: `Root cause recorded on ${incident.reference}` };
+        },
+        management_review_pack: async ({ identity, ref, output }) => {
+          if (!ref) throw new ValidationAppError("Schedule a management review first");
+          await managementReviews.service.update(identity, ref, { inputs: output.inputs });
+          return { source: "Management reviews", message: "Review inputs filled" };
+        },
+      },
+    },
+    // Dev stub has no real memberships: treat the stub user as an admin.
+    ...(config?.SECURITY_PROVIDER === "development-stub"
+      ? {}
+      : { people: createLiveCompliancePeopleAdapter() }),
+    notify: {
+      notifications: createLiveComplianceNotificationsAdapter(
+        notifications.application
+      ),
+      recipients: createLiveComplianceRecipientsAdapter(),
+      ...(email
+        ? {
+            email: createLiveComplianceEmailAdapter({
+              email,
+              resolveBranding: resolveEmailBranding,
+            }),
+          }
+        : {}),
+      appUrl: clientAppUrl,
+    },
+  });
+  router.use("/live-compliance", liveCompliance.router);
+
   const suppliers = createSupplierModule({
     authorizer: security.authorizer,
     ...(listScopes ? { listScope: listScopes.businessUnitsStrict() } : {}),
@@ -1695,10 +1882,12 @@ export function createV1Router(deps: V1RouterDeps): CreatedV1Router {
         logger:
           logger ?? createLogger({ level: "info", name: "training-chase" }),
       });
+      liveCompliance.runtime.start();
       return () => {
         stopReview?.();
         aslChase.stop();
         trainingChase.stop();
+        liveCompliance.runtime.stop();
       };
     },
   };

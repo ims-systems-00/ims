@@ -1,6 +1,17 @@
 import { formatDate } from "@/shared/lib/format-date";
 import type { Notification } from "../types";
 
+/** Live-compliance module keys → pages (kept local: no cross-module import). */
+const LIVE_COMPLIANCE_MODULE_PATHS: Record<string, string> = {
+  inventory: "/inventory",
+  audits: "/audits",
+  training: "/training",
+  risks: "/risks",
+  incidents: "/incidents",
+  reviews: "/management-reviews",
+  compliance: "/compliance/live",
+};
+
 /**
  * Resolve a persisted notification to a V5 in-app path.
  * Unknown identifiers return null (item can still be marked read).
@@ -25,6 +36,11 @@ export function resolveNotificationLink(
     if (businessUnitId) qs.set("unit", businessUnitId);
     const query = qs.toString();
     return query ? `/kpi-objectives?${query}` : "/kpi-objectives";
+  }
+
+  // Live compliance: params.id is the live module that owns the clause.
+  if (screen === "live-compliance") {
+    return LIVE_COMPLIANCE_MODULE_PATHS[id] ?? "/compliance/live";
   }
 
   if (screen === "compliance" || type === "compliance") {

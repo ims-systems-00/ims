@@ -20,6 +20,9 @@ import {
   type ListIncidentsQuery,
   type PaginatedIncidents,
   type IncidentStats,
+  type IncidentType,
+  type IncidentInvestigation,
+  type InvestigationStatus,
 } from "../types";
 import { getIncidentModel, type IncidentDocument } from "./incident.model";
 
@@ -56,6 +59,18 @@ function toDomain(doc: IncidentDocument): Incident {
     methodOfNotification: doc.methodOfNotification ?? undefined,
     affectedService: doc.affectedService ?? undefined,
     categoryId: doc.categoryId ?? undefined,
+    incidentType: (doc.incidentType as IncidentType | undefined) ?? undefined,
+    occurredOn: doc.occurredOn ?? null,
+    area: doc.area || undefined,
+    investigation: {
+      status:
+        (doc.investigation?.status as InvestigationStatus | undefined) ??
+        "not_started",
+      startedOn: doc.investigation?.startedOn ?? null,
+      startedBy: doc.investigation?.startedBy ?? null,
+      completedOn: doc.investigation?.completedOn ?? null,
+      rootCause: doc.investigation?.rootCause || undefined,
+    },
     privacy: (doc.privacy as IncidentPrivacy) ?? "Business unit",
     resolution: doc.resolution ?? undefined,
     resolved,
@@ -190,6 +205,10 @@ export type PersistIncidentPatch = {
   methodOfNotification?: string | null;
   affectedService?: string | null;
   categoryId?: string | null;
+  incidentType?: IncidentType | null;
+  occurredOn?: Date | null;
+  area?: string | null;
+  investigation?: IncidentInvestigation;
   privacy?: IncidentPrivacy;
   resolution?: string | null;
   resolved?: LifecycleFlag;
@@ -252,6 +271,9 @@ export function createIncidentRepository(): IncidentRepository {
         methodOfNotification: input.methodOfNotification,
         affectedService: input.affectedService,
         categoryId: input.categoryId,
+        incidentType: input.incidentType,
+        occurredOn: input.occurredOn ?? input.raisedOn,
+        area: input.area,
         privacy: input.privacy,
         attachments: input.attachments,
         activity: input.activity,
@@ -368,6 +390,15 @@ export function createIncidentRepository(): IncidentRepository {
         set.categoryId =
           patch.categoryId === null ? undefined : patch.categoryId;
       }
+      if (patch.incidentType !== undefined) {
+        set.incidentType =
+          patch.incidentType === null ? undefined : patch.incidentType;
+      }
+      if (patch.occurredOn !== undefined) set.occurredOn = patch.occurredOn;
+      if (patch.area !== undefined) {
+        set.area = patch.area === null ? undefined : patch.area;
+      }
+      if (patch.investigation !== undefined) set.investigation = patch.investigation;
       if (patch.privacy !== undefined) set.privacy = patch.privacy;
       if (patch.resolution !== undefined) {
         set.resolution =

@@ -8,8 +8,48 @@ import {
   IncidentPriorityBadge,
   IncidentStatusBadge,
 } from "./incident-badges";
-import { formatResolutionTime, type Incident } from "../types";
+import {
+  INVESTIGATION_LABELS,
+  formatResolutionTime,
+  type Incident,
+} from "../types";
+import { useStartInvestigationMutation } from "../hooks/use-incidents";
+import { notify } from "@/shared/lib/toast";
 import { formatDate, formatDateTime } from "@/shared/lib/format-date";
+
+/** Investigation status with one-click start (ISO 10.2). */
+function InvestigationStatusValue({ incident }: { incident: Incident }) {
+  const start = useStartInvestigationMutation();
+  const { status } = incident.investigation;
+  const canStart = status === "not_started" && !incident.resolved.status;
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className={canStart ? "font-medium text-warning-foreground" : undefined}>
+        {incident.resolved.status && status === "not_started"
+          ? "Closed with resolution"
+          : INVESTIGATION_LABELS[status]}
+      </span>
+      {canStart ? (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7"
+          disabled={start.isPending}
+          onClick={() =>
+            start.mutate(incident.id, {
+              onSuccess: () => notify.success("Investigation started"),
+              onError: (error) =>
+                notify.fromError(error, "Unable to start investigation"),
+            })
+          }
+        >
+          {start.isPending ? "Starting…" : "Start investigation"}
+        </Button>
+      ) : null}
+    </span>
+  );
+}
 
 function Item({ label, value }: { label: string; value: ReactNode }) {
   return (
@@ -109,6 +149,19 @@ export function IncidentDetails({
               />
             }
           />
+          <Item label="Type" value={incident.incidentType ?? "—"} />
+          <Item
+            label="Occurred"
+            value={formatDate(incident.occurredOn ?? incident.raisedOn)}
+          />
+          <Item label="Area" value={incident.area || "—"} />
+          <Item
+            label="Investigation"
+            value={<InvestigationStatusValue incident={incident} />}
+          />
+          {incident.investigation.rootCause ? (
+            <Item label="Root cause" value={incident.investigation.rootCause} />
+          ) : null}
           <Item label="Raised" value={formatDate(incident.raisedOn)} />
           <Item label="Updated" value={formatDate(incident.updatedOn)} />
           <Item label="Privacy" value={incident.privacy} />

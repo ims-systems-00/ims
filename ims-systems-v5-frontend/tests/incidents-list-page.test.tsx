@@ -32,6 +32,13 @@ function makeIncident(overrides: Partial<Incident> = {}): Incident {
     description: "Water detected under cooling unit",
     businessUnitId: "cccccccccccccccccccccccc",
     priority: "P2",
+    occurredOn: null,
+    investigation: {
+      status: "not_started",
+      startedOn: null,
+      startedBy: null,
+      completedOn: null,
+    },
     ownerId: "bbbbbbbbbbbbbbbbbbbbbbbb",
     privacy: "Business unit",
     resolved: { status: false, by: null, on: null },

@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"}],"uuid":"f2209e26685e4105bbe95964240e5c33","collectionName":"legacy_ccfactors","type":"collection"}

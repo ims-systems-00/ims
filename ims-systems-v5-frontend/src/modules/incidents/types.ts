@@ -10,6 +10,36 @@ export type IncidentPrivacy = (typeof INCIDENT_PRIVACY)[number];
 
 export type IncidentDisplayStatus = "Open" | "Escalated" | "Resolved";
 
+export const INCIDENT_TYPES = [
+  "Near miss",
+  "Minor injury",
+  "Major injury",
+  "Dangerous occurrence",
+  "Ill health",
+  "Environmental",
+  "Property damage",
+  "Security",
+  "Other",
+] as const;
+export type IncidentType = (typeof INCIDENT_TYPES)[number];
+
+export const INVESTIGATION_STATUSES = ["not_started", "in_progress", "done"] as const;
+export type InvestigationStatus = (typeof INVESTIGATION_STATUSES)[number];
+
+export const INVESTIGATION_LABELS: Record<InvestigationStatus, string> = {
+  not_started: "Not started",
+  in_progress: "In progress",
+  done: "Done",
+};
+
+export type IncidentInvestigation = {
+  status: InvestigationStatus;
+  startedOn: string | null;
+  startedBy: string | null;
+  completedOn: string | null;
+  rootCause?: string;
+};
+
 export type LifecycleFlag = {
   status: boolean;
   by: string | null;
@@ -57,6 +87,11 @@ export type Incident = {
   methodOfNotification?: string;
   affectedService?: string;
   categoryId?: string;
+  /** Live compliance (ISO 9.1 / 10.2). */
+  incidentType?: IncidentType;
+  occurredOn: string | null;
+  area?: string;
+  investigation: IncidentInvestigation;
   privacy: IncidentPrivacy;
   resolution?: string;
   resolved: LifecycleFlag;
@@ -94,6 +129,9 @@ export type CreateIncidentInput = {
   methodOfNotification?: string;
   affectedService?: string;
   categoryId?: string;
+  incidentType?: IncidentType;
+  occurredOn?: string;
+  area?: string;
   privacy?: IncidentPrivacy;
   attachments?: AttachmentInput[];
   source?: IncidentSource;
@@ -107,6 +145,11 @@ export type UpdateIncidentInput = {
   methodOfNotification?: string | null;
   affectedService?: string | null;
   categoryId?: string | null;
+  incidentType?: IncidentType | null;
+  occurredOn?: string | null;
+  area?: string | null;
+  investigationStatus?: InvestigationStatus;
+  rootCause?: string | null;
   privacy?: IncidentPrivacy;
   resolution?: string | null;
   resolved?: boolean;

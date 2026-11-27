@@ -41,6 +41,8 @@ async function invalidateReviewQueries(
   await queryClient.invalidateQueries({
     queryKey: managementReviewKeys.stats(),
   });
+  // Reviews drive live ISO clause health (9.3 / 10.3 / 6.2).
+  await queryClient.invalidateQueries({ queryKey: ["live-compliance"] });
   if (id) {
     await queryClient.invalidateQueries({
       queryKey: managementReviewKeys.detail(id),

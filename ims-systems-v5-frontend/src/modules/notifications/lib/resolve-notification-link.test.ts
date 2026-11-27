@@ -16,6 +16,25 @@ describe("resolveNotificationLink", () => {
     ).toBe("/tasks?task=task-1");
   });
 
+  it("maps live compliance notifications to the owning module page", () => {
+    expect(
+      resolveNotificationLink({
+        screenIdentifier: "live-compliance",
+        referenceType: "compliance",
+        referenceModuleId: "7.2",
+        params: { id: "training" },
+      })
+    ).toBe("/training");
+    expect(
+      resolveNotificationLink({
+        screenIdentifier: "live-compliance",
+        referenceType: "compliance",
+        referenceModuleId: "9.3",
+        params: { id: null },
+      })
+    ).toBe("/compliance/live");
+  });
+
   it("prefers params.id over referenceModuleId", () => {
     expect(
       resolveNotificationLink({

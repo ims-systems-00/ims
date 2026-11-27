@@ -58,19 +58,35 @@ export const updateAuditBodySchema = z
     "At least one field must be provided"
   );
 
+const findingClauseSchema = z.string().trim().max(20);
+
 export const createIdentificationBodySchema = z.object({
   nonConformity: z.string().trim().min(1, "Non-conformity is required"),
   rootCause: z.string().trim().min(1, "Root cause is required"),
+  clause: findingClauseSchema.optional(),
+  dueDate: z.coerce.date().nullable().optional(),
 });
 
 export const updateIdentificationBodySchema = z
   .object({
     nonConformity: z.string().trim().min(1).optional(),
     rootCause: z.string().trim().min(1).optional(),
+    clause: findingClauseSchema.nullable().optional(),
+    dueDate: z.coerce.date().nullable().optional(),
   })
   .refine(
     (value) => Object.keys(value).length > 0,
     "At least one field must be provided"
+  );
+
+export const setFindingStatusBodySchema = z
+  .object({
+    status: z.enum(["open", "closed"]),
+    closureNote: z.string().trim().max(2000).nullable().optional(),
+  })
+  .refine(
+    (value) => value.status !== "closed" || Boolean(value.closureNote?.trim()),
+    { message: "Describe the corrective action or evidence to close", path: ["closureNote"] }
   );
 
 export const createEmbeddedRiskBodySchema = z.object({

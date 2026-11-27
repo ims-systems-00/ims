@@ -43,6 +43,12 @@ const identificationSchema = new Schema(
     id: { type: String, required: true },
     nonConformity: { type: String, required: true, trim: true },
     rootCause: { type: String, required: true, trim: true },
+    clause: { type: String, trim: true },
+    dueDate: { type: Date, default: null },
+    status: { type: String, enum: ["open", "closed"], default: "open" },
+    closedOn: { type: Date, default: null },
+    closedBy: { type: String, default: null },
+    closureNote: { type: String, trim: true },
   },
   { _id: false }
 );

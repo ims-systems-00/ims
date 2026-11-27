@@ -38,6 +38,9 @@ const csvList = z
     return parts.filter((part) => part.length > 0);
   });
 
+const reviewIntervalSchema = z.number().int().min(1).max(60);
+const areaSchema = z.string().trim().max(120).nullable().optional();
+
 export const createRiskBodySchema = z.object({
   title: z.string().trim().min(1, "Title is required"),
   description: z.string().trim().min(1, "Description is required"),
@@ -48,6 +51,9 @@ export const createRiskBodySchema = z.object({
   ownerId: objectIdSchema.optional(),
   likelihood: scoreComponentSchema.default(1),
   consequence: scoreComponentSchema.default(1),
+  nextReviewDate: z.coerce.date().nullable().optional(),
+  reviewIntervalMonths: reviewIntervalSchema.optional(),
+  area: areaSchema,
   attachments: z.array(attachmentInputSchema).optional(),
   source: sourceSchema.optional(),
 });
@@ -62,6 +68,9 @@ export const updateRiskBodySchema = z
     ownerId: objectIdSchema.nullable().optional(),
     likelihood: scoreComponentSchema.optional(),
     consequence: scoreComponentSchema.optional(),
+    nextReviewDate: z.coerce.date().nullable().optional(),
+    reviewIntervalMonths: reviewIntervalSchema.optional(),
+    area: areaSchema,
     mitigationText: z.string().trim().nullable().optional(),
     acceptanceRationale: z.string().trim().nullable().optional(),
     decisionMaker: z.string().trim().nullable().optional(),

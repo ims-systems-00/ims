@@ -13,6 +13,7 @@ import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-fun
 import {
   useReviewAttachmentMutations,
   useReviewAttendeeMutations,
+  useUpdateManagementReviewMutation,
 } from "../hooks/use-management-reviews";
 import type {
   AttachmentInput,
@@ -197,6 +198,64 @@ type ReviewDetailsProps = {
   review: ManagementReview;
 };
 
+/**
+ * ISO 9.3.2 required inputs: tick each one as it is prepared. Live
+ * compliance reports "N of 9 inputs ready" before the review is due.
+ */
+function ReviewInputsChecklist({
+  review,
+  editable,
+}: {
+  review: ManagementReview;
+  editable: boolean;
+}) {
+  const update = useUpdateManagementReviewMutation(review.id);
+  const inputs = review.inputs ?? [];
+  if (!inputs.length) return null;
+  const ready = inputs.filter((i) => i.ready).length;
+  return (
+    <section className="space-y-3" aria-labelledby={`inputs-${review.id}`}>
+      <div className="flex items-baseline justify-between gap-2">
+        <h3 id={`inputs-${review.id}`} className="text-sm font-semibold tracking-tight">
+          Required inputs (ISO 9.3)
+        </h3>
+        <span className="text-xs text-muted-foreground">
+          {ready} of {inputs.length} ready
+        </span>
+      </div>
+      <ul className="space-y-1.5">
+        {inputs.map((input) => (
+          <li key={input.key}>
+            <label className="flex cursor-pointer items-start gap-2.5 text-[0.8125rem]">
+              <input
+                type="checkbox"
+                className="mt-0.5 size-4 accent-primary"
+                checked={input.ready}
+                disabled={!editable || update.isPending}
+                onChange={(event) =>
+                  update.mutate(
+                    { inputs: [{ key: input.key, ready: event.target.checked }] },
+                    {
+                      onError: (error) =>
+                        notify.fromError(error, "Unable to update input"),
+                    }
+                  )
+                }
+              />
+              <span className={input.ready ? "text-foreground" : "text-muted-foreground"}>
+                {input.label}
+                {input.note ? (
+                  <span className="block text-xs text-muted-foreground">{input.note}</span>
+                ) : null}
+              </span>
+            </label>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
 export function ReviewDetails({ review }: ReviewDetailsProps) {
   const [userSheetId, setUserSheetId] = useState<string | null>(null);
   const [removingAttachmentId, setRemovingAttachmentId] = useState<
@@ -299,6 +358,8 @@ export function ReviewDetails({ review }: ReviewDetailsProps) {
           <Item label="Created" value={formatDateTime(review.createdOn)} />
         </dl>
       </section>
+
+      <ReviewInputsChecklist review={review} editable={editable} />
 
       <section className="space-y-3">
         <h3 className="text-sm font-semibold tracking-tight">Attendees</h3>

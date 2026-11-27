@@ -48,6 +48,7 @@ import {
   type UpdateAuditInput,
   type UpdateEmbeddedRiskInput,
   type UpdateIdentificationInput,
+  type SetFindingStatusInput,
   type UpdateOfiInput,
 } from "../types";
 
@@ -490,6 +491,9 @@ export function createAuditService(deps: AuditServiceDeps) {
         id: newFindingId(),
         nonConformity: input.nonConformity.trim(),
         rootCause: input.rootCause.trim(),
+        ...(input.clause?.trim() ? { clause: input.clause.trim() } : {}),
+        dueDate: input.dueDate ?? null,
+        status: "open",
       };
 
       const updated = await repository.update(actor.organizationId, id, {
@@ -529,8 +533,49 @@ export function createAuditService(deps: AuditServiceDeps) {
           input.rootCause !== undefined
             ? input.rootCause.trim()
             : current.rootCause,
+        clause:
+          input.clause !== undefined
+            ? input.clause?.trim() || undefined
+            : current.clause,
+        dueDate: input.dueDate !== undefined ? input.dueDate : current.dueDate ?? null,
       };
 
+      const updated = await repository.update(actor.organizationId, id, {
+        identifications: next,
+        updatedBy: actor.identity.subjectId,
+        updatedOn: new Date(),
+      });
+      if (!updated) throw new NotFoundError("Audit not found");
+      return updated;
+    },
+
+    /**
+     * ISO 10.2: close a finding with evidence of the corrective action (or
+     * reopen it). Allowed on completed audits — actions close afterwards.
+     */
+    async setFindingStatus(
+      identity: SecurityIdentity | null | undefined,
+      id: string,
+      identificationId: string,
+      input: SetFindingStatusInput
+    ): Promise<Audit> {
+      const actor = requireOrgIdentity(identity);
+      await assertAllowed(actor.identity, "create", id);
+      const existing = await requireAudit(actor.organizationId, id);
+      const index = existing.identifications.findIndex(
+        (item) => item.id === identificationId
+      );
+      if (index < 0) throw new NotFoundError("Non-conformity not found");
+      const next = [...existing.identifications];
+      const current = next[index]!;
+      const closing = input.status === "closed";
+      next[index] = {
+        ...current,
+        status: input.status,
+        closedOn: closing ? new Date() : null,
+        closedBy: closing ? actor.identity.subjectId : null,
+        closureNote: closing ? input.closureNote?.trim() || undefined : current.closureNote,
+      };
       const updated = await repository.update(actor.organizationId, id, {
         identifications: next,
         updatedBy: actor.identity.subjectId,

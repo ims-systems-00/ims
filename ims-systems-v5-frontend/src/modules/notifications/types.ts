@@ -51,6 +51,8 @@ export type Notification = {
   screenIdentifier?: string;
   params: NotificationParams;
   icon?: string;
+  /** Delivery channels; older records omit it (in-app only). */
+  channels?: Array<"in_app" | "email">;
   sent: NotificationStateFlag<SentStatus>;
   read: NotificationStateFlag<ReadStatus>;
   popUp: NotificationStateFlag<PopupStatus>;

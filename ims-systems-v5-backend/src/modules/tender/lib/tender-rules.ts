@@ -1042,7 +1042,7 @@ export function newQuestionnaire(
   const Q: TenderQuestionnaire = {
     id: uid("tq"),
     buyer: meta.buyer || "Unknown buyer",
-    title: meta.title || "Questionnaire",
+    title: meta.title || (meta.kind === "tender" ? "Tender" : "Questionnaire"),
     reference: meta.reference || "",
     submissionEmail: meta.submissionEmail || "",
     buyerContact: meta.buyerContact || "",
@@ -1065,16 +1065,21 @@ export function newQuestionnaire(
     exports: [],
     hist: [],
   };
+  const manual = !Q.questions.length && meta.source === "manual";
   history(
     Q,
-    `Imported ${Q.questions.length} questions from ${Q.source}${Q.fileName ? " · " + Q.fileName : ""}`,
+    manual
+      ? `Created ${Q.kind} manually`
+      : `Imported ${Q.questions.length} questions from ${Q.source}${Q.fileName ? " · " + Q.fileName : ""}`,
     by,
     now
   );
   M.questionnaires.unshift(Q);
   log(
     M,
-    `Imported ${Q.buyer} · ${Q.title} (${Q.questions.length} questions)`,
+    manual
+      ? `Created ${Q.kind} ${Q.buyer} · ${Q.title}`
+      : `Imported ${Q.buyer} · ${Q.title} (${Q.questions.length} questions)`,
     by,
     now
   );

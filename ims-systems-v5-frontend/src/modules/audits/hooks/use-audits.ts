@@ -13,6 +13,7 @@ import {
   removeAuditAttachment,
   removeEmbeddedRisk,
   removeIdentification,
+  setFindingStatus,
   removeOfi,
   setAuditComplianceLinks,
   updateAudit,
@@ -30,6 +31,7 @@ import type {
   UpdateAuditInput,
   UpdateEmbeddedRiskInput,
   UpdateIdentificationInput,
+  SetFindingStatusInput,
   UpdateOfiInput,
 } from "../types";
 
@@ -48,6 +50,8 @@ async function invalidateAuditQueries(
 ) {
   await queryClient.invalidateQueries({ queryKey: auditKeys.lists() });
   await queryClient.invalidateQueries({ queryKey: [...auditKeys.all, "stats"] });
+  // Audits and findings drive live ISO clause health (9.2 / 10.2).
+  await queryClient.invalidateQueries({ queryKey: ["live-compliance"] });
   if (id) {
     await queryClient.invalidateQueries({ queryKey: auditKeys.detail(id) });
   }
@@ -147,6 +151,16 @@ export function useIdentificationMutations(auditId: string) {
     remove: useMutation({
       mutationFn: (identificationId: string) =>
         removeIdentification(auditId, identificationId),
+      onSuccess: invalidate,
+    }),
+    setStatus: useMutation({
+      mutationFn: ({
+        identificationId,
+        body,
+      }: {
+        identificationId: string;
+        body: SetFindingStatusInput;
+      }) => setFindingStatus(auditId, identificationId, body),
       onSuccess: invalidate,
     }),
   };

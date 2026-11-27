@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthClient } from "@/security";
+import { requestSignInSummary } from "@/shared/lib/sign-in-summary";
 import { userKeys } from "@/modules/users/hooks/use-users";
 import type { Organisation } from "../types";
 import { organisationKeys } from "./use-organisations";
@@ -20,6 +21,8 @@ export function useSwitchOrganisationMutation() {
       return organisation;
     },
     onSuccess: async () => {
+      // Entering an organisation: show "what needs you" once its dashboard loads.
+      requestSignInSummary();
       await queryClient.invalidateQueries({ queryKey: organisationKeys.all });
       await queryClient.invalidateQueries({ queryKey: userKeys.all });
       await queryClient.invalidateQueries();

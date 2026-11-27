@@ -7,6 +7,31 @@ export const INCIDENT_PRIORITIES = ["P1", "P2", "P3", "P4"] as const;
 export type IncidentPriority = (typeof INCIDENT_PRIORITIES)[number];
 
 export const INCIDENT_PRIVACY = ["Organisational", "Business unit"] as const;
+
+/** What kind of event this was (ISO 45001 10.2 / near-miss patterns). */
+export const INCIDENT_TYPES = [
+  "Near miss",
+  "Minor injury",
+  "Major injury",
+  "Dangerous occurrence",
+  "Ill health",
+  "Environmental",
+  "Property damage",
+  "Security",
+  "Other",
+] as const;
+export type IncidentType = (typeof INCIDENT_TYPES)[number];
+
+export const INVESTIGATION_STATUSES = ["not_started", "in_progress", "done"] as const;
+export type InvestigationStatus = (typeof INVESTIGATION_STATUSES)[number];
+
+export type IncidentInvestigation = {
+  status: InvestigationStatus;
+  startedOn: Date | null;
+  startedBy: string | null;
+  completedOn: Date | null;
+  rootCause?: string;
+};
 export type IncidentPrivacy = (typeof INCIDENT_PRIVACY)[number];
 
 /**
@@ -71,6 +96,11 @@ export type Incident = {
   methodOfNotification?: string;
   affectedService?: string;
   categoryId?: string;
+  incidentType?: IncidentType;
+  /** When it happened (defaults to raisedOn for legacy records). */
+  occurredOn: Date | null;
+  area?: string;
+  investigation: IncidentInvestigation;
   privacy: IncidentPrivacy;
   resolution?: string;
   resolved: LifecycleFlag;
@@ -101,6 +131,9 @@ export type CreateIncidentInput = {
   methodOfNotification?: string;
   affectedService?: string;
   categoryId?: string;
+  incidentType?: IncidentType;
+  occurredOn?: Date;
+  area?: string;
   privacy?: IncidentPrivacy;
   attachments?: Array<{
     fileName: string;
@@ -120,6 +153,11 @@ export type UpdateIncidentInput = {
   methodOfNotification?: string | null;
   affectedService?: string | null;
   categoryId?: string | null;
+  incidentType?: IncidentType | null;
+  occurredOn?: Date | null;
+  area?: string | null;
+  investigationStatus?: InvestigationStatus;
+  rootCause?: string | null;
   privacy?: IncidentPrivacy;
   resolution?: string | null;
   /** Applied via general update path (UI journey). */

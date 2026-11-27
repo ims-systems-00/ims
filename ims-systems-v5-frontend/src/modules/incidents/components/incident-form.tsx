@@ -16,7 +16,15 @@ import type {
   IncidentPrivacy,
   UpdateIncidentInput,
 } from "../types";
-import { INCIDENT_PRIORITIES, INCIDENT_PRIVACY } from "../types";
+import {
+  INCIDENT_PRIORITIES,
+  INCIDENT_PRIVACY,
+  INCIDENT_TYPES,
+  INVESTIGATION_LABELS,
+  INVESTIGATION_STATUSES,
+  type IncidentType,
+  type InvestigationStatus,
+} from "../types";
 
 type FieldErrors = Record<string, string>;
 
@@ -73,6 +81,20 @@ export function IncidentForm({
   );
   const [resolved, setResolved] = useState(
     Boolean(initialIncident?.resolved.status)
+  );
+  const [incidentType, setIncidentType] = useState<IncidentType | "">(
+    initialIncident?.incidentType ?? ""
+  );
+  const [occurredOn, setOccurredOn] = useState(
+    (initialIncident?.occurredOn ?? initialIncident?.raisedOn ?? "").slice(0, 10)
+  );
+  const [area, setArea] = useState(initialIncident?.area ?? "");
+  const [investigationStatus, setInvestigationStatus] =
+    useState<InvestigationStatus>(
+      initialIncident?.investigation.status ?? "not_started"
+    );
+  const [rootCause, setRootCause] = useState(
+    initialIncident?.investigation.rootCause ?? ""
   );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
@@ -133,6 +155,9 @@ export function IncidentForm({
           affectedService: parsed.data.affectedService,
           privacy: parsed.data.privacy,
           categoryId: parsed.data.categoryId,
+          incidentType: incidentType || undefined,
+          occurredOn: occurredOn || undefined,
+          area: area.trim() || undefined,
         });
       } catch (error) {
         notify.fromError(error, "Unable to raise incident");
@@ -172,6 +197,11 @@ export function IncidentForm({
         affectedService: parsed.data.affectedService ?? null,
         privacy: parsed.data.privacy,
         categoryId: parsed.data.categoryId ?? null,
+        incidentType: incidentType || null,
+        occurredOn: occurredOn || null,
+        area: area.trim() || null,
+        investigationStatus,
+        rootCause: rootCause.trim() || null,
         resolution: parsed.data.resolution ?? null,
         resolved: parsed.data.resolved,
       });
@@ -267,6 +297,76 @@ export function IncidentForm({
           />
         </FormField>
       </FormSection>
+
+      <FormSection title="What happened">
+        <FormField
+          label="Type"
+          description="Near misses at the same place are tracked as patterns (ISO 6.1.2)."
+        >
+          <select
+            className="ims-select"
+            value={incidentType}
+            disabled={pending}
+            onChange={(event) => setIncidentType(event.target.value as IncidentType | "")}
+          >
+            <option value="">Not set</option>
+            {INCIDENT_TYPES.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField label="Date it happened">
+          <input
+            type="date"
+            className="ims-field"
+            value={occurredOn}
+            max={new Date().toISOString().slice(0, 10)}
+            disabled={pending}
+            onChange={(event) => setOccurredOn(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Area or location">
+          <input
+            className="ims-field"
+            value={area}
+            maxLength={120}
+            disabled={pending}
+            onChange={(event) => setArea(event.target.value)}
+          />
+        </FormField>
+      </FormSection>
+
+      {mode === "edit" ? (
+        <FormSection title="Investigation">
+          <FormField label="Status" description="ISO 10.2: investigate, find the cause, fix it.">
+            <select
+              className="ims-select"
+              value={investigationStatus}
+              disabled={pending}
+              onChange={(event) =>
+                setInvestigationStatus(event.target.value as InvestigationStatus)
+              }
+            >
+              {INVESTIGATION_STATUSES.map((option) => (
+                <option key={option} value={option}>
+                  {INVESTIGATION_LABELS[option]}
+                </option>
+              ))}
+            </select>
+          </FormField>
+          <FormField label="Root cause">
+            <textarea
+              className="ims-field min-h-[4.5rem] py-2 leading-relaxed"
+              value={rootCause}
+              maxLength={4000}
+              disabled={pending}
+              onChange={(event) => setRootCause(event.target.value)}
+            />
+          </FormField>
+        </FormSection>
+      ) : null}
 
       <FormSection title="Classification">
         <CategorySelectField

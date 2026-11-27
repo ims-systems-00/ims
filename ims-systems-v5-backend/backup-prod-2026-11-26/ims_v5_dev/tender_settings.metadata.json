@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"organizationId":{"$numberInt":"1"}},"name":"organizationId_1","unique":true}],"uuid":"083bd9b89cc44de6833cd232b5eb414e","collectionName":"tender_settings","type":"collection"}

@@ -11,6 +11,11 @@ import {
   FloatingAliceButton,
 } from "@/modules/ai";
 import { SetupGuideHost } from "@/modules/setup-guide";
+import {
+  AliceTaskSheet,
+  LiveComplianceStream,
+  SignInActionSummary,
+} from "@/modules/live-compliance";
 import { AppNavbar } from "./app-navbar";
 import { AppSidebar } from "./app-sidebar";
 import { MainContent } from "./page-header";
@@ -51,6 +56,9 @@ export function ApplicationShell() {
       <AliceChatSheet />
       <FloatingAliceButton />
       <SetupGuideHost />
+      <LiveComplianceStream />
+      <SignInActionSummary />
+      <AliceTaskSheet />
     </div>
   );
 }

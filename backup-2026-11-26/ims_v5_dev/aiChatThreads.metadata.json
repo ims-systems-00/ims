@@ -1,0 +1,1 @@
+{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"organizationId":{"$numberInt":"1"},"userId":{"$numberInt":"1"},"updatedAt":{"$numberInt":"-1"}},"name":"organizationId_1_userId_1_updatedAt_-1"}],"uuid":"c89915c927d94f77a6e0cef43484efa9","collectionName":"aiChatThreads","type":"collection"}

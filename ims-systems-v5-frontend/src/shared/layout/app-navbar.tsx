@@ -8,6 +8,7 @@ import { useSetupGuideStore } from "@/modules/setup-guide";
 import { GlobalSearch } from "./global-search";
 import type { BreadcrumbItem } from "@/shared/navigation";
 import { NotificationBell } from "@/modules/notifications";
+import { ActionCentreButton } from "@/modules/live-compliance";
 import { AppearanceToggle } from "./appearance-toggle";
 import { OrganisationSwitcher } from "./organisation-switcher";
 import { ThemeSelector } from "./theme-selector";
@@ -107,6 +108,7 @@ export function AppNavbar({ breadcrumbs, onMenuClick }: AppNavbarProps) {
         <OrganisationSwitcher />
         <AppearanceToggle />
         <ThemeSelector />
+        <ActionCentreButton />
         <NotificationBell />
         <UserMenu />
       </div>

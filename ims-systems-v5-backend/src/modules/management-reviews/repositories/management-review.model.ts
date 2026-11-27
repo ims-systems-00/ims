@@ -50,6 +50,20 @@ const managementReviewSchema = new Schema(
     },
     businessUnitId: { type: String },
     attendees: { type: [String], default: [] },
+    /** ISO 9.3.2 inputs readiness (key from REVIEW_INPUTS). */
+    inputs: {
+      type: [
+        new Schema(
+          {
+            key: { type: String, required: true },
+            ready: { type: Boolean, default: false },
+            note: { type: String, trim: true },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
     agenda: { type: [attachmentSchema], default: [] },
     minutes: { type: [attachmentSchema], default: [] },
     completed: {

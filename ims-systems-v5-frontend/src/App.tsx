@@ -51,6 +51,8 @@ import {
   FormsLibraryPage,
 } from "@/modules/forms";
 import { ComplianceToolkitPage } from "@/modules/compliance";
+import { IsoJourneyPage, LiveComplianceOverviewPage } from "@/modules/live-compliance";
+import { LegalRegisterPage } from "@/modules/legal-register";
 import { OfisListPage } from "@/modules/ofi";
 import { RisksListPage } from "@/modules/risks";
 import { IncidentsListPage } from "@/modules/incidents";
@@ -233,6 +235,15 @@ export function App() {
               path="compliance"
               element={<Navigate to="/compliance/ISO%209001" replace />}
             />
+            <Route
+              path="compliance/live"
+              element={<LiveComplianceOverviewPage />}
+            />
+            <Route
+              path="compliance/legal-register"
+              element={<LegalRegisterPage />}
+            />
+            <Route path="compliance/journey" element={<IsoJourneyPage />} />
             <Route
               path="compliance/:toolkitName"
               element={<ComplianceToolkitPage />}

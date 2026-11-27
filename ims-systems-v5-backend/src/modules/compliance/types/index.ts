@@ -94,6 +94,40 @@ export type ComplianceControlTemplate = {
   updatedAt: Date;
 };
 
+/**
+ * Live clause health (written by the Live Compliance module).
+ * Values mirror live-compliance CLAUSE_HEALTH_STATUSES.
+ */
+export const CONTROL_HEALTH_STATUSES = [
+  "not",
+  "prog",
+  "impl",
+  "sus",
+  "risk",
+  "lapsed",
+] as const;
+export type ControlHealthStatus = (typeof CONTROL_HEALTH_STATUSES)[number];
+
+export type ControlHealth = {
+  status: ControlHealthStatus;
+  detail: string;
+  due: string | null;
+  ruleId: string | null;
+  evaluatedAt: Date;
+};
+
+/** Minimal clause row used by Live Compliance (no evidences/description). */
+export type ControlHealthRow = {
+  id: string;
+  name: ComplianceToolkitName;
+  clause: string;
+  title: string;
+  state: ControlState;
+  health: ControlHealth | null;
+  responsibleUserId: string | null;
+  accountableUserId: string | null;
+};
+
 export type ControlStatus = {
   id: string;
   organizationId: string;
@@ -118,6 +152,8 @@ export type ControlStatus = {
   consultedUserId: string | null;
   informedUserId: string | null;
   groupId: string | null;
+  /** Live clause health; null until Live Compliance evaluates it. */
+  health: ControlHealth | null;
   updatedBy: string | null;
   updatedOn: Date | null;
   deletedAt: Date | null;

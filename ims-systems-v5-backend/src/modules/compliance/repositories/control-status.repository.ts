@@ -6,6 +6,9 @@ import type {
   ComplianceAttachment,
   ComplianceToolkitName,
   ControlSelected,
+  ControlHealth,
+  ControlHealthRow,
+  ControlHealthStatus,
   ControlState,
   ControlStatus,
   ListControlsQuery,
@@ -36,6 +39,17 @@ function mapAttachment(
   };
 }
 
+function mapHealth(raw: ControlStatusDocument["health"]): ControlHealth | null {
+  if (!raw?.status) return null;
+  return {
+    status: raw.status as ControlHealthStatus,
+    detail: raw.detail ?? "",
+    due: raw.due ?? null,
+    ruleId: raw.ruleId ?? null,
+    evaluatedAt: raw.evaluatedAt,
+  };
+}
+
 function mapDoc(doc: ControlStatusDocument): ControlStatus {
   return {
     id: String(doc._id),
@@ -61,6 +75,7 @@ function mapDoc(doc: ControlStatusDocument): ControlStatus {
     consultedUserId: doc.consultedUserId ?? null,
     informedUserId: doc.informedUserId ?? null,
     groupId: doc.groupId ?? null,
+    health: mapHealth(doc.health),
     updatedBy: doc.updatedBy ?? null,
     updatedOn: doc.updatedOn ?? null,
     deletedAt: doc.deletedAt ?? null,
@@ -283,6 +298,61 @@ export function createControlStatusRepository() {
         name,
         deletedAt: null,
       }).exec();
+    },
+
+    /** Clause rows for Live Compliance (selected toolkits + clauses only). */
+    async listHealthRows(
+      organizationId: string,
+      names: ComplianceToolkitName[],
+      clauses: string[]
+    ): Promise<ControlHealthRow[]> {
+      if (!names.length || !clauses.length) return [];
+      const docs = await Model.find(
+        {
+          organizationId,
+          name: { $in: names },
+          clause: { $in: clauses },
+          deletedAt: null,
+        },
+        {
+          name: 1,
+          clause: 1,
+          title: 1,
+          state: 1,
+          health: 1,
+          responsibleUserId: 1,
+          accountableUserId: 1,
+        }
+      )
+        .lean()
+        .exec();
+      return docs.map((doc) => ({
+        id: String(doc._id),
+        name: doc.name as ComplianceToolkitName,
+        clause: doc.clause,
+        title: doc.title,
+        state: doc.state as ControlState,
+        health: mapHealth(doc.health as ControlStatusDocument["health"]),
+        responsibleUserId: doc.responsibleUserId ?? null,
+        accountableUserId: doc.accountableUserId ?? null,
+      }));
+    },
+
+    /** Write live health computed by Live Compliance (no state change). */
+    async setHealth(
+      organizationId: string,
+      updates: Array<{ id: string; health: ControlHealth }>
+    ): Promise<void> {
+      if (!updates.length) return;
+      await Model.bulkWrite(
+        updates.map(({ id, health }) => ({
+          updateOne: {
+            filter: { _id: id, organizationId, deletedAt: null },
+            update: { $set: { health } },
+          },
+        })),
+        { ordered: false }
+      );
     },
 
     async patchMany(

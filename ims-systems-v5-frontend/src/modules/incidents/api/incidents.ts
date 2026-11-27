@@ -66,6 +66,11 @@ export function deleteIncident(id: string): Promise<{ message: string }> {
   });
 }
 
+/** ISO 10.2: record that an investigation has started. */
+export function startIncidentInvestigation(id: string): Promise<Incident> {
+  return apiRequest<Incident>(`/incidents/${id}/investigate`, { method: "POST" });
+}
+
 export function resolveIncident(
   id: string,
   body: { resolution: string }

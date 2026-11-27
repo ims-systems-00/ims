@@ -11,6 +11,7 @@ import { TenderAuditPanel } from "../components/tender-audit-panel";
 import { TenderAuditorPanel } from "../components/tender-auditor-panel";
 import { TenderEvidencePanel } from "../components/tender-evidence-panel";
 import { TenderFactsPanel } from "../components/tender-facts-panel";
+import { TenderCreateDialog } from "../components/tender-create-dialog";
 import { TenderImportDialog } from "../components/tender-import-dialog";
 import { TenderInboxPanel } from "../components/tender-inbox-panel";
 import { TenderLibraryPanel } from "../components/tender-library-panel";
@@ -47,6 +48,7 @@ export function TenderHubPage() {
   const questionnaireId = searchParams.get("q");
   const bidTab = parseBidTab(searchParams.get("tab"));
   const [importOpen, setImportOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
 
   const capsQuery = useSecurityCapabilitiesQuery();
   const provider = loadPublicEnv().VITE_SECURITY_PROVIDER;
@@ -100,7 +102,7 @@ export function TenderHubPage() {
     <div className="space-y-5">
       <PageHeader
         title="Tender Autopilot"
-        description="Import questionnaires, draft answers from the library, price, gate and submit with auditor evidence."
+        description="Create tenders, import questionnaires, draft answers from the library, price, gate and submit with auditor evidence."
       />
 
       <div
@@ -143,6 +145,7 @@ export function TenderHubPage() {
             <TenderInboxPanel
               onOpenQuestionnaire={(id) => openQuestionnaire(id)}
               onImport={() => setImportOpen(true)}
+              onNewTender={() => setCreateOpen(true)}
               canCreate={canCreate}
             />
           ) : null}
@@ -165,6 +168,12 @@ export function TenderHubPage() {
         open={importOpen}
         onOpenChange={setImportOpen}
         onCreated={(id) => openQuestionnaire(id, "questions")}
+      />
+
+      <TenderCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        onCreated={(id) => openQuestionnaire(id, "pack")}
       />
 
       <TenderQuestionnaireSheet

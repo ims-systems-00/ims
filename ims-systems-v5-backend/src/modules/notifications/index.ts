@@ -34,6 +34,7 @@ export type {
   SentStatus,
   ReadStatus,
   PopupStatus,
+  NotificationChannel,
 } from "./types";
 export {
   NOTIFICATIONS_RESOURCE,
@@ -43,4 +44,5 @@ export {
   POPUP_STATUSES,
   MAX_NOTIFICATION_RECIPIENTS,
   MAX_NOTIFICATION_MESSAGE_LENGTH,
+  NOTIFICATION_CHANNELS,
 } from "./types";

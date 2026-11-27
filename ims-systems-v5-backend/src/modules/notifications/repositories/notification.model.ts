@@ -52,6 +52,7 @@ const notificationSchema = new Schema(
       default: () => ({ id: null, businessUnitId: null }),
     },
     icon: { type: String, trim: true },
+    channels: { type: [String], enum: ["in_app", "email"], default: ["in_app"] },
     sent: {
       type: stateFlagSchema(SENT_STATUSES, "unsent"),
       default: () => ({ status: "unsent", on: null }),

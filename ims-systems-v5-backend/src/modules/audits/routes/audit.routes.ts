@@ -72,6 +72,10 @@ export function createAuditModule(deps: AuditRouterDeps): {
     "/:id/identifications/:identificationId",
     controller.updateIdentification
   );
+  router.post(
+    "/:id/identifications/:identificationId/status",
+    controller.setFindingStatus
+  );
   router.delete(
     "/:id/identifications/:identificationId",
     controller.removeIdentification

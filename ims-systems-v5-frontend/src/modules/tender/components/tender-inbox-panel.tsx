@@ -3,6 +3,7 @@ import {
   CheckCircle2,
   ClipboardList,
   FileText,
+  Plus,
   Upload,
 } from "lucide-react";
 import { EmptyState } from "@/shared/components/empty-state";
@@ -21,12 +22,14 @@ import { PageLoader } from "@/shared/components/ims-loader";
 type TenderInboxPanelProps = {
   onOpenQuestionnaire: (id: string) => void;
   onImport: () => void;
+  onNewTender: () => void;
   canCreate?: boolean;
 };
 
 export function TenderInboxPanel({
   onOpenQuestionnaire,
   onImport,
+  onNewTender,
   canCreate = true,
 }: TenderInboxPanelProps) {
   const overviewQuery = useTenderOverviewQuery();
@@ -82,14 +85,20 @@ export function TenderInboxPanel({
         <div>
           <h2 className="text-lg font-semibold tracking-tight">Inbox</h2>
           <p className="text-sm text-muted-foreground">
-            Active questionnaires and tenders — import a pack to start drafting.
+            Active questionnaires and tenders — create a tender or import a questionnaire to start drafting.
           </p>
         </div>
         {canCreate ? (
-          <Button type="button" size="sm" onClick={onImport}>
-            <Upload className="size-3.5" />
-            Import questionnaire
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={onImport}>
+              <Upload className="size-3.5" />
+              Import questionnaire
+            </Button>
+            <Button type="button" size="sm" onClick={onNewTender}>
+              <Plus className="size-3.5" />
+              New tender
+            </Button>
+          </div>
         ) : null}
       </div>
 
@@ -147,13 +156,19 @@ export function TenderInboxPanel({
       ) : items.length === 0 ? (
         <EmptyState
           title="No questionnaires yet"
-          description="Import an xlsx, docx, csv or paste text to create your first bid workspace."
+          description="Create a tender and upload its pack, or import an xlsx, docx, csv or pasted questionnaire."
           action={
             canCreate ? (
-              <Button type="button" onClick={onImport}>
-                <Upload className="size-3.5" />
-                Import questionnaire
-              </Button>
+              <div className="flex flex-wrap justify-center gap-2">
+                <Button type="button" variant="outline" onClick={onImport}>
+                  <Upload className="size-3.5" />
+                  Import questionnaire
+                </Button>
+                <Button type="button" onClick={onNewTender}>
+                  <Plus className="size-3.5" />
+                  New tender
+                </Button>
+              </div>
             ) : undefined
           }
         />
@@ -176,8 +191,13 @@ export function TenderInboxPanel({
                   onOpen={() => onOpenQuestionnaire(q.id)}
                 >
                   <td>
-                    <div className="font-medium">
+                    <div className="flex items-center gap-2 font-medium">
                       {q.buyer || "Untitled buyer"}
+                      {q.kind === "tender" ? (
+                        <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary">
+                          Tender
+                        </span>
+                      ) : null}
                     </div>
                     <div className="ims-text-meta">
                       {q.title || q.reference || q.id}

@@ -91,6 +91,16 @@ export type ComplianceAttachment = {
   uploadedAt: string;
 };
 
+/** Live clause health written by Live Compliance (ISO 9001/14001/45001). */
+export type ControlHealth = {
+  status: "not" | "prog" | "impl" | "sus" | "risk" | "lapsed";
+  detail: string;
+  due: string | null;
+  /** Null when the status mirrors the manual state (no live rule). */
+  ruleId: string | null;
+  evaluatedAt: string;
+};
+
 export type ControlStatus = {
   id: string;
   organizationId: string;
@@ -115,6 +125,8 @@ export type ControlStatus = {
   consultedUserId: string | null;
   informedUserId: string | null;
   groupId: string | null;
+  /** Live health; null/absent until evaluated or for non-ISO toolkits. */
+  health?: ControlHealth | null;
   updatedBy: string | null;
   updatedOn: string | null;
   deletedAt: string | null;

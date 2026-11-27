@@ -4,7 +4,12 @@
  */
 
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
-import { INCIDENT_PRIORITIES, INCIDENT_PRIVACY } from "../types";
+import {
+  INCIDENT_PRIORITIES,
+  INCIDENT_PRIVACY,
+  INCIDENT_TYPES,
+  INVESTIGATION_STATUSES,
+} from "../types";
 
 const lifecycleFlagSchema = new Schema(
   {
@@ -56,6 +61,21 @@ const activitySchema = new Schema(
   { _id: false }
 );
 
+const investigationSchema = new Schema(
+  {
+    status: {
+      type: String,
+      enum: [...INVESTIGATION_STATUSES],
+      default: "not_started",
+    },
+    startedOn: { type: Date, default: null },
+    startedBy: { type: String, default: null },
+    completedOn: { type: Date, default: null },
+    rootCause: { type: String, trim: true },
+  },
+  { _id: false }
+);
+
 const incidentSchema = new Schema(
   {
     organizationId: { type: String, required: true },
@@ -73,6 +93,19 @@ const incidentSchema = new Schema(
     methodOfNotification: { type: String, trim: true },
     affectedService: { type: String, trim: true },
     categoryId: { type: String },
+    /** Live compliance (ISO 9.1 / 10.2 / 6.1.2). */
+    incidentType: { type: String, enum: [...INCIDENT_TYPES] },
+    occurredOn: { type: Date, default: null },
+    area: { type: String, trim: true },
+    investigation: {
+      type: investigationSchema,
+      default: () => ({
+        status: "not_started",
+        startedOn: null,
+        startedBy: null,
+        completedOn: null,
+      }),
+    },
     privacy: {
       type: String,
       required: true,

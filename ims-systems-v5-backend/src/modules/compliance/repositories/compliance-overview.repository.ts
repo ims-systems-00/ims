@@ -60,6 +60,18 @@ export function createComplianceOverviewRepository() {
       return doc ? mapDoc(doc) : null;
     },
 
+    /** Organisations with any of the given toolkits provisioned. */
+    async listOrganizationIdsWithToolkits(
+      names: ComplianceToolkitName[]
+    ): Promise<string[]> {
+      if (!names.length) return [];
+      const ids = await Model.distinct("organizationId", {
+        name: { $in: names },
+        deletedAt: null,
+      }).exec();
+      return ids.map(String);
+    },
+
     async listForOrganization(
       organizationId: string
     ): Promise<ComplianceOverview[]> {

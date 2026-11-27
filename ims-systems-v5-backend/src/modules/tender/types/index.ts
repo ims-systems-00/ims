@@ -94,6 +94,7 @@ export const TENDER_QUESTIONNAIRE_SOURCES = [
   "csv",
   "pdf",
   "text",
+  "manual",
 ] as const;
 export type TenderQuestionnaireSource =
   (typeof TENDER_QUESTIONNAIRE_SOURCES)[number];

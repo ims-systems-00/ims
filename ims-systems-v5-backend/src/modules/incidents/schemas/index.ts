@@ -1,5 +1,10 @@
 import { z } from "zod";
-import { INCIDENT_PRIORITIES, INCIDENT_PRIVACY } from "../types";
+import {
+  INCIDENT_PRIORITIES,
+  INCIDENT_PRIVACY,
+  INCIDENT_TYPES,
+  INVESTIGATION_STATUSES,
+} from "../types";
 
 const objectIdSchema = z
   .string()
@@ -40,6 +45,9 @@ export const createIncidentBodySchema = z.object({
   methodOfNotification: z.string().trim().optional(),
   affectedService: z.string().trim().optional(),
   categoryId: objectIdSchema.optional(),
+  incidentType: z.enum(INCIDENT_TYPES).optional(),
+  occurredOn: z.coerce.date().optional(),
+  area: z.string().trim().max(120).optional(),
   privacy: z.enum(INCIDENT_PRIVACY).optional(),
   attachments: z.array(attachmentInputSchema).optional(),
   source: sourceSchema.optional(),
@@ -54,6 +62,11 @@ export const updateIncidentBodySchema = z
     methodOfNotification: z.string().trim().nullable().optional(),
     affectedService: z.string().trim().nullable().optional(),
     categoryId: objectIdSchema.nullable().optional(),
+    incidentType: z.enum(INCIDENT_TYPES).nullable().optional(),
+    occurredOn: z.coerce.date().nullable().optional(),
+    area: z.string().trim().max(120).nullable().optional(),
+    investigationStatus: z.enum(INVESTIGATION_STATUSES).optional(),
+    rootCause: z.string().trim().max(4000).nullable().optional(),
     privacy: z.enum(INCIDENT_PRIVACY).optional(),
     resolution: z.string().trim().nullable().optional(),
     resolved: z.boolean().optional(),

@@ -58,6 +58,7 @@ export function createIncidentModule(deps: IncidentRouterDeps): {
   router.patch("/:id", controller.update);
   router.delete("/:id", controller.remove);
   router.post("/:id/resolve", controller.resolve);
+  router.post("/:id/investigate", controller.startInvestigation);
   router.post("/:id/escalate", controller.escalate);
   router.post("/:id/nudge", controller.nudge);
   router.delete("/:id/attachments/:attachmentId", controller.removeAttachment);

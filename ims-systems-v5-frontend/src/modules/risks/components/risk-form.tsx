@@ -99,6 +99,13 @@ export function RiskForm({
   const [accepted, setAccepted] = useState(
     Boolean(initialRisk?.accepted.status)
   );
+  const [area, setArea] = useState(initialRisk?.area ?? "");
+  const [reviewIntervalMonths, setReviewIntervalMonths] = useState(
+    initialRisk?.reviewIntervalMonths ?? 12
+  );
+  const [nextReviewDate, setNextReviewDate] = useState(
+    initialRisk?.nextReviewDate?.slice(0, 10) ?? ""
+  );
   const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
   const [stagedAttachments, setStagedAttachments] = useState<
     RiskAttachmentInput[]
@@ -200,6 +207,10 @@ export function RiskForm({
           categoryId: data.categoryId,
           likelihood: data.likelihood,
           consequence: data.consequence,
+          area: area.trim() || undefined,
+          reviewIntervalMonths,
+          // Blank → server schedules raised date + interval.
+          nextReviewDate: nextReviewDate || undefined,
           attachments:
             stagedAttachments.length > 0 ? stagedAttachments : undefined,
         });
@@ -259,6 +270,9 @@ export function RiskForm({
         categoryId: data.categoryId,
         likelihood: data.likelihood,
         consequence: data.consequence,
+        area: area.trim() || null,
+        reviewIntervalMonths,
+        nextReviewDate: nextReviewDate || null,
         mitigationText: data.mitigationText || null,
         acceptanceRationale: data.acceptanceRationale || null,
         decisionMaker: data.decisionMaker || null,
@@ -326,6 +340,53 @@ export function RiskForm({
           error={fieldErrors.categoryId}
           onChange={(next) => setCategoryId(next ?? "")}
         />
+      </FormSection>
+
+      <FormSection title="Review">
+        <FormField
+          label="Area or location"
+          description="Where the risk or hazard applies, e.g. Press Line 2. Used to spot incident patterns."
+          error={fieldErrors.area}
+        >
+          <input
+            className="ims-field"
+            value={area}
+            maxLength={120}
+            disabled={pending}
+            onChange={(event) => setArea(event.target.value)}
+          />
+        </FormField>
+        <FormField label="Review every" error={fieldErrors.reviewIntervalMonths}>
+          <select
+            className="ims-select"
+            value={reviewIntervalMonths}
+            disabled={pending}
+            onChange={(event) => setReviewIntervalMonths(Number(event.target.value))}
+          >
+            {[1, 3, 6, 12, 24].map((months) => (
+              <option key={months} value={months}>
+                {months === 1 ? "Month" : `${months} months`}
+              </option>
+            ))}
+          </select>
+        </FormField>
+        <FormField
+          label="Next review date"
+          description={
+            mode === "create"
+              ? "Leave blank to schedule one review interval from today."
+              : "ISO 6.1: reviews keep controls effective."
+          }
+          error={fieldErrors.nextReviewDate}
+        >
+          <input
+            type="date"
+            className="ims-field"
+            value={nextReviewDate}
+            disabled={pending}
+            onChange={(event) => setNextReviewDate(event.target.value)}
+          />
+        </FormField>
       </FormSection>
 
       <FormSection title="Ownership">

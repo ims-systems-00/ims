@@ -39,6 +39,8 @@ import {
   type ResolveIncidentInput,
   type SetComplianceLinksInput,
   type UpdateIncidentInput,
+  type IncidentInvestigation,
+  type InvestigationStatus,
 } from "../types";
 
 function requireOrgIdentity(identity: SecurityIdentity | null | undefined): {
@@ -58,6 +60,37 @@ function nextReference(): string {
   const stamp = Date.now().toString(36).toUpperCase();
   const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
   return `INC-${stamp}-${rand}`;
+}
+
+const INVESTIGATION_LABELS: Record<InvestigationStatus, string> = {
+  not_started: "not started",
+  in_progress: "started",
+  done: "completed",
+};
+
+/** Apply a status / root-cause change, stamping start and completion. */
+function nextInvestigation(
+  current: IncidentInvestigation,
+  status: InvestigationStatus | undefined,
+  rootCause: string | null | undefined,
+  actorId: string,
+  now = new Date()
+): IncidentInvestigation {
+  const next: IncidentInvestigation = { ...current };
+  if (status !== undefined && status !== current.status) {
+    next.status = status;
+    if (status === "not_started") {
+      next.startedOn = null;
+      next.startedBy = null;
+      next.completedOn = null;
+    } else {
+      next.startedOn = current.startedOn ?? now;
+      next.startedBy = current.startedBy ?? actorId;
+      next.completedOn = status === "done" ? now : null;
+    }
+  }
+  if (rootCause !== undefined) next.rootCause = rootCause ?? undefined;
+  return next;
 }
 
 function assertNotResolved(incident: Incident): void {
@@ -380,6 +413,29 @@ export function createIncidentService(deps: IncidentServiceDeps) {
         patch.affectedService = input.affectedService;
       }
       if (input.categoryId !== undefined) patch.categoryId = input.categoryId;
+      if (input.incidentType !== undefined) patch.incidentType = input.incidentType;
+      if (input.occurredOn !== undefined) patch.occurredOn = input.occurredOn;
+      if (input.area !== undefined) patch.area = input.area;
+      if (input.investigationStatus !== undefined || input.rootCause !== undefined) {
+        patch.investigation = nextInvestigation(
+          existing.investigation,
+          input.investigationStatus,
+          input.rootCause,
+          actor.identity.subjectId
+        );
+        if (
+          input.investigationStatus !== undefined &&
+          input.investigationStatus !== existing.investigation.status
+        ) {
+          activityEntries.push(
+            newActivityEntry(
+              "investigation_updated",
+              `Investigation ${INVESTIGATION_LABELS[input.investigationStatus]}`,
+              actor.identity.subjectId
+            )
+          );
+        }
+      }
       if (input.resolution !== undefined) patch.resolution = input.resolution;
 
       if (input.ownerId !== undefined) {
@@ -447,6 +503,41 @@ export function createIncidentService(deps: IncidentServiceDeps) {
         });
       }
 
+      return updated;
+    },
+
+    /** ISO 10.2: record that an investigation has started. */
+    async startInvestigation(
+      identity: SecurityIdentity | null | undefined,
+      id: string
+    ): Promise<Incident> {
+      const actor = requireOrgIdentity(identity);
+      await assertAllowed(actor.identity, "create", id);
+      const existing = await requireIncident(actor.organizationId, id);
+      assertNotResolved(existing);
+      if (existing.investigation.status !== "not_started") {
+        throw new ConflictError("Investigation has already started");
+      }
+      const now = new Date();
+      const updated = await repository.update(actor.organizationId, id, {
+        investigation: nextInvestigation(
+          existing.investigation,
+          "in_progress",
+          undefined,
+          actor.identity.subjectId,
+          now
+        ),
+        updatedBy: actor.identity.subjectId,
+        updatedOn: now,
+        activityEntries: [
+          newActivityEntry(
+            "investigation_updated",
+            "Investigation started",
+            actor.identity.subjectId
+          ),
+        ],
+      });
+      if (!updated) throw new NotFoundError("Incident not found");
       return updated;
     },
 

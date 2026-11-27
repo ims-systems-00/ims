@@ -1,0 +1,402 @@
+[
+  {
+    "wave": 1,
+    "tenantDb": "systemdb_007_local",
+    "organizationId": "65c38d70ed744466019c8c83",
+    "dryRun": true,
+    "startedAt": "2026-11-27T02:44:53.197Z",
+    "finishedAt": "2026-11-27T02:44:53.335Z",
+    "entities": [
+      {
+        "collection": "organizations",
+        "v4Count": 172,
+        "migrated": 172,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "users",
+        "v4Count": 1194,
+        "migrated": 1194,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "memberships",
+        "v4Count": 315,
+        "migrated": 315,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "unitmemberships",
+        "v4Count": 148,
+        "migrated": 146,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "groups",
+        "v4Count": 94,
+        "migrated": 94,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "grouppremises",
+        "v4Count": 9,
+        "migrated": 9,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "invitations",
+        "v4Count": 26,
+        "migrated": 26,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "partnership_programs",
+        "v4Count": 17,
+        "migrated": 17,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "licenserequests",
+        "v4Count": 74,
+        "migrated": 74,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      }
+    ],
+    "orphanFks": [],
+    "notes": [
+      "Wave 1 stamps organizationId from each document's organization field (shared-DB safe)."
+    ]
+  },
+  {
+    "wave": 2,
+    "tenantDb": "systemdb_007_local",
+    "organizationId": "65c38d70ed744466019c8c83",
+    "dryRun": true,
+    "startedAt": "2026-11-27T02:44:53.336Z",
+    "finishedAt": "2026-11-27T02:44:53.339Z",
+    "entities": [
+      {
+        "collection": "tagsAndCategories",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      }
+    ],
+    "orphanFks": [],
+    "notes": [
+      "Attachment/blob storage keys are preserved as-is; rewrite via files module if buckets change."
+    ]
+  },
+  {
+    "wave": 3,
+    "tenantDb": "systemdb_007_local",
+    "organizationId": "65c38d70ed744466019c8c83",
+    "dryRun": true,
+    "startedAt": "2026-11-27T02:44:53.339Z",
+    "finishedAt": "2026-11-27T02:44:54.771Z",
+    "entities": [
+      {
+        "collection": "hardwareassets",
+        "v4Count": 128,
+        "migrated": 128,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "softwareassets",
+        "v4Count": 15,
+        "migrated": 15,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "informationassets",
+        "v4Count": 4,
+        "migrated": 4,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "peopleassets",
+        "v4Count": 10,
+        "migrated": 10,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "premiseassets",
+        "v4Count": 4,
+        "migrated": 4,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "customers",
+        "v4Count": 1081,
+        "migrated": 1081,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "suppliers",
+        "v4Count": 266,
+        "migrated": 266,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "invoices",
+        "v4Count": 34,
+        "migrated": 34,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "emailcampaigns",
+        "v4Count": 82,
+        "migrated": 82,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "campaigndeliveries",
+        "v4Count": 63,
+        "migrated": 63,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "risks",
+        "v4Count": 206,
+        "migrated": 206,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "incidents",
+        "v4Count": 241,
+        "migrated": 241,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "cips",
+        "v4Count": 61,
+        "migrated": 61,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "tasks",
+        "v4Count": 219,
+        "migrated": 219,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "audits",
+        "v4Count": 137,
+        "migrated": 137,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "activities",
+        "v4Count": 24230,
+        "migrated": 24230,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "calenderevents",
+        "v4Count": 583,
+        "migrated": 583,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "notifications",
+        "v4Count": 22529,
+        "migrated": 22529,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "charts",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "managementreviews",
+        "v4Count": 90,
+        "migrated": 90,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "kpiobjectives",
+        "v4Count": 99,
+        "migrated": 99,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "leaves",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "documentrepositories",
+        "v4Count": 487,
+        "migrated": 487,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "documenttrees",
+        "v4Count": 16727,
+        "migrated": 16727,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "documentsignatures",
+        "v4Count": 112,
+        "migrated": 112,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "documentreviewreminders",
+        "v4Count": 0,
+        "migrated": 0,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      }
+    ],
+    "orphanFks": [],
+    "notes": [
+      "DocumentAccessToken skipped — regenerate share/sign tokens in V5 as needed.",
+      "Wave 3 is resumable: each job upserts by _id and continues after per-doc failures.",
+      "checkpoint hardwareassets: v4=128 migrated=128 skipped=0 failed=0",
+      "checkpoint softwareassets: v4=15 migrated=15 skipped=0 failed=0",
+      "checkpoint informationassets: v4=4 migrated=4 skipped=0 failed=0",
+      "checkpoint peopleassets: v4=10 migrated=10 skipped=0 failed=0",
+      "checkpoint premiseassets: v4=4 migrated=4 skipped=0 failed=0",
+      "checkpoint customers: v4=1081 migrated=1081 skipped=0 failed=0",
+      "checkpoint suppliers: v4=266 migrated=266 skipped=0 failed=0",
+      "checkpoint invoices: v4=34 migrated=34 skipped=0 failed=0",
+      "checkpoint emailcampaigns: v4=82 migrated=82 skipped=0 failed=0",
+      "checkpoint campaigndeliveries: v4=63 migrated=63 skipped=0 failed=0",
+      "checkpoint risks: v4=206 migrated=206 skipped=0 failed=0",
+      "checkpoint incidents: v4=241 migrated=241 skipped=0 failed=0",
+      "checkpoint cips: v4=61 migrated=61 skipped=0 failed=0",
+      "checkpoint tasks: v4=219 migrated=219 skipped=0 failed=0",
+      "checkpoint audits: v4=137 migrated=137 skipped=0 failed=0",
+      "checkpoint activities: v4=24230 migrated=24230 skipped=0 failed=0",
+      "checkpoint calenderevents: v4=583 migrated=583 skipped=0 failed=0",
+      "checkpoint notifications: v4=22529 migrated=22529 skipped=0 failed=0",
+      "checkpoint charts: v4=0 migrated=0 skipped=0 failed=0",
+      "checkpoint managementreviews: v4=90 migrated=90 skipped=0 failed=0",
+      "checkpoint kpiobjectives: v4=99 migrated=99 skipped=0 failed=0",
+      "checkpoint leaves: v4=0 migrated=0 skipped=0 failed=0",
+      "checkpoint documentrepositories: v4=487 migrated=487 skipped=0 failed=0",
+      "checkpoint documenttrees: v4=16727 migrated=16727 skipped=0 failed=0",
+      "checkpoint documentsignatures: v4=112 migrated=112 skipped=0 failed=0",
+      "checkpoint documentreviewreminders: v4=0 migrated=0 skipped=0 failed=0"
+    ]
+  },
+  {
+    "wave": 4,
+    "tenantDb": "systemdb_007_local",
+    "organizationId": "65c38d70ed744466019c8c83",
+    "dryRun": true,
+    "startedAt": "2026-11-27T02:44:54.772Z",
+    "finishedAt": "2026-11-27T02:44:56.676Z",
+    "entities": [
+      {
+        "collection": "controlstatuses",
+        "v4Count": 65043,
+        "migrated": 65043,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "controlevidences",
+        "v4Count": 259,
+        "migrated": 259,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      },
+      {
+        "collection": "complianceoverviews",
+        "v4Count": 286,
+        "migrated": 286,
+        "skipped": 0,
+        "failed": 0,
+        "errors": []
+      }
+    ],
+    "orphanFks": [],
+    "notes": [
+      "WARNING: V5 compliance catalogue is empty. Run `pnpm seed:compliance-catalogues` then re-run Wave 4 so controlId remaps by toolkit|clause.",
+      "Loaded 2475 V4 compliancecontrols for clause/title join on controlstatuses.",
+      "ComplianceAutomationRun skipped (V5-native; leave empty).",
+      "checkpoint controlstatuses: v4=65043 migrated=65043 failed=0",
+      "checkpoint controlevidences: v4=259 migrated=259 failed=0",
+      "checkpoint complianceoverviews: v4=286 migrated=286 failed=0"
+    ]
+  }
+]

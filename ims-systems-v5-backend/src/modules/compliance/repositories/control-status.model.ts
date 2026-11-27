@@ -6,6 +6,7 @@
 import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 import {
   COMPLIANCE_TOOLKIT_NAMES,
+  CONTROL_HEALTH_STATUSES,
   CONTROL_SELECTED_VALUES,
   CONTROL_STATE_VALUES,
 } from "../types";
@@ -20,6 +21,17 @@ const attachmentSchema = new Schema(
     url: { type: String, trim: true },
     uploadedBy: { type: String, required: true },
     uploadedAt: { type: Date, required: true },
+  },
+  { _id: false }
+);
+
+const healthSchema = new Schema(
+  {
+    status: { type: String, required: true, enum: [...CONTROL_HEALTH_STATUSES] },
+    detail: { type: String, default: "" },
+    due: { type: String, default: null },
+    ruleId: { type: String, default: null },
+    evaluatedAt: { type: Date, required: true },
   },
   { _id: false }
 );
@@ -60,6 +72,7 @@ const controlStatusSchema = new Schema(
     consultedUserId: { type: String, default: null },
     informedUserId: { type: String, default: null },
     groupId: { type: String, default: null },
+    health: { type: healthSchema, default: null },
     updatedBy: { type: String, default: null },
     updatedOn: { type: Date, default: null },
     deletedAt: { type: Date, default: null },

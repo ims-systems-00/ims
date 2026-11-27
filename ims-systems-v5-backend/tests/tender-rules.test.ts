@@ -199,6 +199,27 @@ describe("tender-rules import", () => {
       newQuestionnaire(M, { buyer: "X" }, fromText("hello\nworld"), "t")
     ).toThrow(/No questions/);
   });
+
+  it("creates an empty manual tender ready for pack documents", () => {
+    const M = baseModel();
+    const Q = newQuestionnaire(
+      M,
+      {
+        buyer: "City Council",
+        kind: "tender",
+        source: "manual",
+        allowEmpty: true,
+      },
+      null,
+      "t"
+    );
+    expect(Q.kind).toBe("tender");
+    expect(Q.title).toBe("Tender");
+    expect(Q.questions).toHaveLength(0);
+    expect(Q.status).toBe("new");
+    expect(Q.hist[0]!.what).toMatch(/Created tender manually/);
+    expect(M.questionnaires[0]).toBe(Q);
+  });
 });
 
 describe("tender-rules draft", () => {

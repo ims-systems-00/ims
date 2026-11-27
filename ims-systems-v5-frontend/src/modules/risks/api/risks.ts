@@ -76,6 +76,11 @@ export function nudgeRisk(id: string): Promise<Risk> {
   return apiRequest<Risk>(`/risks/${id}/nudge`, { method: "POST" });
 }
 
+/** ISO 6.1 periodic review: schedules the next review. */
+export function markRiskReviewed(id: string): Promise<Risk> {
+  return apiRequest<Risk>(`/risks/${id}/review`, { method: "POST" });
+}
+
 export function mitigateRisk(
   id: string,
   body: { mitigationText: string }

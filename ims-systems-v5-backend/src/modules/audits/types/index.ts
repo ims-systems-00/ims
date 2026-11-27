@@ -46,10 +46,22 @@ export type ComplianceLink = {
 };
 
 /** Non-conformity finding (Identification). */
+export const FINDING_STATUSES = ["open", "closed"] as const;
+export type FindingStatus = (typeof FINDING_STATUSES)[number];
+
 export type AuditIdentification = {
   id: string;
   nonConformity: string;
   rootCause: string;
+  /** ISO clause the finding was raised against (e.g. "7.2"). */
+  clause?: string;
+  /** Corrective action due date (ISO 10.2). */
+  dueDate?: Date | null;
+  status: FindingStatus;
+  closedOn?: Date | null;
+  closedBy?: string | null;
+  /** Evidence / summary of the corrective action taken. */
+  closureNote?: string;
 };
 
 /** Embedded risk recorded during the audit. */
@@ -136,11 +148,21 @@ export type UpdateAuditInput = {
 export type CreateIdentificationInput = {
   nonConformity: string;
   rootCause: string;
+  clause?: string;
+  dueDate?: Date | null;
 };
 
 export type UpdateIdentificationInput = {
   nonConformity?: string;
   rootCause?: string;
+  clause?: string | null;
+  dueDate?: Date | null;
+};
+
+/** Close (with evidence) or reopen a finding — allowed after completion. */
+export type SetFindingStatusInput = {
+  status: FindingStatus;
+  closureNote?: string | null;
 };
 
 export type CreateEmbeddedRiskInput = {

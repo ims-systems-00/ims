@@ -62,6 +62,12 @@ function nextReference(): string {
   return `RK-${stamp}-${rand}`;
 }
 
+function addMonths(date: Date, months: number): Date {
+  const next = new Date(date.getTime());
+  next.setUTCMonth(next.getUTCMonth() + months);
+  return next;
+}
+
 function assertNotMitigated(risk: Risk): void {
   if (risk.mitigated.status) {
     throw new ConflictError("Mitigated risks cannot be modified");
@@ -217,8 +223,15 @@ export function createRiskService(deps: RiskServiceDeps) {
         );
       }
 
+      const reviewIntervalMonths = input.reviewIntervalMonths ?? 12;
       const created = await repository.create(actor.organizationId, {
         ...input,
+        reviewIntervalMonths,
+        // ISO 6.1: every risk gets a review date (default raised + interval).
+        nextReviewDate:
+          input.nextReviewDate === undefined
+            ? addMonths(raisedOn, reviewIntervalMonths)
+            : input.nextReviewDate,
         reference: nextReference(),
         initialScore: score,
         currentScore: score,
@@ -315,6 +328,11 @@ export function createRiskService(deps: RiskServiceDeps) {
       if (input.categoryId !== undefined) patch.categoryId = input.categoryId;
       if (input.assetId !== undefined) patch.assetId = input.assetId;
       if (input.ownerId !== undefined) patch.ownerId = input.ownerId;
+      if (input.nextReviewDate !== undefined) patch.nextReviewDate = input.nextReviewDate;
+      if (input.reviewIntervalMonths !== undefined) {
+        patch.reviewIntervalMonths = input.reviewIntervalMonths;
+      }
+      if (input.area !== undefined) patch.area = input.area;
       if (input.mitigationText !== undefined) {
         patch.mitigationText = input.mitigationText;
       }
@@ -460,6 +478,35 @@ export function createRiskService(deps: RiskServiceDeps) {
         });
       }
 
+      return updated;
+    },
+
+    /**
+     * ISO 6.1 periodic review: confirm the assessment is still valid and
+     * schedule the next review. Allowed on mitigated risks too (they still
+     * need reviewing); does not change scores or lifecycle.
+     */
+    async markReviewed(
+      identity: SecurityIdentity | null | undefined,
+      id: string
+    ): Promise<Risk> {
+      const actor = requireOrgIdentity(identity);
+      await assertAllowed(actor.identity, "create", id);
+      const existing = await requireRisk(actor.organizationId, id);
+      const now = new Date();
+      const interval = existing.reviewIntervalMonths || 12;
+      const updated = await repository.update(actor.organizationId, id, {
+        lastReviewedOn: now,
+        nextReviewDate: addMonths(now, interval),
+        updatedBy: actor.identity.subjectId,
+        updatedOn: now,
+        activityEntry: newActivityEntry(
+          "reviewed",
+          `Risk reviewed. Next review in ${interval} month${interval === 1 ? "" : "s"}`,
+          actor.identity.subjectId
+        ),
+      });
+      if (!updated) throw new NotFoundError("Risk not found");
       return updated;
     },
 

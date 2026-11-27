@@ -20,6 +20,7 @@ export type IncidentController = {
   update: RequestHandler;
   remove: RequestHandler;
   resolve: RequestHandler;
+  startInvestigation: RequestHandler;
   escalate: RequestHandler;
   nudge: RequestHandler;
   removeAttachment: RequestHandler;
@@ -108,6 +109,16 @@ export function createIncidentController(
     }
   };
 
+  const startInvestigation: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(idParamSchema, req.params);
+      const data = await service.startInvestigation(req.identity, id);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
   const resolve: RequestHandler = async (req, res, next) => {
     try {
       const { id } = parseWithSchema(idParamSchema, req.params);
@@ -175,7 +186,7 @@ export function createIncidentController(
     create,
     update,
     remove,
-    resolve,
+    resolve, startInvestigation,
     escalate,
     nudge,
     removeAttachment,

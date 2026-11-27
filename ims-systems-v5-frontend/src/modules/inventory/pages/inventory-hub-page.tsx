@@ -31,6 +31,7 @@ import {
   INVENTORY_HUB_VIEWS,
   type InventoryHubView,
 } from "../types";
+import { ModuleComplianceStrip } from "@/modules/live-compliance";
 
 function parseView(value: string | null): InventoryHubView {
   if (value && (INVENTORY_HUB_VIEWS as readonly string[]).includes(value)) {
@@ -164,6 +165,7 @@ export function InventoryHubPage() {
           </div>
         }
       />
+      <ModuleComplianceStrip module="inventory" />
 
       <div
         className="flex flex-wrap gap-1 border-b border-border-subtle"

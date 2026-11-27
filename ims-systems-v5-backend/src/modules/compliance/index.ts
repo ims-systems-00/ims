@@ -79,11 +79,15 @@ export type {
   PaginatedCompliancePicker,
   CatalogueControlItem,
   PaginatedCatalogueControls,
+  ControlHealth,
+  ControlHealthRow,
+  ControlHealthStatus,
 } from "./types";
 export {
   COMPLIANCE_RESOURCE,
   COMPLIANCE_TOOLKIT_NAMES,
   FLAT_CALCULATION_TOOLKITS,
   CONTROL_EVIDENCE_TYPES,
+  CONTROL_HEALTH_STATUSES,
   isComplianceToolkitName,
 } from "./types";

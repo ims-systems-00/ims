@@ -95,6 +95,11 @@ export type Risk = {
   categoryId?: string;
   assetId?: string;
   ownerId?: string;
+  /** ISO 6.1 review schedule (live compliance). */
+  nextReviewDate: string | null;
+  reviewIntervalMonths: number;
+  lastReviewedOn: string | null;
+  area?: string;
   initialScore: RiskScorePair;
   currentScore: RiskScorePair;
   mitigationText?: string;
@@ -129,6 +134,10 @@ export type CreateRiskInput = {
   ownerId?: string;
   likelihood: number;
   consequence: number;
+  /** Omit to default to raised date + review interval. */
+  nextReviewDate?: string | null;
+  reviewIntervalMonths?: number;
+  area?: string | null;
   attachments?: RiskAttachmentInput[];
 };
 
@@ -141,6 +150,9 @@ export type UpdateRiskInput = {
   ownerId?: string | null;
   likelihood?: number;
   consequence?: number;
+  nextReviewDate?: string | null;
+  reviewIntervalMonths?: number;
+  area?: string | null;
   mitigationText?: string | null;
   acceptanceRationale?: string | null;
   decisionMaker?: string | null;

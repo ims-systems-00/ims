@@ -46,6 +46,8 @@ export type ManagementReview = {
   attendees: string[];
   agenda: ReviewAttachment[];
   minutes: ReviewAttachment[];
+  /** ISO 9.3.2 required inputs and whether each is ready. */
+  inputs: ReviewInput[];
   completed: LifecycleFlag;
   createdBy: string;
   createdOn: string;
@@ -86,6 +88,14 @@ export type UpdateManagementReviewInput = {
   attendees?: string[];
   agenda?: AttachmentInput[];
   minutes?: AttachmentInput[];
+  inputs?: Array<{ key: string; ready: boolean; note?: string | null }>;
+};
+
+export type ReviewInput = {
+  key: string;
+  label: string;
+  ready: boolean;
+  note?: string;
 };
 
 export type ListManagementReviewsParams = {

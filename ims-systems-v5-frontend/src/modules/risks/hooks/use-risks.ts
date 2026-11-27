@@ -8,6 +8,7 @@ import {
   getRisk,
   getRiskStats,
   listRisks,
+  markRiskReviewed,
   mitigateRisk,
   nudgeRisk,
   removeRiskAttachment,
@@ -36,6 +37,8 @@ async function invalidateRiskQueries(
 ) {
   await queryClient.invalidateQueries({ queryKey: riskKeys.lists() });
   await queryClient.invalidateQueries({ queryKey: riskKeys.stats() });
+  // Risk reviews drive live ISO clause health (6.1 / 6.1.2).
+  await queryClient.invalidateQueries({ queryKey: ["live-compliance"] });
   if (id) {
     await queryClient.invalidateQueries({ queryKey: riskKeys.detail(id) });
   }
@@ -113,6 +116,17 @@ export function useNudgeRiskMutation() {
     onSuccess: async (risk) => {
       await invalidateRiskQueries(queryClient, risk.id);
       queryClient.setQueryData(riskKeys.detail(risk.id), risk);
+    },
+  });
+}
+
+export function useMarkRiskReviewedMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => markRiskReviewed(id),
+    onSuccess: async (risk) => {
+      queryClient.setQueryData(riskKeys.detail(risk.id), risk);
+      await invalidateRiskQueries(queryClient, risk.id);
     },
   });
 }

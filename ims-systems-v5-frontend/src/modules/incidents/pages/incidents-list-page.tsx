@@ -45,6 +45,7 @@ import {
 } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
 import { PageLoader } from "@/shared/components/ims-loader";
+import { ModuleComplianceStrip } from "@/modules/live-compliance";
 
 type PendingDelete = { id: string; label: string };
 
@@ -215,6 +216,7 @@ export function IncidentsListPage() {
           ) : null
         }
       />
+      <ModuleComplianceStrip module="incidents" />
 
       <ModuleViewTabs
         recordsLabel="Incidents"

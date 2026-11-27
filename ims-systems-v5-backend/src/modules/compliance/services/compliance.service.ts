@@ -48,6 +48,8 @@ import {
   type ComplianceToolkitName,
   type ComplianceToolkitSummary,
   type ControlEvidence,
+  type ControlHealth,
+  type ControlHealthRow,
   type ControlStatus,
   type CreateControlEvidenceInput,
   type ListCatalogueControlsQuery,
@@ -155,6 +157,21 @@ export type ComplianceApplicationPort = {
     organizationId: string,
     id: string
   ): Promise<ControlStatus | null>;
+  /** Live Compliance: clause rows for the given toolkits + clauses. */
+  listClauseHealthRows(
+    organizationId: string,
+    toolkits: ComplianceToolkitName[],
+    clauses: string[]
+  ): Promise<ControlHealthRow[]>;
+  /** Live Compliance: organisations with any of these toolkits provisioned. */
+  listOrganizationIdsWithToolkits(
+    toolkits: ComplianceToolkitName[]
+  ): Promise<string[]>;
+  /** Live Compliance: persist computed clause health (state untouched). */
+  applyClauseHealth(
+    organizationId: string,
+    updates: Array<{ id: string; health: ControlHealth }>
+  ): Promise<void>;
   listPicker(
     organizationId: string,
     query: CompliancePickerQuery
@@ -953,6 +970,27 @@ export function createComplianceService(deps: ComplianceServiceDeps) {
     },
 
     /** Cross-module helpers (no HTTP auth — caller must be trusted). */
+    async listClauseHealthRowsForOrganization(
+      organizationId: string,
+      toolkits: ComplianceToolkitName[],
+      clauses: string[]
+    ): Promise<ControlHealthRow[]> {
+      return statuses.listHealthRows(organizationId, toolkits, clauses);
+    },
+
+    async listOrganizationIdsWithToolkits(
+      toolkits: ComplianceToolkitName[]
+    ): Promise<string[]> {
+      return overviews.listOrganizationIdsWithToolkits(toolkits);
+    },
+
+    async applyClauseHealthForOrganization(
+      organizationId: string,
+      updates: Array<{ id: string; health: ControlHealth }>
+    ): Promise<void> {
+      await statuses.setHealth(organizationId, updates);
+    },
+
     async frameworkPercentagesForOrganization(
       organizationId: string
     ): Promise<Array<{ name: string; totalPercentage: number }>> {

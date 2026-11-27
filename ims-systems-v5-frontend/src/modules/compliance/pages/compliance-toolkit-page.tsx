@@ -36,6 +36,7 @@ import { ToolkitOverviewPanel } from "../components/toolkit-overview-panel";
 import { ToolkitRelatedDocumentsPanel } from "../components/toolkit-related-documents-panel";
 import { formatDate } from "@/shared/lib/format-date";
 import { PageLoader } from "@/shared/components/ims-loader";
+import { ClauseHealthChip } from "@/modules/live-compliance/components/clause-health-chip";
 
 type TabId = "overview" | "toolkit" | "documents";
 
@@ -421,7 +422,16 @@ export function ComplianceToolkitPage() {
                               {selectedDisplayLabel(control.selected)}
                             </td>
                             <td>
-                              <ControlStateBadge state={control.state} />
+                              <div className="flex flex-wrap items-center gap-1">
+                                <ControlStateBadge state={control.state} />
+                                {control.health?.ruleId ? (
+                                  <span title={`Live: ${control.health.detail}`}>
+                                    <ClauseHealthChip
+                                      status={control.health.status}
+                                    />
+                                  </span>
+                                ) : null}
+                              </div>
                             </td>
                             <td>
                               <CompliancePercentBadge

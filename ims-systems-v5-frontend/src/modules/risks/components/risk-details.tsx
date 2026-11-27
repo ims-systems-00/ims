@@ -6,11 +6,51 @@ import { useUserQuery } from "@/modules/users/hooks/use-users";
 import { useFunctionalUnitQuery } from "@/modules/functional-units/hooks/use-functional-units";
 import { CategoryLabel } from "@/modules/tags-and-categories";
 import { useState, type ReactNode } from "react";
-import { useRemoveRiskAttachmentMutation } from "../hooks/use-risks";
+import {
+  useMarkRiskReviewedMutation,
+  useRemoveRiskAttachmentMutation,
+} from "../hooks/use-risks";
 import { RiskScoreAssessment } from "./risk-score-assessment";
 import { RiskScoreBadge, RiskStatusBadge } from "./risk-badges";
 import type { Risk } from "../types";
 import { formatDate } from "@/shared/lib/format-date";
+
+/** Next review date with a one-click "Mark reviewed" (ISO 6.1). */
+function ReviewDue({ risk }: { risk: Risk }) {
+  const markReviewed = useMarkRiskReviewedMutation();
+  const overdue =
+    risk.nextReviewDate !== null &&
+    risk.nextReviewDate.slice(0, 10) < new Date().toISOString().slice(0, 10);
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className={overdue ? "font-medium text-destructive" : undefined}>
+        {risk.nextReviewDate ? formatDate(risk.nextReviewDate) : "Not scheduled"}
+        {overdue ? " (overdue)" : ""}
+      </span>
+      <span className="text-muted-foreground">
+        · every {risk.reviewIntervalMonths} months
+      </span>
+      <Button
+        type="button"
+        size="sm"
+        variant="outline"
+        className="h-7"
+        disabled={markReviewed.isPending}
+        onClick={() =>
+          markReviewed.mutate(risk.id, {
+            onSuccess: (next) =>
+              notify.success(
+                `Reviewed. Next review ${formatDate(next.nextReviewDate)}`
+              ),
+            onError: (error) => notify.fromError(error, "Unable to mark reviewed"),
+          })
+        }
+      >
+        {markReviewed.isPending ? "Saving…" : "Mark reviewed"}
+      </Button>
+    </span>
+  );
+}
 
 function Item({
   label,
@@ -118,6 +158,12 @@ export function RiskDetails({ risk }: { risk: Risk }) {
             label="Category"
             value={<CategoryLabel categoryId={risk.categoryId} showPrefix={false} />}
           />
+          <Item label="Area" value={risk.area || "—"} />
+          <Item
+            label="Next review"
+            value={<ReviewDue risk={risk} />}
+          />
+          <Item label="Last reviewed" value={formatDate(risk.lastReviewedOn)} />
           <Item label="Raised" value={formatDate(risk.raisedOn)} />
           <Item label="Updated" value={formatDate(risk.updatedOn)} />
           {risk.source ? (

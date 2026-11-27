@@ -33,6 +33,7 @@ import { useTrainingLogQuery } from "../hooks/use-training";
 import { formatWhen, TRAINING_VIEW_LABELS } from "../lib/training-display";
 import { TRAINING_HUB_VIEWS, type TrainingHubView } from "../types";
 import { PageLoader } from "@/shared/components/ims-loader";
+import { ModuleComplianceStrip } from "@/modules/live-compliance";
 
 function parseView(value: string | null): TrainingHubView {
   if (value && (TRAINING_HUB_VIEWS as readonly string[]).includes(value)) {
@@ -236,6 +237,7 @@ export function TrainingHubPage() {
           </div>
         }
       />
+      <ModuleComplianceStrip module="training" />
 
       <div
         className="flex flex-wrap gap-1 border-b border-border-subtle"

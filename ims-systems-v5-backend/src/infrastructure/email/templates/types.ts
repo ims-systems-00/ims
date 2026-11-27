@@ -108,4 +108,6 @@ export type EmailTemplateId =
   | "training-session-reminder"
   | "training-expiring"
   | "training-expired"
+  | "compliance-alert"
+  | "compliance-digest"
   | "tender-submission";

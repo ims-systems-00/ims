@@ -113,6 +113,16 @@ export function createComplianceModule(deps: ComplianceRouterDeps): {
         service.frameworkPercentagesForOrganization(organizationId),
       getControlStatusById: (organizationId, id) =>
         service.getControlStatusForOrganization(organizationId, id),
+      listClauseHealthRows: (organizationId, toolkits, clauses) =>
+        service.listClauseHealthRowsForOrganization(
+          organizationId,
+          toolkits,
+          clauses
+        ),
+      listOrganizationIdsWithToolkits: (toolkits) =>
+        service.listOrganizationIdsWithToolkits(toolkits),
+      applyClauseHealth: (organizationId, updates) =>
+        service.applyClauseHealthForOrganization(organizationId, updates),
       listPicker: (organizationId, query) =>
         service.pickerForOrganization(organizationId, query),
       syncRiskComplianceLinks: (input) =>

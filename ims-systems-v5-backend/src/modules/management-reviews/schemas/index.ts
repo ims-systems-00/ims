@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { REVIEW_INTERVALS, REVIEW_PRIVACY } from "../types";
+import { REVIEW_INTERVALS, REVIEW_PRIVACY, REVIEW_INPUT_KEYS } from "../types";
 
 const objectIdSchema = z
   .string()
@@ -59,6 +59,16 @@ export const updateManagementReviewBodySchema = z
     attendees: z.array(subjectIdSchema).optional(),
     agenda: z.array(attachmentInputSchema).optional(),
     minutes: z.array(attachmentInputSchema).optional(),
+    inputs: z
+      .array(
+        z.object({
+          key: z.enum(REVIEW_INPUT_KEYS),
+          ready: z.boolean(),
+          note: z.string().trim().max(1000).nullable().optional(),
+        })
+      )
+      .max(REVIEW_INPUT_KEYS.length)
+      .optional(),
   })
   .refine(
     (value) => Object.keys(value).length > 0,

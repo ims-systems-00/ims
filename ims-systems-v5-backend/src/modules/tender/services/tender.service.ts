@@ -893,11 +893,11 @@ export function createTenderService(deps: TenderServiceDeps) {
         : body.text
           ? fromText(body.text)
           : null;
-    if (!parsed) {
+    if (!parsed && !body.meta?.allowEmpty) {
       throw new ValidationAppError("Send parsed questions or text");
     }
     const Q = newQuestionnaire(M, body.meta || {}, parsed, actorName(id));
-    if (body.draft !== false) {
+    if (body.draft !== false && Q.questions.length) {
       await draftQuestionsFor(M, Q.id);
     }
     await persistQuestionnaire(organizationId, Q);

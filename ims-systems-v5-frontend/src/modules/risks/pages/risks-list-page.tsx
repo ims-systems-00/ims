@@ -41,6 +41,7 @@ import {
 import { formatDate } from "@/shared/lib/format-date";
 import { useSetupSignal } from "@/modules/setup-guide";
 import { PageLoader } from "@/shared/components/ims-loader";
+import { ModuleComplianceStrip } from "@/modules/live-compliance";
 
 type PendingDelete = { id: string; label: string };
 
@@ -212,6 +213,7 @@ export function RisksListPage() {
           ) : null
         }
       />
+      <ModuleComplianceStrip module="risks" />
 
       <ModuleViewTabs
         recordsLabel="Risks"
