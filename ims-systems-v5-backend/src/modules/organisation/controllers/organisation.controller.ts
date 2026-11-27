@@ -22,6 +22,7 @@ export type OrganisationController = {
   getById: RequestHandler;
   ensureAuth0Link: RequestHandler;
   listMine: RequestHandler;
+  setDefault: RequestHandler;
   createCardPaymentSession: RequestHandler;
   createSmeLicenceCheckoutSession: RequestHandler;
   confirmSmeLicenceCheckoutSession: RequestHandler;
@@ -91,6 +92,16 @@ export function createOrganisationController(
   const listMine: RequestHandler = async (req, res, next) => {
     try {
       const data = await service.listMine(req.identity);
+      sendSuccess(res, data, 200, req.correlationId);
+    } catch (error) {
+      next(error);
+    }
+  };
+
+  const setDefault: RequestHandler = async (req, res, next) => {
+    try {
+      const { id } = parseWithSchema(organisationIdParamSchema, req.params);
+      const data = await service.setDefault(req.identity, id);
       sendSuccess(res, data, 200, req.correlationId);
     } catch (error) {
       next(error);
@@ -263,6 +274,7 @@ export function createOrganisationController(
     getById,
     ensureAuth0Link,
     listMine,
+    setDefault,
     createCardPaymentSession,
     createSmeLicenceCheckoutSession,
     confirmSmeLicenceCheckoutSession,

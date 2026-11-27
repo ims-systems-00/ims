@@ -1,3 +1,4 @@
+import type { Model } from "mongoose";
 import { getComplianceControlModel } from "../../../src/modules/compliance/repositories/compliance-control.model";
 import { getControlStatusModel } from "../../../src/modules/compliance/repositories/control-status.model";
 import { getControlEvidenceModel } from "../../../src/modules/compliance/repositories/control-evidence.model";
@@ -5,7 +6,11 @@ import { getComplianceOverviewModel } from "../../../src/modules/compliance/repo
 import type { EntityStat, MigrateContext, TenantHandle, WaveReport } from "../types";
 import { emptyEntityStat } from "../report";
 import { countCollection, iterateCollection } from "../v4-connection";
-import { upsertById } from "../upsert";
+import {
+  applyBulkResult,
+  bulkUpsertById,
+  withSourceTimestamps,
+} from "../upsert";
 import { asId } from "../transforms/common";
 import {
   naturalKey,
@@ -69,7 +74,7 @@ async function migrateSimple(
   ctx: MigrateContext,
   organizationId: string,
   v4Name: string,
-  modelFactory: () => { replaceOne: Function; modelName?: string } & object,
+  modelFactory: () => Model<any>,
   transform: (
     doc: Record<string, unknown>,
     organizationId: string,
@@ -80,12 +85,13 @@ async function migrateSimple(
   stat.v4Count = await countCollection(tenant.connection, v4Name);
   const model = modelFactory() as any;
 
-  for await (const batch of iterateCollection(tenant.connection, v4Name)) {
+  for await (const batch of iterateCollection(tenant.connection, v4Name, 1000)) {
+    const mappedDocs: Record<string, unknown>[] = [];
     for (const raw of batch) {
       try {
-        const mapped = transform(raw, organizationId, ctx);
-        await upsertById(model, mapped, ctx.dryRun);
-        stat.migrated += 1;
+        mappedDocs.push(
+          withSourceTimestamps(transform(raw, organizationId, ctx), raw)
+        );
       } catch (error) {
         stat.failed += 1;
         if (stat.errors.length < 50) {
@@ -95,6 +101,7 @@ async function migrateSimple(
         }
       }
     }
+    applyBulkResult(stat, await bulkUpsertById(model, mappedDocs, ctx.dryRun));
   }
   return stat;
 }

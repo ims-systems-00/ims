@@ -23,6 +23,7 @@
     "migrate:v4": "tsx scripts/migrate-v4/index.ts",
     "backfill:openfga-memberships": "tsx scripts/backfill-openfga-memberships.ts",
     "backfill:auth0-identities": "tsx scripts/backfill-auth0-identities.ts",
+    "import:auth0-v4-passwords": "tsx scripts/import-auth0-v4-passwords.ts",
     "provision:files-buckets": "tsx scripts/ensure-files-bucket.ts",
     "preflight:prod": "tsx scripts/preflight-prod.ts",
     "smoke:files-s3": "tsx scripts/smoke-files-s3.ts",

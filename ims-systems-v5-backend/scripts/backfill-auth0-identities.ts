@@ -315,16 +315,35 @@ async function main(): Promise<void> {
 
   const summaries: OrgSummary[] = [];
   for (const organizationId of orgIds) {
-    const summary = await processOrganisation({
-      mgmt,
-      organisations,
-      memberships,
-      users,
-      organizationId,
-      dbConnection: config.AUTH0_DB_CONNECTION,
-      flags,
-    });
-    summaries.push(summary);
+    try {
+      const summary = await processOrganisation({
+        mgmt,
+        organisations,
+        memberships,
+        users,
+        organizationId,
+        dbConnection: config.AUTH0_DB_CONNECTION,
+        flags,
+      });
+      summaries.push(summary);
+    } catch (error) {
+      // One org failing (e.g. Auth0 still rate-limiting after retries) must
+      // not abort the rest; re-running the script picks it up again.
+      const message = error instanceof Error ? error.message : String(error);
+      console.error(`  FAIL organisation ${organizationId}: ${message}`);
+      summaries.push({
+        organizationId,
+        name: organizationId,
+        auth0OrganizationId: null,
+        linked: 0,
+        created: 0,
+        reused: 0,
+        emailed: 0,
+        skippedAlreadyLinked: 0,
+        failed: 1,
+        errors: [message],
+      });
+    }
   }
 
   console.log("\n======== SUMMARY ========");

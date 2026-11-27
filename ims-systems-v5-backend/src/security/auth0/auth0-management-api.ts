@@ -28,6 +28,40 @@ export type Auth0ManagedUser = {
 
 type FetchFn = typeof fetch;
 
+const MAX_RATE_LIMIT_RETRIES = 8;
+
+/**
+ * Milliseconds to wait before retrying a 429. Uses Auth0's
+ * `x-ratelimit-reset` (epoch seconds) or `Retry-After` when present,
+ * otherwise exponential backoff; capped at 60s.
+ */
+const rateLimitDelayMs = (res: Response, attempt: number): number => {
+  const reset = Number(res.headers.get("x-ratelimit-reset"));
+  if (Number.isFinite(reset) && reset > 0) {
+    const ms = reset * 1000 - Date.now();
+    if (ms > 0) return Math.min(ms + 250, 60_000);
+  }
+  const retryAfter = Number(res.headers.get("retry-after"));
+  if (Number.isFinite(retryAfter) && retryAfter > 0) {
+    return Math.min(retryAfter * 1000, 60_000);
+  }
+  return Math.min(1000 * 2 ** attempt, 60_000);
+};
+
+/** fetch that waits and retries when Auth0 answers 429 Too Many Requests. */
+const fetchWithRateLimitRetry = async (
+  fetchFn: FetchFn,
+  url: string,
+  init: RequestInit,
+): Promise<Response> => {
+  for (let attempt = 0; ; attempt += 1) {
+    const res = await fetchFn(url, init);
+    if (res.status !== 429 || attempt >= MAX_RATE_LIMIT_RETRIES) return res;
+    await res.text().catch(() => "");
+    await new Promise((resolve) => setTimeout(resolve, rateLimitDelayMs(res, attempt)));
+  }
+};
+
 const normalizeDomain = (domain: string) =>
   domain.replace(/^https?:\/\//, "").replace(/\/$/, "");
 
@@ -67,7 +101,7 @@ export class Auth0ManagementApi {
       client_secret: this.clientSecret,
       audience: `https://${this.domain}/api/v2/`,
     });
-    const res = await this.fetchFn(`https://${this.domain}/oauth/token`, {
+    const res = await fetchWithRateLimitRetry(this.fetchFn, `https://${this.domain}/oauth/token`, {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body,
@@ -92,7 +126,7 @@ export class Auth0ManagementApi {
 
   private async request<T>(path: string, init: RequestInit = {}): Promise<T> {
     const token = await this.getToken();
-    const res = await this.fetchFn(`https://${this.domain}/api/v2${path}`, {
+    const res = await fetchWithRateLimitRetry(this.fetchFn, `https://${this.domain}/api/v2${path}`, {
       ...init,
       headers: {
         Authorization: `Bearer ${token}`,
@@ -130,8 +164,11 @@ export class Auth0ManagementApi {
       return await this.request<{ id: string }>(
         `/organizations/name/${encodeURIComponent(name)}`,
       );
-    } catch {
-      return null;
+    } catch (error) {
+      // Only "not found" means absent; rate limits / outages must not be
+      // mistaken for it, or callers would try to create a duplicate org.
+      if (error instanceof Error && error.message.includes("HTTP 404")) return null;
+      throw error;
     }
   }
 
@@ -192,9 +229,11 @@ export class Auth0ManagementApi {
   async getUserByEmail(email: string): Promise<Auth0ManagedUser | null> {
     const normalized = email.trim().toLowerCase();
     if (!normalized) return null;
+    // Errors propagate: treating a failed lookup as "no user" would make
+    // ensureUserByEmail create a duplicate.
     const rows = await this.request<Auth0ManagedUser[]>(
       `/users-by-email?email=${encodeURIComponent(normalized)}`,
-    ).catch(() => [] as Auth0ManagedUser[]);
+    );
     return rows[0] ?? null;
   }
 
@@ -248,7 +287,7 @@ export class Auth0ManagementApi {
   }): Promise<void> {
     const email = input.email.trim().toLowerCase();
     const url = `https://${this.domain}/dbconnections/change_password`;
-    const res = await this.fetchFn(url, {
+    const res = await fetchWithRateLimitRetry(this.fetchFn, url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -262,6 +301,61 @@ export class Auth0ManagementApi {
     throw new Error(
       `Auth0 change_password failed (HTTP ${res.status})${text ? `: ${text.slice(0, 200)}` : ""}`,
     );
+  }
+
+  /**
+   * Start an Auth0 bulk user import job (multipart upload of a JSON array).
+   * Auth0 caps each file at 500KB. With `upsert: false`, users whose email
+   * already exists on the connection are left untouched (reported as
+   * duplicates in the job errors).
+   */
+  async startUsersImport(input: {
+    connectionId: string;
+    usersJson: string;
+    upsert?: boolean;
+    externalId?: string;
+  }): Promise<{ id: string; status: string }> {
+    const token = await this.getToken();
+    const form = new FormData();
+    form.append(
+      "users",
+      new Blob([input.usersJson], { type: "application/json" }),
+      "users.json",
+    );
+    form.append("connection_id", input.connectionId);
+    form.append("upsert", String(input.upsert ?? false));
+    form.append("send_completion_email", "false");
+    if (input.externalId) form.append("external_id", input.externalId);
+    const res = await fetchWithRateLimitRetry(this.fetchFn, `https://${this.domain}/api/v2/jobs/users-imports`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${token}` },
+      body: form,
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(
+        `Auth0 users-imports failed (HTTP ${res.status})${text ? `: ${text.slice(0, 300)}` : ""}`,
+      );
+    }
+    return (await res.json()) as { id: string; status: string };
+  }
+
+  async getJob(jobId: string): Promise<{
+    id: string;
+    status: string;
+    summary?: { failed: number; updated: number; inserted: number; total: number };
+  }> {
+    return this.request(`/jobs/${encodeURIComponent(jobId)}`);
+  }
+
+  /** Per-user errors of a finished import job (empty when none). */
+  async getJobErrors(
+    jobId: string,
+  ): Promise<Array<{ user?: { email?: string }; errors?: Array<{ code: string; message: string }> }>> {
+    const rows = await this.request<unknown>(
+      `/jobs/${encodeURIComponent(jobId)}/errors`,
+    ).catch(() => []);
+    return Array.isArray(rows) ? (rows as never) : [];
   }
 
   /**

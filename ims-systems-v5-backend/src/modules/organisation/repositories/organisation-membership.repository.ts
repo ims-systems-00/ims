@@ -115,6 +115,42 @@ export function createOrganisationMembershipRepository() {
       return docs.map((doc) => String(doc.organizationId));
     },
 
+    /**
+     * Non-blocked memberships for a user, oldest first, with the fields needed
+     * to resolve the post-login default organisation.
+     */
+    async listLoginOptionsForUser(userId: string): Promise<
+      { organizationId: string; isDefault: boolean; joinedAt: Date }[]
+    > {
+      const docs = await Model.find({
+        userId,
+        accessStatus: { $ne: "Blocked" },
+      })
+        .select("organizationId isDefault createdOn createdAt")
+        .sort({ createdOn: 1, createdAt: 1, _id: 1 })
+        .lean();
+      return docs.map((doc) => ({
+        organizationId: String(doc.organizationId),
+        isDefault: doc.isDefault === true,
+        joinedAt: (doc.createdOn ?? doc.createdAt) as Date,
+      }));
+    },
+
+    /** Mark one membership as the user's default; clears it on all others. */
+    async setDefaultForUser(
+      userId: string,
+      organizationId: string
+    ): Promise<void> {
+      await Model.updateMany(
+        { userId, organizationId: { $ne: organizationId }, isDefault: true },
+        { $set: { isDefault: false } }
+      );
+      await Model.updateOne(
+        { userId, organizationId },
+        { $set: { isDefault: true } }
+      );
+    },
+
     async setAccessStatus(
       userId: string,
       organizationId: string,

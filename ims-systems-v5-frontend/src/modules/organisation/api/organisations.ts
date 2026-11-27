@@ -64,6 +64,23 @@ export function listMyOrganisations(): Promise<Organisation[]> {
   return apiRequest<Organisation[]>("/organisations");
 }
 
+/** Make this organisation the one that opens after login. */
+export function setDefaultOrganisation(
+  organizationId: string
+): Promise<{ organizationId: string }> {
+  return apiRequest<{ organizationId: string }>(
+    `/organisations/${organizationId}/default`,
+    { method: "PUT" }
+  );
+}
+
+/** The org to open after login: the flagged default, else the first joined. */
+export function pickDefaultOrganisation<T extends { isDefault?: boolean }>(
+  organisations: readonly T[]
+): T | undefined {
+  return organisations.find((org) => org.isDefault) ?? organisations[0];
+}
+
 export function requestOrganisationLicence(
   body: RequestOrganisationLicenceInput
 ): Promise<CreateLicenceRequestResult> {

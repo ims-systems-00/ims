@@ -14,7 +14,7 @@ import {
 } from "@/modules/invitations/lib/pending-invite";
 import { AuthEntryLayout } from "../components/auth-entry-layout";
 import { playPostLoginIntro } from "../intro/play-post-login-intro";
-import { SELECT_ORGANISATION_PATH } from "./select-organisation-page";
+import { OPEN_DEFAULT_ORGANISATION_PATH } from "./open-default-organisation-page";
 import { loginSchema, type LoginFormValues } from "../schemas";
 import { PageLoader } from "@/shared/components/ims-loader";
 
@@ -115,13 +115,14 @@ export function LoginPage() {
     try {
       await authClient.loginWithPassword(parsed.data);
       clearSessionCaches(queryClient);
+      // The intro overlays the app; the default org binds underneath it.
+      playPostLoginIntro();
       if (returnTo.startsWith("/auth/onboard/accept-invitation/")) {
-        // Invite acceptance binds its own organisation; skip the picker.
-        playPostLoginIntro();
+        // Invite acceptance binds its own organisation.
         navigate(returnTo, { replace: true });
       } else {
-        // Login → choose organisation → intro → that org's dashboard.
-        navigate(SELECT_ORGANISATION_PATH, {
+        // Login → intro → default organisation's dashboard.
+        navigate(OPEN_DEFAULT_ORGANISATION_PATH, {
           replace: true,
           state: { returnTo: returnTo || "/" },
         });

@@ -75,6 +75,8 @@ export function createOrganisationModule(deps: OrganisationRouterDeps): {
   router.post("/current/compose-mail", controller.composeMail);
   router.post("/:id/go-live", controller.goLive);
   router.post("/:id/ensure-auth0-link", controller.ensureAuth0Link);
+  // Caller's own preference: which org opens after login.
+  router.put("/:id/default", controller.setDefault);
   router.get("/:id/card-payment-session", controller.createCardPaymentSession);
   router.get(
     "/:id/sme-licence-checkout",

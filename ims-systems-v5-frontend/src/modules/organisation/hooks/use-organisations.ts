@@ -12,6 +12,7 @@ import {
   goLiveOrganisation,
   listLicenceRequests,
   listMyOrganisations,
+  setDefaultOrganisation,
   requestOrganisationLicence,
   updateDocumentReviewReminders,
   updateIncidentResolutionTargets,
@@ -44,6 +45,20 @@ export function useCurrentOrganisationQuery(enabled = true) {
     queryKey: organisationKeys.current(),
     queryFn: getCurrentOrganisation,
     enabled,
+  });
+}
+
+/** Remember an organisation as the one to open after login. */
+export function useSetDefaultOrganisationMutation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (organizationId: string) =>
+      setDefaultOrganisation(organizationId),
+    onSuccess: ({ organizationId }) => {
+      queryClient.setQueryData<Organisation[]>(organisationKeys.mine(), (rows) =>
+        rows?.map((org) => ({ ...org, isDefault: org.id === organizationId }))
+      );
+    },
   });
 }
 

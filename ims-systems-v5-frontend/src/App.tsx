@@ -6,7 +6,7 @@ import {
   PostLoginMembershipGate,
   PreparationScreenPage,
   RegisterPage,
-  SelectOrganisationPage,
+  OpenDefaultOrganisationPage,
 } from "@/modules/auth";
 import { AssetsCategoryPage } from "@/modules/assets";
 import {
@@ -135,11 +135,17 @@ export function App() {
           path="auth/preparation-screen"
           element={<PreparationScreenPage />}
         />
-        {/* Post-login org picker — outside the membership gate so the gate
-            does not auto-bind the first organisation before the user picks. */}
+        {/* Post-login: bind the user's default organisation, then the
+            dashboard. Outside the membership gate so the gate does not
+            auto-bind the first organisation before the default is bound. */}
+        <Route
+          path="opening-workspace"
+          element={<OpenDefaultOrganisationPage />}
+        />
+        {/* Old picker URL (bookmarks / open tabs). */}
         <Route
           path="select-organisation"
-          element={<SelectOrganisationPage />}
+          element={<Navigate to="/opening-workspace" replace />}
         />
         <Route element={<PostLoginMembershipGate />}>
           <Route path="onboard" element={<OnboardingShell />}>

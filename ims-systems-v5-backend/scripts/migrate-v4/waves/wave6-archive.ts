@@ -7,6 +7,7 @@ import {
 } from "../module-type-map";
 import { countCollection, iterateCollection } from "../v4-connection";
 import { asId, oid } from "../transforms/common";
+import { applyBulkResult, bulkReplaceRaw } from "../upsert";
 
 const SKIP_ALWAYS = new Set([
   "system.indexes",
@@ -57,7 +58,8 @@ async function archiveCollection(
 
   const target = mongoose.connection.db.collection(targetName);
 
-  for await (const batch of iterateCollection(tenant.connection, v4Name)) {
+  for await (const batch of iterateCollection(tenant.connection, v4Name, 1000)) {
+    const docs: Record<string, unknown>[] = [];
     for (const raw of batch) {
       try {
         const id = asId(raw._id);
@@ -66,17 +68,13 @@ async function archiveCollection(
           continue;
         }
         const organizationId = stringifyOrg(raw);
-        const doc = {
+        docs.push({
           ...raw,
           _id: oid(id),
           organizationId: organizationId ?? raw.organizationId ?? null,
           __v4Collection: v4Name,
           __v4TenantDb: tenant.dbName,
-        };
-        if (!ctx.dryRun) {
-          await target.replaceOne({ _id: doc._id }, doc, { upsert: true });
-        }
-        stat.migrated += 1;
+        });
       } catch (error) {
         stat.failed += 1;
         if (stat.errors.length < 20) {
@@ -86,6 +84,7 @@ async function archiveCollection(
         }
       }
     }
+    applyBulkResult(stat, await bulkReplaceRaw(target as any, docs, ctx.dryRun), 20);
   }
   return stat;
 }

@@ -157,8 +157,9 @@ async function main(): Promise<void> {
   console.log(
     `V4→V5 migrator · waves=${waves.join(",")} · dryRun=${ctx.dryRun} · validateOnly=${ctx.validateOnly}`
   );
-  console.log(`V5 target: ${env.v5Uri}`);
-  console.log(`V4 base:   ${env.v4UriBase}`);
+  const redact = (uri: string) => uri.replace(/\/\/[^@/]*@/, "//***@");
+  console.log(`V5 target: ${redact(env.v5Uri)}`);
+  console.log(`V4 base:   ${redact(env.v4UriBase)}`);
 
   const needsV5Write =
     waves.some((w) => w >= 1 && w !== 5) && !cli.validateOnly;

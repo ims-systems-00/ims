@@ -63,8 +63,8 @@ describe("LoginPage", () => {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/" element={<p>Home</p>} />
               <Route
-                path="/select-organisation"
-                element={<p>Select organisation</p>}
+                path="/opening-workspace"
+                element={<p>Opening workspace</p>}
               />
               <Route path="/register" element={<p>Register</p>} />
               <Route path="/forgot-password" element={<p>Forgot</p>} />
@@ -86,10 +86,9 @@ describe("LoginPage", () => {
       email: "ada@example.com",
       password: "Str0ng-Pass!",
     });
-    // Login hands off to the org picker; the intro plays after a choice.
+    // Login plays the intro and opens the default org underneath — no picker.
     expect(
-      await screen.findByText("Select organisation")
+      await screen.findByText("Opening workspace")
     ).toBeInTheDocument();
-    expect(document.getElementById("imsi")).toBeNull();
   });
 });

@@ -28,7 +28,11 @@ import { getDocumentReviewReminderModel } from "../../../src/modules/document-ma
 import type { EntityStat, MigrateContext, TenantHandle, WaveReport } from "../types";
 import { emptyEntityStat } from "../report";
 import { countCollection, iterateCollection } from "../v4-connection";
-import { upsertById } from "../upsert";
+import {
+  applyBulkResult,
+  bulkUpsertById,
+  withSourceTimestamps,
+} from "../upsert";
 import { asId } from "../transforms/common";
 import {
   transformActivity,
@@ -59,6 +63,9 @@ import {
   transformTask,
 } from "../transforms/wave2-3";
 import { attachValidation } from "../validation";
+
+/** Docs per bulkWrite round trip to the V5 cluster. */
+const BULK_BATCH_SIZE = 1000;
 
 type Job = {
   v4: string;
@@ -173,16 +180,23 @@ async function runJob(
   stat.v4Count = await countCollection(tenant.connection, job.v4);
   const model = job.model();
 
-  for await (const batch of iterateCollection(tenant.connection, job.v4)) {
+  for await (const batch of iterateCollection(
+    tenant.connection,
+    job.v4,
+    BULK_BATCH_SIZE
+  )) {
+    const mappedDocs: Record<string, unknown>[] = [];
     for (const raw of batch) {
       try {
-        const mapped = job.transform(raw, organizationId, ctx);
+        const mapped = withSourceTimestamps(
+          job.transform(raw, organizationId, ctx),
+          raw
+        );
         if (!mapped) {
           stat.skipped += 1;
           continue;
         }
-        await upsertById(model, mapped, ctx.dryRun);
-        stat.migrated += 1;
+        mappedDocs.push(mapped);
       } catch (error) {
         stat.failed += 1;
         if (stat.errors.length < 50) {
@@ -192,6 +206,7 @@ async function runJob(
         }
       }
     }
+    applyBulkResult(stat, await bulkUpsertById(model, mappedDocs, ctx.dryRun));
   }
   return stat;
 }

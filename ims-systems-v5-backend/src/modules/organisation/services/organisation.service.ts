@@ -46,6 +46,7 @@ import {
   type EmailBrandingPreviewResult,
   type GoLiveOrganisationInput,
   type GoLiveOrganisationResult,
+  type MyOrganisation,
   type Organisation,
   type OrganisationProfile,
   type PreviewOrganisationEmailBrandingInput,
@@ -472,15 +473,40 @@ export function createOrganisationService(deps: OrganisationServiceDeps) {
 
     async listMine(
       identity: SecurityIdentity | null | undefined
-    ): Promise<Organisation[]> {
+    ): Promise<MyOrganisation[]> {
       const { identity: authed, subjectId } = requireIdentity(identity);
       // AuthN-only bootstrap: Mongo memberships scope the result. Do not
       // OpenFGA-check identity.organizationId / x-org-id here — a stale
       // tenant or empty self-hosted store would 403 the post-login gate.
       await assertAllowed(authed, "read", "");
 
-      const ids = await memberships.listOrganizationIdsForUser(subjectId);
-      return organisations.findByIds(ids);
+      // Oldest membership first, so "first joined" is the fallback default.
+      const options = await memberships.listLoginOptionsForUser(subjectId);
+      const found = await organisations.findByIds(
+        options.map((option) => option.organizationId)
+      );
+      const byId = new Map(found.map((org) => [org.id, org]));
+      const ordered = options
+        .map((option) => ({ option, org: byId.get(option.organizationId) }))
+        .filter(
+          (row): row is { option: (typeof options)[number]; org: Organisation } =>
+            row.org !== undefined
+        );
+      const defaultId =
+        ordered.find((row) => row.option.isDefault)?.org.id ??
+        ordered[0]?.org.id;
+      return ordered.map(({ org }) => ({ ...org, isDefault: org.id === defaultId }));
+    },
+
+    /** Choose which organisation opens after login. */
+    async setDefault(
+      identity: SecurityIdentity | null | undefined,
+      organizationId: string
+    ): Promise<{ organizationId: string }> {
+      const { subjectId } = requireIdentity(identity);
+      await assertMember(subjectId, organizationId);
+      await memberships.setDefaultForUser(subjectId, organizationId);
+      return { organizationId };
     },
 
     /**

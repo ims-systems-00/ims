@@ -2,9 +2,9 @@ export { LoginPage } from "./pages/login-page";
 export { RegisterPage } from "./pages/register-page";
 export { ForgotPasswordPage } from "./pages/forgot-password-page";
 export {
-  SelectOrganisationPage,
-  SELECT_ORGANISATION_PATH,
-} from "./pages/select-organisation-page";
+  OpenDefaultOrganisationPage,
+  OPEN_DEFAULT_ORGANISATION_PATH,
+} from "./pages/open-default-organisation-page";
 export { PreparationScreenPage } from "./pages/preparation-screen-page";
 export { PostLoginMembershipGate } from "./components/post-login-membership-gate";
 export { AuthEntryLayout } from "./components/auth-entry-layout";

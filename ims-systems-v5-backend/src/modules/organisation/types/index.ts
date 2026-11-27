@@ -259,6 +259,12 @@ export const MEMBERSHIP_ACCESS_STATUSES = ["Active", "Blocked"] as const;
 export type MembershipAccessStatus =
   (typeof MEMBERSHIP_ACCESS_STATUSES)[number];
 
+/** `GET /organisations` row: an organisation plus the caller's default flag. */
+export type MyOrganisation = Organisation & {
+  /** True for exactly one row: the org opened after login. */
+  isDefault: boolean;
+};
+
 export type OrganisationMembership = {
   id: string;
   organizationId: string;

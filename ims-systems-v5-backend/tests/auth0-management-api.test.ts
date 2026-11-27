@@ -12,6 +12,52 @@ const jsonRes = (body: unknown, status = 200) =>
     headers: { "Content-Type": "application/json" },
   });
 
+describe("Auth0ManagementApi rate limiting", () => {
+  const rateLimited = () =>
+    new Response(JSON.stringify({ statusCode: 429, error: "Too Many Requests" }), {
+      status: 429,
+      headers: {
+        "Content-Type": "application/json",
+        "x-ratelimit-reset": String((Date.now() + 50) / 1000),
+      },
+    });
+  const makeApi = (fetchFn: ReturnType<typeof vi.fn>) =>
+    new Auth0ManagementApi({
+      domain: "tenant.eu.auth0.com",
+      clientId: "m2m-id",
+      clientSecret: "m2m-secret",
+      fetchFn: fetchFn as typeof fetch,
+    });
+
+  it("waits and retries a 429 instead of failing", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ access_token: "t", expires_in: 3600 }))
+      .mockResolvedValueOnce(rateLimited())
+      .mockResolvedValueOnce(jsonRes({ id: "org_9" }, 201));
+    expect(await makeApi(fetchFn).createOrganization({ name: "acme" })).toEqual({
+      id: "org_9",
+    });
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+  });
+
+  it("does not treat a failed user lookup as 'no user' (would create a duplicate)", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ access_token: "t", expires_in: 3600 }))
+      .mockResolvedValueOnce(jsonRes({ error: "boom" }, 500));
+    await expect(makeApi(fetchFn).getUserByEmail("a@b.co")).rejects.toThrow(/HTTP 500/);
+  });
+
+  it("still returns null for an organization that does not exist", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(jsonRes({ access_token: "t", expires_in: 3600 }))
+      .mockResolvedValueOnce(jsonRes({ error: "Not Found" }, 404));
+    expect(await makeApi(fetchFn).getOrganizationByName("nope")).toBeNull();
+  });
+});
+
 describe("Auth0ManagementApi", () => {
   it("fetches a client-credentials token once and creates an organization", async () => {
     const fetchFn = vi

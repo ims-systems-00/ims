@@ -10,3 +10,8 @@ node_modules/
 **/.env.local
 # Docker named-volume backups (scripts/docker/backup-volumes.sh)
 /backups/
+
+# deploy bundles & data dumps
+*.tar.gz
+ims-systems-v5-backend/cutover/
+ims-systems-v5-backend/tmp/

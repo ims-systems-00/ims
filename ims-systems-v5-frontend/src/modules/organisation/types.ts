@@ -196,6 +196,11 @@ export type Organisation = {
   emailBranding?: OrganisationEmailBranding;
   /** Auth0 Organization id when linked; null until auth rollout links it. */
   auth0OrganizationId?: string | null;
+  /**
+   * Only on `GET /organisations` rows: the caller's default organisation,
+   * opened straight after login. Exactly one row has it set.
+   */
+  isDefault?: boolean;
   createdBy: string;
   createdOn: string;
   createdAt: string;

@@ -1,6 +1,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { loadPublicEnv } from "@/shared/lib/env";
 import { useMyOrganisationsQuery } from "@/modules/organisation/hooks/use-organisations";
+import { pickDefaultOrganisation } from "@/modules/organisation/api/organisations";
 import {
   acceptInvitationPath,
   getPendingInvite,
@@ -37,10 +38,10 @@ export function PostLoginMembershipGate() {
     if (isStub || orgsQuery.isFetching || !orgsQuery.isSuccess) return;
     if (!orgsQuery.data?.length) return;
     if (getActiveOrganisationId()) return;
-    const first = orgsQuery.data[0]!;
+    const fallback = pickDefaultOrganisation(orgsQuery.data)!;
     setActiveOrganisationContext({
-      organizationId: first.id,
-      auth0OrganizationId: first.auth0OrganizationId,
+      organizationId: fallback.id,
+      auth0OrganizationId: fallback.auth0OrganizationId,
     });
   }, [isStub, orgsQuery.isFetching, orgsQuery.isSuccess, orgsQuery.data]);
 

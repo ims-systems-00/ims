@@ -55,6 +55,11 @@ const organisationMembershipSchema = new Schema(
     /** Compliance toolkit names granted to this member (U-07/N-10). */
     complianceToolkits: { type: [String], default: [] },
     lineManagerIds: { type: [String], default: [] },
+    /**
+     * The organisation this user lands in after login. At most one membership
+     * per user carries it; when none does, the earliest-joined org is used.
+     */
+    isDefault: { type: Boolean, default: false },
     createdOn: { type: Date, required: true },
   },
   { timestamps: true }
